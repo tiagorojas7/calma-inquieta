@@ -16,6 +16,17 @@ export default defineConfig({
           exclude: ["**/*.db.test.ts"],
         },
       },
+      {
+        extends: true,
+        test: {
+          name: "db",
+          environment: "node",
+          include: ["src/**/*.db.test.ts"],
+          globalSetup: ["src/testing/db/global-setup.ts"],
+          hookTimeout: 60_000,
+          testTimeout: 30_000,
+        },
+      },
     ],
     coverage: {
       provider: "v8",

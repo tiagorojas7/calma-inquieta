@@ -6,6 +6,10 @@ export default defineConfig({
     alias: { "~": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
+    // Embedded PostgreSQL, ESLint and subprocess-spawning files are heavy. On a
+    // 4-core machine with little free RAM, more than two parallel workers
+    // thrash memory and I/O, hit timeouts and run slower overall.
+    maxWorkers: 2,
     projects: [
       {
         extends: true,

@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatEnvError,
   migrationEnvSchema,
   parseEnv,
+  readWorkerEnv,
   testEnvSchema,
+  workerEnvSchema,
 } from "./env";
 
 const URL_OK = "postgres://user:pw@localhost:5432/calma";
@@ -112,5 +114,131 @@ describe("parseEnv with the test schema", () => {
     expect(error.issues).toEqual([
       { name: "TEST_DATABASE_URL", reason: "invalid" },
     ]);
+  });
+});
+
+const HYPERDRIVE_OK = { connectionString: URL_OK };
+
+describe("parseEnv with the worker schema", () => {
+  it("accepts the Hyperdrive binding and the build commit", () => {
+    const result = parseEnv(workerEnvSchema, {
+      HYPERDRIVE: HYPERDRIVE_OK,
+      BUILD_COMMIT: "abc123",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: { HYPERDRIVE: HYPERDRIVE_OK, BUILD_COMMIT: "abc123" },
+    });
+  });
+
+  it("ignores the extra properties the runtime adds to the binding", () => {
+    const result = parseEnv(workerEnvSchema, {
+      HYPERDRIVE: { ...HYPERDRIVE_OK, host: "db.internal", port: 5432 },
+      BUILD_COMMIT: "abc123",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: { HYPERDRIVE: HYPERDRIVE_OK, BUILD_COMMIT: "abc123" },
+    });
+  });
+
+  it("names a missing HYPERDRIVE binding", () => {
+    const error = failureOf(
+      parseEnv(workerEnvSchema, { BUILD_COMMIT: "abc123" }),
+    );
+
+    expect(error.issues).toEqual([{ name: "HYPERDRIVE", reason: "missing" }]);
+  });
+
+  it("names a binding of the wrong shape without echoing its value", () => {
+    const secret = "postgres://user:secret-pw@secret-host.internal/db";
+    const error = failureOf(
+      parseEnv(workerEnvSchema, { HYPERDRIVE: secret, BUILD_COMMIT: "abc" }),
+    );
+
+    expect(error.issues).toEqual([{ name: "HYPERDRIVE", reason: "invalid" }]);
+    expect(formatEnvError(error)).toBe(
+      "Invalid environment: HYPERDRIVE (invalid)",
+    );
+    expect(JSON.stringify(error)).not.toContain("secret-pw");
+  });
+
+  it("names a binding whose connection string is malformed", () => {
+    const error = failureOf(
+      parseEnv(workerEnvSchema, {
+        HYPERDRIVE: { connectionString: "secret-token-123" },
+        BUILD_COMMIT: "abc",
+      }),
+    );
+
+    expect(error.issues).toEqual([{ name: "HYPERDRIVE", reason: "invalid" }]);
+    expect(JSON.stringify(error)).not.toContain("secret-token-123");
+  });
+
+  it("names an empty or missing BUILD_COMMIT", () => {
+    const missing = failureOf(
+      parseEnv(workerEnvSchema, { HYPERDRIVE: HYPERDRIVE_OK }),
+    );
+    const empty = failureOf(
+      parseEnv(workerEnvSchema, {
+        HYPERDRIVE: HYPERDRIVE_OK,
+        BUILD_COMMIT: "",
+      }),
+    );
+
+    expect(missing.issues).toEqual([
+      { name: "BUILD_COMMIT", reason: "missing" },
+    ]);
+    expect(empty.issues).toEqual([{ name: "BUILD_COMMIT", reason: "invalid" }]);
+  });
+});
+
+describe("readWorkerEnv", () => {
+  const validEnv = () => ({
+    HYPERDRIVE: { ...HYPERDRIVE_OK },
+    BUILD_COMMIT: "abc123",
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the parsed configuration", () => {
+    expect(readWorkerEnv(validEnv())).toEqual({
+      ok: true,
+      value: { HYPERDRIVE: HYPERDRIVE_OK, BUILD_COMMIT: "abc123" },
+    });
+  });
+
+  it("parses once per env object and returns the same result", () => {
+    const spy = vi.spyOn(workerEnvSchema, "safeParse");
+    const env = validEnv();
+
+    const first = readWorkerEnv(env);
+    const second = readWorkerEnv(env);
+
+    expect(second).toBe(first);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("parses again for a new env object", () => {
+    const spy = vi.spyOn(workerEnvSchema, "safeParse");
+
+    const first = readWorkerEnv(validEnv());
+    const second = readWorkerEnv(validEnv());
+
+    expect(second).not.toBe(first);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("caches a failure too", () => {
+    const env = { BUILD_COMMIT: "abc123" };
+
+    const first = readWorkerEnv(env);
+
+    expect(first.ok).toBe(false);
+    expect(readWorkerEnv(env)).toBe(first);
   });
 });

@@ -30,6 +30,17 @@ export const testEnvSchema = z.object({
   TEST_DATABASE_URL: databaseUrl.optional(),
 });
 
+/**
+ * Variables for the Worker: Cloudflare injects the Hyperdrive binding as an
+ * object (extra properties such as host are stripped) next to plain vars.
+ */
+export const workerEnvSchema = z.object({
+  HYPERDRIVE: z.object({ connectionString: databaseUrl }),
+  BUILD_COMMIT: z.string().min(1),
+});
+
+export type WorkerEnv = z.output<typeof workerEnvSchema>;
+
 export function parseEnv<T extends z.ZodType>(
   schema: T,
   source: Readonly<Record<string, unknown>>,
@@ -59,4 +70,20 @@ export function formatEnvError(error: EnvError): string {
     .map((issue) => `${issue.name} (${issue.reason})`)
     .join(", ");
   return `Invalid environment: ${listed}`;
+}
+
+const workerEnvCache = new WeakMap<object, Result<WorkerEnv, EnvError>>();
+
+/**
+ * Validates the Worker bindings once per `env` object: the runtime hands the
+ * same object to every request of an isolate, so later requests skip parsing.
+ */
+export function readWorkerEnv(env: object): Result<WorkerEnv, EnvError> {
+  const cached = workerEnvCache.get(env);
+  if (cached) {
+    return cached;
+  }
+  const result = parseEnv(workerEnvSchema, env as Record<string, unknown>);
+  workerEnvCache.set(env, result);
+  return result;
 }

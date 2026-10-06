@@ -1,0 +1,25 @@
+# Exact pins: every direct dependency is saved without a range prefix.
+saveExact: true
+
+# Build-script allowlist (pnpm 11+ allowBuilds; unreviewed builds fail the install).
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# pnpm 12 gates packages younger than the minimum release age. These exact
+# versions are pinned on purpose (design section 2) and are newer than the gate.
+minimumReleaseAgeExclude:
+  - "@typescript-eslint/eslint-plugin@8.71.1"
+  - "@typescript-eslint/parser@8.71.1"
+  - "@typescript-eslint/project-service@8.71.1"
+  - "@typescript-eslint/scope-manager@8.71.1"
+  - "@typescript-eslint/tsconfig-utils@8.71.1"
+  - "@typescript-eslint/type-utils@8.71.1"
+  - "@typescript-eslint/types@8.71.1"
+  - "@typescript-eslint/typescript-estree@8.71.1"
+  - "@typescript-eslint/utils@8.71.1"
+  - "@typescript-eslint/visitor-keys@8.71.1"
+  - typescript-eslint@8.71.1
+
+# Reject installs on a Node major other than engines.node.
+engineStrict: true

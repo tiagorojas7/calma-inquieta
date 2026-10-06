@@ -2,7 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import EmbeddedPostgres from "embedded-postgres";
 import { formatEnvError, parseEnv, testEnvSchema } from "~/platform/env";
 
 export interface PostgresServer {
@@ -13,6 +12,37 @@ export interface PostgresServer {
 
 const ADMIN_USER = "postgres";
 const ADMIN_PASSWORD = "password";
+// Windows keeps file handles briefly after postgres exits.
+const REMOVE_OPTIONS = {
+  recursive: true,
+  force: true,
+  maxRetries: 10,
+  retryDelay: 200,
+};
+
+/**
+ * Loads embedded-postgres without its import-time exit hooks. The library
+ * registers `beforeExit` and `exit` listeners at import: the first calls
+ * process.exit(0) and discards process.exitCode (a failed Vitest run would turn
+ * green) and the second throws because it expects an async callback. The server
+ * is stopped by the global teardown instead.
+ */
+export async function loadEmbeddedPostgres() {
+  const beforeExitBefore = new Set(process.listeners("beforeExit"));
+  const exitBefore = new Set(process.listeners("exit"));
+  const { default: EmbeddedPostgres } = await import("embedded-postgres");
+  for (const listener of process.listeners("beforeExit")) {
+    if (!beforeExitBefore.has(listener)) {
+      process.removeListener("beforeExit", listener);
+    }
+  }
+  for (const listener of process.listeners("exit")) {
+    if (!exitBefore.has(listener)) {
+      process.removeListener("exit", listener);
+    }
+  }
+  return EmbeddedPostgres;
+}
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -51,12 +81,15 @@ export async function startPostgresServer(
 
   const port = await freePort();
   const databaseDir = await mkdtemp(join(tmpdir(), "calma-pg-"));
+  const EmbeddedPostgres = await loadEmbeddedPostgres();
   const server = new EmbeddedPostgres({
     databaseDir,
     port,
     user: ADMIN_USER,
     password: ADMIN_PASSWORD,
-    persistent: false,
+    // The library deletes the directory itself when not persistent, without
+    // retries; Windows can still hold handles, so removal is done below.
+    persistent: true,
     initdbFlags: ["--encoding=UTF8", "--locale=C"],
     postgresFlags: [
       "-c",
@@ -75,7 +108,7 @@ export async function startPostgresServer(
     await server.initialise();
     await server.start();
   } catch (error) {
-    await rm(databaseDir, { recursive: true, force: true });
+    await rm(databaseDir, REMOVE_OPTIONS);
     throw new Error(
       "Could not start the embedded PostgreSQL server. Set TEST_DATABASE_URL " +
         "to an admin connection string (for example WSL2 PostgreSQL) to use an external server.",
@@ -87,7 +120,7 @@ export async function startPostgresServer(
     adminUrl: `postgres://${ADMIN_USER}:${ADMIN_PASSWORD}@127.0.0.1:${String(port)}/postgres`,
     async stop() {
       await server.stop();
-      await rm(databaseDir, { recursive: true, force: true });
+      await rm(databaseDir, REMOVE_OPTIONS);
     },
   };
 }

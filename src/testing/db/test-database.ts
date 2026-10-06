@@ -4,7 +4,7 @@ import { inject } from "vitest";
 
 declare module "vitest" {
   interface ProvidedContext {
-    pg: { adminUrl: string; template: string };
+    pg: { adminUrl: string; template: string } | { setupError: string };
   }
 }
 
@@ -42,7 +42,11 @@ export async function runAdminStatement(
 export async function createTestDatabase(
   options: { empty?: boolean } = {},
 ): Promise<TestDatabase> {
-  const { adminUrl, template } = inject("pg");
+  const provided = inject("pg");
+  if ("setupError" in provided) {
+    throw new Error(provided.setupError);
+  }
+  const { adminUrl, template } = provided;
   const name = `t_${randomBytes(6).toString("hex")}`;
   const source = options.empty === true ? "template0" : template;
   await runAdminStatement(

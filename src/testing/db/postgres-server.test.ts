@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { startPostgresServer } from "./postgres-server";
@@ -58,4 +59,25 @@ describe("startPostgresServer", () => {
       await expect(canQuery(first.adminUrl)).resolves.toBe(false);
     },
   );
+
+  it("keeps the exit code of the process that loads embedded-postgres", () => {
+    // embedded-postgres registers a beforeExit hook at import time that calls
+    // process.exit(0), which would turn a failed test run into a green one.
+    const run = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "--input-type=module",
+        "-e",
+        `const { loadEmbeddedPostgres } = await import("~/testing/db/postgres-server");
+await loadEmbeddedPostgres();
+process.exitCode = 3;`,
+      ],
+      { encoding: "utf8", timeout: 30_000 },
+    );
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(3);
+  });
 });

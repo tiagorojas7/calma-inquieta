@@ -12,37 +12,32 @@ context: |
   Product: Calma Inquieta, a creative workshops business in Córdoba, Argentina. Responsive public website (6 pages) + private admin panel + database + local SEO. Two indoor QR/NFC signs are a physical deliverable, not software. Delivered by TR_WebStudio x Linkealo.
   Requirements baseline (source of truth): docs/client-proposal/proposal.md (accepted client proposal V1.0, 2026-09-30, Spanish) and docs/client-proposal/mockups/ (20 images). English analysis at docs/client-proposal/mockups-analysis.md (mockups are desktop-only and their placeholder data is inconsistent across images: visual reference, not a data source). Brand sources at docs/brand/.
   Scope adjustment by the owner (overrides the proposal text): WhatsApp Business API is OUT; automated notifications are sent by EMAIL. wa.me click-to-chat links with prefilled messages stay IN.
-  Stack: UNDECIDED, to be decided in the first SDD change. Sibling-project hints only, not decisions: Next.js 15 + React 19 + Tailwind CSS 4; Vite + React 18; Vitest 4; Supabase/Postgres.
-  Architecture: greenfield, no code yet. Not a git repository yet (sdd-init deliberately did not run git init).
-  Testing: no runner yet. Strict TDD requested by the user's global config, status pending-runner; the effective strict_tdd flag stays false until a runner and a workspace-level test command exist.
+  Stack: DECIDED in platform-foundation (ADR-001): React Router 8 framework mode on Cloudflare Workers Paid, Neon PostgreSQL 17 via Hyperdrive, Drizzle, Vitest, pnpm, Node 24, TypeScript 6.0.
+  Architecture: screaming modules + hexagonal layers + composition root (ADR-003), enforced by eslint-plugin-boundaries and an architecture test.
+  Testing: Vitest; ONE workspace command `pnpm test`. Strict TDD active.
   Style: technical artifacts, code, comments and commits in English; end-user UI copy language is an OPEN decision (likely Spanish es-AR). Conventional Commits; NEVER add Co-Authored-By or AI attribution.
 
-# EFFECTIVE flag, resolved fail-closed by the sdd-init decision gate: zero projects were discovered and no
-# workspace-level test command exists. The user's intent (enabled) is kept in testing.strict_tdd_requested.
-strict_tdd: false
+# EFFECTIVE flag. Activated in platform-foundation S1 (2026-10-05) once Vitest and the single `pnpm test`
+# command exist. The Engram observations sdd-init/calmainquieta and sdd/calmainquieta/testing-capabilities match.
+strict_tdd: true
 
-# Projects discovered under the workspace root (root plus two levels, bounded discovery).
-projects: []   # none: no package.json, go.mod, pyproject.toml, Cargo.toml or other project marker exists yet
+projects:
+  - { name: calma-inquieta, path: ".", language: typescript, package_manager: pnpm }
 
 testing:
   detected: "2026-10-05"
   strict_tdd_requested: true
-  strict_tdd_status: pending-runner
-  strict_tdd_activation: >-
-    The first SDD change must install and configure the test runner and define ONE workspace-level
-    test command, then switch the effective strict_tdd flag above to true and refresh the Engram
-    observations sdd-init/calmainquieta and sdd/calmainquieta/testing-capabilities.
-    No test command is invented in the meantime.
-  workspace_test_command: ""
+  strict_tdd_status: active
+  workspace_test_command: "pnpm test"
   test_layers:
-    unit: { available: false, tool: null }
-    integration: { available: false, tool: null }
-    e2e: { available: false, tool: null }
-  coverage: { available: false, command: null }
+    unit: { available: true, tool: vitest }
+    integration: { available: false, tool: null } # S2.2 sets: true, "vitest + embedded-postgres (PostgreSQL 17)"
+    e2e: { available: false, tool: null } # Playwright arrives in change 5
+  coverage: { available: true, command: "pnpm test:coverage" }
   quality:
-    linter: { available: false, command: null }
-    type_checker: { available: false, command: null }
-    formatter: { available: false, command: null }
+    linter: { available: true, command: "pnpm lint" }
+    type_checker: { available: true, command: "pnpm typecheck" }
+    formatter: { available: true, command: "pnpm format:check" }
 
 rules:
   proposal:
@@ -64,11 +59,11 @@ rules:
     guidelines:
       - Follow existing code patterns (none yet, the first change establishes them)
       - Never add Co-Authored-By or AI attribution to commits, use Conventional Commits
-    tdd: false           # pending runner; switch to true together with strict_tdd
-    test_command: ""     # intentionally empty, never invented
+    tdd: true
+    test_command: "pnpm test"
   verify:
-    test_command: ""
-    build_command: ""
-    coverage_threshold: 0
+    test_command: "pnpm test"
+    build_command: "" # stays empty until S3.1 sets "pnpm build" when the script exists (never invented)
+    coverage_threshold: 0 # scoped 90 % thresholds live in vitest.config.ts
   archive:
     - Warn before merging destructive deltas

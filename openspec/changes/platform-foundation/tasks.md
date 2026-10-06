@@ -9,13 +9,13 @@ Change: platform-foundation | Store: hybrid | Strict TDD: activated inside S1 (t
 | Estimated authored changed lines | 1,520-1,860 total (six slices, each at most 400) |
 | 400-line budget risk | High (total); Low-Medium per slice |
 | Chained PRs recommended | Yes |
-| Suggested split | S0 (direct push to main) -> S1 -> S2.1a (core, PR 2) -> S2.1b (boundaries, PR 2b) -> S2.2 -> S3.1 -> S3.2 |
+| Suggested split | S0 (direct push to main) -> S1 (PR #1) -> S2.1a (core, PR #2) -> S2.1b (boundaries, PR #3) -> S2.2 (PR #4) -> S3.1 (PR #5) -> S3.2 (PR #6) |
 | Delivery strategy | ask-on-risk |
-| Chain strategy | pending (recommended: stacked-to-main) |
+| Chain strategy | stacked-to-main (chosen) |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main (chosen)
 400-line budget risk: High
 
 Recommended chain strategy: **stacked-to-main**. Every slice is green on its own, deploy is gated by the secret-presence check, and each PR merges in order with a small, focused diff; a feature-branch chain adds no rollback benefit for a single-developer greenfield repo.
@@ -26,8 +26,8 @@ Per-slice estimate (authored additions + deletions; lockfile, `drizzle/meta`, ge
 |-------|----------|-----|
 | S0 | 60-80 | direct push, not a PR |
 | S1 | 330-390 | 400 |
-| S2.1a (core, PR 2) | 477 actual (about 270 tests), `size:exception` approved by owner | 400 |
-| S2.1b (boundaries, PR 2b) | see PR 2b | 400 |
+| S2.1a (core, PR #2) | 477 actual (about 270 tests), `size:exception` approved by owner | 400 |
+| S2.1b (boundaries, PR #3) | see PR #3 | 400 |
 | S2.2 | 305-365 | 400 |
 | S3.1 | 295-365 | 400 |
 | S3.2 | 230-290 | 400 |
@@ -38,11 +38,11 @@ Per-slice estimate (authored additions + deletions; lockfile, `drizzle/meta`, ge
 | Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
 |------|------|-----------|----------------------|-----------------|-------------------|
 | S0 | Private repo with hygiene files, WebP mockups, checksums, first push | direct push to `main` (pre-authorized) | `gitleaks dir .` then `git ls-files` audit (no PNG, `.atl/`, `settings.local.json`) | `gh repo view tiagorojas7/calma-inquieta --json visibility` returns PRIVATE | Delete or archive the GitHub repo; local `_originals/` remains |
-| S1 | Toolchain, single `pnpm test`, Strict TDD activation, `Result` + `Money`, CI `verify` | PR 1 (base `main`) | `pnpm test -- src/modules/_shared/money.test.ts` | `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` on fresh clone state | Revert PR 1 (config flags revert to false only if runner removed) |
-| S2.1 | Boundaries lint rule, architecture fitness test, `AGENTS.md`, system-status domain/application core, fakes, contract | PR 2 (base `main` after PR 1 merge) | `pnpm test -- tooling/architecture src/modules/system-status` | `pnpm lint` fails on a planted bad import then passes after removal | Revert PR 2 |
-| S2.2 | Env core, migrations, embedded-postgres harness, Drizzle probe | PR 3 (base `main` after PR 2 merge) | `pnpm test -- src/platform src/modules/system-status/infrastructure` | `pnpm db:migrate` against `TEST_DATABASE_URL` or embedded server; `pnpm test` from clean clone | Revert PR 3 (config `integration` back to false) |
-| S3.1 | Worker env schema, composition root, React Router + Worker + `/status`, CI build step | PR 4 (base `main` after PR 3 merge) | `pnpm test -- src/app src/composition src/platform/env.test.ts` | `pnpm build` offline; `pnpm dev` then `GET /status` (shows `degraded` without local PG) | Revert PR 4 (`build_command` back to empty) |
-| S3.2 | CI deploy job (secret gate), ADRs, README, owner runbook | PR 5 (base `main` after PR 4 merge) | `actionlint` on `ci.yml` if available, else `pnpm lint && pnpm format:check` | Deploy job on `main` with no secrets emits the skip notice and stays green | Revert PR 5 |
+| S1 | Toolchain, single `pnpm test`, Strict TDD activation, `Result` + `Money`, CI `verify` | PR #1 (base `main`) | `pnpm test -- src/modules/_shared/money.test.ts` | `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` on fresh clone state | Revert PR #1 (config flags revert to false only if runner removed) |
+| S2.1 | Boundaries lint rule, architecture fitness test, `AGENTS.md`, system-status domain/application core, fakes, contract | PR #2 and PR #3 (base `feat/s1-toolchain`, stacked) | `pnpm test -- tooling/architecture src/modules/system-status` | `pnpm lint` fails on a planted bad import then passes after removal | Revert PR #2 and PR #3 |
+| S2.2 | Env core, migrations, embedded-postgres harness, Drizzle probe | PR #4 (base `feat/s2-1b-boundaries`, stacked on PR #3) | `pnpm test -- src/platform src/modules/system-status/infrastructure` | `pnpm db:migrate` against `TEST_DATABASE_URL` or embedded server; `pnpm test` from clean clone | Revert PR #4 (config `integration` back to false) |
+| S3.1 | Worker env schema, composition root, React Router + Worker + `/status`, CI build step | PR #5 (base `feat/s2-2-database`, stacked on PR #4) | `pnpm test -- src/app src/composition src/platform/env.test.ts` | `pnpm build` offline; `pnpm dev` then `GET /status` (shows `degraded` without local PG) | Revert PR #5 (`build_command` back to empty) |
+| S3.2 | CI deploy job (secret gate), ADRs, README, owner runbook | PR #6 (base `feat/s3-1-worker`, stacked on PR #5) | `pnpm test tooling/deploy-workflow.test.ts` (gate script, three env cases, workflow structure) | Deploy job on `main` with no secrets emits the skip notice and stays green | Revert PR #6 |
 
 Spec shorthand: **DP** delivery-pipeline, **SK** shared-kernel, **SS** system-status, **RC** runtime-configuration, **AB** architecture-boundaries, **DH** database-harness (all under `openspec/changes/platform-foundation/specs/<name>/spec.md`). Design shorthand: **D#** decision, **§n** section of `design.md`, **R#** risk.
 
@@ -100,7 +100,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 ### 4. CI verify
 
 - [x] 1.10 Create `.github/workflows/ci.yml` with `on: pull_request, push: main`, `permissions: contents: read`, `concurrency: ci-${ref}` (`cancel-in-progress` only for `pull_request`), job `verify` on `ubuntu-24.04`: checkout (`fetch-depth: 0`), `pnpm/action-setup` (from `packageManager`), `actions/setup-node` (`.nvmrc`, pnpm cache), `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:coverage`, then gitleaks (download pinned 8.x release, verify SHA-256, run `gitleaks git --redact --exit-code 1`; verify subcommand names in apply, R7). All third-party actions pinned by commit SHA (look up current SHAs; do not guess). Never `pull_request_target`. Commit `ci: add verify workflow`. Traces: DP CI verify gate (Green on main, Red blocks by convention), Pull request does not deploy; design §10, §16.
-- [x] 1.11 Slice gate and PR: run `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage`; push branch `feat/s1-toolchain`; open PR 1 with `gh pr create` (base `main`, description in plain Conventional style, no AI attribution); confirm CI `verify` green. Traces: DP CI verify gate; Branch protection by convention.
+- [x] 1.11 Slice gate and PR: run `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage`; push branch `feat/s1-toolchain`; open PR #1 with `gh pr create` (base `main`, description in plain Conventional style, no AI attribution); confirm CI `verify` green. Traces: DP CI verify gate; Branch protection by convention.
 
 **S1 gate**: authored lines at most 400; `strict_tdd` true in file and Engram; Money RED observed before GREEN.
 
@@ -108,7 +108,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 ## S2.1: Boundaries + system-status core
 
-**Split (owner-approved)**: S2.1a = tasks 2.1-2.11, branch `feat/s2-1-boundaries`, PR 2 (stacked on PR 1, `size:exception`: 477 authored lines, about 270 tests). S2.1b = tasks 2.12-2.16, branch `feat/s2-1b-boundaries`, PR 2b (stacked on PR 2). Standing owner policy: a cohesive slice over 400 authored lines because of tests ships as `size:exception` without asking; stop and ask only when production code alone exceeds 400.
+**Split (owner-approved)**: S2.1a = tasks 2.1-2.11, branch `feat/s2-1-boundaries`, PR #2 (stacked on PR #1, `size:exception`: 477 authored lines, about 270 tests). S2.1b = tasks 2.12-2.16, branch `feat/s2-1b-boundaries`, PR #3 (stacked on PR #2). Standing owner policy: a cohesive slice over 400 authored lines because of tests ships as `size:exception` without asking; stop and ask only when production code alone exceeds 400.
 
 ### 1. Kernel completion and domain (Strict TDD)
 
@@ -133,13 +133,13 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 - [x] 2.13 RED: create `tooling/architecture/architecture.test.ts` using the ESLint Node API (filter messages to `boundaries/*`; try `ruleFilter` first, else filter by `ruleId`; verify, R7). Table cases #1-#6 and #8 and #9 from design §5.3 as virtual `*.fixture.ts(x)` files linted with `lintText({ filePath })`: (1) domain imports `drizzle-orm` -> violation; (2) domain imports `../application/ports` -> violation; (3) delivery deep-imports `~/modules/system-status/application/get-system-status` -> violation; (4) delivery imports `pg` -> violation; (5) `modules/demo/application` imports `~/modules/system-status/domain/system-status` -> violation; (6) application imports `~/testing/fakes/fixed-clock` -> violation; (8) delivery imports `~/modules/system-status` -> NO violation (positive control); (9) real tree `src/` and `workers/` yields zero `boundaries/*` messages. Case #7 is added in S2.2 when its target exists. Run; observe failure (rule not configured). Traces: AB Dependency rule (Domain imports infrastructure, Delivery imports Drizzle, Deep cross-module import, Clean tree passes); AB Architecture test as fitness function (Fixture violation is detected, Fixture does not pollute the real check); design §5.3.
 - [x] 2.14 GREEN: extend `eslint.config.ts` with the element map (design §5.1, first match wins), the allow matrix (§5.2, default disallow), `boundaries/no-unknown-files` for `src/`, test files ignored by boundaries, and the fixture override disabling type-aware parsing for `**/*.fixture.{ts,tsx}`. Run `pnpm test` green. Runtime harness: temporarily plant a bad import in a scratch domain file, run `pnpm lint`, observe the violation, remove it. Traces: AB Dependency rule; AB Lint enforcement parity (Lint failing blocks CI); AB Layer structure (Skeleton module exists); design §5.1, §5.2.
 - [x] 2.15 Create `AGENTS.md` stating the dependency rule (element map and allow matrix in prose), Strict TDD (RED/GREEN/REFACTOR, the single `pnpm test` command), Conventional Commits with no AI attribution, and the main commands. Commit (with 2.12-2.14) `feat(architecture): enforce module boundaries with lint and an architecture test`. Traces: AB Agent-facing rule statement (AGENTS.md content); DP Commit conventions; design §5.3 closing note.
-- [x] 2.16 Slice gate and PR: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` green; push `feat/s2-1-boundaries`; open PR 2 (base `main`); CI green. Traces: DP CI verify gate.
+- [x] 2.16 Slice gate and PR: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` green; push `feat/s2-1-boundaries`; open PR #2 (base `feat/s1-toolchain`); CI green. Traces: DP CI verify gate.
 
 **S2.1 gate**: authored lines at most 400; a planted bad import fails both `pnpm lint` and `pnpm test`.
 
 ---
 
-## S2.2: Env core + database harness + Drizzle probe (branch `feat/s2-2-database`, PR 4, base `feat/s2-1b-boundaries`, stacked on PR 3)
+## S2.2: Env core + database harness + Drizzle probe (branch `feat/s2-2-database`, PR #4, base `feat/s2-1b-boundaries`, stacked on PR #3)
 
 ### 1. Env core (shared by migrate script and test harness)
 
@@ -165,13 +165,13 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 - [x] 3.12 RED: create `src/modules/system-status/infrastructure/drizzle-database-probe.db.test.ts` running `runDatabaseProbeContract` against the Drizzle probe: migrated database -> `{ reachable: true, latestMigration: "0000_baseline" }`; empty database (no migrations table, `42P01`) -> `{ reachable: true, latestMigration: null }`; unreachable (`127.0.0.1:1`) -> `{ reachable: false }`; the session is closed in every case. Observe failure. Traces: SS Database probe adapter (Reachable migrated database, Unreachable database, Database without migrations); SS Probe contract parity; design §8.3.
 - [x] 3.13 GREEN: create `src/modules/system-status/infrastructure/drizzle-database-probe.ts` (`createDrizzleDatabaseProbe(openSession)`; `SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1`; `42P01` -> null migration; any other error -> `{ reachable: false }`; `finally` closes the session; tag via `migrationTagFor`). Extend `tooling/architecture/architecture.test.ts` with case #7 (domain imports `../infrastructure/drizzle-database-probe` -> violation). Set `testing.test_layers.integration` to `{ available: true, tool: "vitest + embedded-postgres (PostgreSQL 17)" }` in `openspec/config.yaml` and refresh Engram `sdd-init/calmainquieta` and `sdd/calmainquieta/testing-capabilities` (read back and compare). Commit `feat(system-status): add drizzle database probe`. Traces: SS Database probe adapter; SS Probe contract parity; AB Dependency rule (case 7); DP Strict TDD activation (Config and memory agree); design §5.3, §11.
-- [x] 3.14 Slice gate and PR: full local gate green on a clean install (delete `node_modules`, `pnpm install --frozen-lockfile`, `pnpm test`); push `feat/s2-2-database`; open PR 3 (base `main`); CI green with embedded PostgreSQL 17 on ubuntu. Traces: DP CI verify gate; DH Fresh clone, no setup.
+- [x] 3.14 Slice gate and PR: full local gate green on a clean install (delete `node_modules`, `pnpm install --frozen-lockfile`, `pnpm test`); push `feat/s2-2-database`; open PR #4 (base `feat/s2-1b-boundaries`); CI green with embedded PostgreSQL 17 on ubuntu. Traces: DP CI verify gate; DH Fresh clone, no setup.
 
 **S2.2 gate**: authored lines at most 400; `pnpm test` runs DB tests with no Docker; integration layer flagged available in file and Engram.
 
 ---
 
-## S3.1: Delivery runtime (branch `feat/s3-1-worker`, PR 5, base `feat/s2-2-database`, stacked on PR 4)
+## S3.1: Delivery runtime (branch `feat/s3-1-worker`, PR #5, base `feat/s2-2-database`, stacked on PR #4)
 
 ### 1. Worker env schema
 
@@ -195,26 +195,26 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 ### 4. CI build step and config
 
 - [x] 4.11 Add `pnpm build` to the `verify` job in `.github/workflows/ci.yml` after tests. Set `rules.verify.build_command: "pnpm build"` in `openspec/config.yaml` (the script now exists) and refresh Engram `sdd-init/calmainquieta` and `sdd/calmainquieta/testing-capabilities`; read back and compare. Add unit-level assertion `tooling/repo-hygiene.test.ts` that `.env.example` and `.dev.vars.example` list every variable name of `workerEnvSchema`/`migrationEnvSchema` (names only, no values). Commit `ci: build the worker in verify`. Traces: DP Strict TDD activation (Build command not invented); DP CI verify gate; RC Example files (Example completeness); design §10, §11.
-- [x] 4.12 Slice gate and PR: full local gate (`pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:coverage`, `pnpm build`) green; push `feat/s3-1-runtime`; open PR 4 (base `main`); CI green. Traces: DP CI verify gate; DP Delivery framework.
+- [x] 4.12 Slice gate and PR: full local gate (`pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:coverage`, `pnpm build`) green; push `feat/s3-1-worker`; open PR #5 (base `feat/s2-2-database`); CI green. Traces: DP CI verify gate; DP Delivery framework.
 
 **S3.1 gate**: authored lines at most 400; `pnpm build` offline; `/status` verified locally; no Cloudflare login ever requested.
 
 ---
 
-## S3.2: Deploy job + documentation + owner runbook (branch `feat/s3-2-deploy-docs`, PR 5, base `main`)
+## S3.2: Deploy job + documentation + owner runbook (branch `feat/s3-2-deploy`, PR #6, base `feat/s3-1-worker`, stacked on PR #5)
 
 ### 1. CI deploy job
 
-- [ ] 5.1 Extend `.github/workflows/ci.yml` with job `deploy` (`needs: verify`, `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`, `concurrency: deploy-staging` with `cancel-in-progress: false`). First step `deploy-gate` (env maps the five secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `HYPERDRIVE_ID`, `MIGRATION_DATABASE_URL`, `STATUS_URL`; tests each only for non-emptiness): none set -> `::notice::` "deploy skipped: secrets not provisioned: <names>" and `ready=false`; some set -> fail with "deploy misconfigured: missing <names>"; all set -> `ready=true`; never echo a value. Every later step has `if: steps.deploy-gate.outputs.ready == 'true'`: checkout, pnpm, node, install, substitute `HYPERDRIVE_ID` into `wrangler.jsonc` with `sed -i` and assert with `grep -q` (never committed), `pnpm build`, `pnpm db:migrate` (env `MIGRATION_DATABASE_URL`), `pnpm exec wrangler deploy --var BUILD_COMMIT:${{ github.sha }}` (env `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`), smoke `curl -fsS --retry 3 --retry-delay 5 "$STATUS_URL" | grep -q 'data-status="ok"'`. No secret is referenced outside `deploy`. Actions SHA-pinned. Test the gate logic locally by extracting the script into a shell function exercised with the three env cases (none, partial, all) and asserting messages list names only. This workflow is never run with real credentials by apply. Commit `ci: migrate and deploy to workers.dev on main`. Traces: DP Deploy to workers.dev (Deploy ordering, Verification failure blocks deploy, Migration failure blocks deploy, Pull request does not deploy, Secrets absent); SS Deployed endpoint; design D10, §9.2, §9.3, §10.
+- [x] 5.1 Extend `.github/workflows/ci.yml` with job `deploy` (`needs: verify`, `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`, `concurrency: deploy-staging` with `cancel-in-progress: false`). First step `deploy-gate` (env maps the five secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `HYPERDRIVE_ID`, `MIGRATION_DATABASE_URL`, `STATUS_URL`; tests each only for non-emptiness): none set -> `::notice::` "deploy skipped: secrets not provisioned: <names>" and `ready=false`; some set -> fail with "deploy misconfigured: missing <names>"; all set -> `ready=true`; never echo a value. Every later step has `if: steps.deploy-gate.outputs.ready == 'true'`: checkout, pnpm, node, install, substitute `HYPERDRIVE_ID` into `wrangler.jsonc` with `sed -i` and assert with `grep -q` (never committed), `pnpm build`, `pnpm db:migrate` (env `MIGRATION_DATABASE_URL`), `pnpm exec wrangler deploy --var BUILD_COMMIT:${{ github.sha }}` (env `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`), smoke `curl -fsS --retry 3 --retry-delay 5 "$STATUS_URL" | grep -q 'data-status="ok"'`. No secret is referenced outside `deploy`. Actions SHA-pinned. Test the gate logic locally by extracting the script into a shell function exercised with the three env cases (none, partial, all) and asserting messages list names only. This workflow is never run with real credentials by apply. Commit `ci: migrate and deploy to workers.dev on main`. Traces: DP Deploy to workers.dev (Deploy ordering, Verification failure blocks deploy, Migration failure blocks deploy, Pull request does not deploy, Secrets absent); SS Deployed endpoint; design D10, §9.2, §9.3, §10.
 
 ### 2. Documentation
 
-- [ ] 5.2 Create `docs/adr/0001-stack.md` (React Router 8.4 framework mode on Workers, full manifest of design §2, the React Router 7 -> 8.4 and Vitest 4 -> 5.0.3 bumps with rationale and the TypeScript 6.0 vs 7 constraint). Traces: DP Documentation set (ADR coverage); design D1, D11, §2.
-- [ ] 5.3 Create `docs/adr/0002-hosting-and-environments.md` (Workers Paid, workers.dev, one Neon project with `main` and `staging`, Hyperdrive with caching off, the owner-provisioning model OD-2, secrets list, token scope with the C3 fallback permission, rotation, the secret-presence deploy gate). Traces: DP Documentation set; DH Neon layout (Branch roles); design D10, §9.
-- [ ] 5.4 Create `docs/adr/0003-architecture-testing-data.md` (screaming modules + hexagonal layers, element map and allow matrix, architecture test, Result and use-case style, testing strategy, embedded-postgres, forward-only migrations with expand/contract, D12 memoization with its residual Neon-wake risk and the change-8 follow-up). Replaces any overview. Traces: DP Documentation set; AB Layer structure; design D3, D5, D7, D9, D11, D12.
-- [ ] 5.5 Create `docs/runbooks/cloud-provisioning.md` marked "executed by the owner, not by apply", with steps C1, C2, N1, N2 (the exact SQL block of design §9.4), N3, N4, C3 (exact permissions: Account / Workers Scripts / Edit, Account / Hyperdrive / Read, Account / Account Settings / Read; no zone; TTL 12 months; fallback permission Hyperdrive Edit), C4 (Hyperdrive `calma-staging`, caching disabled), G1 (`gh secret set <NAME> --repo tiagorojas7/calma-inquieta` for each of the five secrets, interactive prompt), G2 (re-run CI; expect `data-status="ok"`), plus the rollback and rotation notes. Verify the Neon branch role inheritance and the Hyperdrive caching toggle name against current docs while writing (R7). Traces: DH Neon layout (Branch roles, Provisioning without authorization); DP Secrets absent; design §9.2, §9.4, §17.
-- [ ] 5.6 Create `README.md`: prerequisites (Node 24 via `.nvmrc`, pnpm 12), commands table (design §14), environment sources per environment (design §9.1), how `pnpm test` gets a database (embedded-postgres or `TEST_DATABASE_URL`), branch convention (every slice by PR, merge only with green CI, no enforced protection on GitHub Free), pointers to ADRs and the runbook. Commit `docs: add adrs, readme and owner provisioning runbook`. Traces: RC Per-environment sources (README documents sources); DP Branch protection by convention (Convention documented); DP Documentation set; design §9.1, §12 S3.2, §18 R9.
-- [ ] 5.7 Final audit: `git log --format=%B main..HEAD` shows no `Co-Authored-By` line or AI attribution across every slice (DP History audit); `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build` green; push `feat/s3-2-deploy-docs`; open PR 5 (base `main`); confirm CI `verify` green and the `deploy` job reports the "secrets not provisioned" notice (green). Traces: DP Commit conventions (History audit); DP Deploy to workers.dev (Secrets absent); DP CI verify gate.
+- [x] 5.2 Create `docs/adr/0001-stack.md` (React Router 8.4 framework mode on Workers, full manifest of design §2, the React Router 7 -> 8.4 and Vitest 4 -> 5.0.3 bumps with rationale and the TypeScript 6.0 vs 7 constraint). Traces: DP Documentation set (ADR coverage); design D1, D11, §2.
+- [x] 5.3 Create `docs/adr/0002-hosting-and-environments.md` (Workers Paid, workers.dev, one Neon project with `main` and `staging`, Hyperdrive with caching off, the owner-provisioning model OD-2, secrets list, token scope with the C3 fallback permission, rotation, the secret-presence deploy gate). Traces: DP Documentation set; DH Neon layout (Branch roles); design D10, §9.
+- [x] 5.4 Create `docs/adr/0003-architecture-testing-data.md` (screaming modules + hexagonal layers, element map and allow matrix, architecture test, Result and use-case style, testing strategy, embedded-postgres, forward-only migrations with expand/contract, D12 memoization with its residual Neon-wake risk and the change-8 follow-up). Replaces any overview. Traces: DP Documentation set; AB Layer structure; design D3, D5, D7, D9, D11, D12.
+- [x] 5.5 Create `docs/runbooks/cloud-provisioning.md` marked "executed by the owner, not by apply", with steps C1, C2, N1, N2 (the exact SQL block of design §9.4), N3, N4, C3 (exact permissions: Account / Workers Scripts / Edit, Account / Hyperdrive / Read, Account / Account Settings / Read; no zone; TTL 12 months; fallback permission Hyperdrive Edit), C4 (Hyperdrive `calma-staging`, caching disabled with `wrangler hyperdrive create --caching-disabled`, the only documented switch), G1 (`gh secret set <NAME> --repo tiagorojas7/calma-inquieta` for each of the five secrets, interactive prompt), G2 (re-run CI; expect `data-status="ok"`), plus the rollback and rotation notes. Verify the Neon branch role inheritance and the Hyperdrive caching toggle name against current docs while writing (R7). Traces: DH Neon layout (Branch roles, Provisioning without authorization); DP Secrets absent; design §9.2, §9.4, §17.
+- [x] 5.6 Create `README.md`: prerequisites (Node 24 via `.nvmrc`, pnpm 12), commands table (design §14), environment sources per environment (design §9.1), how `pnpm test` gets a database (embedded-postgres or `TEST_DATABASE_URL`), branch convention (every slice by PR, merge only with green CI, no enforced protection on GitHub Free), pointers to ADRs and the runbook. Commit `docs: add adrs, readme and owner provisioning runbook`. Traces: RC Per-environment sources (README documents sources); DP Branch protection by convention (Convention documented); DP Documentation set; design §9.1, §12 S3.2, §18 R9.
+- [x] 5.7 Final audit: `git log --format=%B main..HEAD` shows no `Co-Authored-By` line or AI attribution across every slice (DP History audit); `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build` green; push `feat/s3-2-deploy`; open PR #6 (base `feat/s3-1-worker`); confirm CI `verify` green and the `deploy` job reports the "secrets not provisioned" notice (green). Traces: DP Commit conventions (History audit); DP Deploy to workers.dev (Secrets absent); DP CI verify gate.
 
 **S3.2 gate**: authored lines at most 400; deploy job skips cleanly without secrets.
 
@@ -222,7 +222,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 ## OWNER — not executed by apply
 
-Apply MUST NOT perform, simulate or probe any of these steps and MUST NOT use cloud credentials. They follow `docs/runbooks/cloud-provisioning.md` after PR 5 merges. Traces: design OD-2, §9.4, R6.
+Apply MUST NOT perform, simulate or probe any of these steps and MUST NOT use cloud credentials. They follow `docs/runbooks/cloud-provisioning.md` after the whole chain (PR #1 to PR #6) is merged. Traces: design OD-2, §9.4, R6.
 
 - [ ] O.1 OWNER — not executed by apply. C1: Cloudflare dashboard, upgrade the studio account to Workers Paid.
 - [ ] O.2 OWNER — not executed by apply. C2: claim the workers.dev subdomain; note `<account-subdomain>` for `STATUS_URL`.
@@ -243,7 +243,7 @@ Apply MUST NOT perform, simulate or probe any of these steps and MUST NOT use cl
 - Inside S2.2: 3.2-3.3 (env) and 3.5-3.6 (migrations) can proceed in parallel; 3.4 (RED) stays red until 3.11; 3.12 needs 3.6-3.11.
 - Inside S3.1: 4.2-4.3 (env) and 4.4-4.5 (composition) are independent after 4.1; 4.6-4.9 (delivery) need 4.5.
 - Inside S3.2: 5.1 and 5.2-5.6 are independent; 5.7 is last.
-- Owner steps O.1-O.8 are fully independent of apply and may happen any time after PR 5 merges.
+- Owner steps O.1-O.8 are fully independent of apply and may happen any time after the chain (PR #1 to PR #6) is merged.
 
 ## Review Workload Forecast
 
@@ -259,7 +259,7 @@ Apply MUST NOT perform, simulate or probe any of these steps and MUST NOT use cl
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main (chosen)
 400-line budget risk: High
 
 Recommended chain strategy: stacked-to-main. Rationale: each slice is independently green and deploy-safe (secret-presence gate), so ordered merges to `main` keep diffs small and revertable without a tracker branch.

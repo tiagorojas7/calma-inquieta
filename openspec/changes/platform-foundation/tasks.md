@@ -195,7 +195,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 ### 4. CI build step and config
 
 - [x] 4.11 Add `pnpm build` to the `verify` job in `.github/workflows/ci.yml` after tests. Set `rules.verify.build_command: "pnpm build"` in `openspec/config.yaml` (the script now exists) and refresh Engram `sdd-init/calmainquieta` and `sdd/calmainquieta/testing-capabilities`; read back and compare. Add unit-level assertion `tooling/repo-hygiene.test.ts` that `.env.example` and `.dev.vars.example` list every variable name of `workerEnvSchema`/`migrationEnvSchema` (names only, no values). Commit `ci: build the worker in verify`. Traces: DP Strict TDD activation (Build command not invented); DP CI verify gate; RC Example files (Example completeness); design §10, §11.
-- [ ] 4.12 Slice gate and PR: full local gate (`pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:coverage`, `pnpm build`) green; push `feat/s3-1-runtime`; open PR 4 (base `main`); CI green. Traces: DP CI verify gate; DP Delivery framework.
+- [x] 4.12 Slice gate and PR: full local gate (`pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:coverage`, `pnpm build`) green; push `feat/s3-1-runtime`; open PR 4 (base `main`); CI green. Traces: DP CI verify gate; DP Delivery framework.
 
 **S3.1 gate**: authored lines at most 400; `pnpm build` offline; `/status` verified locally; no Cloudflare login ever requested.
 

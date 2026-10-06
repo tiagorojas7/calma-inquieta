@@ -1,0 +1,74 @@
+# openspec/config.yaml - SDD configuration for Calma Inquieta
+# Created by sdd-init on 2026-10-05.
+
+schema: spec-driven
+
+# Artifact store declared for this workspace: OpenSpec files on disk plus Engram observations.
+# The native dispatcher reads this key. Without it, native status falls back to "openspec" only.
+sdd:
+  artifact_store: hybrid
+
+context: |
+  Product: Calma Inquieta, a creative workshops business in Córdoba, Argentina. Responsive public website (6 pages) + private admin panel + database + local SEO. Two indoor QR/NFC signs are a physical deliverable, not software. Delivered by TR_WebStudio x Linkealo.
+  Requirements baseline (source of truth): docs/client-proposal/proposal.md (accepted client proposal V1.0, 2026-09-30, Spanish) and docs/client-proposal/mockups/ (20 images). English analysis at docs/client-proposal/mockups-analysis.md (mockups are desktop-only and their placeholder data is inconsistent across images: visual reference, not a data source). Brand sources at docs/brand/.
+  Scope adjustment by the owner (overrides the proposal text): WhatsApp Business API is OUT; automated notifications are sent by EMAIL. wa.me click-to-chat links with prefilled messages stay IN.
+  Stack: UNDECIDED, to be decided in the first SDD change. Sibling-project hints only, not decisions: Next.js 15 + React 19 + Tailwind CSS 4; Vite + React 18; Vitest 4; Supabase/Postgres.
+  Architecture: greenfield, no code yet. Not a git repository yet (sdd-init deliberately did not run git init).
+  Testing: no runner yet. Strict TDD requested by the user's global config, status pending-runner; the effective strict_tdd flag stays false until a runner and a workspace-level test command exist.
+  Style: technical artifacts, code, comments and commits in English; end-user UI copy language is an OPEN decision (likely Spanish es-AR). Conventional Commits; NEVER add Co-Authored-By or AI attribution.
+
+# EFFECTIVE flag, resolved fail-closed by the sdd-init decision gate: zero projects were discovered and no
+# workspace-level test command exists. The user's intent (enabled) is kept in testing.strict_tdd_requested.
+strict_tdd: false
+
+# Projects discovered under the workspace root (root plus two levels, bounded discovery).
+projects: []   # none: no package.json, go.mod, pyproject.toml, Cargo.toml or other project marker exists yet
+
+testing:
+  detected: "2026-10-05"
+  strict_tdd_requested: true
+  strict_tdd_status: pending-runner
+  strict_tdd_activation: >-
+    The first SDD change must install and configure the test runner and define ONE workspace-level
+    test command, then switch the effective strict_tdd flag above to true and refresh the Engram
+    observations sdd-init/calmainquieta and sdd/calmainquieta/testing-capabilities.
+    No test command is invented in the meantime.
+  workspace_test_command: ""
+  test_layers:
+    unit: { available: false, tool: null }
+    integration: { available: false, tool: null }
+    e2e: { available: false, tool: null }
+  coverage: { available: false, command: null }
+  quality:
+    linter: { available: false, command: null }
+    type_checker: { available: false, command: null }
+    formatter: { available: false, command: null }
+
+rules:
+  proposal:
+    - Include a rollback plan for risky changes
+    - Treat docs/client-proposal/proposal.md as the requirements baseline and call out every deviation from it as an explicit scope adjustment (known adjustment, WhatsApp Business API out and email notifications in)
+    - Resolve or explicitly list the open decisions that affect the change (tech stack, UI copy language, email provider, hosting and domain, version control, mockup asset handling)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Trace each requirement to its source in the proposal or the mockups and mark any requirement that is not in the proposal as a scope adjustment
+  design:
+    - Include sequence diagrams for complex flows (monthly enrollment with materials, workshop deposit, email notifications)
+    - Document architecture decisions with rationale; the first design records the stack decision
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - The first change MUST schedule, before any behavior task, the test runner install and configuration, one workspace-level test command, and the switch of strict_tdd to true in this file and in Engram
+  apply:
+    guidelines:
+      - Follow existing code patterns (none yet, the first change establishes them)
+      - Never add Co-Authored-By or AI attribution to commits, use Conventional Commits
+    tdd: false           # pending runner; switch to true together with strict_tdd
+    test_command: ""     # intentionally empty, never invented
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

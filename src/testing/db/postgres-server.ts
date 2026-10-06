@@ -1,8 +1,16 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { type ChildProcess, spawnSync } from "node:child_process";
+import { once } from "node:events";
+import { cpSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { formatEnvError, parseEnv, testEnvSchema } from "~/platform/env";
+import {
+  embeddedPostgresVersion,
+  ensureDataDirTemplate,
+  templateKey,
+} from "./data-dir-template";
 
 export interface PostgresServer {
   /** Connection string of a role that can CREATE DATABASE. */
@@ -15,6 +23,8 @@ const ADMIN_PASSWORD = "password";
 // Windows keeps file handles briefly after postgres exits (more so on a busy
 // machine). The directory lives in the OS temp folder, so a removal that still
 // fails after the retries is ignored rather than failing the run.
+const INITDB_FLAGS = ["--encoding=UTF8", "--locale=C", "--wal-segsize=1"];
+const TEMPLATE_ROOT = join(tmpdir(), "calma-pg-template");
 const REMOVE_OPTIONS = {
   recursive: true,
   force: true,
@@ -68,6 +78,121 @@ function freePort(): Promise<number> {
   });
 }
 
+function serverOptions(databaseDir: string, port: number) {
+  return {
+    databaseDir,
+    port,
+    user: ADMIN_USER,
+    password: ADMIN_PASSWORD,
+    // The library deletes the directory itself when not persistent, without
+    // retries; Windows can still hold handles, so removal is done by the caller.
+    persistent: true,
+    initdbFlags: INITDB_FLAGS,
+    postgresFlags: [
+      "-c",
+      "fsync=off",
+      "-c",
+      "synchronous_commit=off",
+      "-c",
+      "full_page_writes=off",
+      "-c",
+      "timezone=UTC",
+      // Throwaway servers share a small machine with the test workers.
+      "-c",
+      "shared_buffers=16MB",
+      "-c",
+      "max_connections=50",
+      "-c",
+      "autovacuum=off",
+    ],
+    onLog: () => undefined,
+    onError: () => undefined,
+  };
+}
+
+let template: Promise<string> | undefined;
+
+/**
+ * A never-started, initdb-initialized data directory shared by every embedded
+ * server on this machine: copying it replaces a slow `initdb` per server. It
+ * is cached in the OS temp folder (safe to delete) and shared in-process so
+ * concurrent starts build it once.
+ */
+export function postgresTemplateDir(): Promise<string> {
+  template ??= (async () => {
+    const key = templateKey(await embeddedPostgresVersion(), INITDB_FLAGS);
+    return ensureDataDirTemplate({
+      root: TEMPLATE_ROOT,
+      key,
+      build: async (directory) => {
+        const EmbeddedPostgres = await loadEmbeddedPostgres();
+        await new EmbeddedPostgres(serverOptions(directory, 0)).initialise();
+      },
+    });
+  })();
+  // A failed build is retried by the next call instead of being cached.
+  template.catch(() => {
+    template = undefined;
+  });
+  return template;
+}
+
+const FORCE_KILL_INTERVAL_MS = 10_000;
+
+/**
+ * Runs `stop` and calls `escalate` every `intervalMs` until it settles, so a
+ * kill that did not take effect is repeated instead of waiting forever for an
+ * exit that never comes (a hang until the test timeout).
+ */
+export async function stopWithEscalation(
+  stop: () => Promise<void>,
+  escalate: () => void,
+  intervalMs: number = FORCE_KILL_INTERVAL_MS,
+): Promise<void> {
+  const timer = setInterval(escalate, intervalMs);
+  try {
+    await stop();
+  } finally {
+    clearInterval(timer);
+  }
+}
+
+/**
+ * Kills only the postmaster. `taskkill /t` (what embedded-postgres uses) kills
+ * the children too, in an unspecified order; the postmaster can then restart
+ * them for crash recovery and be killed mid-restart, leaving orphans that hold
+ * the data directory and the inherited output pipes. Without `/t` the
+ * children notice the postmaster is gone and exit by themselves.
+ */
+function killPostmaster(pid: number): void {
+  spawnSync("taskkill", ["/pid", String(pid), "/f"], { stdio: "ignore" });
+}
+
+type Embedded = InstanceType<Awaited<ReturnType<typeof loadEmbeddedPostgres>>>;
+
+async function stopServer(server: Embedded): Promise<void> {
+  // embedded-postgres keeps the postmaster handle private. Other platforms
+  // keep its own SIGINT shutdown, which is graceful.
+  const child = (server as unknown as { process?: ChildProcess }).process;
+  if (
+    process.platform !== "win32" ||
+    child?.pid === undefined ||
+    child.exitCode !== null
+  ) {
+    await server.stop();
+    return;
+  }
+  const { pid } = child;
+  const exited = once(child, "exit").then(() => undefined);
+  killPostmaster(pid);
+  await stopWithEscalation(
+    () => exited,
+    () => {
+      killPostmaster(pid);
+    },
+  );
+}
+
 /**
  * `TEST_DATABASE_URL` (an admin URL with CREATEDB, for example WSL2 Postgres)
  * replaces the embedded server. Otherwise a throwaway PostgreSQL 17 cluster
@@ -88,30 +213,9 @@ export async function startPostgresServer(
   const port = await freePort();
   const databaseDir = await mkdtemp(join(tmpdir(), "calma-pg-"));
   const EmbeddedPostgres = await loadEmbeddedPostgres();
-  const server = new EmbeddedPostgres({
-    databaseDir,
-    port,
-    user: ADMIN_USER,
-    password: ADMIN_PASSWORD,
-    // The library deletes the directory itself when not persistent, without
-    // retries; Windows can still hold handles, so removal is done below.
-    persistent: true,
-    initdbFlags: ["--encoding=UTF8", "--locale=C"],
-    postgresFlags: [
-      "-c",
-      "fsync=off",
-      "-c",
-      "synchronous_commit=off",
-      "-c",
-      "full_page_writes=off",
-      "-c",
-      "timezone=UTC",
-    ],
-    onLog: () => undefined,
-    onError: () => undefined,
-  });
+  const server = new EmbeddedPostgres(serverOptions(databaseDir, port));
   try {
-    await server.initialise();
+    cpSync(await postgresTemplateDir(), databaseDir, { recursive: true });
     await server.start();
   } catch (error) {
     await removeQuietly(databaseDir);
@@ -125,7 +229,7 @@ export async function startPostgresServer(
   return {
     adminUrl: `postgres://${ADMIN_USER}:${ADMIN_PASSWORD}@127.0.0.1:${String(port)}/postgres`,
     async stop() {
-      await server.stop();
+      await stopServer(server);
       await removeQuietly(databaseDir);
     },
   };

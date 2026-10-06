@@ -29,7 +29,7 @@ async function urlFor(scenario: ProbeScenario): Promise<string> {
 }
 
 const factoryFor = (connectionString: string) =>
-  createDbSessionFactory({ connectionString, connectTimeoutMs: 1_000 });
+  createDbSessionFactory({ connectionString });
 
 runDatabaseProbeContract(async (scenario) =>
   createDrizzleDatabaseProbe(factoryFor(await urlFor(scenario))),

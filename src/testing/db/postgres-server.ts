@@ -12,7 +12,9 @@ export interface PostgresServer {
 
 const ADMIN_USER = "postgres";
 const ADMIN_PASSWORD = "password";
-// Windows keeps file handles briefly after postgres exits.
+// Windows keeps file handles briefly after postgres exits (more so on a busy
+// machine). The directory lives in the OS temp folder, so a removal that still
+// fails after the retries is ignored rather than failing the run.
 const REMOVE_OPTIONS = {
   recursive: true,
   force: true,
@@ -42,6 +44,10 @@ export async function loadEmbeddedPostgres() {
     }
   }
   return EmbeddedPostgres;
+}
+
+function removeQuietly(directory: string): Promise<void> {
+  return rm(directory, REMOVE_OPTIONS).catch(() => undefined);
 }
 
 function freePort(): Promise<number> {
@@ -108,7 +114,7 @@ export async function startPostgresServer(
     await server.initialise();
     await server.start();
   } catch (error) {
-    await rm(databaseDir, REMOVE_OPTIONS);
+    await removeQuietly(databaseDir);
     throw new Error(
       "Could not start the embedded PostgreSQL server. Set TEST_DATABASE_URL " +
         "to an admin connection string (for example WSL2 PostgreSQL) to use an external server.",
@@ -120,7 +126,7 @@ export async function startPostgresServer(
     adminUrl: `postgres://${ADMIN_USER}:${ADMIN_PASSWORD}@127.0.0.1:${String(port)}/postgres`,
     async stop() {
       await server.stop();
-      await rm(databaseDir, REMOVE_OPTIONS);
+      await removeQuietly(databaseDir);
     },
   };
 }

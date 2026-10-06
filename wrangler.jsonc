@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "calma-inquieta",
+  "main": "./workers/app.ts",
+  "compatibility_date": "2026-10-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": { "BUILD_COMMIT": "local" },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // Placeholder: the real id is substituted in CI at deploy time and is never committed.
+      "id": "00000000000000000000000000000000",
+      // Local development only; overridable with CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE.
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/calma_dev",
+    },
+  ],
+}

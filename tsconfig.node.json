@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
+  },
+  "include": [
+    "src",
+    "tooling",
+    "scripts",
+    "*.config.ts",
+    "drizzle/meta/_journal.json",
+    ".react-router/types/**/*"
+  ]
+}

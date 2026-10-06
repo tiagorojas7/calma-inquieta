@@ -63,7 +63,7 @@ rules:
     test_command: "pnpm test"
   verify:
     test_command: "pnpm test"
-    build_command: "" # stays empty until S3.1 sets "pnpm build" when the script exists (never invented)
+    build_command: "pnpm build" # react-router build; runs offline (no Cloudflare login)
     coverage_threshold: 0 # scoped 90 % thresholds live in vitest.config.ts
   archive:
     - Warn before merging destructive deltas

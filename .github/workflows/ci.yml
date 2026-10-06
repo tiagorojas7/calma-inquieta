@@ -34,6 +34,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test:coverage
+      - run: pnpm build
       - name: Scan history for secrets (gitleaks)
         run: |
           archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"

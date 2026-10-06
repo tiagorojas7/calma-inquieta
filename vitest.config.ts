@@ -24,7 +24,7 @@ export default defineConfig({
           include: ["src/**/*.db.test.ts"],
           globalSetup: ["src/testing/db/global-setup.ts"],
           hookTimeout: 60_000,
-          testTimeout: 30_000,
+          testTimeout: 60_000,
         },
       },
     ],

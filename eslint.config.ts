@@ -140,7 +140,15 @@ export default defineConfig(
               from: { element: { type: "delivery" } },
               allow: [
                 { to: to("shared", "module-api", "composition", "delivery") },
-                { to: pkg("react", "react-dom", "react-router") },
+                // @react-router/dev is for the route config (routes.ts) only.
+                {
+                  to: pkg(
+                    "react",
+                    "react-dom",
+                    "react-router",
+                    "@react-router/dev",
+                  ),
+                },
               ],
             },
             {
@@ -148,7 +156,8 @@ export default defineConfig(
               allow: [
                 { to: to("delivery", "composition", "platform") },
                 {
-                  to: pkg("react-router", "virtual:react-router/server-build"),
+                  // The plugin reports the virtual server-build module by its scheme prefix.
+                  to: pkg("react-router", "virtual:react-router"),
                 },
               ],
             },
@@ -157,6 +166,24 @@ export default defineConfig(
               allow: {
                 to: { module: { origin: ["local", "external", "core"] } },
               },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // React Router loaders throw `data(...)` to short-circuit with a status.
+    files: ["src/app/routes/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/only-throw-error": [
+        "error",
+        {
+          allow: [
+            {
+              from: "package",
+              package: "react-router",
+              name: "DataWithResponseInit",
             },
           ],
         },

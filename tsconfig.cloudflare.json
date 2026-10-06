@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.cloudflare.tsbuildinfo"
+  },
+  "include": [
+    "workers",
+    "src/app",
+    "src/composition",
+    "src/modules",
+    "src/platform",
+    "drizzle/meta/_journal.json",
+    "worker-configuration.d.ts",
+    ".react-router/types/**/*"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "src/platform/db/migrate.ts",
+    "src/platform/db/schema.ts"
+  ]
+}

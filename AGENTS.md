@@ -28,8 +28,8 @@ Allowed imports (everything else is denied):
 - `infrastructure`: `shared`, the same module's layers, `platform`, and the packages `drizzle-orm` and `pg`.
 - `platform`: `shared`, `platform`, `zod`, `pg`, `drizzle-orm` and Node built-ins.
 - `composition`: `shared`, `module-api`, `infrastructure`, `platform`, `composition`. Adapters are instantiated only here.
-- `delivery`: `shared`, `module-api`, `composition`, `delivery`, and `react`, `react-dom`, `react-router`.
-- `worker`: `delivery`, `composition`, `platform`, `react-router`.
+- `delivery`: `shared`, `module-api`, `composition`, `delivery`, and `react`, `react-dom`, `react-router` (plus `@react-router/dev` for the route config).
+- `worker`: `delivery`, `composition`, `platform`, `react-router` (and the virtual `react-router` server build).
 - `testing`: anything. No production element may import it.
 
 Other modules are reached only through their `index.ts`. Every new folder under `src/` must be classified in `eslint.config.ts` (`no-unknown-files`). Test files are ignored by the boundary rule.
@@ -47,4 +47,5 @@ Conventional Commits only. Never add `Co-Authored-By` lines or any AI attributio
 - `pnpm test`, `pnpm test:coverage`: Vitest (coverage thresholds 90 % lines and branches on the kernel, domain and application code)
 - `pnpm lint`: ESLint, including the dependency rule
 - `pnpm format:check`, `pnpm format`: Prettier
-- `pnpm typecheck`: TypeScript
+- `pnpm typecheck`: generates Worker and route types, then TypeScript (`tsc -b`: `tsconfig.node.json` for tooling and tests, `tsconfig.cloudflare.json` for Worker code)
+- `pnpm dev`, `pnpm build`: React Router on Workers (no Cloudflare login needed; local Hyperdrive string comes from `wrangler.jsonc` or `.env`)

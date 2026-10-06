@@ -14,9 +14,13 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wrangler types && react-router typegen && tsc -b",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "typegen": "wrangler types && react-router typegen",
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "deploy": "react-router build && wrangler deploy"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.62.5",
@@ -42,6 +46,7 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.3",
+    "isbot": "5.2.2",
     "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",

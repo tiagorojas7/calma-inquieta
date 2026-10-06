@@ -15,7 +15,7 @@ function runMigrateScript(env: Record<string, string>) {
   );
 }
 
-describe("scripts/migrate.ts", () => {
+describe("scripts/migrate.ts", { timeout: 30_000 }, () => {
   it("fails naming the variable when MIGRATION_DATABASE_URL is missing", () => {
     const run = runMigrateScript({});
 

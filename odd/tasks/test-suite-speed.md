@@ -75,8 +75,10 @@ Every database-touching slice of the next seven changes pays this cost. The S3.1
   - Remaining time is dominated by `CREATE DATABASE ... TEMPLATE` clones (2-5 s each on this machine, independent of WAL segment size) across about 25 database tests.
 - Gates: `pnpm test:coverage` green (147 tests, Statements/Branches/Functions 100% on the gated scope), `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` all exit 0.
 - Authored lines: 461 added / 44 deleted in code (production-side test infrastructure about 240, tests about 265).
-- Mirror: Engram `odd/test-suite-speed/tasks` (update pending until saved).
+- Commits: 8873289 (template cache, reliable stop, tests), dc775cb (worker cap). PR: https://github.com/tiagorojas7/calma-inquieta/pull/7 (label `size:exception`; CI status not yet checked).
+- RDD assessment (base a8424a7, committed only): risk `high` (process_boundary in postgres-server.test.ts), review_due `true`, review_due_reason `high_risk`; 6 paths, 587 changed lines. Review not started by the writer; the orchestrator owns the next transition.
+- Mirror: Engram `odd/test-suite-speed/tasks`.
 
 ## Next step
 
-Push, open the PR with the measurements, record the RDD assessment.
+Orchestrator: run the native review preflight (review is due), check CI on PR #7, decide on merge.

@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { AppServices } from "~/composition/request-services";
-import { ok } from "~/modules/_shared";
+import { err, ok } from "~/modules/_shared";
 import type { SystemStatusView } from "~/modules/system-status";
 import { createLoaderArgs } from "~/testing/react-router";
 import Status, { headers, loader, meta } from "./status";
@@ -80,6 +80,16 @@ describe("status loader", () => {
       "latestMigration",
       "status",
     ]);
+  });
+
+  it("throws instead of returning the error when the use case breaks its contract", async () => {
+    const broken = {
+      getSystemStatus: () => Promise.resolve(err("contract breach")),
+    } as unknown as AppServices;
+
+    await expect(loader(createLoaderArgs(broken) as never)).rejects.toThrow(
+      "getSystemStatus broke its contract",
+    );
   });
 });
 

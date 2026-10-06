@@ -6,8 +6,10 @@ export async function loader({ context }: Route.LoaderArgs) {
   const result = await context.get(servicesContext).getSystemStatus();
   if (!result.ok) {
     // The use case reports a degraded system as data, so its error type is
-    // `never`; this branch only narrows the type.
-    return result.error;
+    // `never`. Reaching this branch is a defect: fail loudly, never leak it.
+    throw new Error("getSystemStatus broke its contract", {
+      cause: result.error,
+    });
   }
   const view = result.value;
   // Project the view field by field: only these values may leave the server.

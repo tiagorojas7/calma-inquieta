@@ -9,7 +9,7 @@ Change: platform-foundation | Store: hybrid | Strict TDD: activated inside S1 (t
 | Estimated authored changed lines | 1,520-1,860 total (six slices, each at most 400) |
 | 400-line budget risk | High (total); Low-Medium per slice |
 | Chained PRs recommended | Yes |
-| Suggested split | S0 (direct push to main) -> S1 -> S2.1 -> S2.2 -> S3.1 -> S3.2 |
+| Suggested split | S0 (direct push to main) -> S1 -> S2.1a (core, PR 2) -> S2.1b (boundaries, PR 2b) -> S2.2 -> S3.1 -> S3.2 |
 | Delivery strategy | ask-on-risk |
 | Chain strategy | pending (recommended: stacked-to-main) |
 
@@ -26,7 +26,8 @@ Per-slice estimate (authored additions + deletions; lockfile, `drizzle/meta`, ge
 |-------|----------|-----|
 | S0 | 60-80 | direct push, not a PR |
 | S1 | 330-390 | 400 |
-| S2.1 | 300-370 | 400 |
+| S2.1a (core, PR 2) | 477 actual (about 270 tests), `size:exception` approved by owner | 400 |
+| S2.1b (boundaries, PR 2b) | see PR 2b | 400 |
 | S2.2 | 305-365 | 400 |
 | S3.1 | 295-365 | 400 |
 | S3.2 | 230-290 | 400 |
@@ -105,7 +106,9 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 ---
 
-## S2.1: Boundaries + system-status core (branch `feat/s2-1-boundaries`, PR 2, base `main`)
+## S2.1: Boundaries + system-status core
+
+**Split (owner-approved)**: S2.1a = tasks 2.1-2.11, branch `feat/s2-1-boundaries`, PR 2 (stacked on PR 1, `size:exception`: 477 authored lines, about 270 tests). S2.1b = tasks 2.12-2.16, branch `feat/s2-1b-boundaries`, PR 2b (stacked on PR 2). Standing owner policy: a cohesive slice over 400 authored lines because of tests ships as `size:exception` without asking; stop and ask only when production code alone exceeds 400.
 
 ### 1. Kernel completion and domain (Strict TDD)
 
@@ -126,11 +129,11 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 ### 3. Boundaries and architecture fitness test
 
-- [ ] 2.12 Install `eslint-plugin-boundaries` 7.2.0 and `eslint-import-resolver-typescript` (exact pins; verify ESLint 10 compatibility and the v7 rule names and selector syntax, R7; incompatibility -> STOP 3). Traces: AB Dependency rule; design §2, §5.
-- [ ] 2.13 RED: create `tooling/architecture/architecture.test.ts` using the ESLint Node API (filter messages to `boundaries/*`; try `ruleFilter` first, else filter by `ruleId`; verify, R7). Table cases #1-#6 and #8 and #9 from design §5.3 as virtual `*.fixture.ts(x)` files linted with `lintText({ filePath })`: (1) domain imports `drizzle-orm` -> violation; (2) domain imports `../application/ports` -> violation; (3) delivery deep-imports `~/modules/system-status/application/get-system-status` -> violation; (4) delivery imports `pg` -> violation; (5) `modules/demo/application` imports `~/modules/system-status/domain/system-status` -> violation; (6) application imports `~/testing/fakes/fixed-clock` -> violation; (8) delivery imports `~/modules/system-status` -> NO violation (positive control); (9) real tree `src/` and `workers/` yields zero `boundaries/*` messages. Case #7 is added in S2.2 when its target exists. Run; observe failure (rule not configured). Traces: AB Dependency rule (Domain imports infrastructure, Delivery imports Drizzle, Deep cross-module import, Clean tree passes); AB Architecture test as fitness function (Fixture violation is detected, Fixture does not pollute the real check); design §5.3.
-- [ ] 2.14 GREEN: extend `eslint.config.ts` with the element map (design §5.1, first match wins), the allow matrix (§5.2, default disallow), `boundaries/no-unknown-files` for `src/`, test files ignored by boundaries, and the fixture override disabling type-aware parsing for `**/*.fixture.{ts,tsx}`. Run `pnpm test` green. Runtime harness: temporarily plant a bad import in a scratch domain file, run `pnpm lint`, observe the violation, remove it. Traces: AB Dependency rule; AB Lint enforcement parity (Lint failing blocks CI); AB Layer structure (Skeleton module exists); design §5.1, §5.2.
-- [ ] 2.15 Create `AGENTS.md` stating the dependency rule (element map and allow matrix in prose), Strict TDD (RED/GREEN/REFACTOR, the single `pnpm test` command), Conventional Commits with no AI attribution, and the main commands. Commit (with 2.12-2.14) `feat(architecture): enforce module boundaries with lint and an architecture test`. Traces: AB Agent-facing rule statement (AGENTS.md content); DP Commit conventions; design §5.3 closing note.
-- [ ] 2.16 Slice gate and PR: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` green; push `feat/s2-1-boundaries`; open PR 2 (base `main`); CI green. Traces: DP CI verify gate.
+- [x] 2.12 Install `eslint-plugin-boundaries` 7.2.0 and `eslint-import-resolver-typescript` (exact pins; verify ESLint 10 compatibility and the v7 rule names and selector syntax, R7; incompatibility -> STOP 3). Traces: AB Dependency rule; design §2, §5.
+- [x] 2.13 RED: create `tooling/architecture/architecture.test.ts` using the ESLint Node API (filter messages to `boundaries/*`; try `ruleFilter` first, else filter by `ruleId`; verify, R7). Table cases #1-#6 and #8 and #9 from design §5.3 as virtual `*.fixture.ts(x)` files linted with `lintText({ filePath })`: (1) domain imports `drizzle-orm` -> violation; (2) domain imports `../application/ports` -> violation; (3) delivery deep-imports `~/modules/system-status/application/get-system-status` -> violation; (4) delivery imports `pg` -> violation; (5) `modules/demo/application` imports `~/modules/system-status/domain/system-status` -> violation; (6) application imports `~/testing/fakes/fixed-clock` -> violation; (8) delivery imports `~/modules/system-status` -> NO violation (positive control); (9) real tree `src/` and `workers/` yields zero `boundaries/*` messages. Case #7 is added in S2.2 when its target exists. Run; observe failure (rule not configured). Traces: AB Dependency rule (Domain imports infrastructure, Delivery imports Drizzle, Deep cross-module import, Clean tree passes); AB Architecture test as fitness function (Fixture violation is detected, Fixture does not pollute the real check); design §5.3.
+- [x] 2.14 GREEN: extend `eslint.config.ts` with the element map (design §5.1, first match wins), the allow matrix (§5.2, default disallow), `boundaries/no-unknown-files` for `src/`, test files ignored by boundaries, and the fixture override disabling type-aware parsing for `**/*.fixture.{ts,tsx}`. Run `pnpm test` green. Runtime harness: temporarily plant a bad import in a scratch domain file, run `pnpm lint`, observe the violation, remove it. Traces: AB Dependency rule; AB Lint enforcement parity (Lint failing blocks CI); AB Layer structure (Skeleton module exists); design §5.1, §5.2.
+- [x] 2.15 Create `AGENTS.md` stating the dependency rule (element map and allow matrix in prose), Strict TDD (RED/GREEN/REFACTOR, the single `pnpm test` command), Conventional Commits with no AI attribution, and the main commands. Commit (with 2.12-2.14) `feat(architecture): enforce module boundaries with lint and an architecture test`. Traces: AB Agent-facing rule statement (AGENTS.md content); DP Commit conventions; design §5.3 closing note.
+- [x] 2.16 Slice gate and PR: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage` green; push `feat/s2-1-boundaries`; open PR 2 (base `main`); CI green. Traces: DP CI verify gate.
 
 **S2.1 gate**: authored lines at most 400; a planted bad import fails both `pnpm lint` and `pnpm test`.
 

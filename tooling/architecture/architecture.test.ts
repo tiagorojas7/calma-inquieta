@@ -22,10 +22,15 @@ const DOMAIN = "src/modules/system-status/domain/x.fixture.ts";
 const APPLICATION = "src/modules/system-status/application/x.fixture.ts";
 const ROUTE = "src/app/routes/x.fixture.tsx";
 
-describe("architecture: dependency rule", { timeout: 60_000 }, () => {
+describe("architecture: dependency rule", { timeout: 120_000 }, () => {
   it.each([
     ["domain imports a package", DOMAIN, "drizzle-orm"],
     ["domain imports application", DOMAIN, "../application/ports"],
+    [
+      "domain imports infrastructure",
+      DOMAIN,
+      "../infrastructure/drizzle-database-probe",
+    ],
     [
       "delivery deep-imports a module",
       ROUTE,
@@ -42,6 +47,11 @@ describe("architecture: dependency rule", { timeout: 60_000 }, () => {
       APPLICATION,
       "~/testing/fakes/fixed-clock",
     ],
+    [
+      "application imports its own module public API (cycle risk)",
+      APPLICATION,
+      "~/modules/system-status",
+    ],
   ])("reports a violation when %s", async (_name, file, source) => {
     const messages = await boundaryMessages(file, source);
 
@@ -50,6 +60,15 @@ describe("architecture: dependency rule", { timeout: 60_000 }, () => {
 
   it("accepts delivery importing a module through its public API", async () => {
     const messages = await boundaryMessages(ROUTE, "~/modules/system-status");
+
+    expect(messages).toEqual([]);
+  });
+
+  it("accepts application importing another module's public API", async () => {
+    const messages = await boundaryMessages(
+      "src/modules/demo/application/x.fixture.ts",
+      "~/modules/system-status",
+    );
 
     expect(messages).toEqual([]);
   });

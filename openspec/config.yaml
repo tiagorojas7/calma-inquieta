@@ -31,7 +31,7 @@ testing:
   workspace_test_command: "pnpm test"
   test_layers:
     unit: { available: true, tool: vitest }
-    integration: { available: false, tool: null } # S2.2 sets: true, "vitest + embedded-postgres (PostgreSQL 17)"
+    integration: { available: true, tool: "vitest + embedded-postgres (PostgreSQL 17)" }
     e2e: { available: false, tool: null } # Playwright arrives in change 5
   coverage: { available: true, command: "pnpm test:coverage" }
   quality:

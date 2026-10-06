@@ -11,3 +11,4 @@ worker-configuration.d.ts
 .claude/settings.local.json
 docs/client-proposal/_originals/
 .atl/
+.pi/

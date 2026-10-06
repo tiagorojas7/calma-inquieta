@@ -5,6 +5,16 @@ saveExact: true
 allowBuilds:
   esbuild: true
   workerd: true
+  # Per-platform PostgreSQL binaries for the embedded test database (the
+  # wildcard form is not accepted by pnpm 12, so each package is listed).
+  "@embedded-postgres/darwin-arm64": true
+  "@embedded-postgres/darwin-x64": true
+  "@embedded-postgres/linux-arm": true
+  "@embedded-postgres/linux-arm64": true
+  "@embedded-postgres/linux-ia32": true
+  "@embedded-postgres/linux-ppc64": true
+  "@embedded-postgres/linux-x64": true
+  "@embedded-postgres/windows-x64": true
   # Prebuilt napi binaries ship as optional deps; the postinstall is not needed.
   unrs-resolver: false
 

@@ -42,3 +42,82 @@ jobs:
           echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
           tar -xzf "$archive" gitleaks
           ./gitleaks git --redact --exit-code 1 .
+
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      # The only place secrets are read. With none provisioned the job stays green
+      # and every later step is skipped; with only some, it fails by name.
+      - name: Check that deploy secrets are provisioned
+        id: deploy-gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          HYPERDRIVE_ID: ${{ secrets.HYPERDRIVE_ID }}
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          STATUS_URL: ${{ secrets.STATUS_URL }}
+        run: |
+          names="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID HYPERDRIVE_ID MIGRATION_DATABASE_URL STATUS_URL"
+          missing=""
+          total=0
+          count=0
+          for name in $names; do
+            total=$((total + 1))
+            if [ -z "${!name}" ]; then
+              missing="${missing:+$missing, }$name"
+              count=$((count + 1))
+            fi
+          done
+          if [ "$count" -eq "$total" ]; then
+            echo "::notice::deploy skipped: secrets not provisioned: $missing"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ "$count" -gt 0 ]; then
+            echo "::error::deploy misconfigured: missing $missing"
+            exit 1
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.deploy-gate.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.deploy-gate.outputs.ready == 'true'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - if: steps.deploy-gate.outputs.ready == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.deploy-gate.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      # The real Hyperdrive id exists only in this workspace and is never committed.
+      - name: Substitute the Hyperdrive id
+        if: steps.deploy-gate.outputs.ready == 'true'
+        env:
+          HYPERDRIVE_ID: ${{ secrets.HYPERDRIVE_ID }}
+        run: |
+          sed -i "s/00000000000000000000000000000000/${HYPERDRIVE_ID}/" wrangler.jsonc
+          grep -qF -- "${HYPERDRIVE_ID}" wrangler.jsonc
+      - if: steps.deploy-gate.outputs.ready == 'true'
+        run: pnpm build
+      - name: Apply database migrations
+        if: steps.deploy-gate.outputs.ready == 'true'
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+        run: pnpm db:migrate
+      - name: Deploy the Worker
+        if: steps.deploy-gate.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy --var BUILD_COMMIT:${{ github.sha }}
+      - name: Smoke check the deployed status page
+        if: steps.deploy-gate.outputs.ready == 'true'
+        env:
+          STATUS_URL: ${{ secrets.STATUS_URL }}
+        run: |
+          body=$(curl -fsS --retry 3 --retry-delay 5 --retry-all-errors "$STATUS_URL")
+          grep -q 'data-status="ok"' <<< "$body"

@@ -77,7 +77,7 @@ Every database-touching slice of the next seven changes pays this cost. The S3.1
 - Authored lines: 461 added / 44 deleted in code (production-side test infrastructure about 240, tests about 265).
 - Commits: 8873289 (template cache, reliable stop, tests), dc775cb (worker cap). PR: https://github.com/tiagorojas7/calma-inquieta/pull/7 (label `size:exception`; CI status not yet checked).
 - RDD assessment (base a8424a7, committed only): risk `high` (process_boundary in postgres-server.test.ts), review_due `true`, review_due_reason `high_risk`; 6 paths, 587 changed lines. Review not started by the writer; the orchestrator owns the next transition.
-- Mirror: Engram `odd/test-suite-speed/tasks`.
+- Mirror: Engram `odd/test-suite-speed/tasks` PENDING (mem_save failed: multiple active runtime sessions match; orchestrator should resync).
 
 ## Next step
 

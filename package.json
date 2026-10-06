@@ -11,7 +11,7 @@
     "test:unit": "vitest run --project unit",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "wrangler types && react-router typegen && eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "wrangler types && react-router typegen && tsc -b",

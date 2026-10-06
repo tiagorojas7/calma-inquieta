@@ -10,3 +10,4 @@ worker-configuration.d.ts
 !.dev.vars.example
 .claude/settings.local.json
 docs/client-proposal/_originals/
+.atl/

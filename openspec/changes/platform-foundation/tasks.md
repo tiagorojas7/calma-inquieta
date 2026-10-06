@@ -139,7 +139,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 ---
 
-## S2.2: Env core + database harness + Drizzle probe (branch `feat/s2-2-database`, PR 3, base `main`)
+## S2.2: Env core + database harness + Drizzle probe (branch `feat/s2-2-database`, PR 4, base `feat/s2-1b-boundaries`, stacked on PR 3)
 
 ### 1. Env core (shared by migrate script and test harness)
 
@@ -165,7 +165,7 @@ Order inside S1 (design §11): toolchain -> Vitest + `pnpm test` -> activation -
 
 - [x] 3.12 RED: create `src/modules/system-status/infrastructure/drizzle-database-probe.db.test.ts` running `runDatabaseProbeContract` against the Drizzle probe: migrated database -> `{ reachable: true, latestMigration: "0000_baseline" }`; empty database (no migrations table, `42P01`) -> `{ reachable: true, latestMigration: null }`; unreachable (`127.0.0.1:1`) -> `{ reachable: false }`; the session is closed in every case. Observe failure. Traces: SS Database probe adapter (Reachable migrated database, Unreachable database, Database without migrations); SS Probe contract parity; design §8.3.
 - [x] 3.13 GREEN: create `src/modules/system-status/infrastructure/drizzle-database-probe.ts` (`createDrizzleDatabaseProbe(openSession)`; `SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1`; `42P01` -> null migration; any other error -> `{ reachable: false }`; `finally` closes the session; tag via `migrationTagFor`). Extend `tooling/architecture/architecture.test.ts` with case #7 (domain imports `../infrastructure/drizzle-database-probe` -> violation). Set `testing.test_layers.integration` to `{ available: true, tool: "vitest + embedded-postgres (PostgreSQL 17)" }` in `openspec/config.yaml` and refresh Engram `sdd-init/calmainquieta` and `sdd/calmainquieta/testing-capabilities` (read back and compare). Commit `feat(system-status): add drizzle database probe`. Traces: SS Database probe adapter; SS Probe contract parity; AB Dependency rule (case 7); DP Strict TDD activation (Config and memory agree); design §5.3, §11.
-- [ ] 3.14 Slice gate and PR: full local gate green on a clean install (delete `node_modules`, `pnpm install --frozen-lockfile`, `pnpm test`); push `feat/s2-2-database`; open PR 3 (base `main`); CI green with embedded PostgreSQL 17 on ubuntu. Traces: DP CI verify gate; DH Fresh clone, no setup.
+- [x] 3.14 Slice gate and PR: full local gate green on a clean install (delete `node_modules`, `pnpm install --frozen-lockfile`, `pnpm test`); push `feat/s2-2-database`; open PR 3 (base `main`); CI green with embedded PostgreSQL 17 on ubuntu. Traces: DP CI verify gate; DH Fresh clone, no setup.
 
 **S2.2 gate**: authored lines at most 400; `pnpm test` runs DB tests with no Docker; integration layer flagged available in file and Engram.
 

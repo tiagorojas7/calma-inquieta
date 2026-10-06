@@ -42,6 +42,11 @@ describe("architecture: dependency rule", { timeout: 60_000 }, () => {
       APPLICATION,
       "~/testing/fakes/fixed-clock",
     ],
+    [
+      "application imports its own module public API (cycle risk)",
+      APPLICATION,
+      "~/modules/system-status",
+    ],
   ])("reports a violation when %s", async (_name, file, source) => {
     const messages = await boundaryMessages(file, source);
 
@@ -50,6 +55,15 @@ describe("architecture: dependency rule", { timeout: 60_000 }, () => {
 
   it("accepts delivery importing a module through its public API", async () => {
     const messages = await boundaryMessages(ROUTE, "~/modules/system-status");
+
+    expect(messages).toEqual([]);
+  });
+
+  it("accepts application importing another module's public API", async () => {
+    const messages = await boundaryMessages(
+      "src/modules/demo/application/x.fixture.ts",
+      "~/modules/system-status",
+    );
 
     expect(messages).toEqual([]);
   });

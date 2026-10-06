@@ -17,6 +17,14 @@ const to = (...types: string[]) => ({ element: { type: types } });
 const toSameModule = (type: string) => ({
   element: { type, captured: { module: sameModule } },
 });
+// Application code reaches other modules only through their public API; its own
+// module's index.ts is off limits because it re-exports application (cycle risk).
+const toOtherModuleApi = {
+  element: {
+    type: "module-api",
+    captured: { module: `!${sameModule}` },
+  },
+};
 const pkg = (...sources: string[]) => ({
   module: { origin: "external", source: sources },
 });
@@ -84,7 +92,8 @@ export default defineConfig(
             {
               from: { element: { type: "application" } },
               allow: [
-                { to: to("shared", "module-api") },
+                { to: to("shared") },
+                { to: toOtherModuleApi },
                 { to: toSameModule("domain") },
                 { to: toSameModule("application") },
               ],

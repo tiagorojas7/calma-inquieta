@@ -1,0 +1,9 @@
+docs/client-proposal/
+docs/brand/
+openspec/
+drizzle/meta/
+pnpm-lock.yaml
+build/
+.react-router/
+coverage/
+.atl/

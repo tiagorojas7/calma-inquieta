@@ -27,6 +27,11 @@ describe("architecture: dependency rule", { timeout: 60_000 }, () => {
     ["domain imports a package", DOMAIN, "drizzle-orm"],
     ["domain imports application", DOMAIN, "../application/ports"],
     [
+      "domain imports infrastructure",
+      DOMAIN,
+      "../infrastructure/drizzle-database-probe",
+    ],
+    [
       "delivery deep-imports a module",
       ROUTE,
       "~/modules/system-status/application/get-system-status",

@@ -4,10 +4,16 @@ import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
+// Only the boundaries rules run, and they read import paths, not types. Turning
+// the project service off skips building a TypeScript program per file, which
+// is what makes a full lint slow.
 const eslint = new ESLint({
   cwd: root,
   errorOnUnmatchedPattern: false,
   ruleFilter: ({ ruleId }) => ruleId.startsWith("boundaries/"),
+  overrideConfig: {
+    languageOptions: { parserOptions: { projectService: false } },
+  },
 });
 
 async function boundaryMessages(filePath: string, importSource: string) {

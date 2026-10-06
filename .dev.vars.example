@@ -1,3 +1,5 @@
 # Names only: copy to .dev.vars for `pnpm dev`. Never commit real values.
 # Worker bindings (HYPERDRIVE) come from wrangler.jsonc, not from this file.
 BUILD_COMMIT=
+SITE_URL=
+SITE_INDEXING=

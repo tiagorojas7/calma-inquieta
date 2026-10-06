@@ -47,7 +47,7 @@ Every database-touching slice of the next seven changes pays this cost. The S3.1
 - [x] T2 RED then GREEN: data-directory template cache for embedded servers (tests: a second server start reuses the template and skips initdb; the cache key includes the version; creation is atomic).
 - [x] T3 Bound the database project's parallelism and re-measure.
 - [ ] T4 (not done: architecture test measured 7.8 s on a quiet machine and 11-21 s under load; deferred) Speed up the architecture test (ESLint cache or narrower scope) only if it still takes more than 20 s.
-- [~] T5 (partial: gates green, two consecutive green runs, 90 s target NOT met; see Progress) Final measurement (median of two full runs), full gate, commit, PR to `main`, RDD assessment recorded.
+- [x] T5 Final measurement (median of two full runs), full gate, commit, PR to `main`, RDD assessment recorded. The 90 s target was NOT met (median 140 s on a busy machine, 77 s once on a quiet one); the owner accepted this result on 2026-10-06 instead of further optimization.
 
 ## Acceptance criteria
 
@@ -77,8 +77,12 @@ Every database-touching slice of the next seven changes pays this cost. The S3.1
 - Authored lines: 461 added / 44 deleted in code (production-side test infrastructure about 240, tests about 265).
 - Commits: 8873289 (template cache, reliable stop, tests), dc775cb (worker cap). PR: https://github.com/tiagorojas7/calma-inquieta/pull/7 (label `size:exception`; CI status not yet checked).
 - RDD assessment (base a8424a7, committed only): risk `high` (process_boundary in postgres-server.test.ts), review_due `true`, review_due_reason `high_risk`; 6 paths, 587 changed lines. Review not started by the writer; the orchestrator owns the next transition.
-- Mirror: Engram `odd/test-suite-speed/tasks` PENDING (mem_save failed: multiple active runtime sessions match; orchestrator should resync).
+- Mirror: Engram `odd/test-suite-speed/tasks` resynced by the orchestrator through the engram CLI (MCP mem_save failed with an ambiguous runtime session).
+- Owner decision (2026-10-06, multiple choice): accept the current speed; further optimization (one database per test file with transactional rollback) declined.
+- RDD outcome: tier high, owner granted the review; 4 lenses APPROVED with no blocking finding; acknowledged with the provider command (lineage `review-b97fe7bffb078dc6`, authority burned). CI on PR #7: `verify` pass, `deploy` skipped.
+- Advisory follow-ups (non-blocking, later work): shared temp template trust and presence-only validation (`data-dir-template.ts`), bounded kill escalation and signal-aware exit detection (`postgres-server.ts`), a test that proves initdb is skipped on reuse, the superuser in the template key, and comment/test-name accuracy.
+- Delivery: PR #7 merged into `main` by the owner (merge commit `ac31e1c`).
 
-## Next step
+## Status
 
-Orchestrator: run the native review preflight (review is due), check CI on PR #7, decide on merge.
+Closed. Outcome verified: no more test hangs, suite 77-140 s locally depending on machine load, all guarantees kept. Acceptance criterion "at most 90 s" waived by the owner.

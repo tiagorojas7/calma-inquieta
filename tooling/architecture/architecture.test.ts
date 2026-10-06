@@ -27,6 +27,7 @@ async function boundaryMessages(filePath: string, importSource: string) {
 const DOMAIN = "src/modules/system-status/domain/x.fixture.ts";
 const APPLICATION = "src/modules/system-status/application/x.fixture.ts";
 const ROUTE = "src/app/routes/x.fixture.tsx";
+const UI = "src/app/ui/x.fixture.tsx";
 
 describe("architecture: dependency rule", { timeout: 120_000 }, () => {
   it.each([
@@ -58,6 +59,9 @@ describe("architecture: dependency rule", { timeout: 120_000 }, () => {
       APPLICATION,
       "~/modules/system-status",
     ],
+    ["ui imports a module public API", UI, "~/modules/system-status"],
+    ["ui imports the request context", UI, "~/app/context"],
+    ["ui imports the composition root", UI, "~/composition/request-services"],
   ])("reports a violation when %s", async (_name, file, source) => {
     const messages = await boundaryMessages(file, source);
 
@@ -69,6 +73,15 @@ describe("architecture: dependency rule", { timeout: 120_000 }, () => {
 
     expect(messages).toEqual([]);
   });
+
+  it.each(["react-router", "react", "react-dom"])(
+    "accepts ui importing the %s package",
+    async (source) => {
+      const messages = await boundaryMessages(UI, source);
+
+      expect(messages).toEqual([]);
+    },
+  );
 
   it("accepts application importing another module's public API", async () => {
     const messages = await boundaryMessages(

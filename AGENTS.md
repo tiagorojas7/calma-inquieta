@@ -15,6 +15,7 @@ Elements, first match wins:
 | `infrastructure` | `src/modules/<m>/infrastructure/**` |
 | `platform`       | `src/platform/**`                   |
 | `composition`    | `src/composition/**`                |
+| `ui`             | `src/app/ui/**`                     |
 | `delivery`       | `src/app/**`                        |
 | `worker`         | `workers/**`                        |
 | `testing`        | `src/testing/**`                    |
@@ -28,7 +29,8 @@ Allowed imports (everything else is denied):
 - `infrastructure`: `shared`, the same module's layers, `platform`, and the packages `drizzle-orm` and `pg`.
 - `platform`: `shared`, `platform`, `zod`, `pg`, `drizzle-orm` and Node built-ins.
 - `composition`: `shared`, `module-api`, `infrastructure`, `platform`, `composition`. Adapters are instantiated only here.
-- `delivery`: `shared`, `module-api`, `composition`, `delivery`, and `react`, `react-dom`, `react-router` (plus `@react-router/dev` for the route config).
+- `ui`: `ui` only, plus the packages `react`, `react-dom`, `react-router`. Presentational components: no module, no request context, no composition. Props are declared structurally.
+- `delivery`: `shared`, `module-api`, `composition`, `delivery`, `ui`, and `react`, `react-dom`, `react-router` (plus `@react-router/dev` for the route config).
 - `worker`: `delivery`, `composition`, `platform`, `react-router` (and the virtual `react-router` server build).
 - `testing`: anything. No production element may import it.
 

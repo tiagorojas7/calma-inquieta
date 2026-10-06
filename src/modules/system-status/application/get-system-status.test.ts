@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { inMemoryDatabaseProbe } from "~/testing/fakes/in-memory-database-probe";
 import { createGetSystemStatus } from "./get-system-status";
+import {
+  createMemoizedDatabaseProbe,
+  createProbeMemoCell,
+} from "./memoized-database-probe";
 import type { DatabaseProbe, DatabaseProbeResult } from "./ports";
 
 const clock = fixedClock(new Date("2026-10-05T12:00:00Z"));
@@ -70,5 +74,23 @@ describe("getSystemStatus", () => {
     expect(view.status).toBe("degraded");
     expect(view.checks[0]).toEqual({ name: "database", status: "fail" });
     expect(JSON.stringify(view)).not.toMatch(/hunter2|db\.internal|password/);
+  });
+
+  it("caches nothing when the inner probe throws behind the memoized probe", async () => {
+    const cell = createProbeMemoCell();
+    const memoized = createMemoizedDatabaseProbe(
+      {
+        probe: () =>
+          Promise.reject(new Error("password=hunter2 host=db.internal")),
+      },
+      { clock, ttlMs: 60_000, cell },
+    );
+
+    const view = await statusFor(memoized);
+
+    expect(cell.value).toBeUndefined();
+    expect(view.status).toBe("degraded");
+    expect(view.latestMigration).toBeNull();
+    expect(JSON.stringify(view)).not.toMatch(/hunter2|db.internal|password/);
   });
 });

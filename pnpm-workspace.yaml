@@ -5,6 +5,8 @@ saveExact: true
 allowBuilds:
   esbuild: true
   workerd: true
+  # Prebuilt napi binaries ship as optional deps; the postinstall is not needed.
+  unrs-resolver: false
 
 # pnpm 12 gates packages younger than the minimum release age. These exact
 # versions are pinned on purpose (design section 2) and are newer than the gate.

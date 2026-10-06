@@ -7,13 +7,15 @@ import { createIsolateState, createRequestServices } from "./request-services";
 
 const UNREACHABLE_URL = "postgres://postgres@127.0.0.1:1/none";
 
+// Creating a database is the slow part of these tests, so each test file keeps
+// the number small: one shared migrated database plus one that a test drops.
 const created: TestDatabase[] = [];
 afterAll(async () => {
   await Promise.all(created.map((database) => database.drop()));
 });
 
-async function newDatabase(options?: { empty?: boolean }) {
-  const database = await createTestDatabase(options);
+async function newDatabase() {
+  const database = await createTestDatabase();
   created.push(database);
   return database;
 }
@@ -54,7 +56,7 @@ describe("createRequestServices", () => {
     });
   });
 
-  it("serves a second call from the isolate memo without reconnecting", async () => {
+  it("serves later requests of an isolate from its memo, and only that isolate", async () => {
     const database = await newDatabase();
     const isolate = createIsolateState();
     const config = { databaseUrl: database.url, buildCommit: "abc" };
@@ -66,33 +68,24 @@ describe("createRequestServices", () => {
     await database.drop();
 
     // A new request builds new services but shares the isolate state.
-    const second = await createRequestServices(
+    const sameIsolate = await createRequestServices(
       config,
       {},
       isolate,
     ).getSystemStatus();
+    // A new isolate has an empty memo, so it reaches the (now dropped) database.
+    const freshIsolate = await createRequestServices(
+      config,
+      {},
+      createIsolateState(),
+    ).getSystemStatus();
 
     expect(first).toMatchObject({ ok: true, value: { status: "ok" } });
-    expect(second).toMatchObject({ ok: true, value: { status: "ok" } });
-  });
-
-  it("does not share the memo across isolates", async () => {
-    const database = await newDatabase();
-    const config = { databaseUrl: database.url, buildCommit: "abc" };
-    await createRequestServices(
-      config,
-      {},
-      createIsolateState(),
-    ).getSystemStatus();
-    await database.drop();
-
-    const fresh = await createRequestServices(
-      config,
-      {},
-      createIsolateState(),
-    ).getSystemStatus();
-
-    expect(fresh).toMatchObject({ ok: true, value: { status: "degraded" } });
+    expect(sameIsolate).toMatchObject({ ok: true, value: { status: "ok" } });
+    expect(freshIsolate).toMatchObject({
+      ok: true,
+      value: { status: "degraded" },
+    });
   });
 
   it("hands the connection teardown to the runtime when it provides defer", async () => {
@@ -100,7 +93,11 @@ describe("createRequestServices", () => {
     const deferred: Promise<unknown>[] = [];
     const services = createRequestServices(
       { databaseUrl: database.url, buildCommit: "abc" },
-      { defer: (pending) => deferred.push(pending) },
+      {
+        defer: (pending) => {
+          deferred.push(pending);
+        },
+      },
       createIsolateState(),
     );
 

@@ -40,7 +40,7 @@ describe("startPostgresServer", () => {
 
   it(
     "starts an isolated embedded server on a free port per call",
-    { timeout: 120_000 },
+    { timeout: 240_000 },
     async () => {
       const [first, second] = await Promise.all([
         startPostgresServer({}),

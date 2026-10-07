@@ -47,12 +47,14 @@ To use your own server instead (for example PostgreSQL in WSL2), set `TEST_DATAB
 
 ## Environment sources
 
-| Variable or binding      | Local development                                                                                                 | Tests and CI `verify`       | Deployed (workers.dev, Neon `staging`)                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------- |
-| `HYPERDRIVE` binding     | `wrangler.jsonc` `localConnectionString`, or `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.env` | not used                    | Hyperdrive config `calma-staging`; CI substitutes its id at deploy time |
-| `BUILD_COMMIT`           | `wrangler.jsonc` var (`local`)                                                                                    | not used                    | Set by `wrangler deploy` to the commit SHA                              |
-| `MIGRATION_DATABASE_URL` | Optional in `.env`, for a local database only                                                                     | not used                    | GitHub secret                                                           |
-| `TEST_DATABASE_URL`      | Optional override                                                                                                 | Unset (embedded PostgreSQL) | not used                                                                |
+| Variable or binding      | Local development                                                                                                 | Tests and CI `verify`       | Deployed (workers.dev, Neon `staging`)                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `HYPERDRIVE` binding     | `wrangler.jsonc` `localConnectionString`, or `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.env` | not used                    | Hyperdrive config `calma-staging`; CI substitutes its id at deploy time      |
+| `BUILD_COMMIT`           | `wrangler.jsonc` var (`local`)                                                                                    | not used                    | Set by `wrangler deploy` to the commit SHA                                   |
+| `SITE_URL`               | `wrangler.jsonc` var (`http://localhost:5173`)                                                                    | not used                    | Set by `wrangler deploy` to the workers.dev origin derived from `STATUS_URL` |
+| `SITE_INDEXING`          | `wrangler.jsonc` var (`off`)                                                                                      | not used                    | `wrangler.jsonc` var (`off`) until launch                                    |
+| `MIGRATION_DATABASE_URL` | Optional in `.env`, for a local database only                                                                     | not used                    | GitHub secret                                                                |
+| `TEST_DATABASE_URL`      | Optional override                                                                                                 | Unset (embedded PostgreSQL) | not used                                                                     |
 
 Copy `.env.example` to `.env` (scripts, tests and local overrides) or `.dev.vars.example` to `.dev.vars` (Worker variables for `pnpm dev`); both list names only and the real files are git-ignored. The `.dev.vars.example` entries are commented out because `wrangler.jsonc` already provides local defaults for `BUILD_COMMIT`, `SITE_URL` and `SITE_INDEXING`; an empty assignment would override them and fail validation, so uncomment one only to give it a real value. The real Hyperdrive id never enters the repository.
 

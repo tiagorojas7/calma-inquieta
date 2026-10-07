@@ -26,6 +26,8 @@ export default defineConfig({
         test: {
           name: "ui",
           environment: "jsdom",
+          // vmThreads builds the jsdom environment once per worker, not per file (measured: about 3.4 s to 0.6 s per extra file) and keeps per-file isolation.
+          pool: "vmThreads",
           include: ["src/**/*.ui.test.tsx"],
           setupFiles: ["src/testing/ui/setup.ts"],
         },

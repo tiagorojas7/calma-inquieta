@@ -14,8 +14,9 @@ const TUTEO_TERMS = [
   "reserva tu",
 ] as const;
 
-// A term counts only as a whole word: "eligen" must not trip "elige".
+// "workshop" is forbidden anywhere, even inside a longer word.
 const WORKSHOP = /workshop/iu;
+// A tuteo term counts only as a whole word: "eligen" must not trip "elige".
 const TUTEO = new RegExp(
   String.raw`(?<![\p{L}])(?:${TUTEO_TERMS.join("|")})(?![\p{L}])`,
   "iu",

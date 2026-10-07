@@ -17,7 +17,17 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["src/**/*.test.{ts,tsx}", "tooling/**/*.test.ts"],
-          exclude: ["**/*.db.test.ts"],
+          // `*.ui.test.tsx` needs a DOM and runs in the `ui` project.
+          exclude: ["**/*.db.test.ts", "**/*.ui.test.tsx"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "ui",
+          environment: "jsdom",
+          include: ["src/**/*.ui.test.tsx"],
+          setupFiles: ["src/testing/ui/setup.ts"],
         },
       },
       {

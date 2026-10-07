@@ -68,6 +68,8 @@ export default defineConfig(
         ]),
         element("platform", "src/platform/**/*"),
         element("composition", "src/composition/**/*"),
+        // Presentational components: matched before `delivery` (first match wins).
+        element("ui", "src/app/ui/**/*"),
         element("delivery", "src/app/**/*"),
         element("worker", "workers/**/*"),
         element("testing", "src/testing/**/*"),
@@ -137,9 +139,25 @@ export default defineConfig(
               },
             },
             {
+              // Purity: no module, context or composition; props are structural.
+              from: { element: { type: "ui" } },
+              allow: [
+                { to: to("ui") },
+                { to: pkg("react", "react-dom", "react-router") },
+              ],
+            },
+            {
               from: { element: { type: "delivery" } },
               allow: [
-                { to: to("shared", "module-api", "composition", "delivery") },
+                {
+                  to: to(
+                    "shared",
+                    "module-api",
+                    "composition",
+                    "delivery",
+                    "ui",
+                  ),
+                },
                 // @react-router/dev is for the route config (routes.ts) only.
                 {
                   to: pkg(

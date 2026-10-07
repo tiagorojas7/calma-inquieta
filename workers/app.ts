@@ -9,6 +9,7 @@ import {
   createRequestServices,
 } from "~/composition/request-services";
 import { formatEnvError, readWorkerEnv } from "~/platform/env";
+import { withIndexingHeader } from "~/platform/indexing-header";
 
 // The generated build type declares optional members as `T | undefined`, which
 // ServerBuild rejects under exactOptionalPropertyTypes; the shapes are the same.
@@ -45,6 +46,9 @@ export default {
         isolate,
       ),
     );
-    return handler(request, context);
+    return withIndexingHeader(
+      await handler(request, context),
+      parsed.value.SITE_INDEXING,
+    );
   },
 } satisfies ExportedHandler<Env>;

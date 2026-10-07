@@ -34,10 +34,22 @@ export const testEnvSchema = z.object({
  * Variables for the Worker: Cloudflare injects the Hyperdrive binding as an
  * object (extra properties such as host are stripped) next to plain vars.
  */
-export const workerEnvSchema = z.object({
-  HYPERDRIVE: z.object({ connectionString: databaseUrl }),
-  BUILD_COMMIT: z.string().min(1),
-});
+export const workerEnvSchema = z
+  .object({
+    HYPERDRIVE: z.object({ connectionString: databaseUrl }),
+    BUILD_COMMIT: z.string().min(1),
+    SITE_URL: z.url({ protocol: /^https?$/ }),
+    // The indexing gate defaults to off; only the literal "on" opens it.
+    SITE_INDEXING: z
+      .enum(["on", "off"])
+      .default("off")
+      .transform((value) => value === "on"),
+  })
+  .refine((env) => !env.SITE_INDEXING || env.SITE_URL.startsWith("https://"), {
+    // The path makes `parseEnv` report the issue as SITE_INDEXING, not (root).
+    path: ["SITE_INDEXING"],
+    message: "SITE_INDEXING=on requires an https SITE_URL",
+  });
 
 export type WorkerEnv = z.output<typeof workerEnvSchema>;
 

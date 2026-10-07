@@ -82,6 +82,21 @@ jobs:
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
+      # The public site origin is derived from STATUS_URL (no extra secret), so a
+      # wrong shape must fail before migrations, naming the variable and never its value.
+      - name: Check the status URL shape
+        id: status-url-shape
+        if: steps.deploy-gate.outputs.ready == 'true'
+        env:
+          STATUS_URL: ${{ secrets.STATUS_URL }}
+        run: |
+          case "$STATUS_URL" in
+            */status) ;;
+            *)
+              echo "::error::deploy misconfigured: STATUS_URL must end in /status"
+              exit 1
+              ;;
+          esac
       - if: steps.deploy-gate.outputs.ready == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: steps.deploy-gate.outputs.ready == 'true'
@@ -113,7 +128,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy --var BUILD_COMMIT:${{ github.sha }}
+          STATUS_URL: ${{ secrets.STATUS_URL }}
+        # GitHub masks the full STATUS_URL secret, but the derived workers.dev
+        # origin is a substring and is NOT masked: it shows in wrangler's output.
+        # It is public once deployed, so it is not a secret.
+        run: pnpm exec wrangler deploy --var BUILD_COMMIT:${{ github.sha }} --var "SITE_URL:${STATUS_URL%/status}"
       - name: Smoke check the deployed status page
         if: steps.deploy-gate.outputs.ready == 'true'
         env:

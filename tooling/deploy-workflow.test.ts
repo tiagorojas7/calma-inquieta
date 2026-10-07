@@ -44,10 +44,10 @@ function deploySteps(): string[] {
   return steps.map((step) => step.join("\n"));
 }
 
-/** The shell script of the `deploy-gate` step, dedented. */
-function gateScript(): string {
-  const id = LINES.findIndex((line) => line.trim() === "id: deploy-gate");
-  expect(id, "deploy-gate step exists").toBeGreaterThan(-1);
+/** The shell script of the step with the given `id`, dedented. */
+function stepScript(stepId: string): string {
+  const id = LINES.findIndex((line) => line.trim() === `id: ${stepId}`);
+  expect(id, `${stepId} step exists`).toBeGreaterThan(-1);
   const run = LINES.findIndex(
     (line, index) => index > id && line.trim() === "run: |",
   );
@@ -71,9 +71,9 @@ afterAll(() => {
 });
 
 let runCount = 0;
-function runGate(provided: Partial<Record<SecretName, string>>) {
+function runStep(stepId: string, provided: Readonly<Record<string, string>>) {
   const output = join(scratch, `github-output-${String(runCount++)}`);
-  const result = spawnSync(bashExecutable(), ["-e", "-c", gateScript()], {
+  const result = spawnSync(bashExecutable(), ["-e", "-c", stepScript(stepId)], {
     // A clean environment: ambient variables must never reach the gate.
     env: {
       PATH: process.env["PATH"] ?? "",
@@ -89,6 +89,10 @@ function runGate(provided: Partial<Record<SecretName, string>>) {
     log: `${result.stdout}${result.stderr}`,
     written,
   };
+}
+
+function runGate(provided: Partial<Record<SecretName, string>>) {
+  return runStep("deploy-gate", provided);
 }
 
 const VALUE = (name: SecretName) => `distinctive-value-of-${name}`;
@@ -152,6 +156,54 @@ describe("deploy gate script", () => {
     for (const name of SECRET_NAMES) {
       expect(log).not.toContain(VALUE(name));
     }
+  });
+});
+
+describe("status url shape guard", () => {
+  it("passes when STATUS_URL ends in /status", () => {
+    const { status, log } = runStep("status-url-shape", {
+      STATUS_URL: "https://x.workers.dev/status",
+    });
+
+    expect(status).toBe(0);
+    expect(log).not.toContain("x.workers.dev");
+  });
+
+  it.each(["https://x.workers.dev/", "https://x.workers.dev/status/"])(
+    "fails by name, without the value, for %s",
+    (value) => {
+      const { status, log } = runStep("status-url-shape", {
+        STATUS_URL: value,
+      });
+
+      expect(status).not.toBe(0);
+      expect(log).toContain(
+        "::error::deploy misconfigured: STATUS_URL must end in /status",
+      );
+      expect(log).not.toContain(value);
+    },
+  );
+
+  it("comes right after the gate, before migrations, under the gate condition", () => {
+    const steps = deploySteps();
+    const guard = steps.findIndex((step) =>
+      step.includes("id: status-url-shape"),
+    );
+    const migrate = steps.findIndex((step) => step.includes("pnpm db:migrate"));
+
+    expect(guard).toBe(1);
+    expect(migrate).toBeGreaterThan(guard);
+    expect(steps[guard]).toContain(GATE_CONDITION);
+  });
+
+  it("gives the deploy step STATUS_URL and derives SITE_URL from it", () => {
+    const deploy = deploySteps().find((step) =>
+      step.includes("wrangler deploy"),
+    );
+
+    expect(deploy).toContain("STATUS_URL: ${{ secrets.STATUS_URL }}");
+    expect(deploy).toContain('--var "SITE_URL:${STATUS_URL%/status}"');
+    expect(deploy).toContain("--var BUILD_COMMIT:${{ github.sha }}");
   });
 });
 

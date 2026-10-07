@@ -1,0 +1,61 @@
+/*
+ * Brand tokens (design §3.1 palette, §3.3 type, space, radius, elevation,
+ * motion, breakpoint). Single source: the build turns these into utilities
+ * and the contrast gate (src/app/ui/tokens) parses the color values from
+ * this same file. The reset removes Tailwind's default palette, so only
+ * brand colors exist as utilities.
+ */
+@theme {
+  --color-*: initial;
+
+  /* Palette (§3.1). */
+  --color-canvas: #f9f6f1; /* page background */
+  --color-surface: #ffffff; /* cards */
+  --color-sand-100: #f0e7dd; /* soft band */
+  --color-sand-200: #e6d7c4; /* brand base: header, footer, contact band */
+  --color-sand-300: #d5c1a9; /* tonal fills, icon circles (decorative) */
+  --color-ink-900: #1f1b18; /* headings, nav text */
+  --color-ink-700: #5e5b57; /* body text */
+  --color-ink-600: #6b645e; /* muted text and eyebrows, light backgrounds only */
+  --color-clay-600: #8a654c; /* primary: button fill, outline border */
+  --color-clay-700: #7a5a44; /* primary hover/pressed */
+  --color-clay-800: #6e4f3b; /* clay-colored text, links, focus ring */
+  --color-terracotta-700: #8c4a2a; /* accent text */
+  --color-sage-200: #ced2c1; /* pill background */
+  --color-olive-800: #42483c; /* text on sage */
+  --color-tan-400: #a1876d; /* restricted: decorative rules and ornaments only */
+  --color-white: #ffffff; /* on-primary text */
+
+  /* Type scale (§3.3). Body stays at or above 1rem at every viewport. */
+  --text-display: clamp(2.5rem, 1.75rem + 3vw, 3.75rem); /* h1 */
+  --text-h2: clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
+  --text-h3: clamp(1.375rem, 1.25rem + 0.5vw, 1.625rem);
+  --text-lead: 1.125rem;
+  --text-base: 1rem;
+  --text-sm: 0.875rem; /* meta labels only */
+  --text-eyebrow: 0.75rem; /* uppercase, .18em tracking, weight 600 */
+
+  /* Space (§3.3). */
+  --spacing: 0.25rem;
+  --spacing-section: clamp(3rem, 2rem + 4vw, 6rem);
+  --spacing-gutter: clamp(1.25rem, 0.75rem + 2vw, 2rem);
+  --container-page: 90rem;
+
+  /* Radius (§3.3). */
+  --radius-sm: 0.5rem; /* images */
+  --radius-md: 0.75rem; /* cards */
+  --radius-pill: 9999px; /* CTAs, pills */
+
+  /* Elevation (§3.3). */
+  --shadow-card:
+    0 1px 2px rgb(31 27 24 / 0.04), 0 6px 20px rgb(31 27 24 / 0.06);
+
+  /* Motion (§3.3). app.css reduces durations under prefers-reduced-motion. */
+  --ease-calm: cubic-bezier(0.2, 0, 0, 1);
+  --default-transition-duration: 200ms;
+
+  /* Breakpoint (§3.3): the desktop nav starts at lg (64rem). If the 1024px
+     manual check overflows, move to xl and record it in the Deviation
+     Register. */
+  --breakpoint-lg: 64rem;
+}

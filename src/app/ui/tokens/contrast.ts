@@ -1,3 +1,9 @@
+/**
+ * Compute the relative luminance of a hex color.
+ *
+ * @param hex - a CSS hex color string, 3 or 6 digits, with or without leading '#'
+ * @returns a number between 0 and 1 representing the relative luminance
+ */
 export function relativeLuminance(hex: string): number {
   // Remove leading '#' if present
   const cleanHex = hex.startsWith("#") ? hex.slice(1) : hex;
@@ -41,6 +47,13 @@ export function relativeLuminance(hex: string): number {
   return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
 }
 
+/**
+ * Compute the contrast ratio between two colors.
+ *
+ * @param foreground - hex color string
+ * @param background - hex color string
+ * @returns contrast ratio (range 1 to 21)
+ */
 export function contrastRatio(foreground: string, background: string): number {
   const lum1 = relativeLuminance(foreground);
   const lum2 = relativeLuminance(background);
@@ -49,6 +62,13 @@ export function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/**
+ * Parse color token definitions from a CSS string.
+ *
+ * @param css - CSS text containing `--color-<name>: #rrggbb;` declarations
+ * @returns Map where keys are token names (without the `--color-` prefix) and
+ *          values are the hex colors (including the leading '#')
+ */
 export function parseColorTokens(css: string): Map<string, string> {
   // Strip block comments /* ... */
   const noComments = css.replace(/\/\*[\s\S]*?\*\//g, "");

@@ -6,6 +6,7 @@ import {
 import { createIsolateState, createRequestServices } from "./request-services";
 
 const UNREACHABLE_URL = "postgres://postgres@127.0.0.1:1/none";
+const SITE = { siteUrl: "https://calma.example.test", indexingEnabled: false };
 
 // Creating a database is the slow part of these tests, so each test file keeps
 // the number small: one shared migrated database plus one that a test drops.
@@ -24,7 +25,7 @@ describe("createRequestServices", () => {
   it("reports ok with the latest migration for a migrated database", async () => {
     const database = await newDatabase();
     const services = createRequestServices(
-      { databaseUrl: database.url, buildCommit: "abc" },
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
       {},
       createIsolateState(),
     );
@@ -43,7 +44,7 @@ describe("createRequestServices", () => {
 
   it("reports degraded when the database is unreachable", async () => {
     const services = createRequestServices(
-      { databaseUrl: UNREACHABLE_URL, buildCommit: "abc" },
+      { databaseUrl: UNREACHABLE_URL, buildCommit: "abc", ...SITE },
       {},
       createIsolateState(),
     );
@@ -59,7 +60,7 @@ describe("createRequestServices", () => {
   it("serves later requests of an isolate from its memo, and only that isolate", async () => {
     const database = await newDatabase();
     const isolate = createIsolateState();
-    const config = { databaseUrl: database.url, buildCommit: "abc" };
+    const config = { databaseUrl: database.url, buildCommit: "abc", ...SITE };
     const first = await createRequestServices(
       config,
       {},
@@ -92,7 +93,7 @@ describe("createRequestServices", () => {
     const database = await newDatabase();
     const deferred: Promise<unknown>[] = [];
     const services = createRequestServices(
-      { databaseUrl: database.url, buildCommit: "abc" },
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
       {
         defer: (pending) => {
           deferred.push(pending);
@@ -105,5 +106,40 @@ describe("createRequestServices", () => {
 
     expect(deferred).toHaveLength(1);
     await Promise.all(deferred);
+  });
+
+  it("builds the site content reader and the site config from the runtime config", async () => {
+    const services = createRequestServices(
+      {
+        databaseUrl: UNREACHABLE_URL,
+        buildCommit: "abc",
+        siteUrl: "https://calma.example.workers.dev",
+        indexingEnabled: true,
+      },
+      {},
+      createIsolateState(),
+    );
+
+    const profile = await services.siteContent.getBusinessProfile();
+
+    expect(services.site).toEqual({
+      baseUrl: "https://calma.example.workers.dev",
+      indexingEnabled: true,
+    });
+    expect(profile.address.street).toBe("Albert Sabin 6079");
+    expect(profile.instagram.handle).toBe("calma.inquieta");
+  });
+
+  it("shares one content reader across requests of the same isolate", () => {
+    const config = {
+      databaseUrl: UNREACHABLE_URL,
+      buildCommit: "abc",
+      ...SITE,
+    };
+    const first = createRequestServices(config, {}, createIsolateState());
+    const second = createRequestServices(config, {}, createIsolateState());
+
+    expect(first.siteContent).toBe(second.siteContent);
+    expect(first.site.indexingEnabled).toBe(false);
   });
 });

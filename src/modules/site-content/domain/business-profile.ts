@@ -1,3 +1,5 @@
+import { instagramUrl } from "./links";
+
 /** A fact the client may not have confirmed yet; consumers never see it unconfirmed. */
 export interface Fact<T> {
   readonly value: T;
@@ -57,4 +59,17 @@ export interface BusinessProfile extends Omit<
   readonly phone?: string;
   readonly hours?: readonly OpeningHoursSpec[];
   readonly geo?: GeoPoint;
+}
+
+/** Exposes a fact only once the client confirmed it; unconfirmed facts are left out entirely. */
+export function publishProfile(raw: RawBusinessProfile): BusinessProfile {
+  const { email, phone, hours, geo, instagramHandle, ...rest } = raw;
+  return {
+    ...rest,
+    instagram: { handle: instagramHandle, url: instagramUrl(instagramHandle) },
+    ...(email?.confirmed ? { email: email.value } : {}),
+    ...(phone?.confirmed ? { phone: phone.value } : {}),
+    ...(hours?.confirmed ? { hours: hours.value } : {}),
+    ...(geo?.confirmed ? { geo: geo.value } : {}),
+  };
 }

@@ -30,7 +30,10 @@ describe("createSiteContent", () => {
 
   it("returns only approved trust claims and consented testimonials on Inicio", async () => {
     const base = buildRawSiteContent();
-    const claim = base.home.trustClaims[0]!;
+    const [claim] = base.home.trustClaims;
+    if (!claim) {
+      return expect.unreachable("the fake has a trust claim");
+    }
     const consented = {
       id: "t-1",
       quote: "q",

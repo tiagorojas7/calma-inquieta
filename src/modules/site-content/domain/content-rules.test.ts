@@ -9,6 +9,7 @@ import {
 import type {
   GalleryImage,
   ImageRef,
+  RawSiteContent,
   Testimonial,
   TrustClaim,
 } from "./page-content";
@@ -241,15 +242,17 @@ describe("validateSiteContent", () => {
 describe("listUnapproved", () => {
   it("lists every unapproved item with its area", () => {
     const content = validContent();
-    const unapproved = {
+    const unapproved: RawSiteContent = {
       ...content,
       home: {
         ...content.home,
         trustClaims: [
           {
-            ...content.home.trustClaims[0]!,
             id: "claim-no-experience",
             approved: false,
+            label: "No necesitás experiencia",
+            icon: "hands",
+            appliesTo: "all",
           },
         ],
         teaser: {

@@ -34,7 +34,7 @@ export function relativeLuminance(hex: string): number {
 
   // Linearize
   const linearize = (c: number) => {
-    if (c <= 0.03928) {
+    if (c <= 0.04045) {
       return c / 12.92;
     }
     return Math.pow((c + 0.055) / 1.055, 2.4);

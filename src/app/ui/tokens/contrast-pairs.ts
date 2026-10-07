@@ -18,7 +18,7 @@ export interface ColorTokenPair {
 }
 
 /**
- * Declared color token pairs from design §3.2, in the exact order required by the test.
+ * Declared color token pairs from design §3.2, in the design table order.
  */
 export const COLOR_TOKEN_PAIRS: readonly ColorTokenPair[] = [
   { fg: "ink-900", bg: "canvas", kind: "text", usage: "Headings and nav" },

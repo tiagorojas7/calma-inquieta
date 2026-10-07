@@ -1,5 +1,8 @@
 # Names only: copy to .dev.vars for `pnpm dev`. Never commit real values.
 # Worker bindings (HYPERDRIVE) come from wrangler.jsonc, not from this file.
-BUILD_COMMIT=
-SITE_URL=
-SITE_INDEXING=
+# wrangler.jsonc already provides local defaults for the three variables below.
+# Leave them commented out: an empty value here would override the default and
+# fail environment validation. Uncomment one only to set a real value for it.
+# BUILD_COMMIT=
+# SITE_URL=
+# SITE_INDEXING=

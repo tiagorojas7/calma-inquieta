@@ -46,14 +46,29 @@ export const workerEnvSchema = z
       .transform((value) => value === "on"),
   })
   // The parsed protocol is lower-cased, matching what `z.url` accepted above.
+  // Zod still runs this refine after a failed URL check, so an unparsable
+  // SITE_URL passes here and is reported once, by its own field check.
   .refine(
-    (env) => !env.SITE_INDEXING || new URL(env.SITE_URL).protocol === "https:",
+    (env) => {
+      const protocol = protocolOf(env.SITE_URL);
+      return (
+        !env.SITE_INDEXING || protocol === undefined || protocol === "https:"
+      );
+    },
     {
       // The path makes `parseEnv` report the issue as SITE_INDEXING, not (root).
       path: ["SITE_INDEXING"],
       message: "SITE_INDEXING=on requires an https SITE_URL",
     },
   );
+
+function protocolOf(url: string): string | undefined {
+  try {
+    return new URL(url).protocol;
+  } catch {
+    return undefined;
+  }
+}
 
 export type WorkerEnv = z.output<typeof workerEnvSchema>;
 

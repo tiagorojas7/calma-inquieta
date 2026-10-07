@@ -7,13 +7,32 @@ import {
   ScrollRestoration,
 } from "react-router";
 import type { Route } from "./+types/root";
+import appCss from "./ui/styles/app.css?url";
+
+// The sand-200 token value (tokens.css); root.test.ts asserts it matches.
+const THEME_COLOR = "#e6d7c4";
+
+const preloadFont = (file: string) => ({
+  rel: "preload",
+  href: `/fonts/${file}`,
+  as: "font",
+  type: "font/woff2",
+  crossOrigin: "anonymous" as const,
+});
+
+export const links: Route.LinksFunction = () => [
+  preloadFont("cormorant-garamond-latin-400-normal.woff2"),
+  preloadFont("montserrat-latin-400-normal.woff2"),
+  { rel: "stylesheet", href: appCss },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="es-AR">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content={THEME_COLOR} />
         <Meta />
         <Links />
       </head>

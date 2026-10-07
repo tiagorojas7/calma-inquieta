@@ -46,10 +46,10 @@ function deploySteps(): string[] {
 
 /** The shell script of the step with the given `id`, dedented. */
 function stepScript(stepId: string): string {
-  const id = LINES.findIndex((line) => line.trim() === `id: ${stepId}`);
-  expect(id, `${stepId} step exists`).toBeGreaterThan(-1);
+  const idLine = LINES.findIndex((line) => line.trim() === `id: ${stepId}`);
+  expect(idLine, `${stepId} step exists`).toBeGreaterThan(-1);
   const run = LINES.findIndex(
-    (line, index) => index > id && line.trim() === "run: |",
+    (line, index) => index > idLine && line.trim() === "run: |",
   );
   const base = indentOf(LINES[run] ?? "");
   const body: string[] = [];
@@ -74,7 +74,7 @@ let runCount = 0;
 function runStep(stepId: string, provided: Readonly<Record<string, string>>) {
   const output = join(scratch, `github-output-${String(runCount++)}`);
   const result = spawnSync(bashExecutable(), ["-e", "-c", stepScript(stepId)], {
-    // A clean environment: ambient variables must never reach the gate.
+    // A clean environment: ambient variables must never reach the step script under test.
     env: {
       PATH: process.env["PATH"] ?? "",
       SYSTEMROOT: process.env["SYSTEMROOT"] ?? "",

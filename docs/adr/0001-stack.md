@@ -6,15 +6,16 @@ React Router 8.4 in framework mode, deployed to Cloudflare Workers, on Node 24, 
 
 ## Decision
 
-| Concern       | Choice                                                                                |
-| ------------- | ------------------------------------------------------------------------------------- |
-| Web framework | React Router 8.4.0 (framework mode, SSR) with React 19.3.0                            |
-| Runtime       | Cloudflare Workers (`nodejs_compat`), built with Vite 8 and `@cloudflare/vite-plugin` |
-| Language      | TypeScript 6.0.x, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`  |
-| Tooling       | Node 24 LTS, pnpm 12.9.1 (`packageManager`), ESLint 10 flat config, Prettier 3        |
-| Tests         | Vitest 5.0.3 with v8 coverage                                                         |
-| Data access   | Drizzle ORM 0.45 and `pg` 8, the same driver in tests and in the Worker               |
-| Validation    | zod 4                                                                                 |
+| Concern           | Choice                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| Web framework     | React Router 8.4.0 (framework mode, SSR) with React 19.3.0                            |
+| Runtime           | Cloudflare Workers (`nodejs_compat`), built with Vite 8 and `@cloudflare/vite-plugin` |
+| Language          | TypeScript 6.0.x, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`  |
+| Tooling           | Node 24 LTS, pnpm 12.9.1 (`packageManager`), ESLint 10 flat config, Prettier 3        |
+| Tests             | Vitest 5.0.3 with v8 coverage                                                         |
+| Data access       | Drizzle ORM 0.45 and `pg` 8, the same driver in tests and in the Worker               |
+| Validation        | zod 4                                                                                 |
+| Styling, UI tests | Tailwind CSS 4.3.3, Testing Library, jsdom, axe-core (see ADR-0004)                   |
 
 The authoritative list of exact versions is `package.json`; the lockfile records the resolved tree.
 

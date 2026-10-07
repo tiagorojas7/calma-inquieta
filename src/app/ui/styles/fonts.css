@@ -1,0 +1,75 @@
+/*
+ * Self-hosted typography stand-ins (design §3.3, DS12): Cormorant Garamond
+ * for display, Montserrat for body. Latin subset (covers Spanish),
+ * font-display: swap, every url() same-origin under /fonts/. The Fallback
+ * faces are metric-adjusted local fonts (Georgia, Arial) so the swap causes
+ * no layout shift; the override percentages were computed from the fonts'
+ * hhea and head tables with fonttools (F0 scratchpad; recorded in the F0
+ * PR body). Swapping the brand fonts means editing this file plus the
+ * binaries in public/fonts/ and the manifest rows.
+ */
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/cormorant-garamond-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/cormorant-garamond-latin-400-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/montserrat-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/montserrat-latin-600-normal.woff2") format("woff2");
+}
+
+/*
+ * Metric fallbacks: Georgia and Arial scaled to the webfont metrics
+ * (Cormorant: ascent 0.924 em, descent 0.287 em, line gap 0;
+ * Montserrat: ascent 0.968 em, descent 0.251 em, line gap 0).
+ */
+@font-face {
+  font-family: "Cormorant Fallback";
+  font-style: normal;
+  font-weight: 400;
+  src: local("Georgia");
+  size-adjust: 106.58%;
+  ascent-override: 86.7%;
+  descent-override: 26.93%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Montserrat Fallback";
+  font-style: normal;
+  font-weight: 400;
+  src: local("Arial");
+  size-adjust: 109.11%;
+  ascent-override: 88.72%;
+  descent-override: 23%;
+  line-gap-override: 0%;
+}
+
+/* Family tokens (§3.3): the one place a brand font swap touches. */
+@theme {
+  --font-display: "Cormorant Garamond", "Cormorant Fallback", Georgia, serif;
+  --font-body: "Montserrat", "Montserrat Fallback", Arial, sans-serif;
+}

@@ -124,6 +124,31 @@ describe("declared color token pairs (design §3.2)", () => {
     expect(() => evaluatePair(restricted, tokens)).toThrow(/restricted/);
   });
 
+  it.each(["text", "large-text", "ui"] as const)(
+    "fails when a restricted token appears in a %s pair",
+    (kind) => {
+      const restricted: ColorTokenPair = {
+        fg: "tan-400",
+        bg: "canvas",
+        kind,
+        usage: "only used by this test",
+      };
+
+      expect(() => evaluatePair(restricted, tokens)).toThrow(/restricted/);
+    },
+  );
+
+  it("accepts a restricted token in a decorative pair", () => {
+    const decorative: ColorTokenPair = {
+      fg: "tan-400",
+      bg: "canvas",
+      kind: "decorative",
+      usage: "only used by this test",
+    };
+
+    expect(evaluatePair(decorative, tokens)).toBeGreaterThan(3);
+  });
+
   it("computes the design §3.2 reference ratios to two decimals", () => {
     for (const reference of REFERENCE_RATIOS) {
       const ratio = round2(
@@ -214,19 +239,19 @@ function minimumRatioFor(pair: ColorTokenPair): number {
 }
 
 /**
- * Gate for one declared pair: throws when a text pair uses a restricted
- * token (design §3.1) or when either side names a token missing from
+ * Gate for one declared pair: throws when a non-decorative pair uses a
+ * restricted token (design §3.1) or when either side names a token missing from
  * tokens.css, and returns the pair's contrast ratio otherwise.
  */
 function evaluatePair(
   pair: ColorTokenPair,
   tokens: Map<string, string>,
 ): number {
-  if (pair.kind === "text") {
+  if (pair.kind !== "decorative") {
     for (const name of [pair.fg, pair.bg]) {
       if (RESTRICTED_TOKENS.includes(name)) {
         throw new Error(
-          `restricted token ${name} in a text pair: ${pair.fg} on ${pair.bg}`,
+          `restricted token ${name} in a ${pair.kind} pair: ${pair.fg} on ${pair.bg}`,
         );
       }
     }

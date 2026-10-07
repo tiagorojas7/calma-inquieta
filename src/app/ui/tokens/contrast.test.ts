@@ -115,7 +115,7 @@ describe("declared color token pairs (design §3.2)", () => {
 
   it("fails when a restricted token appears in a text pair", () => {
     const restricted: ColorTokenPair = {
-      fg: RESTRICTED_TOKENS[0],
+      fg: "tan-400",
       bg: "canvas",
       kind: "text",
       usage: "only used by this test",

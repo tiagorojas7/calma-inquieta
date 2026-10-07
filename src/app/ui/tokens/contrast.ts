@@ -79,7 +79,9 @@ export function parseColorTokens(css: string): Map<string, string> {
   while ((match = pattern.exec(noComments)) !== null) {
     const name = match[1];
     const value = match[2];
-    map.set(name, value);
+    if (name !== undefined && value !== undefined) {
+      map.set(name, value);
+    }
   }
   return map;
 }

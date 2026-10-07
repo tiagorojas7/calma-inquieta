@@ -38,12 +38,13 @@ Fallback if the plugin ever fails: keep the same token names under `:root` and w
 
 1. `robots.txt` (`Disallow: /` while off).
 2. Page meta (`noindex, nofollow` while off; coming-soon pages are always `noindex`).
-3. The `X-Robots-Tag: noindex, nofollow` header on every response, set in the Worker by `src/platform/indexing-header.ts` (`headers.set`, so a route that already sent the header ends with one value).
+3. The `X-Robots-Tag: noindex, nofollow` header on every response the handler returns (and on the Worker's own environment-error response), set in the Worker by `src/platform/indexing-header.ts` (`headers.set`, so a route that already sent the header ends with one value).
 
-`SITE_URL` is validated at startup; a missing or invalid value fails by name only. CI derives it from the existing `STATUS_URL` secret with `${STATUS_URL%/status}`, after a guard step that fails before migrations when the secret does not end in `/status` (the value is never printed).
+`SITE_URL` is validated at startup; a missing or invalid value fails by name only. The `wrangler.jsonc` default (`http://localhost:5173`) only applies to a deploy that does not pass the variable, so a manual `wrangler deploy` without `--var "SITE_URL:<origin>"` ships the localhost default instead of failing; CI always passes it. CI derives it from the existing `STATUS_URL` secret with `${STATUS_URL%/status}`, after a guard step that fails before migrations when the secret does not end in `/status` (the value is never printed).
 
 ## Consequences
 
+- The indexing header covers responses the handler returns. A response the runtime generates after the handler throws carries no header; `robots.txt` and the page meta still cover it while the gate is off. This is a documented limitation.
 - The derived workers.dev origin is a substring of a masked secret and is **not masked** in logs: it appears in wrangler's deploy output. It is public once deployed, so this is accepted and documented in the workflow.
 - The DOM and Workers type libraries both declare globals such as `Request`, `Response` and `fetch`. They type-check together **only because `skipLibCheck` is `true`**; merged global types can be slightly wider than the Workers runtime. Worker code (`workers/app.ts`, `src/platform/indexing-header.ts`) uses only APIs both sides agree on. If a conflict ever surfaces, move the DOM libs to a dedicated `tsconfig.ui.json`.
 - jsdom 30 has no `HTMLDialogElement.showModal`/`close` and no `matchMedia`; the `ui` setup file polyfills them only when missing. It does not model focus trapping or `cancel` on Escape.

@@ -280,6 +280,18 @@ describe("parseEnv with the site configuration", () => {
     expect(result.ok && result.value.SITE_INDEXING).toBe(true);
   });
 
+  it("accepts an upper-case HTTPS scheme with SITE_INDEXING on, like z.url does", () => {
+    const result = parseEnv(
+      workerEnvSchema,
+      workerSource({
+        SITE_INDEXING: "on",
+        SITE_URL: "HTTPS://calma.example.workers.dev",
+      }),
+    );
+
+    expect(result.ok && result.value.SITE_INDEXING).toBe(true);
+  });
+
   it("rejects SITE_INDEXING on with an http SITE_URL, naming SITE_INDEXING", () => {
     const error = failureOf(
       parseEnv(

@@ -9,7 +9,10 @@ import {
   createRequestServices,
 } from "~/composition/request-services";
 import { formatEnvError, readWorkerEnv } from "~/platform/env";
-import { withIndexingHeader } from "~/platform/indexing-header";
+import {
+  unavailableResponse,
+  withIndexingHeader,
+} from "~/platform/indexing-header";
 
 // The generated build type declares optional members as `T | undefined`, which
 // ServerBuild rejects under exactOptionalPropertyTypes; the shapes are the same.
@@ -28,7 +31,7 @@ export default {
     if (!parsed.ok) {
       // Names only in logs; the body stays generic (RC: Worker failure behavior).
       console.error(formatEnvError(parsed.error));
-      return new Response("Service unavailable", { status: 500 });
+      return unavailableResponse();
     }
     const context = new RouterContextProvider();
     context.set(

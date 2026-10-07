@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildRawSiteContent } from "~/testing/fakes/in-memory-site-content-source";
 import {
   approvedTrustClaims,
   listUnapproved,
@@ -8,20 +9,9 @@ import {
 import type {
   GalleryImage,
   ImageRef,
-  RawSiteContent,
   Testimonial,
   TrustClaim,
 } from "./page-content";
-import type { StandInAsset } from "./stand-in";
-
-const stand = (id: string, path: string): StandInAsset => ({
-  id,
-  path,
-  kind: "image",
-  source: "test",
-  licence: "test",
-  replaceWith: "test",
-});
 
 const image = (src: string, alt = "Una imagen"): ImageRef => ({
   src,
@@ -30,104 +20,8 @@ const image = (src: string, alt = "Una imagen"): ImageRef => ({
   height: 100,
 });
 
-const seo = (title: string) => ({ title, description: `${title} descripción` });
-
 /** A minimal content set that satisfies every rule; tests change one thing at a time. */
-function validContent(): RawSiteContent {
-  return {
-    profile: {
-      name: "Calma Inquieta",
-      bajada: "Bajada",
-      address: {
-        street: "Calle 1",
-        locality: "Barrio",
-        city: "Córdoba",
-        region: "Córdoba",
-        countryCode: "AR",
-      },
-      instagramHandle: "calma.inquieta",
-      whatsapp: { display: "351 000 0000", provisional: true },
-      whatsappMessages: {
-        general: "Hola",
-        talleres: "Hola",
-        intensivos: "Hola",
-        "eventos-privados": "Hola",
-      },
-    },
-    home: {
-      seo: seo("Inicio"),
-      hero: {
-        eyebrow: "e",
-        title: { lead: "a", accent: "b", trail: "c" },
-        subtitle: "s",
-        primaryCtaLabel: "p",
-        secondaryCtaLabel: "q",
-        images: [image("/media/stand-ins/hero-1.svg")],
-      },
-      trustClaims: [
-        {
-          id: "claim-1",
-          approved: true,
-          label: "Sin experiencia",
-          icon: "hands",
-          appliesTo: "all",
-        },
-      ],
-      monthly: { heading: "m", emptyMessage: "m" },
-      intensivos: { heading: "i", emptyMessage: "i" },
-      teaser: {
-        heading: "t",
-        body: { id: "teaser-body", approved: true, text: "t" },
-        image: image("/media/stand-ins/about-teaser.svg"),
-        linkLabel: "l",
-      },
-      testimonials: { heading: "h", items: [] },
-      contactBand: { heading: "c", body: "c" },
-    },
-    about: {
-      seo: seo("Quiénes somos"),
-      heading: "Quiénes somos",
-      history: [{ id: "history-1", approved: true, text: "h" }],
-      valueProposition: { id: "value-prop", approved: true, text: "v" },
-      values: [{ id: "value-1", approved: true, title: "t", text: "t" }],
-      gallery: [
-        {
-          id: "gallery-1",
-          ...image("/media/stand-ins/gallery-01.svg", "Composición"),
-        },
-      ],
-      videos: [],
-      faq: [{ id: "faq-1", approved: true, question: "q", answer: "a" }],
-      sectionHeadings: { values: "v", gallery: "g", faq: "f" },
-    },
-    contact: { seo: seo("Contacto"), heading: "Contacto", intro: "i" },
-    comingSoon: {
-      talleres: {
-        seo: seo("Talleres"),
-        title: "Talleres",
-        message: "m",
-        whatsappTopic: "talleres",
-      },
-      intensivos: {
-        seo: seo("Intensivos"),
-        title: "Intensivos",
-        message: "m",
-        whatsappTopic: "intensivos",
-      },
-      "eventos-privados": {
-        seo: seo("Eventos"),
-        title: "Eventos",
-        message: "m",
-        whatsappTopic: "eventos-privados",
-      },
-    },
-    standIns: [
-      stand("hero-1", "/media/stand-ins/hero-1.svg"),
-      stand("about-teaser", "/media/stand-ins/about-teaser.svg"),
-      stand("gallery-01", "/media/stand-ins/gallery-01.svg"),
-    ],
-  };
-}
+const validContent = () => buildRawSiteContent();
 
 describe("publishableTestimonials", () => {
   const consented: Testimonial = {
@@ -352,7 +246,11 @@ describe("listUnapproved", () => {
       home: {
         ...content.home,
         trustClaims: [
-          { ...content.home.trustClaims[0]!, id: "claim-1", approved: false },
+          {
+            ...content.home.trustClaims[0]!,
+            id: "claim-no-experience",
+            approved: false,
+          },
         ],
         teaser: {
           ...content.home.teaser,
@@ -362,17 +260,21 @@ describe("listUnapproved", () => {
       about: {
         ...content.about,
         history: [{ id: "history-1", approved: false, text: "h" }],
-        valueProposition: { id: "value-prop", approved: false, text: "v" },
+        valueProposition: {
+          id: "value-proposition",
+          approved: false,
+          text: "v",
+        },
         values: [{ id: "value-1", approved: false, title: "t", text: "t" }],
         faq: [{ id: "faq-1", approved: false, question: "q", answer: "a" }],
       },
     };
 
     expect(listUnapproved(unapproved)).toEqual([
-      { id: "claim-1", area: "home:trust-claims" },
+      { id: "claim-no-experience", area: "home:trust-claims" },
       { id: "teaser-body", area: "home:teaser" },
       { id: "history-1", area: "about:history" },
-      { id: "value-prop", area: "about:value-proposition" },
+      { id: "value-proposition", area: "about:value-proposition" },
       { id: "value-1", area: "about:values" },
       { id: "faq-1", area: "about:faq" },
     ]);

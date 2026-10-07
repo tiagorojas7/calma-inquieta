@@ -1,4 +1,14 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -39,12 +49,13 @@ function fontFaces(css: string): { family: string; body: string }[] {
     .filter((face): face is { family: string; body: string } => face !== null);
 }
 
-/** Every .tsx file under dir, at any depth (the literal scan's real tree). */
+/** Every non-test .tsx file under dir, at any depth (the literal scan's tree). */
 function listTsxFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry);
     if (entry.endsWith(".tsx")) {
-      return [path];
+      // Test files hold deliberate bypass samples; only components are scanned.
+      return entry.endsWith(".test.tsx") ? [] : [path];
     }
     return statSync(path).isDirectory() ? listTsxFiles(path) : [];
   });
@@ -169,6 +180,19 @@ describe("token literal scan", () => {
     expect(ARBITRARY_COLOR.test(attributeVariant)).toBe(false);
     expect(HEX_STRING_LITERAL.test(attributeVariant)).toBe(false);
     expect(ARBITRARY_LENGTH.test(attributeVariant)).toBe(false);
+  });
+
+  it("the scan walks nested components but skips test files", () => {
+    const root = mkdtempSync(join(tmpdir(), "literal-scan-"));
+    try {
+      mkdirSync(join(root, "atoms"));
+      writeFileSync(join(root, "atoms", "Button.tsx"), "export {};");
+      writeFileSync(join(root, "atoms", "Button.test.tsx"), "bg-[#fff]");
+
+      expect(listTsxFiles(root)).toEqual([join(root, "atoms", "Button.tsx")]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("no src/app/ui component bypasses the tokens", () => {

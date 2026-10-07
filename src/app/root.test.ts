@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { parseColorTokens } from "./ui/tokens/contrast";
 import { ErrorBoundary, Layout, links } from "./root";
 
+// Vitest resolves a ?url css import to "", so pin the build-time href.
+vi.mock("./ui/styles/app.css?url", () => ({ default: "/assets/app.css" }));
+
 // Meta, Links, Scripts and ScrollRestoration need a framework router
 // context; the document shell is what these tests inspect.
 vi.mock("react-router", async (importOriginal) => ({
@@ -100,15 +103,14 @@ describe("root links", () => {
     );
 
     expect(sheets).toHaveLength(1);
-    expect(sheets[0]).toHaveProperty("href");
+    expect(sheets[0]).toMatchObject({ href: "/assets/app.css" });
   });
 
   it("only points at same-origin urls", () => {
     for (const link of entries()) {
       const href = "href" in link ? link.href : undefined;
       expect(href, "link without href").toBeTypeOf("string");
-      // Vitest resolves a ?url css import to "", so assert "not cross-origin".
-      expect(href).not.toMatch(/^([a-z][a-z0-9+.-]*:)?\/\//i);
+      expect(href).toMatch(/^\/(?!\/)/);
     }
   });
 });

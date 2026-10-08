@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { AppServices } from "~/composition/request-services";
 import { err, ok } from "~/modules/_shared";
 import type { SystemStatusView } from "~/modules/system-status";
+import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import Status, { headers, loader, meta } from "./status";
 
@@ -29,9 +30,8 @@ const DEGRADED_VIEW: SystemStatusView = {
   checkedAt: "2026-10-05T12:00:00.000Z",
 };
 
-const servicesReturning = (view: SystemStatusView): AppServices => ({
-  getSystemStatus: () => Promise.resolve(ok(view)),
-});
+const servicesReturning = (view: SystemStatusView): AppServices =>
+  createTestServices({ getSystemStatus: () => Promise.resolve(ok(view)) });
 
 // The loader returns `data(view, { status })`: assert on its two parts.
 async function runLoader(view: SystemStatusView) {

@@ -47,14 +47,32 @@ To use your own server instead (for example PostgreSQL in WSL2), set `TEST_DATAB
 
 ## Environment sources
 
-| Variable or binding      | Local development                                                                                                 | Tests and CI `verify`       | Deployed (workers.dev, Neon `staging`)                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------- |
-| `HYPERDRIVE` binding     | `wrangler.jsonc` `localConnectionString`, or `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.env` | not used                    | Hyperdrive config `calma-staging`; CI substitutes its id at deploy time |
-| `BUILD_COMMIT`           | `wrangler.jsonc` var (`local`)                                                                                    | not used                    | Set by `wrangler deploy` to the commit SHA                              |
-| `MIGRATION_DATABASE_URL` | Optional in `.env`, for a local database only                                                                     | not used                    | GitHub secret                                                           |
-| `TEST_DATABASE_URL`      | Optional override                                                                                                 | Unset (embedded PostgreSQL) | not used                                                                |
+| Variable or binding      | Local development                                                                                                 | Tests and CI `verify`       | Deployed (workers.dev, Neon `staging`)                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `HYPERDRIVE` binding     | `wrangler.jsonc` `localConnectionString`, or `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.env` | not used                    | Hyperdrive config `calma-staging`; CI substitutes its id at deploy time      |
+| `BUILD_COMMIT`           | `wrangler.jsonc` var (`local`)                                                                                    | not used                    | Set by `wrangler deploy` to the commit SHA                                   |
+| `SITE_URL`               | `wrangler.jsonc` var (`http://localhost:5173`)                                                                    | not used                    | Set by `wrangler deploy` to the workers.dev origin derived from `STATUS_URL` |
+| `SITE_INDEXING`          | `wrangler.jsonc` var (`off`)                                                                                      | not used                    | `wrangler.jsonc` var (`off`) until launch                                    |
+| `MIGRATION_DATABASE_URL` | Optional in `.env`, for a local database only                                                                     | not used                    | GitHub secret                                                                |
+| `TEST_DATABASE_URL`      | Optional override                                                                                                 | Unset (embedded PostgreSQL) | not used                                                                     |
 
-Copy `.env.example` to `.env` (scripts, tests and local overrides) or `.dev.vars.example` to `.dev.vars` (Worker variables for `pnpm dev`); both list names only and the real files are git-ignored. The real Hyperdrive id never enters the repository.
+Copy `.env.example` to `.env` (scripts, tests and local overrides) or `.dev.vars.example` to `.dev.vars` (Worker variables for `pnpm dev`); both list names only and the real files are git-ignored. The `.dev.vars.example` entries are commented out because `wrangler.jsonc` already provides local defaults for `BUILD_COMMIT`, `SITE_URL` and `SITE_INDEXING`; an empty assignment would override them and fail validation, so uncomment one only to give it a real value. The real Hyperdrive id never enters the repository.
+
+## Site content
+
+Page copy and business facts live in typed files under `src/modules/site-content/infrastructure/content/`, behind the `site-content` module API (`src/modules/site-content/index.ts`). Routes and components read them only through `createSiteContent` (the `siteContent` entry of the request services), never by importing those files.
+
+- **Change a fact or a text.** Edit the matching file (`business-profile.ts`, `home.ts`, `about.ts`, `contact.ts`, `coming-soon.ts`) and keep the tests green: `pnpm test src/modules/site-content` validates the content, scans every string for the word "workshop" and for tuteo, and checks that every image is registered. Copy is Spanish (Argentina) with voseo and the "nosotras" voice.
+- **Optional facts.** Email, phone, opening hours and coordinates are written as `{ value, confirmed }`. The site shows them only when `confirmed` is `true`; until then the property is absent and no placeholder renders.
+- **WhatsApp.** The number is defined once, in `business-profile.ts`, flagged `provisional: true`. Every link on the site is built from it with `buildWhatsAppUrl`, so changing it there changes every link. The digits are never printed while the flag is on.
+- **Approval markers.** Drafted prose (history, value proposition, teaser, values, FAQ, trust claims) carries `approved: false` until the client signs it off. Unapproved trust claims do not render. `siteContent.listUnapprovedContent()` returns every item still waiting, as `{ id, area }`, for the launch checklist.
+- **Testimonials** are listed only with recorded written consent (`consent: { written: true, recordedOn }`).
+
+### Stand-in registry
+
+`src/modules/site-content/infrastructure/content/stand-in-assets.ts` lists every placeholder asset (the SVG compositions, the favicon and share image derived from the studio's Instagram profile picture, and the four font files) with its source, licence and what replaces it. `pnpm test` fails when a file in `public/media/stand-ins/` has no row or a row has no file. To retire a stand-in, replace the file, delete its row and update the content that references it.
+
+**Launch gate.** `siteContent.listStandInAssets().length` is the number of stand-ins remaining. It must reach `0` before the indexing gate is opened (change 8). Photos and videos of the client's work arrive as the replacements; none of the mockups under `docs/client-proposal/` may be copied into `public/`.
 
 ## Branches and pull requests
 

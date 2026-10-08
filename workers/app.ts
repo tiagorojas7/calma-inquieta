@@ -40,6 +40,8 @@ export default {
         {
           databaseUrl: parsed.value.HYPERDRIVE.connectionString,
           buildCommit: parsed.value.BUILD_COMMIT,
+          siteUrl: parsed.value.SITE_URL,
+          indexingEnabled: parsed.value.SITE_INDEXING,
         },
         {
           defer: (pending) => {

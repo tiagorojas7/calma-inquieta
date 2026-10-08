@@ -312,6 +312,17 @@ describe("parseEnv with the site configuration", () => {
     expect(JSON.stringify(error)).not.toContain("secret-host");
   });
 
+  it("reports a malformed SITE_URL by name without throwing when SITE_INDEXING is on", () => {
+    const error = failureOf(
+      parseEnv(
+        workerEnvSchema,
+        workerSource({ SITE_INDEXING: "on", SITE_URL: "not a url" }),
+      ),
+    );
+
+    expect(error.issues).toEqual([{ name: "SITE_URL", reason: "invalid" }]);
+  });
+
   it("rejects a SITE_INDEXING value other than on or off", () => {
     const error = failureOf(
       parseEnv(workerEnvSchema, workerSource({ SITE_INDEXING: "yes" })),

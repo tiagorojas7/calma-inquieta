@@ -1,3 +1,5 @@
+import { createSiteContent, type SiteContent } from "~/modules/site-content";
+import { createRepositoryContentSource } from "~/modules/site-content/infrastructure/repository-content-source";
 import {
   createGetSystemStatus,
   createMemoizedDatabaseProbe,
@@ -12,14 +14,27 @@ import { systemClock } from "~/platform/system-clock";
 /** How long `/status` reuses the last database probe (design D12). */
 const STATUS_PROBE_TTL_MS = 60_000;
 
+/** What the pages need to know about the deployment they run in. */
+export interface SiteConfig {
+  readonly baseUrl: string;
+  readonly indexingEnabled: boolean;
+}
+
 export interface AppServices {
   readonly getSystemStatus: GetSystemStatus;
+  readonly siteContent: SiteContent;
+  readonly site: SiteConfig;
 }
 
 export interface RuntimeConfig {
   readonly databaseUrl: string;
   readonly buildCommit: string;
+  readonly siteUrl: string;
+  readonly indexingEnabled: boolean;
 }
+
+// Static data with no connection to open: one reader serves every request (DS4).
+const siteContent = createSiteContent(createRepositoryContentSource());
 
 /** State that lives as long as the isolate and is shared by its requests. */
 export interface IsolateState {
@@ -57,5 +72,10 @@ export function createRequestServices(
       clock: systemClock,
       buildCommit: config.buildCommit,
     }),
+    siteContent,
+    site: {
+      baseUrl: config.siteUrl,
+      indexingEnabled: config.indexingEnabled,
+    },
   };
 }

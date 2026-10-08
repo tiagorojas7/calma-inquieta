@@ -14,7 +14,8 @@ afterEach(() => {
 // jsdom 30 ships HTMLDialogElement without show/showModal/close. The polyfill
 // is installed only when a method is missing, so a later jsdom that implements
 // them is used as is. It models just what the components rely on: the `open`
-// attribute and the asynchronous `close` event.
+// attribute and an asynchronous `close` event. The event is a deliberate
+// microtask approximation: browsers queue a task, which jsdom has no loop for.
 const dialog = HTMLDialogElement.prototype;
 
 if (typeof dialog.showModal !== "function") {
@@ -38,7 +39,8 @@ if (typeof dialog.close !== "function") {
     if (returnValue !== undefined) {
       this.returnValue = returnValue;
     }
-    // Browsers queue the event as a task, not synchronously.
+    // Deliberate approximation: a microtask, where browsers queue a task. It is
+    // still asynchronous, so a test sees the event only after the caller returns.
     queueMicrotask(() => {
       this.dispatchEvent(new Event("close"));
     });

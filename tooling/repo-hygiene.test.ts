@@ -12,10 +12,12 @@ const LOCAL_OVERRIDE: Readonly<Record<string, string>> = {
   HYPERDRIVE: "CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE",
 };
 
+// A name may be listed commented out (`# NAME=`): it documents the variable
+// without overriding the default that wrangler.jsonc already provides.
 function exampleAssignments(file: string): Map<string, string> {
   const assignments = new Map<string, string>();
   for (const line of readFileSync(file, "utf8").split("\n")) {
-    const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+    const match = /^(?:#\s*)?([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
     if (match?.[1] !== undefined) {
       assignments.set(match[1], match[2] ?? "");
     }
@@ -63,5 +65,53 @@ describe("secret files", () => {
     expect(isIgnored(".dev.vars")).toBe(true);
     expect(isIgnored(".env.example")).toBe(false);
     expect(isIgnored(".dev.vars.example")).toBe(false);
+  });
+});
+
+describe("a copied .dev.vars.example", () => {
+  // wrangler.jsonc is JSONC with whole-line comments and trailing commas.
+  function wranglerVars(): Record<string, string> {
+    const json = readFileSync("wrangler.jsonc", "utf8")
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("//"))
+      .join("\n")
+      .replace(/,(\s*[}\]])/g, "$1");
+    return (JSON.parse(json) as { vars: Record<string, string> }).vars;
+  }
+
+  // Active assignments only (a commented line sets nothing), as wrangler reads .dev.vars.
+  function devVarsOverrides(file: string): Record<string, string> {
+    const overrides: Record<string, string> = {};
+    for (const line of readFileSync(file, "utf8").split("\n")) {
+      const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+      if (match?.[1] !== undefined) {
+        overrides[match[1]] = match[2] ?? "";
+      }
+    }
+    return overrides;
+  }
+
+  const hyperdrive = {
+    connectionString: "postgres://u:p@localhost:5432/db",
+  };
+
+  it("yields a Worker environment that passes validation", () => {
+    const env = {
+      ...wranglerVars(),
+      ...devVarsOverrides(".dev.vars.example"),
+      HYPERDRIVE: hyperdrive,
+    };
+
+    expect(workerEnvSchema.safeParse(env).success).toBe(true);
+  });
+
+  it("would fail if an example line overrode a default with an empty value", () => {
+    const env = {
+      ...wranglerVars(),
+      SITE_URL: "",
+      HYPERDRIVE: hyperdrive,
+    };
+
+    expect(workerEnvSchema.safeParse(env).success).toBe(false);
   });
 });

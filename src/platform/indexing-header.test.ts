@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withIndexingHeader } from "./indexing-header";
+import { unavailableResponse, withIndexingHeader } from "./indexing-header";
 
 describe("withIndexingHeader while indexing is off", () => {
   it("adds the noindex header and keeps status, status text and other headers", async () => {
@@ -73,5 +73,35 @@ describe("withIndexingHeader while indexing is on", () => {
     const result = withIndexingHeader(new Response("hello"), true);
 
     expect(result.headers.has("X-Robots-Tag")).toBe(false);
+  });
+});
+
+describe("withIndexingHeader and a WebSocket upgrade", () => {
+  it("returns a 101 response untouched, because a new Response cannot carry that status", () => {
+    // Node refuses to construct a 101 Response, so a stand-in carries the status.
+    const upgrade = new Response(null);
+    Object.defineProperty(upgrade, "status", { value: 101 });
+
+    const result = withIndexingHeader(upgrade, false);
+
+    expect(result).toBe(upgrade);
+    expect(result.headers.has("X-Robots-Tag")).toBe(false);
+  });
+
+  it("still rewrites a 200 response when indexing is off", () => {
+    const result = withIndexingHeader(new Response("ok"), false);
+
+    expect(result.status).toBe(200);
+    expect(result.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+});
+
+describe("unavailableResponse", () => {
+  it("is a generic 500 that carries the noindex header, like an indexing-off gate", async () => {
+    const response = unavailableResponse();
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(await response.text()).toBe("Service unavailable");
   });
 });

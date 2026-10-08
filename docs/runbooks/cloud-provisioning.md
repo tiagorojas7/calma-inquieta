@@ -185,6 +185,16 @@ curl -fsS https://calma-inquieta.<account-subdomain>.workers.dev/status
 
 The response contains `data-status="ok"` and the latest migration `0000_baseline`.
 
+### Manual deploys
+
+CI is the normal way to deploy. If you ever run `wrangler deploy` by hand, pass both variables explicitly:
+
+```sh
+pnpm exec wrangler deploy --var "SITE_URL:<origin>" --var "BUILD_COMMIT:<sha>"
+```
+
+`<origin>` is the public origin (for example `https://calma-inquieta.<account-subdomain>.workers.dev`) and `<sha>` is the commit being deployed. Without them, production silently gets the `wrangler.jsonc` defaults (`SITE_URL` `http://localhost:5173` and `BUILD_COMMIT` `local`), so canonical links, the sitemap and the status payload would point at the wrong place. Leave `SITE_INDEXING` alone: it stays `off` until the launch change.
+
 ## Troubleshooting
 
 | Symptom                                              | Likely cause and fix                                                                                                    |

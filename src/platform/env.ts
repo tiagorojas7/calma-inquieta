@@ -45,11 +45,15 @@ export const workerEnvSchema = z
       .default("off")
       .transform((value) => value === "on"),
   })
-  .refine((env) => !env.SITE_INDEXING || env.SITE_URL.startsWith("https://"), {
-    // The path makes `parseEnv` report the issue as SITE_INDEXING, not (root).
-    path: ["SITE_INDEXING"],
-    message: "SITE_INDEXING=on requires an https SITE_URL",
-  });
+  // The parsed protocol is lower-cased, matching what `z.url` accepted above.
+  .refine(
+    (env) => !env.SITE_INDEXING || new URL(env.SITE_URL).protocol === "https:",
+    {
+      // The path makes `parseEnv` report the issue as SITE_INDEXING, not (root).
+      path: ["SITE_INDEXING"],
+      message: "SITE_INDEXING=on requires an https SITE_URL",
+    },
+  );
 
 export type WorkerEnv = z.output<typeof workerEnvSchema>;
 

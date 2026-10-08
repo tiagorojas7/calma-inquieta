@@ -89,3 +89,14 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Preserved task 4.19 and tasks 5.1, 5.2, 5.5, and 5.6 as complete. Tasks 5.7 and later remain untouched.
 - `src/app/site-map.ts` and its provisional green fitness test remain staged support; the exact route-module and indexable-count assertions are deferred to routing tasks 5.15–5.18. No production behavior was changed.
 - Engram save was unavailable in the prior slice because the runtime session belonged to project `calmainquieta`; this correction is persisted in OpenSpec.
+
+## F2 bounded slice: tasks 5.7 and 5.8
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit roots respected. Strict TDD active.
+- RED: `corepack pnpm test src/app/ui/organisms/site-header.ui.test.tsx` failed because `./site-header` did not exist.
+- GREEN: added `SiteHeader` and `MobileNav` with structural props, six-link navigation, active route semantics, mobile disclosure state, menu toggle attributes, wordmark, and WhatsApp CTA.
+- Focused UI test: PASS, 1 file / 3 tests; axe checks passed. jsdom emitted the existing canvas `getContext` not-implemented notices.
+- Safety checks: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; targeted Prettier check PASS; `git diff --check` PASS. A combined command used unsupported `--silent` for lint and was rerun correctly; no source issue resulted.
+- Files changed: `src/app/ui/organisms/site-header.ui.test.tsx`, `src/app/ui/organisms/site-header.tsx`, `src/app/ui/organisms/mobile-nav.tsx`, and this progress artifact plus task markers.
+- Task checkboxes: 5.7 and 5.8 visibly marked `- [x]`; 5.3, 5.4, and 5.9 onward remain untouched.
+- Workload / PR boundary: only SiteHeader and MobileNav; production additions are below the 400-line budget. Runtime harness is N/A because route integration is deferred to later F2 tasks. Commit this work unit with a Conventional Commit; no push or PR.

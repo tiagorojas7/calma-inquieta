@@ -1,7 +1,22 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { ErrorBoundary } from "./root";
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import { parseColorTokens } from "./ui/tokens/contrast";
+import { ErrorBoundary, Layout, links } from "./root";
+
+// Vitest resolves a ?url css import to "", so pin the build-time href.
+vi.mock("./ui/styles/app.css?url", () => ({ default: "/assets/app.css" }));
+
+// Meta, Links, Scripts and ScrollRestoration need a framework router
+// context; the document shell is what these tests inspect.
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
+  Meta: () => null,
+  Links: () => null,
+  Scripts: () => null,
+  ScrollRestoration: () => null,
+}));
 
 const render = (error: unknown) =>
   renderToStaticMarkup(createElement(ErrorBoundary, { error } as never));
@@ -37,5 +52,65 @@ describe("root error boundary", () => {
 
     expect(html).toContain("Something went wrong");
     expect(html).not.toContain("secret detail");
+  });
+});
+
+describe("root document", () => {
+  const document = () =>
+    renderToStaticMarkup(createElement(Layout, { children: null }));
+
+  it("declares the es-AR language", () => {
+    expect(document()).toContain('<html lang="es-AR">');
+  });
+
+  it("sets theme-color to the sand-200 token value", () => {
+    const tokens = parseColorTokens(
+      readFileSync(new URL("./ui/styles/tokens.css", import.meta.url), "utf-8"),
+    );
+    const sand = tokens.get("sand-200") ?? "missing sand-200 token";
+
+    expect(sand).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(document()).toContain(
+      `<meta name="theme-color" content="${sand}"/>`,
+    );
+  });
+});
+
+describe("root links", () => {
+  const entries = () => links();
+
+  it("preloads the two above-the-fold fonts anonymously", () => {
+    const preloads = entries().filter(
+      (link) => "rel" in link && link.rel === "preload",
+    );
+
+    expect(preloads.map((link) => "href" in link && link.href)).toEqual([
+      "/fonts/cormorant-garamond-latin-400-normal.woff2",
+      "/fonts/montserrat-latin-400-normal.woff2",
+    ]);
+    for (const link of preloads) {
+      expect(link).toMatchObject({
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      });
+    }
+  });
+
+  it("links the processed stylesheet", () => {
+    const sheets = entries().filter(
+      (link) => "rel" in link && link.rel === "stylesheet",
+    );
+
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0]).toMatchObject({ href: "/assets/app.css" });
+  });
+
+  it("only points at same-origin urls", () => {
+    for (const link of entries()) {
+      const href = "href" in link ? link.href : undefined;
+      expect(href, "link without href").toBeTypeOf("string");
+      expect(href).toMatch(/^\/(?!\/)/);
+    }
   });
 });

@@ -1,0 +1,47 @@
+/*
+ * Global base styles (design §3.3): the single CSS entry the document
+ * links. Imports Tailwind, the brand tokens and the self-hosted fonts;
+ * component styling comes from token utilities, so only global rules
+ * live here.
+ */
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./fonts.css";
+
+@layer base {
+  /* Page background and body text (§3.3). */
+  html {
+    background-color: var(--color-canvas);
+  }
+
+  body {
+    color: var(--color-ink-700);
+    font-family: var(--font-body);
+  }
+
+  /* Visible focus for every interactive element (§3.3): clay-800 ring,
+     2 px, 2 px offset. */
+  :focus-visible {
+    outline: 2px solid var(--color-clay-800);
+    outline-offset: 2px;
+  }
+
+  /* Minimum 24 px target for every control (§3.3); primary CTAs raise it
+     to 44 px (min-h-11) in the Button atom. :where keeps specificity at
+     zero so component utilities can adjust. */
+  :where(button, [role="button"], input, select, textarea) {
+    min-height: 1.5rem;
+  }
+}
+
+/* Reduced motion (§3.3): animations and transitions resolve instantly. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+}

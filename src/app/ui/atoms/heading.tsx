@@ -1,14 +1,14 @@
 import type { HTMLAttributes, PropsWithChildren, ElementType } from "react";
 export function Heading({
   level = 2,
-  size = `h${level}`,
+  size = `h${String(level)}`,
   children,
   ...props
 }: PropsWithChildren<HTMLAttributes<HTMLHeadingElement>> & {
   level?: 1 | 2 | 3 | 4;
   size?: string;
 }) {
-  const Tag = `h${level}` as ElementType;
+  const Tag = `h${String(level)}` as ElementType;
   return (
     <Tag {...props} data-size={size}>
       {children}

@@ -29,8 +29,8 @@ describe("typography atoms", () => {
     expect(screen.getByText("Texto")).toHaveAttribute("data-tone", "muted");
     expect(screen.getByText("Sección")).toHaveAttribute("data-eyebrow", "true");
   });
-  it("has an accessible heading outline", () => {
+  it("has an accessible heading outline", async () => {
     const { container } = render(<Heading level={1}>Título</Heading>);
-    expectNoAxeViolations(container);
+    await expectNoAxeViolations(container);
   });
 });

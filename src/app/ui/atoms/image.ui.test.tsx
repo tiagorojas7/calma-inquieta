@@ -4,7 +4,7 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { Image } from "./image";
 
 describe("Image", () => {
-  it("uses required dimensions, aspect ratio and lazy defaults", () => {
+  it("uses required dimensions, aspect ratio and lazy defaults", async () => {
     const { container } = render(
       <Image src="/x" alt="Una imagen" width={800} height={600} />,
     );
@@ -12,7 +12,7 @@ describe("Image", () => {
     expect(image).toHaveAttribute("loading", "lazy");
     expect(image).toHaveAttribute("decoding", "async");
     expect(image).toHaveStyle({ aspectRatio: "800 / 600" });
-    expectNoAxeViolations(container);
+    await expectNoAxeViolations(container);
   });
   it("eagerly loads above-the-fold images and forwards responsive sources", () => {
     render(

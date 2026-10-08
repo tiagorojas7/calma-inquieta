@@ -18,7 +18,7 @@ describe("Button", () => {
     );
     fireEvent.click(screen.getByRole("button"));
     expect(onClick).toHaveBeenCalled();
-    expectNoAxeViolations(container);
+    await expectNoAxeViolations(container);
   });
   it.each(["primary", "outline", "text-arrow"] as const)(
     "supports %s",

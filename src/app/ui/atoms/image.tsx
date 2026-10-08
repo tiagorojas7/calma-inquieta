@@ -35,7 +35,7 @@ export function Image({
       loading={aboveTheFold ? "eager" : "lazy"}
       decoding="async"
       fetchPriority={fetchPriority}
-      style={{ ...style, aspectRatio: `${width} / ${height}` }}
+      style={{ ...style, aspectRatio: `${String(width)} / ${String(height)}` }}
     />
   );
 }

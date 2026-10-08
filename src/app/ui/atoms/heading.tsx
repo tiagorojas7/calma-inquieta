@@ -65,7 +65,7 @@ export function Eyebrow({
   return (
     <span
       {...props}
-      className={`font-sans text-sm font-semibold uppercase tracking-[0.2em] text-clay-600 ${className as string}`}
+      className={`font-sans text-sm font-semibold uppercase tracking-wide text-clay-600 ${className as string}`}
       data-eyebrow="true"
     >
       {children}

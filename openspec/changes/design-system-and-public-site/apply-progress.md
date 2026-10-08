@@ -81,3 +81,11 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Verification: `corepack pnpm test src/app/ui/font-registry.test.ts src/app/site-map.test.ts src/app/copy-rules.test.ts src/app/ui/atoms/icon.ui.test.tsx` — PASS, 4 files / 9 tests, 6.95s; `git diff --check` PASS. Runtime harness N/A because no route/layout runtime exists in tasks 5.1-5.6.
 - Engram persistence: failed because the runtime session belongs to Engram project `calmainquieta`, not `CalmaInquieta`; OpenSpec remains the persisted backend.
 - Workload / PR boundary: first bounded F2 recovery slice only; task 5.7 and later are out of scope.
+
+
+## F2 contract-conformance correction
+
+- Reopened tasks 5.3 and 5.4 because the current site-map fitness test uses provisional `NOT_YET_ROUTED` coverage for all six paths and does not yet assert the three coming-soon route modules or the prescribed per-slice indexable count.
+- Preserved task 4.19 and tasks 5.1, 5.2, 5.5, and 5.6 as complete. Tasks 5.7 and later remain untouched.
+- `src/app/site-map.ts` and its provisional green fitness test remain staged support; the exact route-module and indexable-count assertions are deferred to routing tasks 5.15–5.18. No production behavior was changed.
+- Engram save was unavailable in the prior slice because the runtime session belonged to project `calmainquieta`; this correction is persisted in OpenSpec.

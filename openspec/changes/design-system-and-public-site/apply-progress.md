@@ -19,7 +19,7 @@
 - `corepack pnpm build`: passed; client and SSR builds completed successfully.
 - Fixture-isolation search: no production imports found under `src/app`.
 - `corepack pnpm lint`: failed with 8 ESLint errors in F1 implementation/test files. Diagnostics include `require-await`, `no-floating-promises`, and `restrict-template-expressions`. No source edits were authorized in this continuation, so these remain unresolved.
-- `git diff --numstat origin/main...HEAD`: 687 authored additions and 16 deletions in the current branch snapshot, including 42 documentation/task lines, 335 production UI lines, 294 test lines, and 32 fixture/progress lines. This exceeds the 400 total review budget because tests are included; production UI remains below 400 lines.
+- `git diff --numstat origin/main...HEAD`: 687 authored additions and 16 deletions in the current branch snapshot. The exact command output is the authoritative line-count receipt; the total exceeds the 400-line review budget because tests and planning artifacts are included. The production UI portion remains below 400 authored additions.
 - `git status --short --branch`: `## feat/ds-f1-atoms`; provider-owned untracked `.gentle-ai-instance` remains untouched.
 
 ## Remaining

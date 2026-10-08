@@ -50,3 +50,11 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Commit: `a0d9491 fix(design-system): align F1 atoms with token contracts`.
 - Production receipt remains 342 authored changed lines against `origin/main`, within the 400-line budget; this correction added no production files beyond the existing F1 receipt. Tests/evidence remain subject to the standing F1 size exception. Chain strategy remains stacked-to-main; current boundary is F1 correction only. Task `4.18` remains unchecked as requested; `4.19` remains owner work.
 - Deviation: the requested compile-failure assertions for Image are represented by the required discriminated TypeScript API and runtime edge assertions; no historical compile failure is fabricated. Untracked historical `verify-report.md` and `.gentle-ai-instance` were preserved untouched.
+
+## Transient database gate closure
+
+- `corepack pnpm test src/testing/db/test-database.db.test.ts` — PASS; 1 file / 2 tests; duration 30.88s.
+- Full `corepack pnpm test` — PASS; 48 files / 385 tests; duration 137.05s. The prior database worker exit `3221226505` did not recur.
+- Current commits: `a0d9491 fix(design-system): align F1 atoms with token contracts`; `aec31be docs(openspec): record final F1 correction evidence`.
+- Final candidate HEAD before this evidence-only commit: `aec31be5023cdc53c37d9b9761cc80d6085e9c51`.
+- Task `4.18` remains unchecked. No source was edited; no push or PR was performed. Untracked `verify-report.md` and `.gentle-ai-instance` remain untouched.

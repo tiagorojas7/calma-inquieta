@@ -18,13 +18,14 @@
 - `corepack pnpm format:check`: passed.
 - `corepack pnpm build`: passed; client and SSR builds completed successfully.
 - Fixture-isolation search: no production imports found under `src/app`.
-- `corepack pnpm lint`: failed with 8 ESLint errors in F1 implementation/test files. Diagnostics include `require-await`, `no-floating-promises`, and `restrict-template-expressions`. No source edits were authorized in this continuation, so these remain unresolved.
+- Initial lint failure had 8 ESLint errors: `require-await`, `no-floating-promises`, and `restrict-template-expressions` in Button tests, typography/image atoms, and their tests. Fixed with minimum behavior-preserving changes in commit `7c9f24d fix(design-system): resolve f1 lint diagnostics`.
+- Final `corepack pnpm lint`: passed; only the existing boundaries deprecation warning was emitted.
 - `git diff --numstat origin/main...HEAD`: 687 authored additions and 16 deletions in the current branch snapshot. The exact command output is the authoritative line-count receipt; the total exceeds the 400-line review budget because tests and planning artifacts are included. The production UI portion remains below 400 authored additions.
 - `git status --short --branch`: `## feat/ds-f1-atoms`; provider-owned untracked `.gentle-ai-instance` remains untouched.
 
 ## Remaining
 
-- [ ] 4.18 remains unchecked: local-only checks were run, but the full local gate is not green because lint fails; push and PR creation are intentionally deferred.
+- [ ] 4.18 remains unchecked: all requested local checks now pass, but push and PR creation are intentionally deferred.
 - [ ] 4.19 owner review and merge.
 
 ## Risks

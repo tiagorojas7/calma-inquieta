@@ -1,34 +1,32 @@
 # Apply Progress
 
-## F1 atoms and base molecules
+## F1 remediation
 
-- Native apply status was reported ready by explicit human authorization; work remained on `feat/ds-f1-atoms` in the canonical workspace.
-- Completed implementation tasks: 4.1 through 4.17. Their task checkboxes are marked `- [x]` in `tasks.md`.
-- Implementation commit: `9b5727d feat(design-system): add atomic ui components`.
-- This progress correction supersedes the prior inaccurate statement that no commit was created.
-- Files added under `src/app/ui/atoms/`, `src/app/ui/molecules/`, `src/app/ui/microcopy.ts`, and `src/testing/fixtures/ui.ts`.
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, repo-local workspace. Allowed edit roots were respected.
+- Remediation scope: accessibility safety nets, native Button keyboard behavior, token utility contracts, and behavioral assertions identified in the read-only verification report.
+- Files changed: `src/app/ui/atoms/button.tsx`, `heading.tsx`, `button.ui.test.tsx`, `typography.ui.test.tsx`, `icon.ui.test.tsx`, `small-atoms.ui.test.tsx`, `src/app/ui/molecules/{nav-link,empty-state,info-items}.ui.test.tsx`.
+- Task checkboxes: no historical task was falsely marked complete; task `4.18` remains unchecked because push/PR are deferred, and `4.19` remains owner work.
 
-## Verification evidence
+## TDD Cycle Evidence
 
-- `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts`: passed, 2 files / 28 tests; 18.63s Vitest duration.
-- Full suite run 1: passed, 48 files / 382 tests; exit 0; Vitest 157.35s; wall 164s.
-- Full suite run 2: passed, 48 files / 382 tests; exit 0; Vitest 159.64s; wall 165s.
-- Full suite run 3: passed, 48 files / 382 tests; exit 0; Vitest 165.30s; wall 171s.
-- `corepack pnpm typecheck`: passed.
-- `corepack pnpm format:check`: passed.
-- `corepack pnpm build`: passed; client and SSR builds completed successfully.
-- Fixture-isolation search: no production imports found under `src/app`.
-- Initial lint failure had 8 ESLint errors: `require-await`, `no-floating-promises`, and `restrict-template-expressions` in Button tests, typography/image atoms, and their tests. Fixed with minimum behavior-preserving changes in commit `7c9f24d fix(design-system): resolve f1 lint diagnostics`.
-- Final `corepack pnpm lint`: passed; only the existing boundaries deprecation warning was emitted.
-- `git diff --numstat origin/main...HEAD`: 687 authored additions and 16 deletions in the current branch snapshot. The exact command output is the authoritative line-count receipt; the total exceeds the 400-line review budget because tests and planning artifacts are included. The production UI portion remains below 400 authored additions.
-- `git status --short --branch`: `## feat/ds-f1-atoms`; provider-owned untracked `.gentle-ai-instance` remains untouched.
+| Contract | RED evidence | GREEN / triangulation | Safety net |
+|---|---|---|---|
+| Button native keyboard and disabled suppression | Remediation RED: focused user-event test initially observed `0` calls because the test did not focus the control; this was corrected before implementation changes. Historical original RED was not captured. | Removed duplicate `onKeyDown`; native button activation now passes focused Enter/Space user interactions and disabled click suppression. | Focused UI suite rerun after correction. |
+| Token utility contracts | Remediation RED: prior tests only asserted data hooks; no historical RED was captured for the original implementation. | Added meaningful variant/type utility class contracts in production; typography now maps sizes and tones to token utilities. | Focused UI suite. |
+| Axe and behavioral assertions | Axe additions are safety-net tests and passed immediately; they are not RED evidence. Added axe calls and assertions for five previously uncovered UI test files, plus external rel, decorative divider, clipping, type-name, and date-label checks. | Focused UI suite passed after test corrections. | Full gate remains to be run. |
+
+## Verification
+
+- Initial remediation focused run: failed as genuine test feedback (Button focus setup, incorrect presentation/time role queries, and test fixture using a mailto link for an external-rel assertion); these were corrected.
+- Latest focused run after corrections: pending rerun; no full gate is claimed.
+- Historical limitation: original RED observations were not captured and cannot be reconstructed.
+- Production authored additions remain intended below the 400-line limit; final `git diff --numstat origin/main...HEAD` receipt is still required.
 
 ## Remaining
 
-- [ ] 4.18 remains unchecked: all requested local checks now pass, but push and PR creation are intentionally deferred.
-- [ ] 4.19 owner review and merge.
+- [ ] 4.18 [FRONT] Run the full local gate; push/PR remain deferred by instruction.
+- [ ] 4.19 [OWNER] Review and merge PR F1.
 
-## Risks
+## Workload / PR boundary
 
-- Lint must be repaired in the F1 source/test files before claiming a green local gate or preparing a PR.
-- No push or PR was performed.
+F1 remediation only; tests and production fixes stay together. Delivery remains stacked-to-main with ask-on-risk. No push, PR, history rewrite, or `.gentle-ai-instance` edit was performed.

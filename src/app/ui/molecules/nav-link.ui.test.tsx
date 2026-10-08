@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { NavLink } from "./nav-link";
 
 describe("NavLink", () => {
@@ -16,9 +17,10 @@ describe("NavLink", () => {
         ),
       },
     ]);
-    render(<Stub initialEntries={["/"]} />);
+    const { container } = render(<Stub initialEntries={["/"]} />);
     expect(screen.getByRole("link")).toHaveAttribute("aria-current", "page");
     screen.getByRole("link").click();
     expect(onNavigate).toHaveBeenCalled();
+    return expectNoAxeViolations(container);
   });
 });

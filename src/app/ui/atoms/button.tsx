@@ -3,6 +3,14 @@ import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
 import { microcopy } from "../microcopy";
 
 type Variant = "primary" | "outline" | "text-arrow";
+const variantClasses: Record<Variant, string> = {
+  primary:
+    "min-h-11 rounded-md bg-clay-600 px-6 py-3 font-sans text-canvas hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600",
+  outline:
+    "min-h-11 rounded-md border border-ink-600 px-6 py-3 text-ink-600 hover:bg-sand-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600",
+  "text-arrow":
+    "inline-flex min-h-11 items-center gap-2 text-ink-600 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600",
+};
 export function Button({
   variant = "primary",
   className = "",
@@ -15,13 +23,7 @@ export function Button({
     <button
       {...props}
       data-variant={variant}
-      className={`${variant === "primary" ? "min-h-11" : ""} ${className}`}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          props.onClick?.(event as never);
-        }
-      }}
+      className={`${variantClasses[variant]} ${className}`}
     >
       {children}
     </button>
@@ -46,7 +48,7 @@ export function ButtonLink({
       {external && <span className="sr-only">{microcopy.opensInNewTab}</span>}
     </>
   );
-  const classes = `${variant === "primary" ? "min-h-11" : ""} ${className}`;
+  const classes = `${variantClasses[variant]} ${className}`;
   return external ? (
     <a
       {...props}

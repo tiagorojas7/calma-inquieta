@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -16,7 +17,8 @@ describe("Button", () => {
       "data-variant",
       "primary",
     );
-    fireEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByRole("button"));
+    expect(onClick).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalled();
     await expectNoAxeViolations(container);
   });
@@ -41,15 +43,28 @@ describe("Button", () => {
     expect(screen.getByRole("link")).not.toHaveAttribute("rel");
     rerender(<ButtonLink href="https://example.com">Sitio</ButtonLink>);
     expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
     expect(
       screen.getByText("(se abre en una pestaña nueva)"),
     ).toBeInTheDocument();
   });
-  it("supports keyboard activation", () => {
+  it("uses native keyboard activation and suppresses disabled buttons", async () => {
     const onClick = vi.fn();
+    const user = userEvent.setup();
     render(<Button onClick={onClick}>Acción</Button>);
-    fireEvent.keyDown(screen.getByRole("button"), { key: "Enter" });
-    fireEvent.keyUp(screen.getByRole("button"), { key: " " });
-    expect(onClick).toHaveBeenCalled();
+    screen.getByRole("button", { name: "Acción" }).focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(onClick).toHaveBeenCalledTimes(2);
+    render(
+      <Button disabled onClick={onClick}>
+        Deshabilitado
+      </Button>,
+    );
+    await user.click(screen.getByRole("button", { name: "Deshabilitado" }));
+    expect(onClick).toHaveBeenCalledTimes(2);
   });
 });

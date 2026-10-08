@@ -1,19 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { Icon } from "./icon";
 
 describe("Icon", () => {
-  it("renders named SVGs hidden by default", () => {
-    render(<Icon name="arrow" />);
+  it("renders named SVGs hidden by default", async () => {
+    const { container } = render(<Icon name="arrow" />);
     expect(screen.getByRole("img", { hidden: true })).toHaveAttribute(
       "aria-hidden",
       "true",
     );
+    await expectNoAxeViolations(container);
   });
   it("exposes a title accessibly", () => {
     render(<Icon name="whatsapp" title="WhatsApp" />);
     expect(screen.getByTitle("WhatsApp")).not.toHaveAttribute("aria-hidden");
   });
+  it("rejects unknown names at compile time", () => {
+    // @ts-expect-error unknown icon names are not part of the public API
+    return <Icon name="missing" />;
+  });
+
   it("supports the initial icon set", () => {
     render(
       <>

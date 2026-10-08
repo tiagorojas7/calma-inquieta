@@ -34,6 +34,7 @@
   --text-base: 1rem;
   --text-sm: 0.875rem; /* meta labels only */
   --text-eyebrow: 0.75rem; /* uppercase, .18em tracking, weight 600 */
+  --tracking-eyebrow: 0.18em;
 
   /* Space (§3.3). */
   --spacing: 0.25rem;

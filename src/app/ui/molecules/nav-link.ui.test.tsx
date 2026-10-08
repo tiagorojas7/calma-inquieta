@@ -5,6 +5,13 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { NavLink } from "./nav-link";
 
 describe("NavLink", () => {
+  it("does not prefix-match the root at a nested location", () => {
+    const Stub = createRoutesStub([
+      { path: "*", Component: () => <NavLink href="/">Inicio</NavLink> },
+    ]);
+    render(<Stub initialEntries={["/talleres"]} />);
+    expect(screen.getByRole("link")).not.toHaveAttribute("aria-current");
+  });
   it("marks only the current route and notifies navigation", () => {
     const onNavigate = vi.fn();
     const Stub = createRoutesStub([

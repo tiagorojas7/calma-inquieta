@@ -2,16 +2,16 @@
 import type { ElementType, HTMLAttributes, PropsWithChildren } from "react";
 
 const headingClasses: Record<string, string> = {
-  display: "font-display text-5xl leading-tight text-ink-600",
-  h1: "font-display text-4xl leading-tight text-ink-600",
-  h2: "font-display text-3xl leading-tight text-ink-600",
-  h3: "font-display text-2xl leading-tight text-ink-600",
-  h4: "font-sans text-xl font-semibold leading-tight text-ink-600",
+  display: "font-display text-display leading-tight text-ink-900",
+  h1: "font-display text-display leading-tight text-ink-900",
+  h2: "font-display text-h2 leading-tight text-ink-900",
+  h3: "font-display text-h3 leading-tight text-ink-900",
+  h4: "font-sans text-base font-semibold leading-tight text-ink-900",
 };
 const textClasses: Record<string, string> = {
-  default: "text-ink-600",
-  muted: "text-ink-400",
-  accent: "text-clay-600",
+  default: "text-base text-ink-700",
+  muted: "text-base text-ink-600",
+  accent: "text-base text-clay-800",
 };
 
 export function Heading({
@@ -65,7 +65,7 @@ export function Eyebrow({
   return (
     <span
       {...props}
-      className={`font-sans text-sm font-semibold uppercase tracking-wide text-clay-600 ${className as string}`}
+      className={`font-sans text-eyebrow font-semibold uppercase tracking-eyebrow text-ink-600 ${className as string}`}
       data-eyebrow="true"
     >
       {children}

@@ -17,21 +17,25 @@ describe("Button", () => {
       "data-variant",
       "primary",
     );
+    expect(screen.getByRole("button")).toHaveClass(
+      "bg-clay-600",
+      "text-white",
+      "focus-visible:outline-clay-800",
+    );
     await userEvent.click(screen.getByRole("button"));
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalled();
     await expectNoAxeViolations(container);
   });
-  it.each(["primary", "outline", "text-arrow"] as const)(
-    "supports %s",
-    (variant) => {
-      render(<Button variant={variant}>Acción</Button>);
-      expect(screen.getByRole("button")).toHaveAttribute(
-        "data-variant",
-        variant,
-      );
-    },
-  );
+  it.each([
+    ["primary", ["bg-clay-600", "text-white"]],
+    ["outline", ["border-clay-600", "text-clay-600"]],
+    ["text-arrow", ["text-clay-800"]],
+  ] as const)("supports %s with token roles", (variant, classes) => {
+    render(<Button variant={variant}>Acción</Button>);
+    expect(screen.getByRole("button")).toHaveAttribute("data-variant", variant);
+    expect(screen.getByRole("button")).toHaveClass(...classes);
+  });
   it("links internally through the router and externally in a new tab", () => {
     const Stub = createRoutesStub([
       {
@@ -40,8 +44,13 @@ describe("Button", () => {
       },
     ]);
     const { rerender } = render(<Stub initialEntries={["/"]} />);
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/contacto");
     expect(screen.getByRole("link")).not.toHaveAttribute("rel");
     rerender(<ButtonLink href="https://example.com">Sitio</ButtonLink>);
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "https://example.com",
+    );
     expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link")).toHaveAttribute(
       "rel",

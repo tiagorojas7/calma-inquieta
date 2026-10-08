@@ -14,6 +14,10 @@ describe("Image", () => {
     expect(image).toHaveStyle({ aspectRatio: "800 / 600" });
     await expectNoAxeViolations(container);
   });
+  it("supports decorative images with an empty alt", () => {
+    render(<Image src="/ornament" alt="" width={10} height={10} />);
+    expect(screen.getByRole("presentation")).toHaveAttribute("alt", "");
+  });
   it("eagerly loads above-the-fold images and forwards responsive sources", () => {
     render(
       <Image
@@ -29,5 +33,7 @@ describe("Image", () => {
     );
     expect(screen.getByRole("img")).toHaveAttribute("loading", "eager");
     expect(screen.getByRole("img")).toHaveAttribute("fetchpriority", "high");
+    expect(screen.getByRole("img")).toHaveAttribute("srcset", "/x 1x");
+    expect(screen.getByRole("img")).toHaveAttribute("sizes", "100vw");
   });
 });

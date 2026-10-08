@@ -7,11 +7,18 @@ describe("EmptyState", () => {
     const { container } = render(
       <EmptyState
         message="Todavía no hay actividades"
-        actions={[{ href: "/contacto", label: "Consultanos" }]}
+        actions={[
+          { href: "/contacto", label: "Consultanos" },
+          { href: "/talleres", label: "Ver talleres" },
+        ]}
       />,
     );
     expect(screen.getByText("Todavía no hay actividades")).toBeInTheDocument();
-    expect(screen.getByRole("link")).toHaveTextContent("Consultanos");
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Consultanos" })).toHaveAttribute(
+      "href",
+      "/contacto",
+    );
     expect(container.querySelector("ul")).toBeNull();
     await expectNoAxeViolations(container);
   });

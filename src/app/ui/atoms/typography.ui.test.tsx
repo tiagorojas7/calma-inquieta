@@ -16,6 +16,10 @@ describe("typography atoms", () => {
       "data-size",
       "display",
     );
+    expect(screen.getByRole("heading", { level: 3 })).toHaveClass(
+      "text-display",
+      "text-ink-900",
+    );
   });
   it("renders text tones and eyebrow", () => {
     render(
@@ -27,7 +31,13 @@ describe("typography atoms", () => {
       </>,
     );
     expect(screen.getByText("Texto")).toHaveAttribute("data-tone", "muted");
+    expect(screen.getByText("Texto")).toHaveClass("text-base");
     expect(screen.getByText("Sección")).toHaveAttribute("data-eyebrow", "true");
+    expect(screen.getByText("Sección")).toHaveClass(
+      "text-eyebrow",
+      "tracking-eyebrow",
+      "text-ink-600",
+    );
   });
   it("has an accessible heading outline", async () => {
     const { container } = render(<Heading level={1}>Título</Heading>);

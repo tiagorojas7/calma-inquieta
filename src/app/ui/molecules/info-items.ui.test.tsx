@@ -17,8 +17,22 @@ describe("info molecules", () => {
       </>,
     );
     expect(screen.getByText("Email")).toBeInTheDocument();
+    expect(screen.getByText("hola@example.com")).toHaveAttribute(
+      "href",
+      "https://example.com/contact",
+    );
     expect(screen.getByText("Calma")).toBeInTheDocument();
     expect(screen.getByText("02")).toBeInTheDocument();
+    expect(screen.getByRole("time")).toHaveAccessibleName(
+      "viernes, 2 de enero de 2026",
+    );
+    const plain = render(
+      <ContactItem icon="arrow" label="Dirección" value="Córdoba" />,
+    );
+    expect(plain.container.querySelector("a")).toBeNull();
+    expect(
+      plain.container.querySelector('[aria-hidden="true"]'),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAttribute(
       "rel",
       "noopener noreferrer",

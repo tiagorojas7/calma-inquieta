@@ -21,6 +21,11 @@ describe("Icon", () => {
     return <Icon name="missing" />;
   });
 
+  it("renders menu and close icons as decorative SVGs", () => {
+    const { container } = render(<><Icon name="menu" /><Icon name="close" /></>);
+    expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(2);
+  });
+
   it("supports the initial icon set", () => {
     render(
       <>

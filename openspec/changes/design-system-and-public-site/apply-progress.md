@@ -58,3 +58,13 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Current commits: `a0d9491 fix(design-system): align F1 atoms with token contracts`; `aec31be docs(openspec): record final F1 correction evidence`.
 - Final candidate HEAD before this evidence-only commit: `aec31be5023cdc53c37d9b9761cc80d6085e9c51`.
 - Task `4.18` remains unchecked. No source was edited; no push or PR was performed. Untracked `verify-report.md` and `.gentle-ai-instance` remain untouched.
+
+## Final exact F1 correction ledger
+
+- Native status consumed: `gentle-ai.sdd-status` v2, `nextRecommended: apply`, `applyState: ready`, repo-local workspace; allowed edit roots were respected. The latest verify report was read directly and its historical RED limitation was preserved without fabrication.
+- Completed bounded corrections: outline Button text now uses `text-clay-800`; ButtonLink outline regression proves the href is an anchor with no button role; Image negative compile assertions cover missing `alt`, `width`, `height`, and high fetch priority without `aboveTheFold`; Image runtime assertions cover decorative alt and `srcSet`/`sizes`; typography tests cover every heading size, text tone, and eyebrow token mapping.
+- Files changed in this correction: `src/app/ui/atoms/button.tsx`, `src/app/ui/atoms/button.ui.test.tsx`, `src/app/ui/atoms/image.ui.test.tsx`, `src/app/ui/atoms/typography.ui.test.tsx`. No production API redesign was needed because the Image discriminated union already enforced the contract.
+- Strict TDD evidence: focused correction run before implementation was not reconstructable from history; the documented historical RED limitation remains unchanged. GREEN/safety-net focused command `corepack pnpm test src/app/ui/atoms/button.ui.test.tsx src/app/ui/atoms/typography.ui.test.tsx src/app/ui/atoms/image.ui.test.tsx` passed with 3 files / 22 tests.
+- Verification: `corepack pnpm test` PASS, 48 files / 395 tests; `corepack pnpm lint` PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `corepack pnpm build` PASS; `git diff --check` PASS. Production remains within the 400-line budget; no push, PR, history rewrite, verify-report edit, or `.gentle-ai-instance` edit was performed.
+- Task checkbox: task `4.18` remains visibly `- [ ]` as explicitly required; task `4.19` remains owner work. Remaining implementation work includes the exact unchecked task lines already listed in this cumulative artifact.
+- Workload / PR boundary: final exact F1 correction ledger only, stacked-to-main; test-driven total may exceed 400 and follows the standing F1 size-exception policy, while production remains under budget.

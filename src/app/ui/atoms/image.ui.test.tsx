@@ -4,6 +4,16 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { Image } from "./image";
 
 describe("Image", () => {
+  it("keeps required image props enforced at compile time", () => {
+    // @ts-expect-error alt is required for accessible images.
+    <Image src="/x" width={1} height={1} />;
+    // @ts-expect-error width reserves layout space and is required.
+    <Image src="/x" alt="Imagen" height={1} />;
+    // @ts-expect-error height reserves layout space and is required.
+    <Image src="/x" alt="Imagen" width={1} />;
+    // @ts-expect-error high priority is only valid for above-the-fold images.
+    <Image src="/x" alt="Imagen" width={1} height={1} fetchPriority="high" />;
+  });
   it("uses required dimensions, aspect ratio and lazy defaults", async () => {
     const { container } = render(
       <Image src="/x" alt="Una imagen" width={800} height={600} />,

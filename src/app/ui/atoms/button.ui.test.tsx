@@ -29,7 +29,7 @@ describe("Button", () => {
   });
   it.each([
     ["primary", ["bg-clay-600", "text-white"]],
-    ["outline", ["border-clay-600", "text-clay-600"]],
+    ["outline", ["border-clay-600", "text-clay-800"]],
     ["text-arrow", ["text-clay-800"]],
   ] as const)("supports %s with token roles", (variant, classes) => {
     render(<Button variant={variant}>Acción</Button>);
@@ -60,6 +60,25 @@ describe("Button", () => {
       screen.getByText("(se abre en una pestaña nueva)"),
     ).toBeInTheDocument();
   });
+  it("renders outline ButtonLink as an anchor without a nested button", () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <ButtonLink href="/talleres" variant="outline">
+            Talleres
+          </ButtonLink>
+        ),
+      },
+    ]);
+    render(<Stub initialEntries={["/"]} />);
+    expect(screen.getByRole("link", { name: "Talleres" })).toHaveAttribute(
+      "href",
+      "/talleres",
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("uses native keyboard activation and suppresses disabled buttons", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();

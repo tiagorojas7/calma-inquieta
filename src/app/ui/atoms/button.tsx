@@ -7,7 +7,7 @@ const variantClasses: Record<Variant, string> = {
   primary:
     "min-h-11 rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800",
   outline:
-    "min-h-11 rounded-md border border-clay-600 px-6 py-3 text-clay-600 hover:bg-sand-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800",
+    "min-h-11 rounded-md border border-clay-600 px-6 py-3 text-clay-800 hover:bg-sand-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800",
   "text-arrow":
     "inline-flex min-h-11 items-center gap-2 text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800",
 };

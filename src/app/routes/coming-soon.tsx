@@ -34,28 +34,24 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     slug,
     whatsappHref: whatsappHref.ok ? whatsappHref.value : undefined,
     instagramHref: profile.instagram.url,
+    site: services.site,
   };
 }
 
 export function meta({ loaderData, error }: Route.MetaArgs) {
   if (error)
-    return buildPageMeta({
-      title: "Página no encontrada",
-      description: "La página no existe.",
-      path: "/",
-      robots: "noindex, nofollow",
-      siteName: "Calma Inquieta",
-      baseUrl: "https://example.test",
-      indexingEnabled: false,
-    });
+    return [
+      { title: "Página no encontrada" },
+      { name: "robots", content: "noindex, nofollow" },
+    ];
   return buildPageMeta({
     title: loaderData.title,
     description: loaderData.seo.description,
     path: `/${loaderData.slug}`,
     robots: "noindex, nofollow",
     siteName: "Calma Inquieta",
-    baseUrl: "https://example.test",
-    indexingEnabled: false,
+    baseUrl: loaderData.site.baseUrl,
+    indexingEnabled: loaderData.site.indexingEnabled,
     comingSoon: true,
   });
 }

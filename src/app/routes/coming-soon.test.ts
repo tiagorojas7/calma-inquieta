@@ -5,7 +5,9 @@ import { loader, meta } from "./coming-soon";
 
 describe("coming soon loader", () => {
   it("loads the slug from params and builds its WhatsApp link", async () => {
-    const services = createTestServices();
+    const services = createTestServices({
+      site: { baseUrl: "https://calma.example", indexingEnabled: true },
+    });
     const result = (await loader({
       ...createLoaderArgs(services, "/talleres"),
       params: { slug: "talleres" },
@@ -14,8 +16,33 @@ describe("coming soon loader", () => {
       title: string;
       whatsappHref: string;
       instagramHref: string;
+      site: { baseUrl: string; indexingEnabled: boolean };
     };
     expect(result.slug).toBe("talleres");
+    expect(result.site).toEqual({
+      baseUrl: "https://calma.example",
+      indexingEnabled: true,
+    });
+    const pageMeta = meta({
+      loaderData: {
+        title: result.title,
+        seo: { description: "Próximamente." },
+        slug: result.slug,
+        site: result.site,
+      },
+      error: undefined,
+    } as never);
+    expect(pageMeta).toEqual(
+      expect.arrayContaining([
+        { rel: "canonical", href: "https://calma.example/talleres" },
+        { property: "og:url", content: "https://calma.example/talleres" },
+        {
+          property: "og:image",
+          content: "https://calma.example/media/stand-ins/share-default.jpg",
+        },
+        { name: "robots", content: "noindex, nofollow" },
+      ]),
+    );
     expect(typeof result.title).toBe("string");
     expect(result.whatsappHref).toContain("wa.me");
     expect(result.instagramHref).toContain("instagram.com");
@@ -66,6 +93,7 @@ describe("coming soon loader", () => {
         title: "Talleres",
         seo: { description: "Próximamente." },
         slug: "talleres",
+        site: { baseUrl: "https://calma.example", indexingEnabled: true },
       },
       error: undefined,
     } as never);
@@ -78,12 +106,15 @@ describe("coming soon loader", () => {
       loaderData: undefined,
       error: new Error("secret-token"),
     } as never);
-    expect(
-      errorResult.some(
-        (entry) => entry.title === "Página no encontrada | Calma Inquieta",
-      ),
-    ).toBe(true);
+    expect(errorResult).toEqual(
+      expect.arrayContaining([
+        { title: "Página no encontrada" },
+        { name: "robots", content: "noindex, nofollow" },
+      ]),
+    );
+    expect(errorResult.some((entry) => entry.title?.includes("|"))).toBe(false);
     expect(JSON.stringify(errorResult)).not.toContain("secret-token");
+    expect(JSON.stringify(errorResult)).not.toContain("example.test");
   });
 
   it("returns no WhatsApp CTA when the number is invalid", async () => {

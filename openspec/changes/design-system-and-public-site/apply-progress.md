@@ -231,3 +231,14 @@ F1 remediation only; production remains under the 400-line budget. The required 
 
 - Automatic gate correction completed without source changes. Exact command: `corepack pnpm test src/app/ui` — PASS, 16 files / 102 tests; Vitest reported 17.82s and shell wall time was 21s. Existing jsdom canvas notices were emitted.
 - Task truth preserved: 6.17 remains checked; 6.18 and 6.19 remain unchecked. Only `tasks.md` and `apply-progress.md` changed. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved; no rebase, push, PR, or review action occurred.
+
+## F3 bounded F3 correction — task 6.15 metadata safety
+
+- Native v2 status consumed from parent: `nextRecommended: apply`, `applyState: ready`, repo-local workspace, no blockers; action context allowed only the listed workspace and surfaces. User authorization was limited to this one F3 correction; no F4+ or lifecycle actions were performed.
+- Strict TDD RED: after reopening the candidate contract in `src/app/routes/coming-soon.test.ts`, `corepack pnpm test src/app/routes/coming-soon.test.ts` failed 2 tests: loader omitted `services.site`, and the error metadata was branded and emitted `example.test` URLs.
+- GREEN: loader now carries `services.site`; `meta()` uses configured `baseUrl` and `indexingEnabled` while retaining coming-soon noindex. Error metadata is exactly unbranded `Página no encontrada` plus `noindex`, with no fabricated canonical/OG URLs or error details.
+- Focused GREEN: `corepack pnpm test src/app/routes/coming-soon.test.ts` — PASS, 1 file / 7 tests.
+- Final gates: `corepack pnpm test` — PASS, 63 files / 430 tests; `corepack pnpm test:coverage` — PASS, 99.24% lines / 100% branches; `corepack pnpm lint` — PASS; `corepack pnpm typecheck` — PASS; `corepack pnpm format:check` — PASS after removing generated `.vitest/`; `corepack pnpm build` — PASS; `corepack pnpm exec git diff --check` — PASS. Existing jsdom canvas notices and the boundaries deprecation warning remain non-failures.
+- UI timing remains valid because no UI files changed: 16 files / 102 tests, Vitest 17.82s and shell wall time 21s. Runtime recheck was attempted on port 4176 but the bounded dev server did not become reachable; the exact fixed-host runtime behavior therefore remains the previously recorded evidence.
+- Task truth: 6.15 remains checked after RED/GREEN and gates; 6.17 remains checked; 6.18 and 6.19 remain unchecked. Corrected-candidate evidence was appended to `tasks.md`.
+- Files changed: `src/app/routes/coming-soon.tsx`, `src/app/routes/coming-soon.test.ts`, `openspec/changes/design-system-and-public-site/tasks.md`, and this progress artifact. Commit source, test, and OpenSpec evidence together as one Conventional work-unit commit. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved.

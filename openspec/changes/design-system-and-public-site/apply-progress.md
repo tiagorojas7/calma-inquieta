@@ -100,3 +100,14 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Files changed: `src/app/ui/organisms/site-header.ui.test.tsx`, `src/app/ui/organisms/site-header.tsx`, `src/app/ui/organisms/mobile-nav.tsx`, and this progress artifact plus task markers.
 - Task checkboxes: 5.7 and 5.8 visibly marked `- [x]`; 5.3, 5.4, and 5.9 onward remain untouched.
 - Workload / PR boundary: only SiteHeader and MobileNav; production additions are below the 400-line budget. Runtime harness is N/A because route integration is deferred to later F2 tasks. Commit this work unit with a Conventional Commit; no push or PR.
+
+## F2 bounded slice: tasks 5.9 and 5.10 — SiteFooter
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; strict TDD active. Deferred tasks 5.3/5.4 and tasks 5.11+ remain untouched.
+- RED (5.9): created `src/app/ui/organisms/site-footer.ui.test.tsx` first. `timeout 60s corepack pnpm test src/app/ui/organisms/site-footer.ui.test.tsx` failed because `./site-footer` did not exist (`Failed to resolve import "./site-footer"`).
+- GREEN (5.10): implemented `src/app/ui/organisms/site-footer.tsx` with structural props only: NAP and bajada, external Instagram link with `rel="noopener noreferrer"`, provisional WhatsApp link without printed digits, confirmed WhatsApp digits, optional email/phone/hours, and the six-link `Páginas` fallback navigation.
+- Focused verification: `timeout 60s corepack pnpm test src/app/ui/organisms/site-footer.ui.test.tsx` — PASS, 1 file / 3 tests; axe passed. The known jsdom canvas notice was emitted by the existing harness.
+- Safety verification: `corepack pnpm typecheck` — PASS; `corepack pnpm lint` — PASS with the existing boundaries deprecation warning; targeted Prettier check — PASS; `git diff --check` — PASS. Full suite was not run.
+- Incident evidence: the interrupted prior command produced no result; the confirmed bounded follow-up was clean, with no orphaned F2 pnpm/Vitest/esbuild process. HEAD before this work was `94c66cd`; provider artifacts, `.vitest/`, `.gentle-ai-instance`, and `verify-report.md` were preserved.
+- Task checkbox updates: tasks 5.9 and 5.10 are visibly marked `- [x]`; deferred 5.3/5.4 and 5.11 onward remain unchecked.
+- Workload / PR boundary: footer-only work unit, production addition is within the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the two footer files and this evidence.

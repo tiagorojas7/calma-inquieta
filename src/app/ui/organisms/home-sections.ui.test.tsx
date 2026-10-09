@@ -7,38 +7,104 @@ import {
   upcomingItemFixture,
   trustClaimFixtures,
 } from "~/testing/fixtures/ui";
-import { TrustRow } from "./trust-row";
 import { ActivityShowcase } from "./activity-showcase";
-import { UpcomingList } from "./upcoming-list";
 import { AboutTeaser } from "./about-teaser";
 import { ContactBand } from "./contact-band";
+import { TrustRow } from "./trust-row";
+import { UpcomingList } from "./upcoming-list";
+
 describe("home organisms", () => {
-  it("renders empty and populated states accessibly", async () => {
+  it("renders TrustRow null for empty claims", async () => {
+    const { container } = render(<TrustRow claims={[]} />);
+    expect(container).toBeEmptyDOMElement();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders one TrustItem per claim", async () => {
+    const { container } = render(<TrustRow claims={trustClaimFixtures} />);
+    expect(screen.getByText("Experiencias cuidadas")).toBeInTheDocument();
+    expect(screen.getByText("Para crear en comunidad")).toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders ActivityShowcase empty state without cards or list", async () => {
+    const { container } = render(<ActivityShowcase items={[]} />);
+    expect(
+      screen.getByText("Pronto vamos a compartir nuevas propuestas."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryByText(activityFixture.title)).not.toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders each ActivityShowcase card when populated", async () => {
     const { container } = render(
       <MemoryRouter>
-        <>
-          <TrustRow claims={[]} />
-          <TrustRow claims={trustClaimFixtures} />
-          <ActivityShowcase items={[]} />
-          <ActivityShowcase items={[activityFixture]} />
-          <UpcomingList items={[]} />
-          <UpcomingList items={[upcomingItemFixture]} />
-          <AboutTeaser heading="Quiénes somos" body="Creamos juntas." />
-          <ContactBand
-            heading="Hablemos"
-            body="Estamos para acompañarte."
-            whatsappHref="https://wa.me/5493510000000"
-          />
-        </>
+        <ActivityShowcase items={[activityFixture]} />
       </MemoryRouter>,
     );
-    expect(screen.getAllByRole("heading").length).toBeGreaterThanOrEqual(6);
+    expect(screen.getByText(activityFixture.title)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: activityFixture.ctaLabel }),
+    ).toHaveAttribute("href", activityFixture.href);
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders UpcomingList empty state without cards or list", async () => {
+    const { container } = render(<UpcomingList items={[]} />);
+    expect(
+      screen.getByText("Pronto vamos a anunciar nuevas fechas."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(upcomingItemFixture.title),
+    ).not.toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders each UpcomingList card when populated", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <UpcomingList items={[upcomingItemFixture]} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(upcomingItemFixture.title)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: upcomingItemFixture.ctaLabel }),
+    ).toHaveAttribute("href", upcomingItemFixture.href);
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders AboutTeaser content and link accessibly", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <AboutTeaser heading="Quiénes somos" body="Creamos juntas." />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Creamos juntas.")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Conocé quiénes somos" }),
     ).toHaveAttribute("href", "/quienes-somos");
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders ContactBand content and WhatsApp link accessibly", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ContactBand
+          heading="Hablemos"
+          body="Estamos para acompañarte."
+          whatsappHref="https://wa.me/5493510000000"
+        />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Hablemos" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Estamos para acompañarte.")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("href", "https://wa.me/5493510000000");
     await expectNoAxeViolations(container);
   });
 });

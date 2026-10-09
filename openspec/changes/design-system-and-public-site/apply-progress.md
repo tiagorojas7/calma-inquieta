@@ -272,3 +272,13 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Final checks: `corepack pnpm lint` PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `git diff --check` PASS. No full suite, build, runtime, push, PR, rebase, or review action was performed.
 - Production receipt against `origin/main`: 197 additions, 0 deletions across the eight new organism production files; cumulative F4 production remains <=400, so no F4b split applies.
 - Task truth: 7.4–7.8 are visibly checked; 7.9 and all later tasks remain unchecked. Files changed are the eleven authorized organism/test files plus tasks and this progress artifact.
+
+## F4 bounded evidence correction — tasks 7.4, 7.6, 7.8
+
+- Reopened tasks 7.4, 7.6, and 7.8 before correction; preserved 7.5 and 7.7. No production source changed and 7.9+ remained out of scope.
+- Added hero coverage for 1, 2, and 3 slots, non-empty alt, eager loading, exclusive first high fetchpriority, responsive hiding, required heading/em/CTA/bajada, and axe per case.
+- Split home-sections evidence into independent empty/populated tests for TrustRow, ActivityShowcase, and UpcomingList, with exact claims/cards and axe per state; separately covered AboutTeaser and ContactBand content/links with axe.
+- Added testimonials empty-state axe/no-content evidence and populated heading, quote, author, and axe assertions.
+- Immediate focused run after test edits: initially failed 3 home tests due missing MemoryRouter context; after test-only correction, combined focused suite passed 3 files / 13 tests. This is safety-net/triangulation evidence; historical RED for 7.6 and 7.8 was not reconstructed.
+- Checks: architecture/styles passed (2 files / 28 tests); lint passed before the combined command timed out during typecheck; format check passed after formatting the two changed test files; diff check passed. Typecheck did not produce a completion result within the bounded timeout and is recorded as unavailable. No production change was required.
+- Tasks 7.4, 7.6, and 7.8 are now visibly checked again. Tasks 7.9 and later remain unchecked. No commit has been created yet; one Conventional correction commit is required next.

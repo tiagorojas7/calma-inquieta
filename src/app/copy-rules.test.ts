@@ -8,6 +8,11 @@ describe("public copy rules", () => {
     const values = Object.values(microcopy).flatMap((value) =>
       typeof value === "string" ? [value] : [],
     );
-    expect(findCopyViolations([...values, ...PUBLIC_PAGES.map((page) => page.label)])).toEqual([]);
+    expect(
+      findCopyViolations([
+        ...values,
+        ...PUBLIC_PAGES.map((page) => page.label),
+      ]),
+    ).toEqual([]);
   });
 });

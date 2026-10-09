@@ -11,7 +11,7 @@ export function MobileNav({
   return (
     <Button
       type="button"
-      className="lg:hidden"
+      className="relative z-50 lg:hidden"
       aria-expanded={menuOpen}
       aria-controls="menu-principal"
       aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}

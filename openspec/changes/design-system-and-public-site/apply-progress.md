@@ -242,3 +242,13 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - UI timing remains valid because no UI files changed: 16 files / 102 tests, Vitest 17.82s and shell wall time 21s. Runtime recheck was attempted on port 4176 but the bounded dev server did not become reachable; the exact fixed-host runtime behavior therefore remains the previously recorded evidence.
 - Task truth: 6.15 remains checked after RED/GREEN and gates; 6.17 remains checked; 6.18 and 6.19 remain unchecked. Corrected-candidate evidence was appended to `tasks.md`.
 - Files changed: `src/app/routes/coming-soon.tsx`, `src/app/routes/coming-soon.test.ts`, `openspec/changes/design-system-and-public-site/tasks.md`, and this progress artifact. Commit source, test, and OpenSpec evidence together as one Conventional work-unit commit. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved.
+
+## F3 delivery completion — task 6.18
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, apply ready, repo-local workspace, no blockers; delivery authorization was explicit and limited to F3. F4+ and task 6.19 remain untouched.
+- Removed generated `.vitest/`; preserved provider files `.gentle-ai-instance` and `verify-report.md`; tracked tree was clean before delivery.
+- Rebased `feat/ds-f3-seo` onto exact `origin/main` `f40e3c3` with no merge commit. `9b8ab99` (F2 preview fix) was already upstream and skipped. Commit mapping: `5fa5904`→`b34779d`, `ef66c1f`→`0ed18e25`, `01cc682`→`eb7eb62`, `13127f9`→`bb5a69a`, `f0f447d`→`92155b7`, `bf69fd2`→`a2f7b59`.
+- Post-rebase diff is F3-only: 24 files, 508 additions and 43 deletions. Production is 218 changed lines; tests 245; OpenSpec 88. Total is 551, so existing `size:exception` label applies.
+- Focused F3 tests: PASS, 7 files / 23 tests. Full `corepack pnpm test`: PASS, 63 files / 430 tests. Coverage receipt remains valid because no F3 tree bytes changed: 99.24% lines / 100% branches. UI suite: PASS, 16 files / 102 tests, Vitest 17.82s. Lint, typecheck, format check, build, and `git diff --check`: PASS.
+- Native review was not reattempted because parent did not delegate it. Prior native START created no lineage and remained unavailable due `candidate-target-projection-drift`; independent verification passed.
+- Push succeeded with upstream at `a2f7b598e01ea47a7a3e90decaff4c2f78fb04b8`. PR #17: https://github.com/tiagorojas7/calma-inquieta/pull/17, labeled `size:exception`. Task 6.18 is complete; task 6.19 remains unchecked.

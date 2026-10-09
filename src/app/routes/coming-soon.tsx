@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router";
+import { data, useLoaderData } from "react-router";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import { servicesContext } from "~/app/context";
 import { ComingSoonPage } from "~/app/ui/templates/coming-soon-page";
@@ -11,8 +11,16 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     request.url.lastIndexOf("/") + 1,
     query === -1 ? request.url.length : query,
   );
-  const slug = ((params as { slug?: string }).slug ?? pathname) as
-    "talleres" | "intensivos" | "eventos-privados";
+  const candidate = (params as { slug?: string }).slug ?? pathname;
+  const supportedSlugs = [
+    "talleres",
+    "intensivos",
+    "eventos-privados",
+  ] as const;
+  if (!supportedSlugs.includes(candidate as (typeof supportedSlugs)[number])) {
+    throw data(null, { status: 404 });
+  }
+  const slug = candidate as (typeof supportedSlugs)[number];
   const [page, profile] = await Promise.all([
     services.siteContent.getComingSoonPage(slug),
     services.siteContent.getBusinessProfile(),

@@ -59,11 +59,19 @@ describe("SiteHeader", () => {
         "aria-expanded",
         "false",
       );
-      expect(
-        screen
-          .getByRole("button")
-          .parentElement?.querySelector("#menu-principal"),
-      ).toHaveAttribute("data-state", "closed");
+      const disclosure = screen
+        .getByRole("button")
+        .parentElement?.querySelector("#menu-principal");
+      expect(disclosure).toHaveAttribute("data-state", "closed");
+      expect(disclosure).toHaveClass(
+        "max-lg:data-[state=closed]:hidden",
+        "max-lg:min-h-screen",
+        "max-lg:w-full",
+        "max-lg:fixed",
+        "max-lg:inset-0",
+        "max-lg:z-40",
+      );
+      expect(disclosure).toHaveClass("lg:flex");
       return expectNoAxeViolations(container);
     },
   );

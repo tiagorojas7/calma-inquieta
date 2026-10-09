@@ -21,6 +21,15 @@ describe("coming soon loader", () => {
     expect(result.instagramHref).toContain("instagram.com");
   });
 
+  it("returns a 404 response for an unsupported pathname", async () => {
+    await expect(
+      loader({
+        ...createLoaderArgs(createTestServices(), "/desconocido"),
+        params: { slug: "desconocido" },
+      } as never),
+    ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
+
   it("returns no WhatsApp CTA when the number is invalid", async () => {
     const base = createTestServices();
     const services = {

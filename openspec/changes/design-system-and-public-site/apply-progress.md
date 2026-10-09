@@ -262,3 +262,13 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Files changed: `src/testing/fixtures/ui.ts`, `src/app/ui/molecules/cards.ui.test.tsx`, `src/app/ui/molecules/activity-card.tsx`, `src/app/ui/molecules/upcoming-item.tsx`, `src/app/ui/molecules/testimonial-card.tsx`, and this evidence plus task markers. Tasks 7.4+ remain unchecked.
 - Checks: typecheck passed; architecture/styles tests passed (2 files / 28 tests); targeted Prettier passed after formatting; `git diff --check` passed. Lint command exceeded 240 seconds without a diagnostic and is recorded as unavailable in this bounded run.
 - Workload boundary: production additions are 65 lines across the three molecules; test-driven total may exceed the review budget under the standing FRONT exception policy. No push, PR, rebase, or review lifecycle action was performed.
+
+## F4 bounded Inicio organisms — tasks 7.4–7.8 recovery
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, apply ready, no blockers; scope limited to tasks 7.4–7.8. Provider artifacts `.gentle-ai-instance` and `verify-report.md` preserved.
+- Recovery inspection: all 11 partial authorized files were read before reuse. No tasks or progress bytes were present from the aborted attempt. Actual RED captured: hero focused run failed with unresolved `./hero-section` import. Later captured failures were missing router context in the combined UI tests and an incorrect heading-count assertion; no RED was reconstructed for the other contracts.
+- GREEN receipts: hero focused test PASS (1 file / 1 test); home-sections focused test PASS (1 file / 1 test); testimonials focused test PASS (1 file / 2 tests). Combined focused suite PASS (3 files / 4 tests). Architecture/styles PASS (2 files / 28 tests).
+- Commits: `887fc42 feat(home): add the hero section and collage`; `165fa5b feat(home): add trust row, showcase, teaser and contact band`; `ecb9769 feat(home): add the testimonials section hidden until real`. No amend or rewrite of `b2476fc`.
+- Final checks: `corepack pnpm lint` PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `git diff --check` PASS. No full suite, build, runtime, push, PR, rebase, or review action was performed.
+- Production receipt against `origin/main`: 197 additions, 0 deletions across the eight new organism production files; cumulative F4 production remains <=400, so no F4b split applies.
+- Task truth: 7.4–7.8 are visibly checked; 7.9 and all later tasks remain unchecked. Files changed are the eleven authorized organism/test files plus tasks and this progress artifact.

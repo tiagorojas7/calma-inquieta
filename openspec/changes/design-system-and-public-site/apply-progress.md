@@ -252,3 +252,13 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Focused F3 tests: PASS, 7 files / 23 tests. Full `corepack pnpm test`: PASS, 63 files / 430 tests. Coverage receipt remains valid because no F3 tree bytes changed: 99.24% lines / 100% branches. UI suite: PASS, 16 files / 102 tests, Vitest 17.82s. Lint, typecheck, format check, build, and `git diff --check`: PASS.
 - Native review was not reattempted because parent did not delegate it. Prior native START created no lineage and remained unavailable due `candidate-target-projection-drift`; independent verification passed.
 - Push succeeded with upstream at `a2f7b598e01ea47a7a3e90decaff4c2f78fb04b8`. PR #17: https://github.com/tiagorojas7/calma-inquieta/pull/17, labeled `size:exception`. Task 6.18 is complete; task 6.19 remains unchecked.
+
+## F4 bounded Inicio cards — tasks 6.19 and 7.1–7.3
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, selected change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, no blockers; repo-local allowed roots respected. Scope stopped before 7.4.
+- Owner merge marker 6.19 completed: PR #17 merged as `c54bdd6` after green CI verification.
+- Task 7.1 completed: created `feat/ds-f4-home` from exact `origin/main`; added activity, upcoming, consented testimonial, hero image, and trust-claim fixtures to `src/testing/fixtures/ui.ts` without production fixture imports or fixture-suffixed files.
+- Strict TDD RED for 7.2: `corepack pnpm test src/app/ui/molecules/cards.ui.test.tsx` failed before implementation with unresolved `./activity-card` import. GREEN for 7.3: the same focused command passed with 1 file / 3 tests; each card includes an axe check.
+- Files changed: `src/testing/fixtures/ui.ts`, `src/app/ui/molecules/cards.ui.test.tsx`, `src/app/ui/molecules/activity-card.tsx`, `src/app/ui/molecules/upcoming-item.tsx`, `src/app/ui/molecules/testimonial-card.tsx`, and this evidence plus task markers. Tasks 7.4+ remain unchecked.
+- Checks: typecheck passed; architecture/styles tests passed (2 files / 28 tests); targeted Prettier passed after formatting; `git diff --check` passed. Lint command exceeded 240 seconds without a diagnostic and is recorded as unavailable in this bounded run.
+- Workload boundary: production additions are 65 lines across the three molecules; test-driven total may exceed the review budget under the standing FRONT exception policy. No push, PR, rebase, or review lifecycle action was performed.

@@ -11,3 +11,45 @@ export const decorativeImageFixture = {
   width: 400,
   height: 300,
 } as const;
+
+export const activityFixture = {
+  id: "actividad-1",
+  title: "Cerámica para encontrarnos",
+  description: "Una propuesta para crear con calma.",
+  image: imageFixture,
+  href: "/talleres/ceramica",
+  ctaLabel: "Ver actividad",
+} as const;
+
+export const upcomingItemFixture = {
+  id: "intensivo-1",
+  date: "2026-11-14",
+  title: "Intensivo de otoño",
+  href: "/intensivos/otono",
+  ctaLabel: "Ver intensivo",
+} as const;
+
+export const testimonialFixture = {
+  id: "testimonio-1",
+  quote: "Un espacio hermoso para bajar un cambio.",
+  author: "María",
+} as const;
+
+export const heroImageFixtures = [
+  imageFixture,
+  {
+    ...imageFixture,
+    src: "/media/stand-ins/hero-2.svg",
+    alt: "Textura abstracta",
+  },
+  {
+    ...imageFixture,
+    src: "/media/stand-ins/hero-3.svg",
+    alt: "Formas abstractas",
+  },
+] as const;
+
+export const trustClaimFixtures = [
+  { id: "claim-1", label: "Experiencias cuidadas", icon: "heart" as const },
+  { id: "claim-2", label: "Para crear en comunidad", icon: "group" as const },
+] as const;

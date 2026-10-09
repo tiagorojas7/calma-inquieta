@@ -106,13 +106,6 @@ describe("root links", () => {
     expect(sheets[0]).toMatchObject({ href: "/assets/app.css" });
   });
 
-  it("includes the stand-in favicon", () => {
-    expect(entries()).toContainEqual({
-      rel: "icon",
-      href: "/media/stand-ins/favicon.png",
-    });
-  });
-
   it("only points at same-origin urls", () => {
     for (const link of entries()) {
       const href = "href" in link ? link.href : undefined;

@@ -24,7 +24,6 @@ export const links: Route.LinksFunction = () => [
   preloadFont("cormorant-garamond-latin-400-normal.woff2"),
   preloadFont("montserrat-latin-400-normal.woff2"),
   { rel: "stylesheet", href: appCss },
-  { rel: "icon", href: "/media/stand-ins/favicon.png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

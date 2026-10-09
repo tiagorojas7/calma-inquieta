@@ -122,3 +122,16 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Files changed: `src/app/ui/templates/public-page.ui.test.tsx`, `src/app/ui/templates/public-page.tsx`, `src/app/ui/organisms/site-footer.tsx`, `src/app/ui/styles/app.css`, and task markers.
 - Task checkboxes: 5.11 and 5.12 visibly marked `- [x]`; deferred 5.3/5.4 and 5.13 onward remain unchecked.
 - Workload / PR boundary: PublicPage behavior-only work unit, production additions below the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the template files, footer inert prop, CSS rule, and this evidence. No `.vitest/` or provider artifacts were staged.
+
+
+## F2 bounded slice: tasks 5.13 and 5.14 — ComingSoonPage
+
+- Native status/preflight consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, strict TDD active, repo-local allowed roots respected. Only the authorized template test and template were edited, plus these OpenSpec artifacts. Deferred tasks 5.3/5.4 and tasks 5.15+ remain untouched.
+- RED (5.13): `corepack pnpm test src/app/ui/templates/coming-soon-page.ui.test.tsx` failed because `./coming-soon-page` did not exist.
+- GREEN (5.14): added `ComingSoonPage` using existing `Heading`, `Text`, and `ButtonLink` atoms. It renders one h1, message, WhatsApp and Instagram external CTAs with the existing target/rel semantics.
+- Focused verification: `corepack pnpm test src/app/ui/templates/coming-soon-page.ui.test.tsx` — PASS, 1 file / 1 test; page axe passed.
+- Additional verification: `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` — PASS, 2 files / 28 tests; targeted Prettier check — PASS; `corepack pnpm typecheck` — PASS; `git diff --check` — PASS. `corepack pnpm lint` was started but exceeded the 120-second command timeout after type generation; no lint diagnostic was emitted.
+- Files changed: `src/app/ui/templates/coming-soon-page.ui.test.tsx`, `src/app/ui/templates/coming-soon-page.tsx`, this progress artifact, and task markers for 5.13/5.14 only.
+- Task checkbox evidence: tasks 5.13 and 5.14 are visibly marked `- [x]`; deferred 5.3/5.4 and tasks 5.15+ remain unchecked.
+- Workload / PR boundary: ComingSoonPage template-only work unit, production additions remain below the 400-line budget. Runtime harness is N/A because route integration is explicitly deferred to 5.15+. Rollback boundary is the two ComingSoonPage files and these two task/evidence updates.
+- Commit boundary: Conventional work-unit commit required; no push/PR and no route changes. `.vitest/` and provider artifacts were not staged.

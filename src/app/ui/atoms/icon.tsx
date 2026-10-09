@@ -8,6 +8,8 @@ const paths = {
       <circle cx="12" cy="12" r="4" />
     </>
   ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
 } as const;
 export function Icon({
   name,

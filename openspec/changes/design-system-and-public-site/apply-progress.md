@@ -68,3 +68,117 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Verification: `corepack pnpm test` PASS, 48 files / 395 tests; `corepack pnpm lint` PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `corepack pnpm build` PASS; `git diff --check` PASS. Production remains within the 400-line budget; no push, PR, history rewrite, verify-report edit, or `.gentle-ai-instance` edit was performed.
 - Task checkbox: task `4.18` remains visibly `- [ ]` as explicitly required; task `4.19` remains owner work. Remaining implementation work includes the exact unchecked task lines already listed in this cumulative artifact.
 - Workload / PR boundary: final exact F1 correction ledger only, stacked-to-main; test-driven total may exceed 400 and follows the standing F1 size-exception policy, while production remains under budget.
+
+
+## F2 bounded recovery slice: owner merge marker 4.19 and tasks 5.1-5.6
+
+- Native status consumed: `gentle-ai.sdd-status@2`, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit root respected. Strict TDD active.
+- Owner merge marker: task 4.19 marked complete with evidence PR #13 merged.
+- Completed tasks: 5.1 through 5.6. Tasks 5.7 and later remain untouched and unchecked.
+- RED/GREEN evidence: font registry temporary rename of `montserrat-latin-600-normal.woff2` failed with the missing filename and was restored; site-map test initially failed because `site-map.ts` was absent; focused final run passed.
+- Files changed: site map and tests, copy-rules test, font registry test, menu/close icon paths and test, plus task markers.
+- Commits: `d8a38b7 feat(public-layout): add F2 site map and copy contracts`; `2f91bec docs(openspec): record F2 recovery slice` (superseded by this restoration).
+- Verification: `corepack pnpm test src/app/ui/font-registry.test.ts src/app/site-map.test.ts src/app/copy-rules.test.ts src/app/ui/atoms/icon.ui.test.tsx` — PASS, 4 files / 9 tests, 6.95s; `git diff --check` PASS. Runtime harness N/A because no route/layout runtime exists in tasks 5.1-5.6.
+- Engram persistence: failed because the runtime session belongs to Engram project `calmainquieta`, not `CalmaInquieta`; OpenSpec remains the persisted backend.
+- Workload / PR boundary: first bounded F2 recovery slice only; task 5.7 and later are out of scope.
+
+
+## F2 contract-conformance correction
+
+- Reopened tasks 5.3 and 5.4 because the current site-map fitness test uses provisional `NOT_YET_ROUTED` coverage for all six paths and does not yet assert the three coming-soon route modules or the prescribed per-slice indexable count.
+- Preserved task 4.19 and tasks 5.1, 5.2, 5.5, and 5.6 as complete. Tasks 5.7 and later remain untouched.
+- `src/app/site-map.ts` and its provisional green fitness test remain staged support; the exact route-module and indexable-count assertions are deferred to routing tasks 5.15–5.18. No production behavior was changed.
+- Engram save was unavailable in the prior slice because the runtime session belonged to project `calmainquieta`; this correction is persisted in OpenSpec.
+
+## F2 bounded slice: tasks 5.7 and 5.8
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit roots respected. Strict TDD active.
+- RED: `corepack pnpm test src/app/ui/organisms/site-header.ui.test.tsx` failed because `./site-header` did not exist.
+- GREEN: added `SiteHeader` and `MobileNav` with structural props, six-link navigation, active route semantics, mobile disclosure state, menu toggle attributes, wordmark, and WhatsApp CTA.
+- Focused UI test: PASS, 1 file / 3 tests; axe checks passed. jsdom emitted the existing canvas `getContext` not-implemented notices.
+- Safety checks: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; targeted Prettier check PASS; `git diff --check` PASS. A combined command used unsupported `--silent` for lint and was rerun correctly; no source issue resulted.
+- Files changed: `src/app/ui/organisms/site-header.ui.test.tsx`, `src/app/ui/organisms/site-header.tsx`, `src/app/ui/organisms/mobile-nav.tsx`, and this progress artifact plus task markers.
+- Task checkboxes: 5.7 and 5.8 visibly marked `- [x]`; 5.3, 5.4, and 5.9 onward remain untouched.
+- Workload / PR boundary: only SiteHeader and MobileNav; production additions are below the 400-line budget. Runtime harness is N/A because route integration is deferred to later F2 tasks. Commit this work unit with a Conventional Commit; no push or PR.
+
+## F2 bounded slice: tasks 5.9 and 5.10 — SiteFooter
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; strict TDD active. Deferred tasks 5.3/5.4 and tasks 5.11+ remain untouched.
+- RED (5.9): created `src/app/ui/organisms/site-footer.ui.test.tsx` first. `timeout 60s corepack pnpm test src/app/ui/organisms/site-footer.ui.test.tsx` failed because `./site-footer` did not exist (`Failed to resolve import "./site-footer"`).
+- GREEN (5.10): implemented `src/app/ui/organisms/site-footer.tsx` with structural props only: NAP and bajada, external Instagram link with `rel="noopener noreferrer"`, provisional WhatsApp link without printed digits, confirmed WhatsApp digits, optional email/phone/hours, and the six-link `Páginas` fallback navigation.
+- Focused verification: `timeout 60s corepack pnpm test src/app/ui/organisms/site-footer.ui.test.tsx` — PASS, 1 file / 3 tests; axe passed. The known jsdom canvas notice was emitted by the existing harness.
+- Safety verification: `corepack pnpm typecheck` — PASS; `corepack pnpm lint` — PASS with the existing boundaries deprecation warning; targeted Prettier check — PASS; `git diff --check` — PASS. Full suite was not run.
+- Incident evidence: the interrupted prior command produced no result; the confirmed bounded follow-up was clean, with no orphaned F2 pnpm/Vitest/esbuild process. HEAD before this work was `94c66cd`; provider artifacts, `.vitest/`, `.gentle-ai-instance`, and `verify-report.md` were preserved.
+- Task checkbox updates: tasks 5.9 and 5.10 are visibly marked `- [x]`; deferred 5.3/5.4 and 5.11 onward remain unchecked.
+- Workload / PR boundary: footer-only work unit, production addition is within the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the two footer files and this evidence.
+
+## F2 bounded slice: tasks 5.11 and 5.12 — PublicPage template
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; strict TDD active. Deferred tasks 5.3/5.4 and 5.13 onward remain untouched.
+- RED (5.11): `corepack pnpm test src/app/ui/templates/public-page.ui.test.tsx` failed because `./public-page` did not exist.
+- GREEN (5.12): added `PublicPage` with SkipLink, SiteHeader, main landmark, SiteFooter, inert background state, Escape focus return, pathname and desktop media close behavior, document menu attribute, and CSS scroll lock. Added optional footer inert prop to apply inert directly to the footer landmark.
+- Focused verification: `corepack pnpm test src/app/ui/templates/public-page.ui.test.tsx` — PASS, 1 file / 3 tests; page-level axe passed. Known jsdom canvas notice emitted by the existing harness.
+- Safety verification: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with existing boundaries deprecation warning; architecture/styles tests PASS, 2 files / 28 tests; `git diff --check` PASS. `format:check` remains non-zero only for pre-existing unrelated files (`.vitest/json/output.json`, site-map/copy-rules/icon/font-registry files); changed files were formatted.
+- Files changed: `src/app/ui/templates/public-page.ui.test.tsx`, `src/app/ui/templates/public-page.tsx`, `src/app/ui/organisms/site-footer.tsx`, `src/app/ui/styles/app.css`, and task markers.
+- Task checkboxes: 5.11 and 5.12 visibly marked `- [x]`; deferred 5.3/5.4 and 5.13 onward remain unchecked.
+- Workload / PR boundary: PublicPage behavior-only work unit, production additions below the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the template files, footer inert prop, CSS rule, and this evidence. No `.vitest/` or provider artifacts were staged.
+
+
+## F2 bounded slice: tasks 5.13 and 5.14 — ComingSoonPage
+
+- Native status/preflight consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, strict TDD active, repo-local allowed roots respected. Only the authorized template test and template were edited, plus these OpenSpec artifacts. Deferred tasks 5.3/5.4 and tasks 5.15+ remain untouched.
+- RED (5.13): `corepack pnpm test src/app/ui/templates/coming-soon-page.ui.test.tsx` failed because `./coming-soon-page` did not exist.
+- GREEN (5.14): added `ComingSoonPage` using existing `Heading`, `Text`, and `ButtonLink` atoms. It renders one h1, message, WhatsApp and Instagram external CTAs with the existing target/rel semantics.
+- Focused verification: `corepack pnpm test src/app/ui/templates/coming-soon-page.ui.test.tsx` — PASS, 1 file / 1 test; page axe passed.
+- Additional verification: `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` — PASS, 2 files / 28 tests; targeted Prettier check — PASS; `corepack pnpm typecheck` — PASS; `git diff --check` — PASS. `corepack pnpm lint` was started but exceeded the 120-second command timeout after type generation; no lint diagnostic was emitted.
+- Files changed: `src/app/ui/templates/coming-soon-page.ui.test.tsx`, `src/app/ui/templates/coming-soon-page.tsx`, this progress artifact, and task markers for 5.13/5.14 only.
+- Task checkbox evidence: tasks 5.13 and 5.14 are visibly marked `- [x]`; deferred 5.3/5.4 and tasks 5.15+ remain unchecked.
+- Workload / PR boundary: ComingSoonPage template-only work unit, production additions remain below the 400-line budget. Runtime harness is N/A because route integration is explicitly deferred to 5.15+. Rollback boundary is the two ComingSoonPage files and these two task/evidence updates.
+- Commit boundary: Conventional work-unit commit required; no push/PR and no route changes. `.vitest/` and provider artifacts were not staged.
+
+## F2 coupled routing slice: tasks 5.3, 5.4, and 5.15–5.18
+
+- Native status consumed: `gentle-ai.sdd-status` v2, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit roots respected. Strict TDD active. Runtime/full gates 5.19/5.20 intentionally not performed.
+- RED: focused route tests initially failed because `public-layout.tsx` and `coming-soon.tsx` were absent. Root favicon contract was added before implementation and passed after the link was added.
+- GREEN: added route loader/container modules; only route modules read `servicesContext`. Invalid WhatsApp numbers omit CTA hrefs. Added favicon link and updated routes to the exact F2 intermediate layout with status outside and three explicit coming-soon IDs.
+- Strengthened site-map contract: `NOT_YET_ROUTED` is exactly `/`, `/quienes-somos`, `/contacto`; the three coming-soon paths map to `routes/coming-soon.tsx`; deferred paths do not map to page modules; indexable count is zero.
+- Focused tests: `corepack pnpm test src/app/routes/public-layout.test.ts src/app/routes/coming-soon.test.ts src/app/site-map.test.ts src/app/root.test.ts` — PASS, 4 files / 14 tests.
+- Safety checks: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with existing boundaries deprecation warning; targeted Prettier check PASS; `git diff --check` PASS. No runtime/full gate was run.
+- Files changed: `src/app/routes/public-layout.test.ts`, `src/app/routes/public-layout.tsx`, `src/app/routes/coming-soon.test.ts`, `src/app/routes/coming-soon.tsx`, `src/app/root.test.ts`, `src/app/root.tsx`, `src/app/routes.ts`, `src/app/site-map.test.ts`, plus task markers.
+- Task checkboxes: 5.3, 5.4, and 5.15–5.18 visibly marked `- [x]`; 5.19 and 5.20 remain unchecked.
+- Workload / PR boundary: coupled routing work unit; production additions remain under the 400-line budget. Runtime harness is N/A by explicit instruction. No push or PR; `.vitest/` and provider artifacts were not staged.
+
+## F2 local implementation evidence: tasks 5.19 and 5.20 gate portion
+
+- Native status/preflight consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit roots respected. STRICT TDD remained active. Only the authorized OpenSpec task/progress evidence surfaces were edited; no source files were changed.
+- Task 5.19 runtime command: bounded `corepack pnpm dev --host 127.0.0.1 --port 4173` background server, with shell trap cleanup that terminated only the started process. Exact results: `/talleres` HTTP 200, chrome marker present, exactly 1 `<h1>`; `/intensivos` HTTP 200, chrome marker present, exactly 1 `<h1>`; `/eventos-privados` HTTP 200, chrome marker present, exactly 1 `<h1>`; `/` HTTP 404; `/quienes-somos` HTTP 404; `/contacto` HTTP 404. `/status` returned HTTP 503 because its existing loader has no local database, while the response retained `data-status` (1 occurrence), included stylesheet links (3 occurrences), `lang="es-AR"` (1 occurrence), and `X-Robots-Tag: noindex, nofollow`; this is the exact local runtime behavior and was not altered.
+- Task checkbox: 5.19 is visibly marked `- [x]`. Task 5.20 remains visibly `- [ ]` because delivery actions remain user-owned.
+- Production receipt: `git diff --numstat origin/main...HEAD` independently counted 393 additions plus 5 deletions = 398 authored production lines under `src/app`, excluding tests; no F2b split is needed and the 400-line budget is respected.
+- Full local gate evidence: `corepack pnpm test` PASS, 57 files / 414 tests, 176.00s; `corepack pnpm test:coverage` PASS, 57 files / 414 tests, 184.26s, 99.24% lines and 100% branches; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm build` PASS; `git diff --check` PASS. `corepack pnpm format:check` FAILED without source edits: Prettier reported `src/app/copy-rules.test.ts`, `src/app/site-map.ts`, `src/app/ui/atoms/icon.ui.test.tsx`, `src/app/ui/font-registry.test.ts`, and generated `.vitest/json/output.json`. Architecture/styles checks were covered by the full test suite and prior focused evidence; no source bypass was attempted.
+- Delivery boundary: no rebase, push, PR, destructive history operation, or task 5.20 completion was performed. Because the required local gate did not fully pass, no evidence-only Conventional Commit was created. Provider artifacts `.vitest/`, `.gentle-ai-instance`, and `verify-report.md` were preserved untouched.
+- Remaining: task 5.20 delivery work and task 5.21 owner preview review remain unchecked.
+
+## F2 bounded Prettier correction and production budget recomputation
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; repo-local action context and allowed edit roots were respected. Session preflight selected a bounded formatting correction only; no behavior edits, history split, push, PR, or rebase were performed.
+- Formatting correction: ran Prettier write only on `src/app/copy-rules.test.ts`, `src/app/site-map.ts`, `src/app/ui/atoms/icon.ui.test.tsx`, and `src/app/ui/font-registry.test.ts`. Confirmed `.vitest/json/output.json` was generated untracked Vitest output and removed `.vitest/`; it was not committed.
+- Verification: `corepack pnpm test src/app/copy-rules.test.ts src/app/site-map.test.ts src/app/ui/atoms/icon.ui.test.tsx src/app/ui/font-registry.test.ts` PASS, 4 files / 9 tests; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `git diff --check` PASS. Formatting check was rerun after removing regenerated `.vitest/` output.
+- Production receipt recomputed against `origin/main` with test files excluded: 393 additions + 5 deletions = 398 authored production lines. This remains at or below the 400-line budget; no `F2b split required`.
+- Task evidence: task 5.20 remains visibly unchecked; its correction note in `tasks.md` records the exact gate state and count. No task was falsely marked complete.
+- Workload / PR boundary: F2 formatting/evidence correction only, one Conventional formatting/evidence work unit. Runtime harness: N/A because no runtime behavior changed. Rollback boundary: revert the four formatting-only source/test file changes and these evidence updates; generated `.vitest/` remains excluded.
+
+## F2 independently verified corrections
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; strict TDD active; repo-local allowed edit roots respected. The three verified F2 findings were the only implementation scope.
+- RED evidence: `corepack pnpm test src/app/ui/organisms/site-header.ui.test.tsx src/app/root.test.ts src/app/routes/coming-soon.test.ts` failed 4 tests before implementation: three missing DS7 disclosure classes and the unsupported pathname resolved instead of rejecting with 404. The favicon regression assertion was added first and passed against the existing implementation, so no production restoration was needed and no history was fabricated.
+- GREEN: `site-header.tsx` now gives `#menu-principal` the DS7 mobile full-height viewport contract (`fixed`, `inset-0`, `min-h-screen`, `w-full`, `z-40`) while retaining `data-state` hiding and `lg:flex`; `root.test.ts` asserts the favicon link; `coming-soon.tsx` validates the supported slug set and throws `data(null, { status: 404 })` for unknown paths.
+- Focused verification: `corepack pnpm test src/app/ui/organisms/site-header.ui.test.tsx src/app/root.test.ts src/app/routes/coming-soon.test.ts` — PASS, 3 files / 15 tests. Canvas `getContext` notices are existing jsdom harness output.
+- Safety verification: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm format:check` PASS; `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` PASS, 2 files / 28 tests; `git diff --check` PASS. Full suite was not run because this bounded correction used focused checks.
+- Files changed: `src/app/ui/organisms/site-header.ui.test.tsx`, `src/app/ui/organisms/site-header.tsx`, `src/app/root.test.ts`, `src/app/routes/coming-soon.test.ts`, `src/app/routes/coming-soon.tsx`, plus this progress artifact and the task receipt note.
+- Corrected receipt: the pre-correction actual was 408 additions + 5 deletions = 413 authored production lines, not stale 398; F2b split is required after these corrections. Task 5.20 remains unchecked. No branch splitting, push, PR, rebase, or unrelated refactor was performed; provider artifacts were preserved and `.vitest/` was removed.
+
+## F2a/F2b mandatory split — F2a navigation foundation
+
+- F2a retains site-map support, copy scan, font registry, menu/close icons, SiteHeader, MobileNav, and their tests. Footer, PublicPage, ComingSoonPage, route modules, route tree integration, favicon, scroll lock, runtime evidence, and related tests move to F2b.
+- Reverted F2b-owned route/root/footer/template/CSS changes to `origin/main`; site-map fitness now honestly lists all six public paths as not yet routed. Tasks 5.3, 5.4, and 5.9–5.19 are unchecked; tasks 5.1, 5.2, 5.5–5.8 remain checked. Task 5.20 remains unchecked.
+- This is the single authorized slicing pass. F2a is committed before branching `feat/ds-f2b-coming-soon`; no push, PR, destructive reset, or rebase is performed.

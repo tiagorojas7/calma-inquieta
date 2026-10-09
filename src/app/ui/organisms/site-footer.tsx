@@ -18,11 +18,15 @@ type SiteFooterProfile = {
 type SiteFooterProps = {
   pages: readonly Page[];
   profile: SiteFooterProfile;
+  inert?: boolean;
 };
 
-export function SiteFooter({ pages, profile }: SiteFooterProps) {
+export function SiteFooter({ pages, profile, inert }: SiteFooterProps) {
   return (
-    <footer className="mt-16 border-t border-tan-400 py-10">
+    <footer
+      className="mt-16 border-t border-tan-400 py-10"
+      inert={inert || undefined}
+    >
       <div className="flex flex-col gap-8 lg:flex-row lg:justify-between">
         <div>
           <p className="font-display text-2xl">{profile.name}</p>

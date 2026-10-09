@@ -34,6 +34,10 @@
   }
 }
 
+html[data-menu-open] {
+  overflow: hidden;
+}
+
 /* Reduced motion (§3.3): animations and transitions resolve instantly. */
 @media (prefers-reduced-motion: reduce) {
   *,

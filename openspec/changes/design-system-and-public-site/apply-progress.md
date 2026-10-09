@@ -111,3 +111,14 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Incident evidence: the interrupted prior command produced no result; the confirmed bounded follow-up was clean, with no orphaned F2 pnpm/Vitest/esbuild process. HEAD before this work was `94c66cd`; provider artifacts, `.vitest/`, `.gentle-ai-instance`, and `verify-report.md` were preserved.
 - Task checkbox updates: tasks 5.9 and 5.10 are visibly marked `- [x]`; deferred 5.3/5.4 and 5.11 onward remain unchecked.
 - Workload / PR boundary: footer-only work unit, production addition is within the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the two footer files and this evidence.
+
+## F2 bounded slice: tasks 5.11 and 5.12 — PublicPage template
+
+- Native status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`; strict TDD active. Deferred tasks 5.3/5.4 and 5.13 onward remain untouched.
+- RED (5.11): `corepack pnpm test src/app/ui/templates/public-page.ui.test.tsx` failed because `./public-page` did not exist.
+- GREEN (5.12): added `PublicPage` with SkipLink, SiteHeader, main landmark, SiteFooter, inert background state, Escape focus return, pathname and desktop media close behavior, document menu attribute, and CSS scroll lock. Added optional footer inert prop to apply inert directly to the footer landmark.
+- Focused verification: `corepack pnpm test src/app/ui/templates/public-page.ui.test.tsx` — PASS, 1 file / 3 tests; page-level axe passed. Known jsdom canvas notice emitted by the existing harness.
+- Safety verification: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with existing boundaries deprecation warning; architecture/styles tests PASS, 2 files / 28 tests; `git diff --check` PASS. `format:check` remains non-zero only for pre-existing unrelated files (`.vitest/json/output.json`, site-map/copy-rules/icon/font-registry files); changed files were formatted.
+- Files changed: `src/app/ui/templates/public-page.ui.test.tsx`, `src/app/ui/templates/public-page.tsx`, `src/app/ui/organisms/site-footer.tsx`, `src/app/ui/styles/app.css`, and task markers.
+- Task checkboxes: 5.11 and 5.12 visibly marked `- [x]`; deferred 5.3/5.4 and 5.13 onward remain unchecked.
+- Workload / PR boundary: PublicPage behavior-only work unit, production additions below the 400-line budget. Runtime harness is N/A because route integration is deferred. Rollback boundary is the template files, footer inert prop, CSS rule, and this evidence. No `.vitest/` or provider artifacts were staged.

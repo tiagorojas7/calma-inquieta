@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import routes from "./routes";
 import { PUBLIC_PAGES } from "./site-map";
 
-const NOT_YET_ROUTED = new Set(["/", "/quienes-somos", "/contacto"]);
+const NOT_YET_ROUTED = new Set([
+  "/",
+  "/talleres",
+  "/intensivos",
+  "/eventos-privados",
+  "/quienes-somos",
+  "/contacto",
+]);
 
 function flatten(
   routeTree: unknown,
@@ -66,23 +73,16 @@ describe("public site map", () => {
     expect(pages.filter((page) => page.indexable)).toHaveLength(0);
   });
 
-  it("maps only coming-soon paths to the coming-soon module", () => {
+  it("keeps all public paths unrouted until F2b", () => {
     const routed = flatten(routes);
-    const comingSoon = new Set([
+    expect([...NOT_YET_ROUTED]).toEqual([
+      "/",
       "/talleres",
       "/intensivos",
       "/eventos-privados",
+      "/quienes-somos",
+      "/contacto",
     ]);
-    expect(
-      routed
-        .filter((entry) => comingSoon.has(entry.path))
-        .map((entry) => entry.file),
-    ).toEqual([
-      "routes/coming-soon.tsx",
-      "routes/coming-soon.tsx",
-      "routes/coming-soon.tsx",
-    ]);
-    expect([...NOT_YET_ROUTED]).toEqual(["/", "/quienes-somos", "/contacto"]);
     expect(
       routed
         .filter((entry) => NOT_YET_ROUTED.has(entry.path))

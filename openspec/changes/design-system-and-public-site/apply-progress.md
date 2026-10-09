@@ -177,3 +177,9 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Files changed: `src/app/ui/organisms/site-header.ui.test.tsx`, `src/app/ui/organisms/site-header.tsx`, `src/app/root.test.ts`, `src/app/routes/coming-soon.test.ts`, `src/app/routes/coming-soon.tsx`, plus this progress artifact and the task receipt note.
 - Corrected receipt: the pre-correction actual was 408 additions + 5 deletions = 413 authored production lines, not stale 398; F2b split is required after these corrections. Task 5.20 remains unchecked. No branch splitting, push, PR, rebase, or unrelated refactor was performed; provider artifacts were preserved and `.vitest/` was removed.
 
+## F2a/F2b mandatory split — F2a navigation foundation
+
+- F2a retains site-map support, copy scan, font registry, menu/close icons, SiteHeader, MobileNav, and their tests. Footer, PublicPage, ComingSoonPage, route modules, route tree integration, favicon, scroll lock, runtime evidence, and related tests move to F2b.
+- Reverted F2b-owned route/root/footer/template/CSS changes to `origin/main`; site-map fitness now honestly lists all six public paths as not yet routed. Tasks 5.3, 5.4, and 5.9–5.19 are unchecked; tasks 5.1, 5.2, 5.5–5.8 remain checked. Task 5.20 remains unchecked.
+- This is the single authorized slicing pass. F2a is committed before branching `feat/ds-f2b-coming-soon`; no push, PR, destructive reset, or rebase is performed.
+

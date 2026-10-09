@@ -135,3 +135,15 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Task checkbox evidence: tasks 5.13 and 5.14 are visibly marked `- [x]`; deferred 5.3/5.4 and tasks 5.15+ remain unchecked.
 - Workload / PR boundary: ComingSoonPage template-only work unit, production additions remain below the 400-line budget. Runtime harness is N/A because route integration is explicitly deferred to 5.15+. Rollback boundary is the two ComingSoonPage files and these two task/evidence updates.
 - Commit boundary: Conventional work-unit commit required; no push/PR and no route changes. `.vitest/` and provider artifacts were not staged.
+
+## F2 coupled routing slice: tasks 5.3, 5.4, and 5.15–5.18
+
+- Native status consumed: `gentle-ai.sdd-status` v2, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and allowed edit roots respected. Strict TDD active. Runtime/full gates 5.19/5.20 intentionally not performed.
+- RED: focused route tests initially failed because `public-layout.tsx` and `coming-soon.tsx` were absent. Root favicon contract was added before implementation and passed after the link was added.
+- GREEN: added route loader/container modules; only route modules read `servicesContext`. Invalid WhatsApp numbers omit CTA hrefs. Added favicon link and updated routes to the exact F2 intermediate layout with status outside and three explicit coming-soon IDs.
+- Strengthened site-map contract: `NOT_YET_ROUTED` is exactly `/`, `/quienes-somos`, `/contacto`; the three coming-soon paths map to `routes/coming-soon.tsx`; deferred paths do not map to page modules; indexable count is zero.
+- Focused tests: `corepack pnpm test src/app/routes/public-layout.test.ts src/app/routes/coming-soon.test.ts src/app/site-map.test.ts src/app/root.test.ts` — PASS, 4 files / 14 tests.
+- Safety checks: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with existing boundaries deprecation warning; targeted Prettier check PASS; `git diff --check` PASS. No runtime/full gate was run.
+- Files changed: `src/app/routes/public-layout.test.ts`, `src/app/routes/public-layout.tsx`, `src/app/routes/coming-soon.test.ts`, `src/app/routes/coming-soon.tsx`, `src/app/root.test.ts`, `src/app/root.tsx`, `src/app/routes.ts`, `src/app/site-map.test.ts`, plus task markers.
+- Task checkboxes: 5.3, 5.4, and 5.15–5.18 visibly marked `- [x]`; 5.19 and 5.20 remain unchecked.
+- Workload / PR boundary: coupled routing work unit; production additions remain under the 400-line budget. Runtime harness is N/A by explicit instruction. No push or PR; `.vitest/` and provider artifacts were not staged.

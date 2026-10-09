@@ -26,7 +26,7 @@ export function SiteHeader({
       <div
         id="menu-principal"
         data-state={menuOpen ? "open" : "closed"}
-        className="max-lg:data-[state=closed]:hidden max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:min-h-screen max-lg:w-full lg:flex lg:items-center lg:gap-8"
+        className="max-lg:data-[state=closed]:hidden max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:flex max-lg:min-h-screen max-lg:w-full max-lg:flex-col max-lg:gap-8 max-lg:overflow-y-auto max-lg:bg-sand-200 max-lg:px-gutter max-lg:py-24 lg:flex lg:items-center lg:gap-8"
       >
         <nav aria-label="Principal">
           <ul className="flex flex-col gap-4 lg:flex-row lg:items-center">

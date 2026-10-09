@@ -75,4 +75,22 @@ describe("SiteHeader", () => {
       return expectNoAxeViolations(container);
     },
   );
+
+  it("renders an opaque, scrollable mobile menu panel beneath its toggle", () => {
+    renderHeader("/", true);
+
+    const toggle = screen.getByRole("button", { name: "Cerrar menú" });
+    const disclosure = toggle.parentElement?.querySelector("#menu-principal");
+
+    expect(disclosure).toHaveAttribute("data-state", "open");
+    expect(disclosure).toHaveClass(
+      "max-lg:bg-sand-200",
+      "max-lg:min-h-screen",
+      "max-lg:overflow-y-auto",
+      "max-lg:px-gutter",
+      "max-lg:py-24",
+      "max-lg:z-40",
+    );
+    expect(toggle).toHaveClass("relative", "z-50");
+  });
 });

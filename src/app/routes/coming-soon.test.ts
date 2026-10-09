@@ -21,11 +21,41 @@ describe("coming soon loader", () => {
     expect(result.instagramHref).toContain("instagram.com");
   });
 
+  it.each([
+    ["intensivos", "coming-soon%2Fintensivos"],
+    ["eventos-privados", "coming-soon%2Feventos-privados"],
+  ])(
+    "loads %s from its React Router client data request without route params",
+    async (slug, routeId) => {
+      const result = await loader({
+        ...createLoaderArgs(
+          createTestServices(),
+          `/${slug}.data?_routes=${routeId}`,
+        ),
+        params: {},
+      } as never);
+
+      expect(result.slug).toBe(slug);
+    },
+  );
+
   it("returns a 404 response for an unsupported pathname", async () => {
     await expect(
       loader({
         ...createLoaderArgs(createTestServices(), "/desconocido"),
         params: { slug: "desconocido" },
+      } as never),
+    ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
+
+  it("returns a 404 response for an unsupported client data request", async () => {
+    await expect(
+      loader({
+        ...createLoaderArgs(
+          createTestServices(),
+          "/desconocido.data?_routes=coming-soon%2Fdesconocido",
+        ),
+        params: {},
       } as never),
     ).rejects.toMatchObject({ data: null, init: { status: 404 } });
   });

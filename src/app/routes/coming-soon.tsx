@@ -6,11 +6,10 @@ import type { Route } from "./+types/coming-soon";
 
 export async function loader({ context, params, request }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
-  const query = request.url.indexOf("?");
-  const pathname = request.url.slice(
-    request.url.lastIndexOf("/") + 1,
-    query === -1 ? request.url.length : query,
-  );
+  const requestPathname = request.url.split(/[?#]/, 1)[0] ?? "";
+  const pathname = requestPathname
+    .replace(/\.data$/, "")
+    .slice(requestPathname.lastIndexOf("/") + 1);
   const candidate = (params as { slug?: string }).slug ?? pathname;
   const supportedSlugs = [
     "talleres",

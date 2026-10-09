@@ -187,4 +187,3 @@ F1 remediation only; production remains under the 400-line budget. The required 
 
 - F2b is based on corrected F2a via merge commit; restored SiteFooter, PublicPage, ComingSoonPage, public-layout and coming-soon routes, exact route tree, favicon contract, and scroll-lock CSS. Restored task markers 5.3, 5.4, and 5.9–5.19; task 5.20 remains unchecked because delivery is unauthorized.
 - Parent/base: `feat/ds-f2-layout` at `f470584`; child includes the F2a navigation foundation and this moved behavior. No push or PR.
-

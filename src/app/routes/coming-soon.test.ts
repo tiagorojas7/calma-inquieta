@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
-import { loader } from "./coming-soon";
+import { loader, meta } from "./coming-soon";
 
 describe("coming soon loader", () => {
   it("loads the slug from params and builds its WhatsApp link", async () => {
@@ -58,6 +58,32 @@ describe("coming soon loader", () => {
         params: {},
       } as never),
     ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
+
+  it("builds noindex metadata for coming-soon pages and safe errors", () => {
+    const result = meta({
+      loaderData: {
+        title: "Talleres",
+        seo: { description: "Próximamente." },
+        slug: "talleres",
+      },
+      error: undefined,
+    } as never);
+    expect(
+      result.some(
+        (entry) => entry.name === "robots" && entry.content.includes("noindex"),
+      ),
+    ).toBe(true);
+    const errorResult = meta({
+      loaderData: undefined,
+      error: new Error("secret-token"),
+    } as never);
+    expect(
+      errorResult.some(
+        (entry) => entry.title === "Página no encontrada | Calma Inquieta",
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(errorResult)).not.toContain("secret-token");
   });
 
   it("returns no WhatsApp CTA when the number is invalid", async () => {

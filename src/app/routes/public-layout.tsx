@@ -2,7 +2,7 @@ import {
   isRouteErrorResponse,
   Outlet,
   useLoaderData,
-  useRouteError,
+  useRouteLoaderData,
 } from "react-router";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import { servicesContext } from "~/app/context";
@@ -33,13 +33,38 @@ export async function loader({ context }: Route.LoaderArgs) {
   };
 }
 
-export function ErrorBoundary() {
-  const error = useRouteError();
-  const status = isRouteErrorResponse(error) ? error.status : 500;
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const status = isRouteErrorResponse(error)
+    ? error.status
+    : error && typeof error === "object" && "init" in error
+      ? Number((error as { init?: { status?: number } }).init?.status) || 500
+      : 500;
+  const data = useRouteLoaderData<typeof loader>("routes/public-layout");
+  const profile = data
+    ? {
+        name: data.wordmark,
+        whatsappHref: data.whatsappHref ?? "#",
+        instagramHref: data.instagramHref,
+        address: data.footer.address,
+        bajada: data.footer.bajada,
+        whatsappDisplay: data.footer.whatsapp.display,
+        provisional: data.footer.whatsapp.provisional,
+        ...(data.footer.email ? { email: data.footer.email } : {}),
+        ...(data.footer.phone ? { phone: data.footer.phone } : {}),
+      }
+    : {
+        name: "Calma Inquieta",
+        whatsappHref: "#",
+        instagramHref: "#",
+        address: { street: "", locality: "", city: "" },
+        bajada: "",
+        whatsappDisplay: "",
+        provisional: true,
+      };
   return (
-    <PublicLayout>
+    <PublicPage pages={PUBLIC_PAGES} profile={profile}>
       <ErrorPage status={status} />
-    </PublicLayout>
+    </PublicPage>
   );
 }
 

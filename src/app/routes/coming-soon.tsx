@@ -3,6 +3,7 @@ import { buildWhatsAppUrl } from "~/modules/site-content";
 import { servicesContext } from "~/app/context";
 import { ComingSoonPage } from "~/app/ui/templates/coming-soon-page";
 import type { Route } from "./+types/coming-soon";
+import { buildPageMeta } from "~/app/seo/meta";
 
 export async function loader({ context, params, request }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
@@ -33,7 +34,26 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     slug,
     whatsappHref: whatsappHref.ok ? whatsappHref.value : undefined,
     instagramHref: profile.instagram.url,
+    site: services.site,
   };
+}
+
+export function meta({ loaderData, error }: Route.MetaArgs) {
+  if (error)
+    return [
+      { title: "Página no encontrada" },
+      { name: "robots", content: "noindex, nofollow" },
+    ];
+  return buildPageMeta({
+    title: loaderData.title,
+    description: loaderData.seo.description,
+    path: `/${loaderData.slug}`,
+    robots: "noindex, nofollow",
+    siteName: "Calma Inquieta",
+    baseUrl: loaderData.site.baseUrl,
+    indexingEnabled: loaderData.site.indexingEnabled,
+    comingSoon: true,
+  });
 }
 
 export default function ComingSoonRoute() {

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
-import { loader } from "./coming-soon";
+import { loader, meta } from "./coming-soon";
 
 describe("coming soon loader", () => {
   it("loads the slug from params and builds its WhatsApp link", async () => {
-    const services = createTestServices();
+    const services = createTestServices({
+      site: { baseUrl: "https://calma.example", indexingEnabled: true },
+    });
     const result = (await loader({
       ...createLoaderArgs(services, "/talleres"),
       params: { slug: "talleres" },
@@ -14,8 +16,33 @@ describe("coming soon loader", () => {
       title: string;
       whatsappHref: string;
       instagramHref: string;
+      site: { baseUrl: string; indexingEnabled: boolean };
     };
     expect(result.slug).toBe("talleres");
+    expect(result.site).toEqual({
+      baseUrl: "https://calma.example",
+      indexingEnabled: true,
+    });
+    const pageMeta = meta({
+      loaderData: {
+        title: result.title,
+        seo: { description: "Próximamente." },
+        slug: result.slug,
+        site: result.site,
+      },
+      error: undefined,
+    } as never);
+    expect(pageMeta).toEqual(
+      expect.arrayContaining([
+        { rel: "canonical", href: "https://calma.example/talleres" },
+        { property: "og:url", content: "https://calma.example/talleres" },
+        {
+          property: "og:image",
+          content: "https://calma.example/media/stand-ins/share-default.jpg",
+        },
+        { name: "robots", content: "noindex, nofollow" },
+      ]),
+    );
     expect(typeof result.title).toBe("string");
     expect(result.whatsappHref).toContain("wa.me");
     expect(result.instagramHref).toContain("instagram.com");
@@ -58,6 +85,36 @@ describe("coming soon loader", () => {
         params: {},
       } as never),
     ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
+
+  it("builds noindex metadata for coming-soon pages and safe errors", () => {
+    const result = meta({
+      loaderData: {
+        title: "Talleres",
+        seo: { description: "Próximamente." },
+        slug: "talleres",
+        site: { baseUrl: "https://calma.example", indexingEnabled: true },
+      },
+      error: undefined,
+    } as never);
+    expect(
+      result.some(
+        (entry) => entry.name === "robots" && entry.content.includes("noindex"),
+      ),
+    ).toBe(true);
+    const errorResult = meta({
+      loaderData: undefined,
+      error: new Error("secret-token"),
+    } as never);
+    expect(errorResult).toEqual(
+      expect.arrayContaining([
+        { title: "Página no encontrada" },
+        { name: "robots", content: "noindex, nofollow" },
+      ]),
+    );
+    expect(errorResult.some((entry) => entry.title?.includes("|"))).toBe(false);
+    expect(JSON.stringify(errorResult)).not.toContain("secret-token");
+    expect(JSON.stringify(errorResult)).not.toContain("example.test");
   });
 
   it("returns no WhatsApp CTA when the number is invalid", async () => {

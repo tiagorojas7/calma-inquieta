@@ -11,4 +11,12 @@ export const microcopy = {
   writeUs: "Escribinos",
   whatsappSuffix: " por WhatsApp",
   followInstagram: "Seguinos en Instagram",
+  notFound: {
+    title: "Página no encontrada",
+    message: "La página que buscás no existe.",
+  },
+  serverError: {
+    title: "Algo salió mal",
+    message: "Probá de nuevo más tarde.",
+  },
 } as const;

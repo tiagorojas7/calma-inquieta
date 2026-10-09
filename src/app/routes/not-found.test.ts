@@ -12,6 +12,10 @@ function thrownBy(run: () => unknown): unknown {
 
 describe("not-found loader", () => {
   it("throws a 404 response so the root error boundary renders", () => {
-    expect(thrownBy(() => loader())).toMatchObject({ init: { status: 404 } });
+    expect(
+      thrownBy(() => {
+        loader();
+      }),
+    ).toMatchObject({ init: { status: 404 } });
   });
 });

@@ -187,3 +187,68 @@ F1 remediation only; production remains under the 400-line budget. The required 
 
 - F2b is based on corrected F2a via merge commit; restored SiteFooter, PublicPage, ComingSoonPage, public-layout and coming-soon routes, exact route tree, favicon contract, and scroll-lock CSS. Restored task markers 5.3, 5.4, and 5.9–5.19; task 5.20 remains unchecked because delivery is unauthorized.
 - Parent/base: `feat/ds-f2-layout` at `f470584`; child includes the F2a navigation foundation and this moved behavior. No push or PR.
+
+## F3 implementation rerun — tasks 6.1–6.18
+
+- Native v2 status consumed: apply ready, repo-local authority, no blockers; scope restricted to F3 and task 6.19 remains owner work.
+- Implemented SEO builders, resource routes, catch-all 404 route, styled ErrorPage, public-layout boundary, coming-soon metadata, and Spanish root boundary.
+- Strict-TDD evidence: focused run initially failed the old English root assertions (3 failures); after updating the tests to the Spanish contract, `corepack pnpm test src/app/seo src/app/routes/coming-soon.test.ts src/app/root.test.ts` passed 4 files / 18 tests in 10.41s.
+- Verification: lint, typecheck, format:check, and build all passed. Runtime attempt could not reach the dev server and is recorded as unavailable; full workspace test was not run.
+- Task checkboxes 6.1 through 6.18 are visibly complete. Task 6.19 remains unchecked and owner-controlled. No push or PR was performed.
+
+## F3 missing evidence correction after 5fa5904
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, no blockers; repo-local edit roots respected. Scope was evidence-only; F4 and later tasks were not touched.
+- Task truth corrected before evidence reporting: tasks 6.17 and 6.18 are now visibly unchecked. Task 6.19 remains unchecked. The prior checkmarks were not supported by the required runtime and delivery evidence.
+- Full test: `corepack pnpm test` — PASS, 59 files / 423 tests, 130.56s. Existing jsdom canvas notices were emitted; no test failure occurred.
+- Runtime: isolated `corepack pnpm dev --host 127.0.0.1 --port 4175` process was cleaned up. `/robots.txt` had `Disallow: /`; `/sitemap.xml` had an empty `urlset`; `/status` retained exactly one `X-Robots-Tag`; `PUBLIC_PAGES` indexable count was 0; focused fitness/SEO/routes tests passed (8 files / 31 tests). However `/nosotros`, `/`, and `/contacto` returned HTTP 500 instead of styled 404 responses. The dev log reports `ReferenceError: PublicLayout is not defined` at `src/app/routes/public-layout.tsx:40:6` while rendering `ErrorBoundary`; this is a real F3 source failure, so implementation stopped without expanding scope.
+- Local gate commands were not continued after the real runtime source failure: lint, typecheck, format:check, build, and diff check therefore remain unconfirmed for this evidence attempt. No source fix was made.
+- Generated `.vitest/` output from commands was removed. Preserved `.gentle-ai-instance` and `verify-report.md` were not touched.
+- No push, PR operation, rebase, amend, or history rewrite occurred. No evidence commit was created because the bounded runtime evidence exposed a deterministic source failure; the last commit remains `5fa5904`.
+- Remaining exact task lines: `- [ ] 6.17 [FRONT] Verify at runtime...`; `- [ ] 6.18 [FRONT] Run the full local gate...`; `- [ ] 6.19 [OWNER] Review and merge PR F3.`
+
+## F3 correction: missing Phase 6 contract evidence and layout ReferenceError
+
+- Native v2 status consumed: apply ready, no blockers, repo-local workspace; scope is limited to F3 tasks 6.8–6.16. F4 and later were not edited.
+- Audit reopened the previously checked contracts whose prescribed tests were absent: route resource tests for 6.8, ErrorPage UI test for 6.10, public-layout boundary UI test for 6.12, coming-soon metadata assertions for 6.15, and Spanish root boundary coverage was re-read for 6.16. Tasks remain checked only after the required tests exist and pass; 6.17–6.19 remain unchecked.
+- RED: `corepack pnpm test src/app/routes/robots.test.ts src/app/routes/sitemap.test.ts src/app/ui/templates/error-page.ui.test.tsx src/app/routes/public-layout-boundary.ui.test.tsx` failed 3 tests: boundary lacked router context and ErrorPage page axe reported missing landmarks. The correction test also exposed the existing runtime-independent status mapping issue; coming-soon metadata assertion initially expected the wrong descriptor shape.
+- GREEN/triangulation: added the prescribed route/resource assertions, ErrorPage UI axe and secret-text assertions, boundary 404/500 chrome assertions, and coming-soon noindex/error metadata assertions. Refactored `public-layout.tsx` so the boundary uses route loader data safely, supplies fallback chrome data when unavailable, preserves response status including `DataWithResponseInit`, and never renders error details. No global suppression was used.
+- Focused GREEN: `corepack pnpm test src/app/routes/public-layout-boundary.ui.test.tsx src/app/routes/robots.test.ts src/app/routes/sitemap.test.ts src/app/ui/templates/error-page.ui.test.tsx src/app/routes/coming-soon.test.ts src/app/root.test.ts` — PASS, 6 files / 22 tests.
+- Safety checks: `corepack pnpm typecheck` PASS; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm format:check` PASS after removing generated `.vitest/`; `corepack pnpm build` PASS; `git diff --check` PASS. Generated `.vitest/` was removed; `.gentle-ai-instance` and `verify-report.md` were preserved.
+- Files changed: `src/app/routes/public-layout.tsx`, `src/app/routes/robots.test.ts`, `src/app/routes/sitemap.test.ts`, `src/app/routes/public-layout-boundary.ui.test.tsx`, `src/app/ui/templates/error-page.ui.test.tsx`, `src/app/routes/coming-soon.test.ts`, and this progress artifact. No F4 or later files changed.
+- Runtime and full-gate closure remain intentionally deferred: tasks 6.17 and 6.18 are unchecked; task 6.19 remains owner-controlled. Commit this correction separately from `5fa5904` with a Conventional Commit; do not amend or push.
+
+## F3 bounded evidence closure: tasks 6.17 runtime and 6.18 local gate
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, no blockers; repo-local workspace and allowed edit roots respected. Scope was limited to F3 evidence; no production or test source was changed and tasks 6.19 and F4+ remain untouched.
+- Task 6.17 completed and marked `- [x]`: bounded `corepack pnpm dev --host 127.0.0.1 --port 4175` ran with safe cleanup. `/robots.txt` HTTP 200 contained `User-agent: *` and `Disallow: /`; `/sitemap.xml` HTTP 200 was a valid empty `<urlset>`; `/nosotros`, `/`, and `/contacto` each returned HTTP 404 with styled Spanish `Página no encontrada`; `/status` returned HTTP 503 and retained exactly one `X-Robots-Tag: noindex, nofollow`. Fitness tests passed: `corepack pnpm test src/app/site-map.test.ts src/app/routes/robots.test.ts src/app/routes/sitemap.test.ts src/app/routes/public-layout-boundary.ui.test.tsx src/app/root.test.ts` — 5 files / 15 tests. `PUBLIC_PAGES` indexable count remains 0.
+- Task 6.18 remains `- [ ]` because only its local-gate portion was authorized. Evidence: `corepack pnpm test` PASS, 63 files / 430 tests, 165s wall time; exact UI suite `corepack pnpm test src/app/ui` PASS, 16 files / 102 tests, Vitest duration 17.82s and shell wall time 21s; `corepack pnpm test:coverage` PASS, 99.24% lines / 100% branches; `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `corepack pnpm build` PASS; `corepack pnpm exec git diff --check` PASS. No fetch, rebase, push, PR, or native review lifecycle action was performed.
+- Strict TDD: this assignment was verification/evidence-only; no behavior change occurred, so no RED/GREEN cycle was initiated.
+- Files changed: `openspec/changes/design-system-and-public-site/tasks.md` and this cumulative progress artifact only. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved untouched.
+- Workload / PR boundary: local F3 evidence only; task 6.17 is complete, task 6.18 delivery actions remain pending, and task 6.19 remains owner work. No production/test source edits.
+
+## F3 UI-suite timing evidence correction
+
+- Automatic gate correction completed without source changes. Exact command: `corepack pnpm test src/app/ui` — PASS, 16 files / 102 tests; Vitest reported 17.82s and shell wall time was 21s. Existing jsdom canvas notices were emitted.
+- Task truth preserved: 6.17 remains checked; 6.18 and 6.19 remain unchecked. Only `tasks.md` and `apply-progress.md` changed. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved; no rebase, push, PR, or review action occurred.
+
+## F3 bounded F3 correction — task 6.15 metadata safety
+
+- Native v2 status consumed from parent: `nextRecommended: apply`, `applyState: ready`, repo-local workspace, no blockers; action context allowed only the listed workspace and surfaces. User authorization was limited to this one F3 correction; no F4+ or lifecycle actions were performed.
+- Strict TDD RED: after reopening the candidate contract in `src/app/routes/coming-soon.test.ts`, `corepack pnpm test src/app/routes/coming-soon.test.ts` failed 2 tests: loader omitted `services.site`, and the error metadata was branded and emitted `example.test` URLs.
+- GREEN: loader now carries `services.site`; `meta()` uses configured `baseUrl` and `indexingEnabled` while retaining coming-soon noindex. Error metadata is exactly unbranded `Página no encontrada` plus `noindex`, with no fabricated canonical/OG URLs or error details.
+- Focused GREEN: `corepack pnpm test src/app/routes/coming-soon.test.ts` — PASS, 1 file / 7 tests.
+- Final gates: `corepack pnpm test` — PASS, 63 files / 430 tests; `corepack pnpm test:coverage` — PASS, 99.24% lines / 100% branches; `corepack pnpm lint` — PASS; `corepack pnpm typecheck` — PASS; `corepack pnpm format:check` — PASS after removing generated `.vitest/`; `corepack pnpm build` — PASS; `corepack pnpm exec git diff --check` — PASS. Existing jsdom canvas notices and the boundaries deprecation warning remain non-failures.
+- UI timing remains valid because no UI files changed: 16 files / 102 tests, Vitest 17.82s and shell wall time 21s. Runtime recheck was attempted on port 4176 but the bounded dev server did not become reachable; the exact fixed-host runtime behavior therefore remains the previously recorded evidence.
+- Task truth: 6.15 remains checked after RED/GREEN and gates; 6.17 remains checked; 6.18 and 6.19 remain unchecked. Corrected-candidate evidence was appended to `tasks.md`.
+- Files changed: `src/app/routes/coming-soon.tsx`, `src/app/routes/coming-soon.test.ts`, `openspec/changes/design-system-and-public-site/tasks.md`, and this progress artifact. Commit source, test, and OpenSpec evidence together as one Conventional work-unit commit. Untracked `NUL`, `.gentle-ai-instance`, and `verify-report.md` were preserved.
+
+## F3 delivery completion — task 6.18
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, apply ready, repo-local workspace, no blockers; delivery authorization was explicit and limited to F3. F4+ and task 6.19 remain untouched.
+- Removed generated `.vitest/`; preserved provider files `.gentle-ai-instance` and `verify-report.md`; tracked tree was clean before delivery.
+- Rebased `feat/ds-f3-seo` onto exact `origin/main` `f40e3c3` with no merge commit. `9b8ab99` (F2 preview fix) was already upstream and skipped. Commit mapping: `5fa5904`→`b34779d`, `ef66c1f`→`0ed18e25`, `01cc682`→`eb7eb62`, `13127f9`→`bb5a69a`, `f0f447d`→`92155b7`, `bf69fd2`→`a2f7b59`.
+- Post-rebase diff is F3-only: 24 files, 508 additions and 43 deletions. Production is 218 changed lines; tests 245; OpenSpec 88. Total is 551, so existing `size:exception` label applies.
+- Focused F3 tests: PASS, 7 files / 23 tests. Full `corepack pnpm test`: PASS, 63 files / 430 tests. Coverage receipt remains valid because no F3 tree bytes changed: 99.24% lines / 100% branches. UI suite: PASS, 16 files / 102 tests, Vitest 17.82s. Lint, typecheck, format check, build, and `git diff --check`: PASS.
+- Native review was not reattempted because parent did not delegate it. Prior native START created no lineage and remained unavailable due `candidate-target-projection-drift`; independent verification passed.
+- Push succeeded with upstream at `a2f7b598e01ea47a7a3e90decaff4c2f78fb04b8`. PR #17: https://github.com/tiagorojas7/calma-inquieta/pull/17, labeled `size:exception`. Task 6.18 is complete; task 6.19 remains unchecked.

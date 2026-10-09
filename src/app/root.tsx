@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import appCss from "./ui/styles/app.css?url";
+import { ErrorPage } from "./ui/templates/error-page";
 
 // The sand-200 token value (tokens.css); root.test.ts asserts it matches.
 const THEME_COLOR = "#e6d7c4";
@@ -53,14 +54,5 @@ export default function App() {
 // Generic on purpose: no error message, stack or route detail reaches the page.
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const notFound = isRouteErrorResponse(error) && error.status === 404;
-  return (
-    <main>
-      <h1>{notFound ? "Page not found" : "Something went wrong"}</h1>
-      <p>
-        {notFound
-          ? "The page you requested does not exist."
-          : "Please try again later."}
-      </p>
-    </main>
-  );
+  return <ErrorPage status={notFound ? 404 : 500} />;
 }

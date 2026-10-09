@@ -1,9 +1,15 @@
-import { Outlet, useLoaderData } from "react-router";
+import {
+  isRouteErrorResponse,
+  Outlet,
+  useLoaderData,
+  useRouteError,
+} from "react-router";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import { servicesContext } from "~/app/context";
 import { PUBLIC_PAGES } from "~/app/site-map";
 import { PublicPage } from "~/app/ui/templates/public-page";
 import type { Route } from "./+types/public-layout";
+import { ErrorPage } from "~/app/ui/templates/error-page";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
@@ -27,7 +33,21 @@ export async function loader({ context }: Route.LoaderArgs) {
   };
 }
 
-export default function PublicLayout() {
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  return (
+    <PublicLayout>
+      <ErrorPage status={status} />
+    </PublicLayout>
+  );
+}
+
+export default function PublicLayout({
+  children,
+}: {
+  children?: React.ReactNode;
+}) {
   const data = useLoaderData<typeof loader>();
   const footer = data.footer;
   const profile = {
@@ -52,7 +72,7 @@ export default function PublicLayout() {
   };
   return (
     <PublicPage pages={PUBLIC_PAGES} profile={profile}>
-      <Outlet />
+      {children ?? <Outlet />}
     </PublicPage>
   );
 }

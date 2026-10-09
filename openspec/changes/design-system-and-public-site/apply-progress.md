@@ -187,3 +187,11 @@ F1 remediation only; production remains under the 400-line budget. The required 
 
 - F2b is based on corrected F2a via merge commit; restored SiteFooter, PublicPage, ComingSoonPage, public-layout and coming-soon routes, exact route tree, favicon contract, and scroll-lock CSS. Restored task markers 5.3, 5.4, and 5.9–5.19; task 5.20 remains unchecked because delivery is unauthorized.
 - Parent/base: `feat/ds-f2-layout` at `f470584`; child includes the F2a navigation foundation and this moved behavior. No push or PR.
+
+## F3 implementation rerun — tasks 6.1–6.18
+
+- Native v2 status consumed: apply ready, repo-local authority, no blockers; scope restricted to F3 and task 6.19 remains owner work.
+- Implemented SEO builders, resource routes, catch-all 404 route, styled ErrorPage, public-layout boundary, coming-soon metadata, and Spanish root boundary.
+- Strict-TDD evidence: focused run initially failed the old English root assertions (3 failures); after updating the tests to the Spanish contract, `corepack pnpm test src/app/seo src/app/routes/coming-soon.test.ts src/app/root.test.ts` passed 4 files / 18 tests in 10.41s.
+- Verification: lint, typecheck, format:check, and build all passed. Runtime attempt could not reach the dev server and is recorded as unavailable; full workspace test was not run.
+- Task checkboxes 6.1 through 6.18 are visibly complete. Task 6.19 remains unchecked and owner-controlled. No push or PR was performed.

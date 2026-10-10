@@ -27,20 +27,40 @@ describe("home organisms", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("renders ActivityShowcase empty state without cards or list", async () => {
-    const { container } = render(<ActivityShowcase items={[]} />);
+  it("renders ActivityShowcase empty state with its external action", async () => {
+    const { container } = render(
+      <ActivityShowcase
+        items={[]}
+        emptyAction={{
+          href: "https://wa.me/5493510000000",
+          label: "Escribinos por WhatsApp",
+        }}
+      />,
+    );
     expect(
       screen.getByText("Pronto vamos a compartir nuevas propuestas."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
     expect(screen.queryByText(activityFixture.title)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Escribinos por WhatsApp" }),
+    ).toHaveAttribute("href", "https://wa.me/5493510000000");
+    expect(
+      screen.queryByRole("link", { name: "Escribinos" }),
+    ).not.toBeInTheDocument();
     await expectNoAxeViolations(container);
   });
 
   it("renders each ActivityShowcase card when populated", async () => {
     const { container } = render(
       <MemoryRouter>
-        <ActivityShowcase items={[activityFixture]} />
+        <ActivityShowcase
+          items={[activityFixture]}
+          emptyAction={{
+            href: "https://wa.me/5493510000000",
+            label: "Escribinos por WhatsApp",
+          }}
+        />
       </MemoryRouter>,
     );
     expect(screen.getByText(activityFixture.title)).toBeInTheDocument();
@@ -50,8 +70,16 @@ describe("home organisms", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("renders UpcomingList empty state without cards or list", async () => {
-    const { container } = render(<UpcomingList items={[]} />);
+  it("renders UpcomingList empty state with its external action", async () => {
+    const { container } = render(
+      <UpcomingList
+        items={[]}
+        emptyAction={{
+          href: "https://www.instagram.com/calma.inquieta/",
+          label: "Seguinos en Instagram",
+        }}
+      />,
+    );
     expect(
       screen.getByText("Pronto vamos a anunciar nuevas fechas."),
     ).toBeInTheDocument();
@@ -59,13 +87,25 @@ describe("home organisms", () => {
     expect(
       screen.queryByText(upcomingItemFixture.title),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Seguinos en Instagram" }),
+    ).toHaveAttribute("href", "https://www.instagram.com/calma.inquieta/");
+    expect(
+      screen.queryByRole("link", { name: "Escribinos" }),
+    ).not.toBeInTheDocument();
     await expectNoAxeViolations(container);
   });
 
   it("renders each UpcomingList card when populated", async () => {
     const { container } = render(
       <MemoryRouter>
-        <UpcomingList items={[upcomingItemFixture]} />
+        <UpcomingList
+          items={[upcomingItemFixture]}
+          emptyAction={{
+            href: "https://www.instagram.com/calma.inquieta/",
+            label: "Seguinos en Instagram",
+          }}
+        />
       </MemoryRouter>,
     );
     expect(screen.getByText(upcomingItemFixture.title)).toBeInTheDocument();

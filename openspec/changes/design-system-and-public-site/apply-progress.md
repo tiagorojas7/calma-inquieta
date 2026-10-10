@@ -291,3 +291,21 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Focused GREEN: corepack pnpm test src/app/routes/home.test.ts src/app/routes/home.ui.test.tsx src/app/site-map.test.ts — PASS, 3 files / 4 tests. corepack pnpm typecheck — PASS. Changed-file ESLint and Prettier — PASS. Full lint is blocked by unrelated pre-existing no-unnecessary-type-assertion in src/app/routes/sitemap.ts; forbidden file was not changed.
 - Files changed: home route/tests, routes.ts, site-map.ts/test, tasks and this artifact. 7.9–7.10 checked; 7.11–7.12 unchecked. No runtime/delivery, push, PR, rebase, or commit.
 - F4 production receipt against origin/main: 273 additions, 2 deletions (275 authored src/app lines excluding tests); 125-line margin under 400. Split-required: No.
+
+## F4 bounded correction — empty-state CTA lineage and sitemap lint
+
+- Strict-TDD RED observed before implementation: focused home/organism tests failed 3 tests because both organisms rendered `/contacto`/`Escribinos`, and the page test matched the ContactBand instead of the empty sections.
+- GREEN correction: `ActivityShowcase` and `UpcomingList` now require structural `emptyAction` props; home maps loader-derived WhatsApp/Instagram URLs and exact labels; tests scope each section and reject `/contacto`. ContactBand was unchanged. Sitemap removed only the unnecessary `as boolean`; this was a pre-existing, non-candidate lint blocker.
+- Focused GREEN: `corepack pnpm test src/app/ui/organisms/home-sections.ui.test.tsx src/app/routes/home.ui.test.tsx src/app/routes/sitemap.test.ts` — PASS, 3 files / 10 tests.
+- Lint and typecheck were each bounded at 600s/300s but did not complete after type generation; architecture/styles was also bounded and did not complete. No pass is claimed. Format/build/diff checks were not run after the recovery failure. Tasks 7.6 and 7.10 remain unchecked; no commit created. `.vitest/` generated output was removed; provider artifacts were preserved.
+
+## F4 CTA correction closure
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and authorized edit roots respected. Scope remained limited to the existing F4 CTA correction and sitemap assertion fix; no 7.11+ work.
+- Strict-TDD correction: preserved structural external CTA behavior and sitemap fix. Made only the page-level axe test explicit with a 10,000 ms Vitest timeout; no global timeout or axe assertion was weakened.
+- Prettier write was limited to the currently changed authorized source/test files: `activity-showcase.tsx`, `upcoming-list.tsx`, `home-sections.ui.test.tsx`, `home.tsx`, `home.ui.test.tsx`, `sitemap.ts`, and `sitemap.test.ts`.
+- Determinism: `corepack pnpm test src/app/routes/home.ui.test.tsx src/app/ui/organisms/home-sections.ui.test.tsx src/app/routes/sitemap.test.ts` passed twice sequentially, each 3 files / 10 tests (58.07s, then 52.31s).
+- Gates: `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm typecheck` completed without diagnostics; `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` PASS, 2 files / 28 tests; `corepack pnpm format:check` PASS after removing generated `.vitest/json/output.json` and empty `.vitest` directories; `corepack pnpm build` PASS; `git diff --check` PASS. The first combined lint/typecheck command timed out at 300s without a diagnostic, then lint was rerun with a 600s bound and passed.
+- Tasks 7.6 and 7.10 are visibly checked in `tasks.md`; 7.11 and later remain unchecked. Files changed remain within the authorized surfaces; provider artifacts `.gentle-ai-instance` and `verify-report.md` were preserved.
+- Cumulative F4 production receipt against `origin/main`, excluding tests and OpenSpec: 390 additions and 5 deletions, 395 authored changed lines. Split required: No; within the 400-line production budget.
+- Workload boundary: one Conventional correction commit, no push, PR, rebase, split, or review lifecycle action.

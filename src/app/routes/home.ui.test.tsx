@@ -28,32 +28,55 @@ const fixture = {
 };
 
 describe("Inicio route", () => {
-  it("renders the empty, consent-safe page contract", async () => {
-    const Stub = createRoutesStub([
-      {
-        path: "/",
-        Component: () => (
-          <main>
-            <HomeRoute />
-          </main>
+  it(
+    "renders the empty, consent-safe page contract",
+    { timeout: 10000 },
+    async () => {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => fixture,
+        },
+      ]);
+      const { container } = render(<Stub initialEntries={["/"]} />);
+      expect(await screen.findAllByRole("heading", { level: 1 })).toHaveLength(
+        1,
+      );
+      expect(
+        screen.getByRole("heading", { level: 1 }).querySelector("em"),
+      ).toBeTruthy();
+      const monthly = screen
+        .getByRole("heading", { name: "Talleres mensuales" })
+        .closest("section");
+      const intensivos = screen
+        .getByRole("heading", { name: "Próximos intensivos" })
+        .closest("section");
+      expect(monthly).not.toBeNull();
+      expect(intensivos).not.toBeNull();
+      expect(monthly).toHaveTextContent("Escribinos por WhatsApp");
+      expect(intensivos).toHaveTextContent("Seguinos en Instagram");
+      expect(
+        monthly?.querySelector('a[href="https://wa.me/5493510000000"]'),
+      ).toBeTruthy();
+      expect(
+        intensivos?.querySelector(
+          'a[href="https://www.instagram.com/calma.inquieta/"]',
         ),
-        loader: () => fixture,
-      },
-    ]);
-    const { container } = render(<Stub initialEntries={["/"]} />);
-    expect(await screen.findAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(
-      screen.getByRole("heading", { level: 1 }).querySelector("em"),
-    ).toBeTruthy();
-    expect(screen.getAllByText(/Escribinos|Instagram/).length).toBeGreaterThan(
-      0,
-    );
-    expect(screen.queryByText("Testimonios")).not.toBeInTheDocument();
-    expect(container.textContent).not.toMatch(/\$\s?\d/);
-    expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/);
-    expect(
-      screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1))),
-    ).toEqual([1, 2, 2, 2, 2]);
-    await expectNoAxeViolations(container, { page: true });
-  });
+      ).toBeTruthy();
+      expect(monthly?.querySelector('a[href="/contacto"]')).toBeNull();
+      expect(intensivos?.querySelector('a[href="/contacto"]')).toBeNull();
+      expect(screen.queryByText("Testimonios")).not.toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/\$\s?\d/);
+      expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/);
+      expect(
+        screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1))),
+      ).toEqual([1, 2, 2, 2, 2]);
+      await expectNoAxeViolations(container, { page: true });
+    },
+  );
 });

@@ -5,9 +5,11 @@ type Item = Parameters<typeof UpcomingItem>[0] & { id: string };
 export function UpcomingList({
   items,
   title = "Próximos intensivos",
+  emptyAction,
 }: {
   items: readonly Item[];
   title?: string;
+  emptyAction: { href: string; label: string };
 }) {
   return (
     <section>
@@ -21,7 +23,7 @@ export function UpcomingList({
       ) : (
         <EmptyState
           message="Pronto vamos a anunciar nuevas fechas."
-          actions={[{ href: "/contacto", label: "Escribinos" }]}
+          actions={[emptyAction]}
         />
       )}
     </section>

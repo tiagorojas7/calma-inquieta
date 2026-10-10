@@ -80,8 +80,21 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         title={data.monthlyHeading}
         items={data.monthly}
         emptyMessage={data.monthlyMessage}
+        emptyAction={{
+          href: data.whatsappHref ?? data.instagramHref,
+          label: data.whatsappHref
+            ? "Escribinos por WhatsApp"
+            : "Seguinos en Instagram",
+        }}
       />
-      <UpcomingList title={data.intensivosHeading} items={data.intensivos} />
+      <UpcomingList
+        title={data.intensivosHeading}
+        items={data.intensivos}
+        emptyAction={{
+          href: data.instagramHref,
+          label: "Seguinos en Instagram",
+        }}
+      />
       <AboutTeaser heading={data.teaser.heading} body={data.teaser.body} />
       <TestimonialsSection
         heading={data.testimonialsHeading}

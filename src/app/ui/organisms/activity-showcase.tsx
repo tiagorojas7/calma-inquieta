@@ -6,10 +6,12 @@ export function ActivityShowcase({
   title = "Talleres mensuales",
   items,
   emptyMessage = "Pronto vamos a compartir nuevas propuestas.",
+  emptyAction,
 }: {
   title?: string;
   items: readonly Activity[];
   emptyMessage?: string;
+  emptyAction: { href: string; label: string };
 }) {
   return (
     <section>
@@ -21,10 +23,7 @@ export function ActivityShowcase({
           ))}
         </div>
       ) : (
-        <EmptyState
-          message={emptyMessage}
-          actions={[{ href: "/contacto", label: "Escribinos" }]}
-        />
+        <EmptyState message={emptyMessage} actions={[emptyAction]} />
       )}
     </section>
   );

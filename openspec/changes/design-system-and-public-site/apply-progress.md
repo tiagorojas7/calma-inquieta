@@ -282,3 +282,12 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Immediate focused run after test edits: initially failed 3 home tests due missing MemoryRouter context; after test-only correction, combined focused suite passed 3 files / 13 tests. This is safety-net/triangulation evidence; historical RED for 7.6 and 7.8 was not reconstructed.
 - Checks: architecture/styles passed (2 files / 28 tests); lint passed before the combined command timed out during typecheck; format check passed after formatting the two changed test files; diff check passed. Typecheck did not produce a completion result within the bounded timeout and is recorded as unavailable. No production change was required.
 - Tasks 7.4, 7.6, and 7.8 are now visibly checked again. Tasks 7.9 and later remain unchecked. No commit has been created yet; one Conventional correction commit is required next.
+
+## F4 Inicio bounded apply — tasks 7.9–7.10
+
+- Native v2 status consumed: apply ready, no blockers; scope restricted to tasks 7.9–7.10. Tasks 7.11–7.12 remain unchecked and untouched.
+- Strict TDD RED: created home tests before home.tsx; focused run failed both suites because ./home did not exist.
+- GREEN: implemented home loader/container, organism mapping, WhatsApp builders, propagated site SEO meta, root route, indexable site map, and route fitness tests.
+- Focused GREEN: corepack pnpm test src/app/routes/home.test.ts src/app/routes/home.ui.test.tsx src/app/site-map.test.ts — PASS, 3 files / 4 tests. corepack pnpm typecheck — PASS. Changed-file ESLint and Prettier — PASS. Full lint is blocked by unrelated pre-existing no-unnecessary-type-assertion in src/app/routes/sitemap.ts; forbidden file was not changed.
+- Files changed: home route/tests, routes.ts, site-map.ts/test, tasks and this artifact. 7.9–7.10 checked; 7.11–7.12 unchecked. No runtime/delivery, push, PR, rebase, or commit.
+- F4 production receipt against origin/main: 273 additions, 2 deletions (275 authored src/app lines excluding tests); 125-line margin under 400. Split-required: No.

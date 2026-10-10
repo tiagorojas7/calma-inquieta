@@ -2,14 +2,7 @@ import { describe, expect, it } from "vitest";
 import routes from "./routes";
 import { PUBLIC_PAGES } from "./site-map";
 
-const NOT_YET_ROUTED = new Set([
-  "/",
-  "/talleres",
-  "/intensivos",
-  "/eventos-privados",
-  "/quienes-somos",
-  "/contacto",
-]);
+const NOT_YET_ROUTED = new Set(["/quienes-somos", "/contacto"]);
 
 function flatten(
   routeTree: unknown,
@@ -37,7 +30,7 @@ function flatten(
 describe("public site map", () => {
   it("declares the six menu entries and the F2 contract", () => {
     expect(PUBLIC_PAGES).toEqual([
-      { id: "home", path: "/", label: "Inicio", indexable: false },
+      { id: "home", path: "/", label: "Inicio", indexable: true },
       {
         id: "talleres",
         path: "/talleres",
@@ -70,25 +63,17 @@ describe("public site map", () => {
       },
     ]);
     const pages = PUBLIC_PAGES as readonly { indexable: boolean }[];
-    expect(pages.filter((page) => page.indexable)).toHaveLength(0);
+    expect(pages.filter((page) => page.indexable)).toHaveLength(1);
   });
 
-  it("keeps all public paths unrouted until F2b", () => {
+  it("keeps only future static pages unrouted", () => {
     const routed = flatten(routes);
-    expect([...NOT_YET_ROUTED]).toEqual([
-      "/",
-      "/talleres",
-      "/intensivos",
-      "/eventos-privados",
-      "/quienes-somos",
-      "/contacto",
-    ]);
+    expect([...NOT_YET_ROUTED]).toEqual(["/quienes-somos", "/contacto"]);
     expect(
       routed
         .filter((entry) => NOT_YET_ROUTED.has(entry.path))
         .every(
           (entry) =>
-            entry.file !== "routes/home.tsx" &&
             entry.file !== "routes/about.tsx" &&
             entry.file !== "routes/contact.tsx",
         ),

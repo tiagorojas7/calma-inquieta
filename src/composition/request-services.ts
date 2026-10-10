@@ -10,6 +10,10 @@ import {
 import { createDrizzleDatabaseProbe } from "~/modules/system-status/infrastructure/drizzle-database-probe";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { systemClock } from "~/platform/system-clock";
+import type { AdminAccessState } from "~/modules/admin-access";
+import type { MediaService } from "~/modules/media";
+import type { TeachersService } from "~/modules/teachers";
+import { createUnavailableService } from "./unavailable-service";
 
 /** How long `/status` reuses the last database probe (design D12). */
 const STATUS_PROBE_TTL_MS = 60_000;
@@ -24,6 +28,9 @@ export interface AppServices {
   readonly getSystemStatus: GetSystemStatus;
   readonly siteContent: SiteContent;
   readonly site: SiteConfig;
+  readonly adminAccess: AdminAccessState;
+  readonly media: MediaService;
+  readonly teachers: TeachersService;
 }
 
 export interface RuntimeConfig {
@@ -77,5 +84,8 @@ export function createRequestServices(
       baseUrl: config.siteUrl,
       indexingEnabled: config.indexingEnabled,
     },
+    adminAccess: { kind: "not-evaluated" },
+    media: createUnavailableService<MediaService>(),
+    teachers: createUnavailableService<TeachersService>(),
   };
 }

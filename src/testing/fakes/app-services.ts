@@ -1,4 +1,6 @@
 import type { AppServices } from "~/composition/request-services";
+import { adminAccessFor } from "./admin-actor";
+import { createUnavailableService } from "~/composition/unavailable-service";
 import { ok } from "~/modules/_shared";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
@@ -22,6 +24,12 @@ const OK_VIEW: SystemStatusView = {
  * Request services for route and loader tests: an ok status, content from the
  * in-memory source and a fixed, non-indexable site. An override replaces one field.
  */
+export function createAdminTestServices(
+  overrides: Partial<AppServices> = {},
+): AppServices {
+  return createTestServices({ adminAccess: adminAccessFor(), ...overrides });
+}
+
 export function createTestServices(
   overrides: Partial<AppServices> = {},
 ): AppServices {
@@ -31,6 +39,10 @@ export function createTestServices(
       createInMemorySiteContentSource(buildRawSiteContent()),
     ),
     site: { baseUrl: "https://example.test", indexingEnabled: false },
+    adminAccess: { kind: "not-evaluated" },
+    media: createUnavailableService<import("~/modules/media").MediaService>(),
+    teachers:
+      createUnavailableService<import("~/modules/teachers").TeachersService>(),
     ...overrides,
   };
 }

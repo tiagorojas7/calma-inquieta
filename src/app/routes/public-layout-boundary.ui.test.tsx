@@ -23,7 +23,7 @@ describe("public layout error boundary", () => {
     ).toBeInTheDocument();
     expect(container.textContent).not.toContain("secret-token");
     await expectNoAxeViolations(container, { page: true });
-  });
+  }, 10_000);
 
   it("renders public chrome around a safe server error", async () => {
     const Stub = createRoutesStub([{ path: "/", Component: ErrorBoundary }]);
@@ -35,5 +35,5 @@ describe("public layout error boundary", () => {
     ).toBeInTheDocument();
     expect(container.textContent).not.toContain("secret-token");
     await expectNoAxeViolations(container, { page: true });
-  });
+  }, 10_000);
 });

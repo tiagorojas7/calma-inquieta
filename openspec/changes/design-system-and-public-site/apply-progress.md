@@ -321,3 +321,12 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Full local gate: `corepack pnpm test` — PASS, 69 files / 448 tests, Vitest 159.54s; `corepack pnpm test:coverage` — PASS, 99.24% lines / 100% branches, 173.94s; `corepack pnpm lint` — PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` — PASS; `corepack pnpm format:check` — PASS; `corepack pnpm build` — PASS; `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` — PASS, 2 files / 28 tests; `git diff --check` — PASS. Generated `.vitest` output was removed; provider artifacts were preserved.
 - Task truth: task 7.11 is visibly checked. Task 7.12 remains visibly unchecked because rebase confirmation, push, PR, and native review/delivery remain pending; task 7.13 remains unchecked and untouched.
 - Commit boundary: only OpenSpec task/progress evidence is authorized for the evidence commit. No source/test/config edits, amend/rebase, push, PR, or native review lifecycle action.
+
+## F4 delivery evidence finalized — task 7.12
+
+- Local evidence only; no push, PR edit, test rerun, review retry, amend, or provider-artifact change was performed in this continuation.
+- Rebase/push/PR facts observed before this evidence commit: branch `feat/ds-f4-home` was rebased onto exact `origin/main` `121946d`; normal upstream push succeeded; PR #19 is https://github.com/tiagorojas7/calma-inquieta/pull/19 with `size:exception` applied. Pre-evidence candidate HEAD was `61c5189`.
+- CI `verify` was observed green and PR #19 was mergeable at pre-evidence HEAD `61c5189`; this evidence commit is local only and was not pushed.
+- Pre-evidence diff counts against `origin/main`: production 390 additions / 5 deletions = 395; tests/fixtures 457 / 20 = 477; OpenSpec/evidence 88 / 12 = 100; total 935 / 37 = 972. Production is under the 400-line threshold, so no F4b split was required; total overage uses the existing `size:exception` label.
+- Native ordinary review was unavailable: INSPECT was ready, but START failed pre-lineage with `candidate-target-projection-drift`; `lineage_created:false`. No native approval or acknowledgement exists and review was not retried. Independent final verification was PASS with no severe candidate-caused findings.
+- Task truth: 7.12 is checked with delivery evidence; 7.13 remains unchecked and owner-controlled for review/merge.

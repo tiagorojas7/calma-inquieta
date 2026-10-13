@@ -3,7 +3,9 @@ import { servicesContext } from "~/app/context";
 import { buildPageMeta } from "~/app/seo/meta";
 import { Heading } from "~/app/ui/atoms/heading";
 import { Text } from "~/app/ui/atoms/text";
+import { VideoFacade } from "~/app/ui/molecules/video-facade";
 import { FaqList } from "~/app/ui/organisms/faq-list";
+import { GalleryGrid } from "~/app/ui/organisms/gallery-grid";
 import { ValuesRow } from "~/app/ui/organisms/values-row";
 import type { Route } from "./+types/about";
 
@@ -57,7 +59,25 @@ function AboutPage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         <Text tone="accent">{data.valueProposition}</Text>
       </section>
       <ValuesRow heading={data.sectionHeadings.values} items={data.values} />
-      {/* Gallery and videos are wired in F6. */}
+      <GalleryGrid
+        heading={data.sectionHeadings.gallery}
+        images={data.gallery}
+      />
+      {data.videos.length > 0 && (
+        <section>
+          {/* The gallery heading names this section only when no images carry it. */}
+          {!data.gallery.length && (
+            <Heading level={2}>{data.sectionHeadings.gallery}</Heading>
+          )}
+          <ul>
+            {data.videos.map((video) => (
+              <li key={video.id}>
+                <VideoFacade video={video} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <FaqList heading={data.sectionHeadings.faq} items={data.faq} />
     </>
   );

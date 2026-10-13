@@ -14,4 +14,11 @@ export const adminMicrocopy = {
   confirm: {
     cancel: "Cancelar",
   },
+  rowEditor: {
+    moveUp: "Subir",
+    moveDown: "Bajar",
+    remove: "Quitar",
+    rowName: (action: string, position: number) =>
+      `${action} fila ${String(position)}`,
+  },
 } as const;

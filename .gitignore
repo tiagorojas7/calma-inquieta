@@ -12,3 +12,4 @@ worker-configuration.d.ts
 docs/client-proposal/_originals/
 .atl/
 .pi/
+.vitest/

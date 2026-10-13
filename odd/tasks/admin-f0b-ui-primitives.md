@@ -43,12 +43,12 @@ Ship the pure admin UI primitives that every FRONT admin slice (F0a, F1-F8) reus
 
 Each task: RED test, GREEN minimum code, REFACTOR, focused test + typecheck + lint, one Conventional Commit, evidence below. Route per task: delegated writer (single writer thread).
 
-- [ ] T1 StatusBadge + minimal admin microcopy. Accept: renders the label text for each of the 7 states (`draft`, `published`, `paused`, `cancelled`, `archived`, `active`, plus tone `data-tone`), is plain text (no color-only meaning), axe clean in every state. Commit `feat(admin-ui): add status badge`.
-- [ ] T2 Admin EmptyState. Accept: heading + message + one call-to-action link to the create URL (spec scenario "Empty list"), link named by its label, axe clean. Commit `feat(admin-ui): add empty state`.
-- [ ] T3 DataTable. Accept: `<table>` with caption, `scope="col"` headers, one row per record keyed by `rowKey`, cell renderers, scroll container labelled and keyboard focusable (360 px), empty rows render the admin EmptyState instead of a table, axe clean in both states. Commit `feat(admin-ui): add data table`.
-- [ ] T4 Form atoms. Accept: TextField, TextAreaField, SelectField, CheckboxField plus FormError; label bound to control, hint and per-field error linked with `aria-describedby`, `aria-invalid` and `role="alert"` only on error, entered value kept (controlled/default value untouched), form-level error with `role="alert"`, axe clean in default, hint and error states. Commit `feat(admin-ui): add form atoms`.
-- [ ] T5 ConfirmDialog. Accept: native `<dialog>` named by its title, opened with `showModal`, confirm and cancel buttons, nothing happens until confirm (spec "Confirmation before archive"), Escape and Cancelar call `onCancel`, destructive tone focuses Cancelar first, closed dialog is not exposed, axe clean open and closed. Commit `feat(admin-ui): add confirm dialog`.
-- [ ] T6 RowEditor. Accept: fieldset + legend with an ordered list of rows rendered by the caller, add / remove / move up / move down buttons with row-numbered accessible names, first row cannot move up and last cannot move down (disabled), add disabled at `max`, callbacks receive the index, axe clean. Commit `feat(admin-ui): add row editor`.
+- [x] T1 (3426f09) StatusBadge + minimal admin microcopy. Accept: renders the label text for each of the 6 states (`draft`, `published`, `paused`, `cancelled`, `archived`, `active`) with its tone in `data-tone`, is plain text (no color-only meaning), axe clean in every state. Commit `feat(admin-ui): add status badge`.
+- [x] T2 (16905d3) Admin EmptyState. Accept: heading + message + one call-to-action link to the create URL (spec scenario "Empty list"), link named by its label, axe clean. Commit `feat(admin-ui): add empty state`.
+- [x] T3 (e9dde37) DataTable. Accept: `<table>` with caption, `scope="col"` headers, one row per record keyed by `rowKey`, cell renderers, scroll container labelled and keyboard focusable (360 px), empty rows render the admin EmptyState instead of a table, axe clean in both states. Commit `feat(admin-ui): add data table`.
+- [x] T4 (5ebadc5) Form atoms. Accept: TextField, TextAreaField, SelectField, CheckboxField plus FormError; label bound to control, hint and per-field error linked with `aria-describedby`, `aria-invalid` and `role="alert"` only on error, entered value kept (controlled/default value untouched), form-level error with `role="alert"`, axe clean in default, hint and error states. Commit `feat(admin-ui): add form atoms`.
+- [x] T5 (507da92) ConfirmDialog. Accept: native `<dialog>` named by its title, opened with `showModal`, confirm and cancel buttons, nothing happens until confirm (spec "Confirmation before archive"), Escape and Cancelar call `onCancel`, destructive tone focuses Cancelar first, closed dialog is not exposed, axe clean open and closed. Commit `feat(admin-ui): add confirm dialog`.
+- [x] T6 (d3ec85b) RowEditor. Accept: fieldset + legend with an ordered list of rows rendered by the caller, add / remove / move up / move down buttons with row-numbered accessible names, first row cannot move up and last cannot move down (disabled), add disabled at `max`, callbacks receive the index, axe clean. Commit `feat(admin-ui): add row editor`.
 
 ## Acceptance criteria
 
@@ -62,4 +62,19 @@ Each task: RED test, GREEN minimum code, REFACTOR, focused test + typecheck + li
 
 ## Progress and evidence
 
-(updated after each task)
+Every task: RED = the focused test failed with `Error: Failed to resolve import "./<component>" from "src/app/ui/admin/<component>.ui.test.tsx". Does the file exist?` (1 failed file, no tests); GREEN = focused test passed; `corepack pnpm typecheck` and `corepack pnpm lint` exit 0 and Prettier clean before each commit (T4 first committed with a typecheck error under `exactOptionalPropertyTypes`, fixed and amended before any push).
+
+| Task | GREEN focused result | Commit  |
+| ---- | -------------------- | ------- |
+| T1   | 6 tests passed       | 3426f09 |
+| T2   | 1 test passed        | 16905d3 |
+| T3   | 3 tests passed       | e9dde37 |
+| T4   | 7 tests passed       | 5ebadc5 |
+| T5   | 6 tests passed       | 507da92 |
+| T6   | 5 tests passed       | d3ec85b |
+
+Routes: every task ran as the single delegated writer (no inline source writes by the parent).
+
+Size vs `31e7550`: production 476 authored lines (status-badge 33, empty-state 23, data-table 69, form-fields 168, confirm-dialog 69, row-editor 90, microcopy 24); tests 415. Over the 400 advisory ceiling because Prettier-formatted JSX for four field atoms plus Field/Messages plumbing is naturally long; no minification or artificial split.
+
+Deviations and notes: the stock `Button` atom does not accept a `ref`, so ConfirmDialog focuses the cancel button through a `data-cancel` hook instead of changing the change-2 atom. `src/app/ui/admin/microcopy.ts` is created here with only F0b strings; F0a extends it (expect a trivial merge). Heavy gates (full test, coverage, build) not run, by instruction.

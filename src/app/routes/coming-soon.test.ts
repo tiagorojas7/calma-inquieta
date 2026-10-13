@@ -34,7 +34,11 @@ describe("coming soon loader", () => {
     } as never);
     expect(pageMeta).toEqual(
       expect.arrayContaining([
-        { rel: "canonical", href: "https://calma.example/talleres" },
+        {
+          tagName: "link",
+          rel: "canonical",
+          href: "https://calma.example/talleres",
+        },
         { property: "og:url", content: "https://calma.example/talleres" },
         {
           property: "og:image",

@@ -13,6 +13,11 @@ describe("buildPageMeta", () => {
     expect(result).toEqual(
       expect.arrayContaining([
         { title: "Contacto | Calma Inquieta" },
+        {
+          tagName: "link",
+          rel: "canonical",
+          href: "https://example.test/contacto",
+        },
         { name: "robots", content: "noindex, nofollow" },
         { property: "og:locale", content: "es_AR" },
       ]),

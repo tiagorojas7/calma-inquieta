@@ -7,6 +7,11 @@ import {
   createInMemorySiteContentSource,
 } from "./in-memory-site-content-source";
 import { createSiteContent } from "~/modules/site-content";
+import {
+  buildMonthlyWorkshop,
+  buildTurno,
+  buildWorkshopPeriod,
+} from "./admin-builders";
 
 const VIEW: SystemStatusView = {
   status: "ok",
@@ -20,12 +25,33 @@ const VIEW: SystemStatusView = {
 };
 
 describe("createAdminTestServices", () => {
-  it("defaults to an admin actor and accepts overrides", () => {
+  it("defaults to an admin actor and accepts overrides", async () => {
     const services = createAdminTestServices();
     expect(services.adminAccess.kind).toBe("admin");
     expect(
       services.adminAccess.kind === "admin" && services.adminAccess.actor.email,
     ).toBe("owner@example.com");
+    const workshopResult = await services.monthlyWorkshops.get(
+      services.adminAccess as never,
+      "id",
+    );
+    const periodResult = await services.workshopPeriods.get(
+      services.adminAccess as never,
+      "id",
+      "2026-01",
+    );
+    expect(!workshopResult.ok && workshopResult.error).toEqual({
+      kind: "unavailable",
+    });
+    expect(!periodResult.ok && periodResult.error).toEqual({
+      kind: "unavailable",
+    });
+    const workshop = buildMonthlyWorkshop({ name: "Otro" });
+    const turno = buildTurno({ defaultCapacity: 20 });
+    const period = buildWorkshopPeriod({ status: "open" });
+    expect(workshop.name).toBe("Otro");
+    expect(turno.defaultCapacity).toBe(20);
+    expect(period.status).toBe("open");
   });
 });
 
@@ -43,6 +69,17 @@ describe("createTestServices", () => {
       baseUrl: "https://example.test",
       indexingEnabled: false,
     });
+    expect(
+      (
+        await services.monthlyWorkshops.listVisible(
+          services.adminAccess as never,
+        )
+      ).ok,
+    ).toBe(false);
+    expect(
+      (await services.workshopPeriods.list(services.adminAccess as never, "w"))
+        .ok,
+    ).toBe(false);
   });
 
   it("replaces one field and keeps the other defaults", async () => {

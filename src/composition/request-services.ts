@@ -13,6 +13,10 @@ import { systemClock } from "~/platform/system-clock";
 import type { AdminAccessState } from "~/modules/admin-access";
 import type { MediaService } from "~/modules/media";
 import type { TeachersService } from "~/modules/teachers";
+import type {
+  MonthlyWorkshopsService,
+  WorkshopPeriodsService,
+} from "~/modules/workshops";
 import { createUnavailableService } from "./unavailable-service";
 
 /** How long `/status` reuses the last database probe (design D12). */
@@ -31,6 +35,8 @@ export interface AppServices {
   readonly adminAccess: AdminAccessState;
   readonly media: MediaService;
   readonly teachers: TeachersService;
+  readonly monthlyWorkshops: MonthlyWorkshopsService;
+  readonly workshopPeriods: WorkshopPeriodsService;
 }
 
 export interface RuntimeConfig {
@@ -87,5 +93,7 @@ export function createRequestServices(
     adminAccess: { kind: "not-evaluated" },
     media: createUnavailableService<MediaService>(),
     teachers: createUnavailableService<TeachersService>(),
+    monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),
+    workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
   };
 }

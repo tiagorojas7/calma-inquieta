@@ -51,7 +51,7 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
 function AboutPage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
   return (
     <>
-      <section>
+      <section className="flex max-w-prose flex-col gap-4 py-section">
         <Heading level={1}>{data.heading}</Heading>
         {data.history.map((entry) => (
           <Text key={entry.id}>{entry.text}</Text>
@@ -64,12 +64,12 @@ function AboutPage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         images={data.gallery}
       />
       {data.videos.length > 0 && (
-        <section>
+        <section className="flex flex-col gap-6 py-section">
           {/* The gallery heading names this section only when no images carry it. */}
           {!data.gallery.length && (
             <Heading level={2}>{data.sectionHeadings.gallery}</Heading>
           )}
-          <ul>
+          <ul className="grid gap-6 md:grid-cols-2">
             {data.videos.map((video) => (
               <li key={video.id}>
                 <VideoFacade video={video} />

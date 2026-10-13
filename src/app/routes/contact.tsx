@@ -133,10 +133,10 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
 export default function ContactRoute() {
   const data = useLoaderData<typeof loader>();
   return (
-    <section>
+    <section className="flex max-w-prose flex-col items-start gap-6 py-section">
       <Heading level={1}>{data.heading}</Heading>
       <Text>{data.intro}</Text>
-      <div>
+      <div className="grid w-full gap-6 sm:grid-cols-2">
         {data.items.map(({ id, ...item }) => (
           <ContactItem key={id} {...item} />
         ))}

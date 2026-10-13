@@ -16,7 +16,7 @@ export function FaqList({
 }) {
   if (!items.length) return null;
   return (
-    <section>
+    <section className="flex max-w-prose flex-col gap-2 py-section">
       <Heading level={2}>{heading}</Heading>
       {items.map(({ id, question, answer }) => (
         <FaqItem key={id} question={question} answer={answer} />

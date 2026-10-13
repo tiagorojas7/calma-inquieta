@@ -24,6 +24,7 @@ export function VideoFacade({ video }: { video: VideoEntry }) {
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}?autoplay=1`}
         title={video.title}
+        className="aspect-video w-full rounded-sm"
         allow="autoplay; encrypted-media; picture-in-picture"
         allowFullScreen
       />
@@ -32,13 +33,17 @@ export function VideoFacade({ video }: { video: VideoEntry }) {
   return (
     <button
       type="button"
+      className="relative block w-full overflow-hidden rounded-sm"
       aria-label={microcopy.playVideo(video.title)}
       onClick={() => {
         setActive(true);
       }}
     >
-      <Image {...video.poster} />
-      <Icon name="play" />
+      <Image {...video.poster} className="w-full object-cover" />
+      <Icon
+        name="play"
+        className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 fill-white text-white"
+      />
     </button>
   );
 }

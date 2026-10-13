@@ -16,11 +16,14 @@ export function ValuesRow({
 }) {
   if (!items.length) return null;
   return (
-    <section>
+    <section className="flex flex-col gap-6 py-section">
       <Heading level={2}>{heading}</Heading>
-      <ul>
+      <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((item) => (
-          <li key={item.id}>
+          <li
+            key={item.id}
+            className="flex flex-col gap-2 rounded-md bg-sand-100 p-6"
+          >
             <Heading level={3}>{item.title}</Heading>
             <Text>{item.text}</Text>
           </li>

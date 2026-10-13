@@ -58,10 +58,14 @@ export function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 export type WorkshopStatus = "draft" | "published" | "paused" | "archived";
-export function isVisibleStatus(s: WorkshopStatus): boolean {
+export type IntensiveStatus =
+  "draft" | "published" | "paused" | "cancelled" | "archived";
+export function isVisibleStatus(s: WorkshopStatus | IntensiveStatus): boolean {
   return s === "published" || s === "paused";
 }
-export function acceptsNewRequests(s: WorkshopStatus): boolean {
+export function acceptsNewRequests(
+  s: WorkshopStatus | IntensiveStatus,
+): boolean {
   return s === "published";
 }
 export interface TeacherRef {
@@ -291,6 +295,120 @@ export type PeriodField =
   | "materialIds";
 export type OpenMonthRule =
   "workshop-status" | "teacher" | "percentage" | "active-turno";
+export interface IntensiveWorkshop {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly summary: string;
+  readonly description: string;
+  readonly assignment: TeacherAssignment | null;
+  readonly eventDate: string;
+  readonly startsAt: LocalTime;
+  readonly endsAt: LocalTime;
+  readonly price: Money;
+  readonly deposit: Money;
+  readonly capacity: number;
+  readonly minSeats: number;
+  readonly policyText: string;
+  readonly materialsIncluded: boolean;
+  readonly images: readonly ImageUse[];
+  readonly status: IntensiveStatus;
+  readonly audit: Audit;
+}
+export interface IntensiveWorkshopDraft {
+  readonly name: string;
+  readonly slug: string;
+  readonly summary: string;
+  readonly description: string;
+  readonly teacherId: string;
+  readonly percentage: string;
+  readonly eventDate: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly price: string;
+  readonly deposit: string;
+  readonly capacity: string;
+  readonly minSeats: string;
+  readonly policyText: string;
+  readonly materialsIncluded: boolean;
+  readonly images: readonly ImageUseDraft[];
+}
+export type IntensiveWorkshopField =
+  | "name"
+  | "slug"
+  | "summary"
+  | "description"
+  | "teacherId"
+  | "percentage"
+  | "eventDate"
+  | "timeRange"
+  | "price"
+  | "deposit"
+  | "capacity"
+  | "minSeats"
+  | "policyText"
+  | "images";
+export type IntensivePublishRule =
+  | "name"
+  | "slug"
+  | "teacher"
+  | "percentage"
+  | "time-range"
+  | "price"
+  | "deposit"
+  | "capacity"
+  | "min-seats";
+export interface IntensivesService {
+  list(
+    a: AdminActor,
+    f: { readonly status: IntensiveStatus | "live" },
+  ): Promise<Result<readonly IntensiveWorkshop[], AdminFailure>>;
+  listVisible(
+    a: AdminActor,
+  ): Promise<Result<readonly IntensiveWorkshop[], AdminFailure>>;
+  get(a: AdminActor, id: string): R<IntensiveWorkshop>;
+  create(
+    a: AdminActor,
+    d: IntensiveWorkshopDraft,
+  ): Promise<
+    Result<IntensiveWorkshop, AdminFailure | Invalid<IntensiveWorkshopField>>
+  >;
+  update(
+    a: AdminActor,
+    id: string,
+    d: IntensiveWorkshopDraft,
+  ): R<IntensiveWorkshop, Invalid<IntensiveWorkshopField>>;
+  delete(a: AdminActor, id: string): R<void, RulesUnmet<"draft-only">>;
+  publish(
+    a: AdminActor,
+    id: string,
+  ): R<
+    IntensiveWorkshop,
+    TransitionRefused<IntensiveStatus> | RulesUnmet<IntensivePublishRule>
+  >;
+  pause(
+    a: AdminActor,
+    id: string,
+  ): R<IntensiveWorkshop, TransitionRefused<IntensiveStatus>>;
+  cancel(
+    a: AdminActor,
+    id: string,
+  ): R<IntensiveWorkshop, TransitionRefused<IntensiveStatus>>;
+  archive(
+    a: AdminActor,
+    id: string,
+  ): R<IntensiveWorkshop, TransitionRefused<IntensiveStatus>>;
+  restore(
+    a: AdminActor,
+    id: string,
+  ): R<IntensiveWorkshop, TransitionRefused<IntensiveStatus>>;
+  reschedule(
+    a: AdminActor,
+    id: string,
+    d: Pick<IntensiveWorkshopDraft, "eventDate" | "startsAt" | "endsAt">,
+  ): R<IntensiveWorkshop, Invalid<"eventDate" | "timeRange">>;
+}
+
 export interface WorkshopPeriodsService {
   list(
     a: AdminActor,

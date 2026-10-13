@@ -51,6 +51,18 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/workshops").WorkshopPeriodsService
       >(),
+    intensives:
+      createUnavailableService<
+        import("~/modules/workshops").IntensivesService
+      >(),
+    suppliers:
+      createUnavailableService<
+        import("~/modules/materials").SuppliersService
+      >(),
+    materials:
+      createUnavailableService<
+        import("~/modules/materials").MaterialsService
+      >(),
     ...overrides,
   };
 }

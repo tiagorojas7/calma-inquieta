@@ -1,6 +1,12 @@
 import { describe, expect, it, expectTypeOf } from "vitest";
 import { err, ok } from "~/modules/_shared";
-import type { NotFound } from "~/modules/_shared";
+import type {
+  AdminFailure,
+  Invalid,
+  NotFound,
+  RulesUnmet,
+  TransitionRefused,
+} from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import {
   acceptsNewRequests,
@@ -12,6 +18,12 @@ import {
   type MonthlyWorkshopsService,
   type WorkshopPeriodsService,
   type PeriodSummary,
+  type IntensiveStatus,
+  type IntensivePublishRule,
+  type IntensiveWorkshopField,
+  type IntensivesService,
+  type IntensiveWorkshopDraft,
+  type IntensiveWorkshop,
 } from "~/modules/workshops";
 
 describe("workshop contract helpers", () => {
@@ -41,6 +53,7 @@ describe("workshop contract helpers", () => {
       ["published", true, true],
       ["paused", true, false],
       ["archived", false, false],
+      ["cancelled", false, false],
     ] as const;
     for (const [status, visible, accepts] of statusCases) {
       expect(isVisibleStatus(status)).toBe(visible);
@@ -100,6 +113,78 @@ describe("workshop contract helpers", () => {
       Awaited<ReturnType<MonthlyWorkshopsService["create"]>>,
       { readonly ok: false }
     >["error"];
+    type IsNever<T> = [T] extends [never] ? true : false;
+    const createErrorsExcludeNotFound: IsNever<
+      Extract<CreateErrors, NotFound>
+    > = true;
+    expect(createErrorsExcludeNotFound).toBe(true);
+  });
+});
+
+describe("intensive workshop contracts", () => {
+  it("exposes an independent complete service and form/read shapes", () => {
+    expectTypeOf<IntensiveWorkshop>().toHaveProperty("eventDate");
+    expectTypeOf<IntensiveWorkshopDraft>().toHaveProperty("startsAt");
+    type S = IntensivesService;
+    const keys = [
+      "list",
+      "listVisible",
+      "get",
+      "create",
+      "update",
+      "delete",
+      "publish",
+      "pause",
+      "cancel",
+      "archive",
+      "restore",
+      "reschedule",
+    ] as const satisfies readonly (keyof S)[];
+    expect(keys).toHaveLength(12);
+    expectTypeOf<S>().not.toExtend<MonthlyWorkshopsService>();
+    expectTypeOf<S>().toHaveProperty("reschedule");
+    expectTypeOf<S["cancel"]>().parameter(0).toEqualTypeOf<AdminActor>();
+    expectTypeOf<Awaited<ReturnType<S["create"]>>>().toHaveProperty("ok");
+  });
+});
+
+type ErrorOf<P> =
+  Awaited<P> extends infer R
+    ? R extends { readonly ok: false; readonly error: infer E }
+      ? E
+      : never
+    : never;
+
+describe("intensive workshop contract signatures", () => {
+  type S = import("~/modules/workshops").IntensivesService;
+
+  it("takes AdminActor first on every method", () => {
+    expectTypeOf<Parameters<S[keyof S]>[0]>().toEqualTypeOf<AdminActor>();
+  });
+
+  it("declares explicit error unions without unknown", () => {
+    expectTypeOf<ErrorOf<ReturnType<S["create"]>>>().toEqualTypeOf<
+      AdminFailure | Invalid<IntensiveWorkshopField>
+    >();
+    expectTypeOf<ErrorOf<ReturnType<S["publish"]>>>().toEqualTypeOf<
+      | AdminFailure
+      | NotFound
+      | TransitionRefused<IntensiveStatus>
+      | RulesUnmet<IntensivePublishRule>
+    >();
+    expectTypeOf<ErrorOf<ReturnType<S["delete"]>>>().toEqualTypeOf<
+      AdminFailure | NotFound | RulesUnmet<"draft-only">
+    >();
+    expectTypeOf<ErrorOf<ReturnType<S["reschedule"]>>>().toEqualTypeOf<
+      AdminFailure | NotFound | Invalid<"eventDate" | "timeRange">
+    >();
+    expectTypeOf<ErrorOf<ReturnType<S["cancel"]>>>().toEqualTypeOf<
+      AdminFailure | NotFound | TransitionRefused<IntensiveStatus>
+    >();
+  });
+
+  it("excludes NotFound from create errors", () => {
+    type CreateErrors = ErrorOf<ReturnType<S["create"]>>;
     type IsNever<T> = [T] extends [never] ? true : false;
     const createErrorsExcludeNotFound: IsNever<
       Extract<CreateErrors, NotFound>

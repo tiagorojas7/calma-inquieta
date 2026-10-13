@@ -12,6 +12,15 @@ describe("Icon", () => {
     );
     await expectNoAxeViolations(container);
   });
+  it("sizes and strokes every icon so it never renders at the SVG default", () => {
+    render(<Icon name="arrow" className="text-clay-800" />);
+    expect(screen.getByRole("img", { hidden: true })).toHaveClass(
+      "size-6",
+      "fill-none",
+      "stroke-current",
+      "text-clay-800",
+    );
+  });
   it("exposes a title accessibly", () => {
     render(<Icon name="whatsapp" title="WhatsApp" />);
     expect(screen.getByTitle("WhatsApp")).not.toHaveAttribute("aria-hidden");

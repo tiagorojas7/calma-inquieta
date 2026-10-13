@@ -82,25 +82,31 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         bajada={data.hero.bajada}
       />
       <TrustRow claims={data.trustClaims} />
-      <ActivityShowcase
-        title={data.monthlyHeading}
-        items={data.monthly}
-        emptyMessage={data.monthlyMessage}
-        emptyAction={{
-          href: data.whatsappHref ?? data.instagramHref,
-          label: data.whatsappHref
-            ? "Escribinos por WhatsApp"
-            : "Seguinos en Instagram",
-        }}
-      />
-      <UpcomingList
-        title={data.intensivosHeading}
-        items={data.intensivos}
-        emptyAction={{
-          href: data.instagramHref,
-          label: "Seguinos en Instagram",
-        }}
-      />
+      <div className="grid gap-x-12 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ActivityShowcase
+            title={data.monthlyHeading}
+            items={data.monthly}
+            emptyMessage={data.monthlyMessage}
+            emptyAction={{
+              href: data.whatsappHref ?? data.instagramHref,
+              label: data.whatsappHref
+                ? "Escribinos por WhatsApp"
+                : "Seguinos en Instagram",
+            }}
+          />
+        </div>
+        <div className="lg:border-l lg:border-tan-400 lg:pl-12">
+          <UpcomingList
+            title={data.intensivosHeading}
+            items={data.intensivos}
+            emptyAction={{
+              href: data.instagramHref,
+              label: "Seguinos en Instagram",
+            }}
+          />
+        </div>
+      </div>
       <AboutTeaser heading={data.teaser.heading} body={data.teaser.body} />
       <TestimonialsSection
         heading={data.testimonialsHeading}

@@ -9,7 +9,7 @@ export function AboutTeaser({
   body: string;
 }) {
   return (
-    <section>
+    <section className="flex max-w-prose flex-col items-start gap-4 py-section">
       <Heading level={2}>{heading}</Heading>
       <Text>{body}</Text>
       <ButtonLink href="/quienes-somos" variant="text-arrow">

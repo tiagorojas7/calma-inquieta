@@ -12,10 +12,10 @@ export function UpcomingList({
   emptyAction: { href: string; label: string };
 }) {
   return (
-    <section>
+    <section className="flex flex-col gap-6 py-section">
       <Heading level={2}>{title}</Heading>
       {items.length ? (
-        <div>
+        <div className="flex flex-col">
           {items.map(({ id, ...item }) => (
             <UpcomingItem key={id} {...item} />
           ))}

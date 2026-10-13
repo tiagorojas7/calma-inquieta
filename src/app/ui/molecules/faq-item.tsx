@@ -8,9 +8,11 @@ export function FaqItem({
   answer: string;
 }) {
   return (
-    <details>
-      <summary>{question}</summary>
-      <Text>{answer}</Text>
+    <details className="border-b border-tan-400 py-4">
+      <summary className="cursor-pointer font-semibold text-ink-900">
+        {question}
+      </summary>
+      <Text className="mt-3">{answer}</Text>
     </details>
   );
 }

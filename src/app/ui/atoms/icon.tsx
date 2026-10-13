@@ -30,11 +30,16 @@ const paths = {
 export function Icon({
   name,
   title,
+  className = "",
   ...props
 }: SVGProps<SVGSVGElement> & { name: keyof typeof paths; title?: string }) {
   return (
     <svg
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       {...props}
+      className={`size-6 shrink-0 fill-none stroke-current ${className}`}
       viewBox="0 0 24 24"
       role="img"
       aria-hidden={title ? undefined : "true"}

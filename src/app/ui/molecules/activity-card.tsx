@@ -23,8 +23,8 @@ export function ActivityCard({
   ctaLabel: string;
 }) {
   return (
-    <article>
-      <Image {...image} />
+    <article className="flex flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-card">
+      <Image {...image} className="w-full rounded-sm object-cover" />
       <Heading level={3}>{title}</Heading>
       <Text>{description}</Text>
       <ButtonLink href={href} variant="text-arrow">

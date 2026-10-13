@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ok } from "~/modules/_shared";
 import type { SystemStatusView } from "~/modules/system-status";
-import { createTestServices } from "./app-services";
+import { createAdminTestServices, createTestServices } from "./app-services";
 import {
   buildRawSiteContent,
   createInMemorySiteContentSource,
@@ -18,6 +18,16 @@ const VIEW: SystemStatusView = {
   buildCommit: "test",
   checkedAt: "2026-10-05T12:00:00.000Z",
 };
+
+describe("createAdminTestServices", () => {
+  it("defaults to an admin actor and accepts overrides", () => {
+    const services = createAdminTestServices();
+    expect(services.adminAccess.kind).toBe("admin");
+    expect(
+      services.adminAccess.kind === "admin" && services.adminAccess.actor.email,
+    ).toBe("owner@example.com");
+  });
+});
 
 describe("createTestServices", () => {
   it("resolves an ok status, serves in-memory content and a fixed site config", async () => {

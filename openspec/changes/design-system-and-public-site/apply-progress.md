@@ -252,3 +252,81 @@ F1 remediation only; production remains under the 400-line budget. The required 
 - Focused F3 tests: PASS, 7 files / 23 tests. Full `corepack pnpm test`: PASS, 63 files / 430 tests. Coverage receipt remains valid because no F3 tree bytes changed: 99.24% lines / 100% branches. UI suite: PASS, 16 files / 102 tests, Vitest 17.82s. Lint, typecheck, format check, build, and `git diff --check`: PASS.
 - Native review was not reattempted because parent did not delegate it. Prior native START created no lineage and remained unavailable due `candidate-target-projection-drift`; independent verification passed.
 - Push succeeded with upstream at `a2f7b598e01ea47a7a3e90decaff4c2f78fb04b8`. PR #17: https://github.com/tiagorojas7/calma-inquieta/pull/17, labeled `size:exception`. Task 6.18 is complete; task 6.19 remains unchecked.
+
+## F4 bounded Inicio cards — tasks 6.19 and 7.1–7.3
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, selected change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, no blockers; repo-local allowed roots respected. Scope stopped before 7.4.
+- Owner merge marker 6.19 completed: PR #17 merged as `c54bdd6` after green CI verification.
+- Task 7.1 completed: created `feat/ds-f4-home` from exact `origin/main`; added activity, upcoming, consented testimonial, hero image, and trust-claim fixtures to `src/testing/fixtures/ui.ts` without production fixture imports or fixture-suffixed files.
+- Strict TDD RED for 7.2: `corepack pnpm test src/app/ui/molecules/cards.ui.test.tsx` failed before implementation with unresolved `./activity-card` import. GREEN for 7.3: the same focused command passed with 1 file / 3 tests; each card includes an axe check.
+- Files changed: `src/testing/fixtures/ui.ts`, `src/app/ui/molecules/cards.ui.test.tsx`, `src/app/ui/molecules/activity-card.tsx`, `src/app/ui/molecules/upcoming-item.tsx`, `src/app/ui/molecules/testimonial-card.tsx`, and this evidence plus task markers. Tasks 7.4+ remain unchecked.
+- Checks: typecheck passed; architecture/styles tests passed (2 files / 28 tests); targeted Prettier passed after formatting; `git diff --check` passed. Lint command exceeded 240 seconds without a diagnostic and is recorded as unavailable in this bounded run.
+- Workload boundary: production additions are 65 lines across the three molecules; test-driven total may exceed the review budget under the standing FRONT exception policy. No push, PR, rebase, or review lifecycle action was performed.
+
+## F4 bounded Inicio organisms — tasks 7.4–7.8 recovery
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, apply ready, no blockers; scope limited to tasks 7.4–7.8. Provider artifacts `.gentle-ai-instance` and `verify-report.md` preserved.
+- Recovery inspection: all 11 partial authorized files were read before reuse. No tasks or progress bytes were present from the aborted attempt. Actual RED captured: hero focused run failed with unresolved `./hero-section` import. Later captured failures were missing router context in the combined UI tests and an incorrect heading-count assertion; no RED was reconstructed for the other contracts.
+- GREEN receipts: hero focused test PASS (1 file / 1 test); home-sections focused test PASS (1 file / 1 test); testimonials focused test PASS (1 file / 2 tests). Combined focused suite PASS (3 files / 4 tests). Architecture/styles PASS (2 files / 28 tests).
+- Commits: `887fc42 feat(home): add the hero section and collage`; `165fa5b feat(home): add trust row, showcase, teaser and contact band`; `ecb9769 feat(home): add the testimonials section hidden until real`. No amend or rewrite of `b2476fc`.
+- Final checks: `corepack pnpm lint` PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` PASS; `corepack pnpm format:check` PASS; `git diff --check` PASS. No full suite, build, runtime, push, PR, rebase, or review action was performed.
+- Production receipt against `origin/main`: 197 additions, 0 deletions across the eight new organism production files; cumulative F4 production remains <=400, so no F4b split applies.
+- Task truth: 7.4–7.8 are visibly checked; 7.9 and all later tasks remain unchecked. Files changed are the eleven authorized organism/test files plus tasks and this progress artifact.
+
+## F4 bounded evidence correction — tasks 7.4, 7.6, 7.8
+
+- Reopened tasks 7.4, 7.6, and 7.8 before correction; preserved 7.5 and 7.7. No production source changed and 7.9+ remained out of scope.
+- Added hero coverage for 1, 2, and 3 slots, non-empty alt, eager loading, exclusive first high fetchpriority, responsive hiding, required heading/em/CTA/bajada, and axe per case.
+- Split home-sections evidence into independent empty/populated tests for TrustRow, ActivityShowcase, and UpcomingList, with exact claims/cards and axe per state; separately covered AboutTeaser and ContactBand content/links with axe.
+- Added testimonials empty-state axe/no-content evidence and populated heading, quote, author, and axe assertions.
+- Immediate focused run after test edits: initially failed 3 home tests due missing MemoryRouter context; after test-only correction, combined focused suite passed 3 files / 13 tests. This is safety-net/triangulation evidence; historical RED for 7.6 and 7.8 was not reconstructed.
+- Checks: architecture/styles passed (2 files / 28 tests); lint passed before the combined command timed out during typecheck; format check passed after formatting the two changed test files; diff check passed. Typecheck did not produce a completion result within the bounded timeout and is recorded as unavailable. No production change was required.
+- Tasks 7.4, 7.6, and 7.8 are now visibly checked again. Tasks 7.9 and later remain unchecked. No commit has been created yet; one Conventional correction commit is required next.
+
+## F4 Inicio bounded apply — tasks 7.9–7.10
+
+- Native v2 status consumed: apply ready, no blockers; scope restricted to tasks 7.9–7.10. Tasks 7.11–7.12 remain unchecked and untouched.
+- Strict TDD RED: created home tests before home.tsx; focused run failed both suites because ./home did not exist.
+- GREEN: implemented home loader/container, organism mapping, WhatsApp builders, propagated site SEO meta, root route, indexable site map, and route fitness tests.
+- Focused GREEN: corepack pnpm test src/app/routes/home.test.ts src/app/routes/home.ui.test.tsx src/app/site-map.test.ts — PASS, 3 files / 4 tests. corepack pnpm typecheck — PASS. Changed-file ESLint and Prettier — PASS. Full lint is blocked by unrelated pre-existing no-unnecessary-type-assertion in src/app/routes/sitemap.ts; forbidden file was not changed.
+- Files changed: home route/tests, routes.ts, site-map.ts/test, tasks and this artifact. 7.9–7.10 checked; 7.11–7.12 unchecked. No runtime/delivery, push, PR, rebase, or commit.
+- F4 production receipt against origin/main: 273 additions, 2 deletions (275 authored src/app lines excluding tests); 125-line margin under 400. Split-required: No.
+
+## F4 bounded correction — empty-state CTA lineage and sitemap lint
+
+- Strict-TDD RED observed before implementation: focused home/organism tests failed 3 tests because both organisms rendered `/contacto`/`Escribinos`, and the page test matched the ContactBand instead of the empty sections.
+- GREEN correction: `ActivityShowcase` and `UpcomingList` now require structural `emptyAction` props; home maps loader-derived WhatsApp/Instagram URLs and exact labels; tests scope each section and reject `/contacto`. ContactBand was unchanged. Sitemap removed only the unnecessary `as boolean`; this was a pre-existing, non-candidate lint blocker.
+- Focused GREEN: `corepack pnpm test src/app/ui/organisms/home-sections.ui.test.tsx src/app/routes/home.ui.test.tsx src/app/routes/sitemap.test.ts` — PASS, 3 files / 10 tests.
+- Lint and typecheck were each bounded at 600s/300s but did not complete after type generation; architecture/styles was also bounded and did not complete. No pass is claimed. Format/build/diff checks were not run after the recovery failure. Tasks 7.6 and 7.10 remain unchecked; no commit created. `.vitest/` generated output was removed; provider artifacts were preserved.
+
+## F4 CTA correction closure
+
+- Native v2 status consumed: `gentle-ai.sdd-status` v2, `nextRecommended: apply`, `applyState: ready`; repo-local workspace and authorized edit roots respected. Scope remained limited to the existing F4 CTA correction and sitemap assertion fix; no 7.11+ work.
+- Strict-TDD correction: preserved structural external CTA behavior and sitemap fix. Made only the page-level axe test explicit with a 10,000 ms Vitest timeout; no global timeout or axe assertion was weakened.
+- Prettier write was limited to the currently changed authorized source/test files: `activity-showcase.tsx`, `upcoming-list.tsx`, `home-sections.ui.test.tsx`, `home.tsx`, `home.ui.test.tsx`, `sitemap.ts`, and `sitemap.test.ts`.
+- Determinism: `corepack pnpm test src/app/routes/home.ui.test.tsx src/app/ui/organisms/home-sections.ui.test.tsx src/app/routes/sitemap.test.ts` passed twice sequentially, each 3 files / 10 tests (58.07s, then 52.31s).
+- Gates: `corepack pnpm lint` PASS with the existing boundaries deprecation warning; `corepack pnpm typecheck` completed without diagnostics; `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` PASS, 2 files / 28 tests; `corepack pnpm format:check` PASS after removing generated `.vitest/json/output.json` and empty `.vitest` directories; `corepack pnpm build` PASS; `git diff --check` PASS. The first combined lint/typecheck command timed out at 300s without a diagnostic, then lint was rerun with a 600s bound and passed.
+- Tasks 7.6 and 7.10 are visibly checked in `tasks.md`; 7.11 and later remain unchecked. Files changed remain within the authorized surfaces; provider artifacts `.gentle-ai-instance` and `verify-report.md` were preserved.
+- Cumulative F4 production receipt against `origin/main`, excluding tests and OpenSpec: 390 additions and 5 deletions, 395 authored changed lines. Split required: No; within the 400-line production budget.
+- Workload boundary: one Conventional correction commit, no push, PR, rebase, split, or review lifecycle action.
+
+## F4 bounded runtime and local-gate evidence — tasks 7.11 and local-gate/count portion of 7.12
+
+- Native v2 status consumed from parent: selected change `design-system-and-public-site`, `nextRecommended: apply`, `applyState: ready`, repo-local workspace, no blockers/notes; only the authorized OpenSpec surfaces were edited. Strict TDD remained active, but this assignment changed no behavior/source, so no RED was fabricated.
+- Tracked tree was clean before evidence edits. The only untracked files were preserved provider artifacts: `openspec/changes/design-system-and-public-site/.gentle-ai-instance` and `verify-report.md`.
+- Exact production receipt against `origin/main`: 15 production files, 390 additions and 5 deletions, exactly 395 authored changed lines; tests, OpenSpec, fixtures and public binaries excluded. At or below 400, so no F4b split was required.
+- Runtime: one bounded `corepack pnpm dev --host 127.0.0.1 --port 4177` server with trap cleanup. `/` HTTP 200, exactly one `<h1>`, three hero image slots; first slot eager with `fetchPriority="high"`, slots 2–3 eager with `fetchPriority="auto"` and `max-md:hidden`. Exactly two rendered empty-state messages were observed; no testimonials section, trust row, fixture data, prices or times appeared in the HTML. `/sitemap.xml` HTTP 200 contained exactly one canonical `<loc>` (`http://localhost:5173/`). `/quienes-somos` and `/contacto` each returned styled Spanish HTTP 404 responses. No environment limitation observed.
+- Focused F4 tests: `corepack pnpm test src/app/routes/home.test.ts src/app/routes/home.ui.test.tsx src/app/ui/molecules/cards.ui.test.tsx src/app/ui/organisms/hero.ui.test.tsx src/app/ui/organisms/home-sections.ui.test.tsx src/app/ui/organisms/testimonials-section.ui.test.tsx src/app/site-map.test.ts` — PASS, 7 files / 20 tests, Vitest 17.38s.
+- Exact UI suite: `corepack pnpm test src/app/ui` — PASS, 20 files / 118 tests, Vitest 23.23s, shell wall 26.36s; existing jsdom canvas notices only.
+- Full local gate: `corepack pnpm test` — PASS, 69 files / 448 tests, Vitest 159.54s; `corepack pnpm test:coverage` — PASS, 99.24% lines / 100% branches, 173.94s; `corepack pnpm lint` — PASS with existing boundaries deprecation warning; `corepack pnpm typecheck` — PASS; `corepack pnpm format:check` — PASS; `corepack pnpm build` — PASS; `corepack pnpm test tooling/architecture src/app/ui/styles.test.ts` — PASS, 2 files / 28 tests; `git diff --check` — PASS. Generated `.vitest` output was removed; provider artifacts were preserved.
+- Task truth: task 7.11 is visibly checked. Task 7.12 remains visibly unchecked because rebase confirmation, push, PR, and native review/delivery remain pending; task 7.13 remains unchecked and untouched.
+- Commit boundary: only OpenSpec task/progress evidence is authorized for the evidence commit. No source/test/config edits, amend/rebase, push, PR, or native review lifecycle action.
+
+## F4 delivery evidence finalized — task 7.12
+
+- Local evidence only; no push, PR edit, test rerun, review retry, amend, or provider-artifact change was performed in this continuation.
+- Rebase/push/PR facts observed before this evidence commit: branch `feat/ds-f4-home` was rebased onto exact `origin/main` `121946d`; normal upstream push succeeded; PR #19 is https://github.com/tiagorojas7/calma-inquieta/pull/19 with `size:exception` applied. Pre-evidence candidate HEAD was `61c5189`.
+- CI `verify` was observed green and PR #19 was mergeable at pre-evidence HEAD `61c5189`; this evidence commit is local only and was not pushed.
+- Pre-evidence diff counts against `origin/main`: production 390 additions / 5 deletions = 395; tests/fixtures 457 / 20 = 477; OpenSpec/evidence 88 / 12 = 100; total 935 / 37 = 972. Production is under the 400-line threshold, so no F4b split was required; total overage uses the existing `size:exception` label.
+- Native ordinary review was unavailable: INSPECT was ready, but START failed pre-lineage with `candidate-target-projection-drift`; `lineage_created:false`. No native approval or acknowledgement exists and review was not retried. Independent final verification was PASS with no severe candidate-caused findings.
+- Task truth: 7.12 is checked with delivery evidence; 7.13 remains unchecked and owner-controlled for review/merge.

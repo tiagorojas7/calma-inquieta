@@ -7,9 +7,7 @@ export function loader({ context }: Route.LoaderArgs) {
   return new Response(
     buildSitemapXml(
       site.baseUrl,
-      PUBLIC_PAGES.filter((page) => page.indexable as boolean).map(
-        (page) => page.path,
-      ),
+      PUBLIC_PAGES.filter((page) => page.indexable).map((page) => page.path),
     ),
     {
       headers: {

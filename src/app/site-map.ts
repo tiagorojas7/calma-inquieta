@@ -1,5 +1,5 @@
 export const PUBLIC_PAGES = [
-  { id: "home", path: "/", label: "Inicio", indexable: false },
+  { id: "home", path: "/", label: "Inicio", indexable: true },
   { id: "talleres", path: "/talleres", label: "Talleres", indexable: false },
   {
     id: "intensivos",

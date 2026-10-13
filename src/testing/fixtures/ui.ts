@@ -79,3 +79,41 @@ export const faqEntryFixtures = [
     answer: "En Argüello, Córdoba.",
   },
 ] as const;
+
+export const galleryImageFixtures = [
+  {
+    id: "gallery-1",
+    src: "/media/stand-ins/gallery-01.svg",
+    alt: "Círculos superpuestos en tonos arcilla",
+    width: 600,
+    height: 600,
+  },
+  {
+    id: "gallery-2",
+    src: "/media/stand-ins/gallery-02.svg",
+    alt: "Columnas redondeadas en tonos salvia",
+    width: 600,
+    height: 600,
+  },
+  {
+    id: "gallery-3",
+    src: "/media/stand-ins/gallery-03.svg",
+    alt: "Colinas suaves con un sol terracota",
+    width: 600,
+    height: 600,
+  },
+] as const;
+
+export const videoFixtures = [
+  {
+    id: "video-1",
+    youtubeId: "dQw4w9WgXcQ",
+    title: "Un día en el taller",
+    poster: {
+      src: "/media/stand-ins/gallery-01.svg",
+      alt: "Portada del video",
+      width: 800,
+      height: 450,
+    },
+  },
+] as const;

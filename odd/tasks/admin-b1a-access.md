@@ -1,0 +1,108 @@
+# Admin B1a: pure Access authorization and key verification
+
+- Feature: `admin-b1a-access` (ODD, not SDD). Change 3 `admin-catalog`, BACK slice B1a (`tasks.md` item 3).
+- Branch: `feat/admin-catalog-b1a-access`, rebased onto `origin/main` `7e36d3b`. Starts from the partial WIP commit `68546f3` (231 lines).
+- Route: delegated direct, one BACK writer, task by task. Trigger evidence: 4+ production files, 5+ test files, and preparatory reading of design, spec and WIP.
+- TDD: strict (source: `AGENTS.md`). Runner: `corepack pnpm test src/modules/admin-access src/testing/access`; plus `corepack pnpm typecheck` and `corepack pnpm lint` before each commit. No full gate (the parent schedules it).
+- Delivery: one PR to `main`; the parent squashes the history into one `feat(admin-access): ...` commit. Production ceiling 400 authored changed lines vs `7e36d3b` (advisory heuristic; a hard stop for this writer).
+- Engram mirror: `odd/admin-b1a-access/tasks` (pending; saved by the parent).
+
+## Objective
+
+Ship the security boundary of the admin panel as pure, fail-closed code that the Worker gate (B1b) will wire: Cloudflare Access JWT decoding and claim checks, email allowlist, a WebCrypto RS256 verifier with a plain-data key cache, the same-origin mutation rule, and `createAuthorizeAdminRequest` returning an `AdminDecision` with a precise reason code. Nothing is enabled in the Worker in this slice.
+
+## Scope
+
+- IN: `src/modules/admin-access/**` (domain, application, infrastructure, `index.ts`), `src/testing/access/access-tokens.ts`, this document.
+- OUT: `src/platform/**` (`readAdminConfig`, `readWorkerEnv`, dev-bypass mode/URL rule: B1b), `src/composition/**` (`admin-gate`), `workers/**`, `src/app/**`, other modules, `package.json`, lint config, CI.
+
+## Sources
+
+Planning lives in the untracked worktree `CalmaInquieta-plan/openspec/changes/admin-catalog/` (read-only).
+
+- `tasks.md` line 35 (item 3, B1a): RED table-driven tests for token parsing, RS256-only claims, allowlist normalization, service-token denial, CSRF, cache miss throttling, cross-request plain-data cache; "Verify Node/workerd `CryptoKey` reuse and switch to cached JWK data if needed".
+- `design.md`:
+  - AC2 lines 115-137: verification order (decode, header, claims with 60 s skew, identity, signature, allowlist), RSA under 2048 bits rejected, no packages, `jose` fallback policy (136), tests use real `crypto.subtle` and an injected `fetch` (132).
+  - AC3 lines 139-155: plain-data cell, key URL `https://<team domain>/cdn-cgi/access/certs`, at most 20 keys, 64 KiB, 3 s timeout, hit / stale (1 h) / miss (30 s guard) / fetch failure / unknown kid, at most one fetch per request; `CryptoKey` versus JWK JSON (143).
+  - AC5 lines 212-213: comparison is `trim().toLowerCase()`; denial email set only after a verified token (or the dev identity). AC6 line 225: the dev identity replaces JWT verification and still applies the allowlist. AC7 lines 230-238: `isSameOriginMutation`.
+  - Flow 4.1 lines 442-480 (reason codes at 480); contracts 605-644 (`AdminAccessConfig`, `AdminDecision`, `DecodedAccessToken`, `AccessSignatureVerifier`, `createAuthorizeAdminRequest`, `decodeAccessToken`, `isSameOriginMutation`, `AccessKeyCacheCell`, `createWebCryptoAccessVerifier`); `access-tokens.ts` helper line 888; test matrix rows 973-974; threats T3, T6 (1016, 1019); risks 1157, 1161; open items 1207-1210.
+- `specs/admin-access/spec.md`: identity verification, allowlist, fail closed on missing configuration, service tokens, denial response, same-origin rule, dev-only bypass (allowlist still applies), key retrieval resilience.
+- Existing code: B0a seam `src/modules/admin-access/application/admin-actor.ts` (`AdminActor`, `AdminAccessState`, `requireAdminActor`), `src/modules/_shared` (`Result`, `Clock`), `src/testing/fakes/fixed-clock.ts`.
+
+## Constraints
+
+- `domain` and `application`: no packages. `infrastructure`: only `drizzle-orm`/`pg`; WebCrypto, `fetch`, `atob`, `TextEncoder`, `AbortSignal` are platform globals, not imports. `domain` cannot import `application`.
+- Fail closed everywhere: any error, missing field or unexpected shape denies with a precise reason code. Tokens, claims, keys and secrets are never logged or returned. A denial reason is for logs only.
+- Reason codes (design line 480): `config-missing`, `config-invalid`, `token-missing`, `token-malformed`, `algorithm`, `issuer`, `audience`, `expired`, `not-yet-valid`, `no-email`, `service-token`, `unknown-key`, `key-source`, `signature`, `not-allowlisted`, `cross-origin` (`cross-origin` is emitted by the B1b gate; the type lives here).
+- No `jose`. If it ever looks required: STOP and report.
+- Conventional Commits only; no Co-Authored-By or AI attribution. Stage explicit paths only; never touch `odd/tasks/ds-f0-pilot.md`, `return.txt`, `tmp/`.
+
+## Decisions
+
+- **D1. JWK-data key cache (resolves the `CryptoKey`-reuse open item, design 143, 1157, 1210).** The cell stores sanitized public JWK JSON objects (`{ kty, n, e, alg, ext }`), not `CryptoKey` objects, and every verification calls `crypto.subtle.importKey` on the stored JWK. Reason: a `CryptoKey` is a runtime object and workerd may refuse to use one created in another request's I/O context; Node tests cannot detect that, and it cannot be proven here without running `pnpm dev` (out of scope for this slice and forbidden for this writer). Plain JSON is safe in Node and workerd by construction, the import cost is sub-millisecond, and the cell stays structured-cloneable (asserted in tests). `AccessKeyCacheCell.keys` therefore becomes `Map<string, JsonWebKey>`, a deliberate deviation from design line 639 that the design's own fallback (143) allows. Nothing is left unproven that matters: no `CryptoKey` crosses a request boundary.
+- **D2. Runtime Access identity (design 135, 1207, record only).** The generated `worker-configuration.d.ts` does expose `ExecutionContext.access?: CloudflareAccessContext` (`aud`, `getIdentity()`; lines 449, 507-510, 3674). It is not used: `getIdentity()` is an optional runtime feature, cannot be tested in Node, and the design's decision (AC2) is to trust only a verified `Cf-Access-Jwt-Assertion`. It could only ever be a cross-check.
+- **D3. Contract shape follows design section 5.2.** The WIP's ad hoc API (`parseAccessToken`, `verifyAccessToken`, `authorizeAdmin`, `emptyCache`) is replaced by the design's `decodeAccessToken`, `createWebCryptoAccessVerifier`, `createAuthorizeAdminRequest`, `createAccessKeyCacheCell`, so B1b consumes the planned names. Nothing outside the module used the WIP names.
+- **D4. Order of checks follows AC2.** The allowlist is checked after the signature, so `identityEmail` in a denial is always from a verified token. Config usability decides `config-missing` / `config-invalid`; `hasIssues` alone does not deny when Access config and a non-empty allowlist are usable (AC5: valid entries still work).
+- **D5. Execution order of tasks** is T1, T2, T3, T5, T6, T4, T7 so each commit compiles; the WIP `parseAccessToken` wrapper and `verifyAccessToken` live until T4 replaces them.
+
+## Tasks
+
+Each task: RED table-driven test (real failure output recorded), GREEN minimum code, REFACTOR with tests green, focused test + typecheck + lint, one Conventional Commit. A case that already passes against the WIP code is labelled a characterization test and each task keeps at least one assertion that proves new behavior.
+
+- [x] T1 Decode and algorithm: three base64url segments, each at most 8 KiB, header and payload JSON objects, strict alphabet, undecodable signature; `alg` table (`none`, `HS256`, `RS512`, `PS256`, `rs256`, missing, non-string) all denied with `algorithm`; `kid` non-empty string; RS256 the only accepted algorithm. Commit `feat(admin-access): decode access tokens and reject non-rs256`.
+- [x] T2 Claims: `iss` (`https://<team domain>`), `aud` as string and as array (non-string members rejected), `exp` / `nbf` / `iat` with the 60 s skew boundaries on a fixed clock, wrong-typed times. Commit `feat(admin-access): check access token claims`.
+- [x] T3 Identity and allowlist: `email` present / string / email-shaped, `common_name` means `service-token`, unlisted email, allowlist normalization (case, whitespace, empty entries, empty list). Commit `feat(admin-access): enforce email identity and allowlist`.
+- [x] T5 CSRF: `isSameOriginMutation` table (method, missing and mismatching `Origin`, `Sec-Fetch-Site`, malformed URL, port and scheme). Commit `feat(admin-access): harden same-origin mutation rule`.
+- [x] T6 `createAuthorizeAdminRequest` and config: every reason code through an in-memory verifier port, `config-missing` / `config-invalid`, missing token, dev identity combined with the allowlist, never throws. Commit `feat(admin-access): authorize admin requests with reason codes`.
+- [x] T4 Key source and JWK cache: `createWebCryptoAccessVerifier` over `fetch` + `crypto.subtle`; valid, tampered, wrong key, rotation (one refetch), cache hit, stale set after 1 h, miss throttling inside 30 s, fetch failure / 500 / timeout / bad JSON / oversized, unknown `kid`, 2048-bit minimum, cross-request plain-data cell. Commit `feat(admin-access): verify access signatures with a jwk cache`.
+- [x] T7 Index exports and cleanup: public surface of `admin-access/index.ts`, WIP names removed, final readback. Commit `refactor(admin-access): expose the access authorization surface`.
+
+## Acceptance criteria
+
+- Valid allowlisted RS256 JWTs create an `AdminActor`; every malformed, non-RS256, expired, not-yet-valid, wrong-audience, wrong-issuer, non-email, service-token, unlisted, bad-signature, unknown-key, key-source, config-missing and config-invalid case denies with its reason code.
+- The cell holds plain data only after every call.
+- Focused tests, `corepack pnpm typecheck` and `corepack pnpm lint` pass before every commit; production under 400 authored changed lines vs `7e36d3b`.
+- No file outside the allowed paths changes.
+
+## Progress and evidence
+
+Baseline finding: the WIP commit `68546f3` did not pass `typecheck` or `lint` (9 lint errors, 1 type error). T1 fixed the ones in code kept alive. Important for B1b: `module-api` (`index.ts`) may not import `infrastructure` (boundaries rule), so the WebCrypto verifier is NOT exported from `admin-access/index.ts`; the composition layer (allowed to import `infrastructure`) imports `~/modules/admin-access/infrastructure/access-verifier` directly.
+
+- T1 (decode, alg). RED: `corepack pnpm test src/modules/admin-access/domain/decode-access-token.test.ts` gave 41 failed (41), decisive line `AssertionError: expected { ok: false, reason: 'algorithm' } to deeply equal { ok: false, error: 'algorithm' }`. The RED is contract-shaped (the WIP `decodeAccessToken` was an alias of `parseAccessToken` with a different signature and result shape). Characterization of pre-existing behavior: segment count, 8 KiB cap, alg RS256 only, kid non-empty. New behavior proven: `Result` shape, claims/bytes output, strict alphabet (padding rejected), fatal UTF-8, signature decoded in decode, exact 8192/8193 boundaries on all three segments, alg judged before kid, `kid` wrong type is `token-malformed`. GREEN: `corepack pnpm test src/modules/admin-access src/testing/access` 55 passed. Typecheck and lint clean. Commit: see git log (`feat(admin-access): decode access tokens and reject non-rs256`).
+
+- T2 (claims). RED: `corepack pnpm test src/modules/admin-access/domain/check-access-claims` failed every case with `TypeError: checkAccessClaims is not a function`. All checks (iss, aud string and array, non-string members, exp/nbf/iat at the 60 s boundaries, typed times, ordering issuer > audience > time) are new behavior: the WIP collapsed everything into the reason `claims`. GREEN: `corepack pnpm test src/modules/admin-access` 77 passed. Correction of record: the T1 commit `b290598` was committed after an incomplete lint read; it still carried WIP lint errors (`application` importing `infrastructure`, `require-await` in the WIP authorize test, one unnecessary `??`). The T2 commit removes the WIP `authorize-admin.ts` and its test (T6 reintroduces the real one) and fixes the `??`; typecheck and lint are verified clean (no `error` lines in a full run) at T2.
+
+- T3 (identity, allowlist). RED: `corepack pnpm test src/modules/admin-access/domain/access-identity` gave 25 failed, 1 passed; decisive line `TypeError: readAccessIdentity is not a function` (also `isAllowlisted`). The single passing case is the `normalizeAllowlist` trim/lowercase/drop-empty test, a characterization of WIP behavior. New: `readAccessIdentity` (service-token before no-email, email shape, normalization) and `isAllowlisted` (exact whole-string match after normalization; suffix/prefix, empty and blank-only lists never match). GREEN: `corepack pnpm test src/modules/admin-access` 103 passed. Typecheck and lint: no error lines in a full run.
+
+- T5 (CSRF). RED: `corepack pnpm test src/modules/admin-access/domain/same-origin` gave 5 failed, 30 passed. Real security holes found in the WIP: `Sec-Fetch-Site: ""` was accepted (`expected true to be false`), an opaque `null` Origin matched a `data:` or `file:` request URL (`expected true to be false`), and lowercase `get`/`head` were treated as mutations (`expected false to be true`). The other 30 cases (cross-origin, port, scheme, subdomain, suffix trick, missing Origin, cross-site, malformed URL) are characterization of WIP behavior. GREEN: only http(s) request URLs, present `Sec-Fetch-Site` must equal `same-origin`, method matched case-insensitively for GET/HEAD; `corepack pnpm test src/modules/admin-access` 137 passed; typecheck and lint show no error lines. The CSRF case moved out of the WIP `access-authorization.test.ts`.
+
+- T6 (`createAuthorizeAdminRequest`, config, dev identity). RED: `corepack pnpm test src/modules/admin-access/application/authorize` gave `Error: Cannot find module './authorize-admin'` (the WIP module had been removed in T2; its old API was a different, config-shape-incompatible one). All behavior is new: every reason code through an in-memory verifier port and a fixed clock, `config-missing` vs `config-invalid` (including blank-only allowlist and `hasIssues` alone not denying a usable config), config checked before the token is inspected, verifier asked only after decode, claims and identity pass, verdict mapping (`invalid` and a rejecting verifier to `signature`), `identityEmail` only after verification, dev identity (needs no Access config, token or signature; allowlist still applies; blank dev email is no bypass), wrong-shaped config fails closed instead of throwing. GREEN: `corepack pnpm test src/modules/admin-access` 165 passed; typecheck and lint show no error lines. `index.ts` now exports the design surface (no infrastructure, see baseline finding).
+
+- T4 (key source, JWK cache). RED: `corepack pnpm test src/modules/admin-access/infrastructure` gave 24 failed; decisive line `TypeError: verifier.verify is not a function` (the WIP verifier was a bare function with a `CryptoKey` cache and an inline allowlist check). All cases are new behavior except the WIP-equivalent happy path and rotation: tampered payload, tampered signature, wrong key with the same kid; cache hit across verifier instances sharing one cell; miss guard (3 sequential unknown kids make one fetch, 29 999 ms still guarded, 30 000 ms refetches); set exactly 1 h old kept, 1 h + 1 ms refetched; stale set never used after a failed refetch; a failed miss refetch also starts the guard; `key-source` for HTTP 500/403, network error, bad JSON, `null`, non-array keys, empty set, 21 keys, body over 64 KiB, declared length over 64 KiB, only-unusable keys; 3 s timeout (injected `timeoutMs`) on a hanging source; 1024-bit key dropped while usable ones stay; cell asserted structured-cloneable with sanitized public JWK members only (`alg, e, ext, kty, n`, private `d` never cached), no Promise or `CryptoKey`, also after failures. One test of mine was wrong (advanced 1 s where the guard needs 30 s); corrected before GREEN. GREEN: `corepack pnpm test src/modules/admin-access src/testing/access` 185 passed. The WIP wrapper `parseAccessToken`, `ParsedAccessToken`, `verifyAccessToken`, `emptyCache` and the WIP `access-authorization.test.ts` are removed. Type fixes found by the gate: `Uint8Array<ArrayBuffer>` for `DecodedAccessToken` bytes (WebCrypto `BufferSource`). Typecheck and lint: no error lines. Production: 399 authored lines vs `7e36d3b` (non-test, outside `src/testing`).
+
+- T7 (index, wiring proof). Characterization, honestly: `src/modules/admin-access/index.test.ts` passed on first run (6 passed) because T1-T6 already shaped the surface. It adds new coverage: a lock on the exact runtime export list of `admin-access/index.ts` (no WebCrypto adapter, which the `module-api` boundary forbids), and five end-to-end cases wiring `createAuthorizeAdminRequest` to the real WebCrypto verifier (really signed token creates an actor; same kid from another key denies `signature`; unlisted shows only the verified email; a validly signed service token denies `service-token` with zero key fetches; key outage denies `key-source`). Final: `corepack pnpm test src/modules/admin-access src/testing/access` 191 passed; typecheck and lint: no error lines in a full run; prettier check clean.
+
+## Final checks
+
+- Production: 399 authored changed lines vs `7e36d3b` (non-test files under `src/modules/admin-access`; `src/testing` excluded). Test and helper lines: about 1100.
+- Not done by design (B1b): `readAdminConfig` / `AdminAccessConfig` construction from the environment, the dev-bypass mode and URL rule, `isAdminPath`, `runAdminGate`, headers, logging of reason codes, wiring `IsolateState.accessKeys`. B1b imports `createAccessKeyCacheCell` and `createWebCryptoAccessVerifier` from `~/modules/admin-access/infrastructure/access-verifier` (composition may import `infrastructure`; `index.ts` may not).
+- Not proven here (and not needed): `CryptoKey` reuse across requests in workerd. D1 avoids it.
+- Known residual risk (design AC3, accepted): a cold or stale cell refetches on every request until a fetch succeeds (bounded to one 3 s fetch per request, reached only by tokens that already pass decode, claims and identity checks); a new kid published less than 30 s after the last fetch is denied `unknown-key` until the guard elapses.
+
+## Verifier correction (post-PASS, one bounded correction)
+
+- Finding 1 (MEDIUM): the 30 s refetch guard applied only to a fresh set, so a cold cell or a failing source refetched on every request (against design line 149). RED: `corepack pnpm test src/modules/admin-access` gave 10 failed in total; for this finding `fetches once per 30 s from a cold cell while the source fails` (HTTP 500, network error, only unusable keys) failed with `expected [ { ... } ] to have a length of 1 but got 5`, and `recovers on the first request after the guard once the source is back` failed with `expected 'valid' to be 'key-source'`. GREEN: the guard now applies whenever a fetch attempt happened less than 30 s ago and answers `key-source` for a set that is not fresh (`unknown-key` for a fresh one). A stale set is still never used; the tests assert exactly 1 call within 30 s, still 1 at 29 999 ms, 2 at 30 000 ms.
+- Finding 2 (LOW): `exp`, `nbf`, `iat` accepted non-finite numbers, so `1e999` (parsed as `Infinity`) never expired. RED: `denies a non-finite exp/nbf/iat as malformed` and `denies the never-expiring exp 1e999` failed with `expected { ok: true, value: true } to deeply equal { ok: false, error: 'token-malformed' }` (nbf `-Infinity`/`NaN`/`Infinity` gave `not-yet-valid` or ok). GREEN: `Number.isFinite` required, `token-malformed` otherwise.
+- Optional (taken): `EMAIL_SHAPE` is printable ASCII only, so Unicode case folding (Kelvin sign U+212A lowercases to `k`) cannot alias an allowlisted email. RED: `denies a non-ASCII (Kelvin sign folds to k) email as no-email` and `non-ASCII domain` failed with `expected { Object (ok, value) } to deeply equal { ok: false, error: 'no-email' }`. Cost: one regex line plus a comment line.
+- Result: `corepack pnpm test src/modules/admin-access src/testing/access` 201 passed; typecheck and lint show no error lines. Production: 401 authored changed lines vs `7e36d3b` (non-test files under `src/modules/admin-access`), 2 over the advisory 400, accepted by the coordinator; not minified.
+
+## Notes for B1b
+
+- `devAdminEmail` skips JWT verification and the Access configuration entirely. The dev bypass must therefore be enforced dev-only (`mode === "development"`) and localhost-only (`SITE_URL` protocol `http:`, hostname exactly `localhost`) in B1b, with tests, before it is ever passed into `AdminAccessConfig`. `admin-access` trusts the field.
+- B1b must validate `teamDomain` against `^[a-z0-9-]+\.cloudflareaccess\.com$` when building `AdminAccessConfig.access`. The module builds the issuer and the keys URL from it verbatim and does not validate it.
+- The catch-all reason `config-invalid` is misleading for runtime exceptions: `createAuthorizeAdminRequest` returns it when any unexpected exception happens (for example a wrong-shaped config), which is fail-closed but not necessarily a config problem. B1b logs should treat it as "unexpected error" when `hasIssues` is false, or a dedicated reason should be added later.
+- Composition imports the verifier from `~/modules/admin-access/infrastructure/access-verifier` (the `module-api` boundary forbids exporting it from `index.ts`).
+
+## Next step
+
+Parent: squash into one `feat(admin-access): ...` commit, run the full gate, then B1b.

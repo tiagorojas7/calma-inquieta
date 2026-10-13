@@ -17,7 +17,7 @@ export const PUBLIC_PAGES = [
     id: "quienes-somos",
     path: "/quienes-somos",
     label: "Quiénes somos",
-    indexable: false,
+    indexable: true,
   },
   { id: "contacto", path: "/contacto", label: "Contacto", indexable: false },
 ] as const;

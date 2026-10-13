@@ -11,6 +11,7 @@ export default [
   route("sitemap.xml", "routes/sitemap.ts"),
   layout("routes/public-layout.tsx", [
     index("routes/home.tsx"),
+    route("quienes-somos", "routes/about.tsx"),
     route("*", "routes/not-found.tsx", { id: "routes/not-found-splat" }),
     route("talleres", "routes/coming-soon.tsx", { id: "coming-soon/talleres" }),
     route("intensivos", "routes/coming-soon.tsx", {

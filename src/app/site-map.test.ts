@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import routes from "./routes";
+import { createTestServices } from "~/testing/fakes/app-services";
 import { PUBLIC_PAGES } from "./site-map";
 
-const NOT_YET_ROUTED = new Set(["/quienes-somos", "/contacto"]);
+const NOT_YET_ROUTED = new Set(["/contacto"]);
 
 function flatten(
   routeTree: unknown,
@@ -28,7 +29,7 @@ function flatten(
 }
 
 describe("public site map", () => {
-  it("declares the six menu entries and the F2 contract", () => {
+  it("declares the six menu entries and the F5 contract", () => {
     expect(PUBLIC_PAGES).toEqual([
       { id: "home", path: "/", label: "Inicio", indexable: true },
       {
@@ -53,7 +54,7 @@ describe("public site map", () => {
         id: "quienes-somos",
         path: "/quienes-somos",
         label: "Quiénes somos",
-        indexable: false,
+        indexable: true,
       },
       {
         id: "contacto",
@@ -63,20 +64,32 @@ describe("public site map", () => {
       },
     ]);
     const pages = PUBLIC_PAGES as readonly { indexable: boolean }[];
-    expect(pages.filter((page) => page.indexable)).toHaveLength(1);
+    expect(pages.filter((page) => page.indexable)).toHaveLength(2);
   });
 
   it("keeps only future static pages unrouted", () => {
     const routed = flatten(routes);
-    expect([...NOT_YET_ROUTED]).toEqual(["/quienes-somos", "/contacto"]);
+    expect([...NOT_YET_ROUTED]).toEqual(["/contacto"]);
     expect(
       routed
         .filter((entry) => NOT_YET_ROUTED.has(entry.path))
-        .every(
-          (entry) =>
-            entry.file !== "routes/about.tsx" &&
-            entry.file !== "routes/contact.tsx",
-        ),
+        .every((entry) => entry.file !== "routes/contact.tsx"),
     ).toBe(true);
+  });
+
+  it("maps /quienes-somos to the about page module", () => {
+    expect(
+      flatten(routes).find((entry) => entry.path === "/quienes-somos")?.file,
+    ).toBe("routes/about.tsx");
+  });
+
+  it("keeps titles and descriptions unique across the existing pages", async () => {
+    const { siteContent } = createTestServices();
+    const [home, about] = await Promise.all([
+      siteContent.getHomePage(),
+      siteContent.getAboutPage(),
+    ]);
+    expect(home.seo.title).not.toBe(about.seo.title);
+    expect(home.seo.description).not.toBe(about.seo.description);
   });
 });

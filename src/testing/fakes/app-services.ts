@@ -43,6 +43,14 @@ export function createTestServices(
     media: createUnavailableService<import("~/modules/media").MediaService>(),
     teachers:
       createUnavailableService<import("~/modules/teachers").TeachersService>(),
+    monthlyWorkshops:
+      createUnavailableService<
+        import("~/modules/workshops").MonthlyWorkshopsService
+      >(),
+    workshopPeriods:
+      createUnavailableService<
+        import("~/modules/workshops").WorkshopPeriodsService
+      >(),
     ...overrides,
   };
 }

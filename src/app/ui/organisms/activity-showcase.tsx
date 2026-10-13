@@ -14,10 +14,10 @@ export function ActivityShowcase({
   emptyAction: { href: string; label: string };
 }) {
   return (
-    <section>
+    <section className="flex flex-col gap-6 py-section">
       <Heading level={2}>{title}</Heading>
       {items.length ? (
-        <div>
+        <div className="grid gap-6 md:grid-cols-3">
           {items.map(({ id, ...item }) => (
             <ActivityCard key={id} {...item} />
           ))}

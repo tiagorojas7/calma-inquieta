@@ -62,7 +62,7 @@ export function buildRawSiteContent(
         subtitle: "Talleres creativos en Argüello.",
         primaryCtaLabel: "Ver talleres",
         secondaryCtaLabel: "Ver intensivos",
-        images: [image("/media/stand-ins/hero-1.svg", "Composición abstracta")],
+        images: [image("/media/stand-ins/hero-1.jpg", "Composición abstracta")],
       },
       trustClaims: [
         {
@@ -99,7 +99,7 @@ export function buildRawSiteContent(
       gallery: [
         {
           id: "gallery-1",
-          ...image("/media/stand-ins/gallery-01.svg", "Composición abstracta"),
+          ...image("/media/stand-ins/gallery-01.jpg", "Composición abstracta"),
         },
       ],
       videos: [],
@@ -143,9 +143,9 @@ export function buildRawSiteContent(
       },
     },
     standIns: [
-      standIn("hero-1", "/media/stand-ins/hero-1.svg"),
+      standIn("hero-1", "/media/stand-ins/hero-1.jpg"),
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
-      standIn("gallery-01", "/media/stand-ins/gallery-01.svg"),
+      standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
     ],
     ...overrides,
   };

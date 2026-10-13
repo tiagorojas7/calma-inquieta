@@ -1,12 +1,12 @@
 export const imageFixture = {
-  src: "/media/stand-ins/hero-1.svg",
+  src: "/media/stand-ins/hero-1.jpg",
   alt: "Composición abstracta en tonos cálidos",
   width: 800,
   height: 600,
 } as const;
 
 export const decorativeImageFixture = {
-  src: "/media/stand-ins/hero-2.svg",
+  src: "/media/stand-ins/hero-2.jpg",
   alt: "",
   width: 400,
   height: 300,
@@ -39,12 +39,12 @@ export const heroImageFixtures = [
   imageFixture,
   {
     ...imageFixture,
-    src: "/media/stand-ins/hero-2.svg",
+    src: "/media/stand-ins/hero-2.jpg",
     alt: "Textura abstracta",
   },
   {
     ...imageFixture,
-    src: "/media/stand-ins/hero-3.svg",
+    src: "/media/stand-ins/hero-3.jpg",
     alt: "Formas abstractas",
   },
 ] as const;
@@ -83,21 +83,21 @@ export const faqEntryFixtures = [
 export const galleryImageFixtures = [
   {
     id: "gallery-1",
-    src: "/media/stand-ins/gallery-01.svg",
+    src: "/media/stand-ins/gallery-01.jpg",
     alt: "Círculos superpuestos en tonos arcilla",
     width: 600,
     height: 600,
   },
   {
     id: "gallery-2",
-    src: "/media/stand-ins/gallery-02.svg",
+    src: "/media/stand-ins/gallery-02.jpg",
     alt: "Columnas redondeadas en tonos salvia",
     width: 600,
     height: 600,
   },
   {
     id: "gallery-3",
-    src: "/media/stand-ins/gallery-03.svg",
+    src: "/media/stand-ins/hero-1.jpg",
     alt: "Colinas suaves con un sol terracota",
     width: 600,
     height: 600,
@@ -110,7 +110,7 @@ export const videoFixtures = [
     youtubeId: "dQw4w9WgXcQ",
     title: "Un día en el taller",
     poster: {
-      src: "/media/stand-ins/gallery-01.svg",
+      src: "/media/stand-ins/gallery-01.jpg",
       alt: "Portada del video",
       width: 800,
       height: 450,

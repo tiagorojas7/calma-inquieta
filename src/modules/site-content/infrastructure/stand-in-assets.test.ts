@@ -1,5 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { aboutContent } from "./content/about";
+import { homeContent } from "./content/home";
 import { STAND_IN_ASSETS } from "./content/stand-in-assets";
 
 const STAND_IN_DIR = "public/media/stand-ins";
@@ -54,7 +56,7 @@ describe("the stand-in manifest and the files, both ways", () => {
         `${asset.id} has no file`,
       ).toBe(true);
     }
-    expect(mediaRows).toHaveLength(12);
+    expect(mediaRows).toHaveLength(8);
   });
 
   it("shape-checks the four font rows, whose files arrive with the tokens", () => {
@@ -127,22 +129,51 @@ describe("the profile-picture derived assets", () => {
   });
 });
 
+describe("the studio photos", () => {
+  const photoRows = STAND_IN_ASSETS.filter((asset) =>
+    /\/(hero-\d|gallery-\d+)\.jpg$/.test(asset.path),
+  );
+  const contentImages = [
+    ...homeContent.hero.images,
+    ...aboutContent.gallery,
+  ] as readonly { src: string; alt: string; width: number; height: number }[];
+
+  it("registers the three hero photos and two gallery photos as stand-ins", () => {
+    expect(photoRows.map((asset) => asset.id)).toEqual([
+      "hero-1",
+      "hero-2",
+      "hero-3",
+      "gallery-01",
+      "gallery-02",
+    ]);
+    for (const asset of photoRows) {
+      expect(asset.source, asset.id).toContain("docs/brand/instagram/ig-post-");
+    }
+  });
+
+  it("points every hero and gallery image at a registered JPEG of the declared size", () => {
+    const registered = new Set<string>(
+      STAND_IN_ASSETS.map((asset) => asset.path),
+    );
+
+    expect(contentImages.length).toBeGreaterThan(0);
+    for (const image of contentImages) {
+      expect(registered.has(image.src), image.src).toBe(true);
+      expect(image.src.endsWith(".jpg"), image.src).toBe(true);
+      expect(
+        jpegSize(`public${image.src}`),
+        `${image.src} size differs from the content`,
+      ).toEqual({ width: image.width, height: image.height });
+      expect(image.alt.trim(), image.src).not.toBe("");
+    }
+  });
+});
+
 describe("the SVG compositions", () => {
   const svgs = files.filter((file) => file.endsWith(".svg"));
 
-  it("are the ten expected files", () => {
-    expect(svgs.sort()).toEqual([
-      "about-teaser.svg",
-      "gallery-01.svg",
-      "gallery-02.svg",
-      "gallery-03.svg",
-      "gallery-04.svg",
-      "gallery-05.svg",
-      "gallery-06.svg",
-      "hero-1.svg",
-      "hero-2.svg",
-      "hero-3.svg",
-    ]);
+  it("are the one expected file", () => {
+    expect(svgs.sort()).toEqual(["about-teaser.svg"]);
   });
 
   it.each(svgs.map((file) => [file] as const))(

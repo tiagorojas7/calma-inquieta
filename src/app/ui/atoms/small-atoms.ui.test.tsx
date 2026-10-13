@@ -19,6 +19,11 @@ describe("small atoms", () => {
     expect(screen.getByRole("link")).toHaveAttribute("inert");
     expect(screen.getByRole("presentation")).toHaveClass("border-tan-400");
     expect(screen.getByText("Ayuda")).toHaveClass("sr-only");
+    expect(screen.getByRole("link")).toHaveClass(
+      "sr-only",
+      "focus:not-sr-only",
+      "focus:bg-canvas",
+    );
     await expectNoAxeViolations(container);
   });
 });

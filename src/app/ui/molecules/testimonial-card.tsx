@@ -6,9 +6,9 @@ export function TestimonialCard({
   author: string;
 }) {
   return (
-    <figure>
-      <blockquote>{quote}</blockquote>
-      <figcaption>{author}</figcaption>
+    <figure className="flex flex-col gap-4 rounded-md bg-surface p-6 shadow-card">
+      <blockquote className="text-ink-700">{quote}</blockquote>
+      <figcaption className="font-semibold text-ink-900">{author}</figcaption>
     </figure>
   );
 }

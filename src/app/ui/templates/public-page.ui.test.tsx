@@ -49,6 +49,18 @@ describe("PublicPage", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("centers the header, main and footer in the page container with gutters", () => {
+    renderPage();
+    const containers = [
+      screen.getByRole("banner").firstElementChild,
+      screen.getByRole("main"),
+      screen.getByRole("contentinfo").firstElementChild,
+    ];
+    for (const element of containers) {
+      expect(element).toHaveClass("mx-auto", "max-w-page", "px-gutter");
+    }
+  });
+
   it("inerts the background and manages menu close and focus", async () => {
     renderPage();
     const toggle = screen.getByRole("button", { name: "Abrir menú" });

@@ -6,8 +6,6 @@ import type { AboutPageContent } from "../../domain/page-content";
  * years, prices, schedules or policies). All prose carries `approved: false`.
  */
 
-const GALLERY_SIZE = 800;
-
 export const aboutContent = {
   seo: {
     title: "Quiénes somos",
@@ -66,45 +64,38 @@ export const aboutContent = {
   gallery: [
     {
       id: "gallery-01",
-      src: "/media/stand-ins/gallery-01.svg",
-      alt: "Composición abstracta de círculos superpuestos en tonos arcilla, arena y terracota",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
+      src: "/media/stand-ins/gallery-01.jpg",
+      alt: "Mueble de madera con dos canastos de fibra tejida en el estante inferior",
+      width: 640,
+      height: 640,
     },
     {
       id: "gallery-02",
-      src: "/media/stand-ins/gallery-02.svg",
-      alt: "Composición abstracta de columnas redondeadas en tonos salvia, arena y arcilla",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
+      src: "/media/stand-ins/gallery-02.jpg",
+      alt: "Una mujer sostiene un limón junto a un limonero cargado de frutos",
+      width: 360,
+      height: 640,
     },
     {
       id: "gallery-03",
-      src: "/media/stand-ins/gallery-03.svg",
-      alt: "Composición abstracta de colinas suaves con un sol terracota",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
+      src: "/media/stand-ins/hero-1.jpg",
+      alt: "Estantería de cestería con cuerda de papel negra tejida sobre una estructura de hierro",
+      width: 480,
+      height: 640,
     },
     {
       id: "gallery-04",
-      src: "/media/stand-ins/gallery-04.svg",
-      alt: "Composición abstracta de líneas onduladas sobre un fondo salvia",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
+      src: "/media/stand-ins/hero-2.jpg",
+      alt: "Grupo de mujeres sonrientes posando juntas en el patio del espacio durante un encuentro",
+      width: 640,
+      height: 480,
     },
     {
       id: "gallery-05",
-      src: "/media/stand-ins/gallery-05.svg",
-      alt: "Composición abstracta de círculos concéntricos en tonos arena y arcilla",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
-    },
-    {
-      id: "gallery-06",
-      src: "/media/stand-ins/gallery-06.svg",
-      alt: "Composición abstracta de formas ovaladas anidadas en tonos arena y salvia",
-      width: GALLERY_SIZE,
-      height: GALLERY_SIZE,
+      src: "/media/stand-ins/hero-3.jpg",
+      alt: "Tres mujeres con sombreros posan abrazadas frente a un ventanal, con árboles al fondo",
+      width: 640,
+      height: 640,
     },
   ],
   videos: [],

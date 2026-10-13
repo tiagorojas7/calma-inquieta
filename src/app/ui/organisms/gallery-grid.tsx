@@ -43,23 +43,25 @@ export function GalleryGrid({
   };
 
   return (
-    <section>
+    <section className="flex flex-col gap-6 py-section">
       <Heading level={2}>{heading}</Heading>
-      <ul>
+      <ul className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {images.map(({ id, ...image }, at) => (
           <li key={id}>
             <button
               type="button"
+              className="block aspect-square w-full overflow-hidden rounded-sm"
               onClick={(event) => {
                 open(at, event.currentTarget);
               }}
             >
-              <Image {...image} />
+              <Image {...image} className="h-full w-full object-cover" />
             </button>
           </li>
         ))}
       </ul>
       <dialog
+        className="m-auto w-full max-w-3xl rounded-md bg-canvas p-4 backdrop:bg-ink-900/60"
         ref={dialogRef}
         aria-labelledby={captionId}
         onKeyDown={onKeyDown}
@@ -73,7 +75,7 @@ export function GalleryGrid({
         }}
       >
         {current && (
-          <figure>
+          <figure className="flex flex-wrap items-center justify-between gap-4">
             <button type="button" onClick={() => dialogRef.current?.close()}>
               <Icon name="close" />
               {microcopy.close}
@@ -92,8 +94,11 @@ export function GalleryGrid({
               alt={current.alt}
               width={current.width}
               height={current.height}
+              className="max-h-screen w-full basis-full object-contain"
             />
-            <figcaption id={captionId}>{current.alt}</figcaption>
+            <figcaption id={captionId} className="basis-full text-ink-700">
+              {current.alt}
+            </figcaption>
             <button
               type="button"
               onClick={() => {

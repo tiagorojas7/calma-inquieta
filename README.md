@@ -70,7 +70,9 @@ Page copy and business facts live in typed files under `src/modules/site-content
 
 ### Stand-in registry
 
-`src/modules/site-content/infrastructure/content/stand-in-assets.ts` lists every placeholder asset (the SVG compositions, the favicon and share image derived from the studio's Instagram profile picture, and the four font files) with its source, licence and what replaces it. `pnpm test` fails when a file in `public/media/stand-ins/` has no row or a row has no file. To retire a stand-in, replace the file, delete its row and update the content that references it.
+`src/modules/site-content/infrastructure/content/stand-in-assets.ts` lists every placeholder asset (studio photos taken from the studio's Instagram, pending image permission; the about-teaser SVG; the favicon and share image derived from the Instagram profile picture; and the four font files) with its source, licence and what replaces it. `pnpm test` fails when a file in `public/media/stand-ins/` has no row or a row has no file. To retire a stand-in, replace the file, delete its row and update the content that references it.
+
+See [docs/design/brand-swap-guide.md](docs/design/brand-swap-guide.md) for how to swap the palette, fonts, images, favicon and share image.
 
 **Launch gate.** `siteContent.listStandInAssets().length` is the number of stand-ins remaining. It must reach `0` before the indexing gate is opened (change 8). Photos and videos of the client's work arrive as the replacements; none of the mockups under `docs/client-proposal/` may be copied into `public/`.
 

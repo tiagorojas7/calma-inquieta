@@ -10,6 +10,9 @@ const paths = {
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
+  "chevron-left": <path d="m15 5-7 7 7 7" />,
+  "chevron-right": <path d="m9 5 7 7-7 7" />,
+  play: <path d="M8 5v14l11-7Z" />,
 } as const;
 export function Icon({
   name,

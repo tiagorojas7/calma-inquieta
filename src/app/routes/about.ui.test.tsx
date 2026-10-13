@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
-import { faqEntryFixtures, valueItemFixtures } from "~/testing/fixtures/ui";
+import {
+  faqEntryFixtures,
+  galleryImageFixtures,
+  valueItemFixtures,
+  videoFixtures,
+} from "~/testing/fixtures/ui";
 import AboutRoute from "./about";
 
 const base = {
@@ -66,5 +71,36 @@ describe("Quiénes somos route", () => {
     expect(levels()).toEqual([1, 2, 3, 3, 2]);
     expect(container.querySelectorAll("details")).toHaveLength(2);
     await expectNoAxeViolations(container, { page: true });
+  });
+
+  it("renders the gallery heading and grid when there are images", async () => {
+    const { container } = renderAbout({
+      ...base,
+      gallery: galleryImageFixtures,
+    });
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Un vistazo" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("button")).toHaveLength(
+      galleryImageFixtures.length,
+    );
+    await expectNoAxeViolations(container, { page: true });
+  });
+
+  it("renders a facade per video without loading any iframe", async () => {
+    const { container } = renderAbout({ ...base, videos: videoFixtures });
+    expect(
+      await screen.findByRole("button", {
+        name: `Reproducir video: ${videoFixtures[0].title}`,
+      }),
+    ).toBeVisible();
+    expect(container.querySelector("iframe")).toBeNull();
+  });
+
+  it("renders neither gallery nor videos when both are empty", async () => {
+    renderAbout(base);
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Un vistazo")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });

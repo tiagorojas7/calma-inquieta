@@ -25,7 +25,7 @@ export function buildPageMeta(input: PageMetaInput) {
   return [
     { title },
     { name: "description", content: input.description },
-    { rel: "canonical", href: url },
+    { tagName: "link", rel: "canonical", href: url },
     { property: "og:title", content: title },
     { property: "og:description", content: input.description },
     { property: "og:type", content: "website" },

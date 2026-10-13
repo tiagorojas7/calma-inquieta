@@ -28,4 +28,14 @@ describe("home loader", () => {
     }[];
     expect(descriptors[0]?.title).toContain("Inicio");
   });
+
+  it("builds the LocalBusiness JSON-LD without the provisional number", async () => {
+    const services = createTestServices();
+    const result = await loader(createLoaderArgs(services, "/") as never);
+    const ld = JSON.parse(result.jsonLd) as Record<string, unknown>;
+    expect(ld["@type"]).toBe("LocalBusiness");
+    expect(ld.url).toBe("https://example.test/");
+    expect(result.jsonLd.replace(/\D/g, "")).not.toContain("3510000000");
+    expect(ld).not.toHaveProperty("telephone");
+  });
 });

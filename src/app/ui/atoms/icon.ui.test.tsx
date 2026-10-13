@@ -44,15 +44,19 @@ describe("Icon", () => {
     expect(screen.getAllByRole("img", { hidden: true })).toHaveLength(3);
   });
 
-  it.each(["chevron-left", "chevron-right", "play"] as const)(
-    "draws the %s icon as a decorative shape",
-    (name) => {
-      const { container } = render(<Icon name={name} />);
-      expect(container.querySelector("svg path")).not.toBeNull();
-      expect(container.querySelector("svg")).toHaveAttribute(
-        "aria-hidden",
-        "true",
-      );
-    },
-  );
+  it.each([
+    "chevron-left",
+    "chevron-right",
+    "play",
+    "pin",
+    "clock",
+    "mail",
+  ] as const)("draws the %s icon as a decorative shape", (name) => {
+    const { container } = render(<Icon name={name} />);
+    expect(container.querySelector("svg path")).not.toBeNull();
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
 });

@@ -4,7 +4,7 @@ import { createLoaderArgs } from "~/testing/react-router";
 import { loader } from "./sitemap";
 
 describe("sitemap resource route", () => {
-  it("returns the current indexable pages and excludes coming-soon paths", async () => {
+  it("returns the three indexable pages and excludes coming-soon paths", async () => {
     const response = loader(
       createLoaderArgs(createTestServices(), "/sitemap.xml") as never,
     );
@@ -14,6 +14,11 @@ describe("sitemap resource route", () => {
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=3600");
     const body = await response.text();
     expect(body).toContain("<urlset");
+    expect(body.match(/<loc>[^<]+<\/loc>/g)).toEqual([
+      "<loc>https://example.test/</loc>",
+      "<loc>https://example.test/quienes-somos</loc>",
+      "<loc>https://example.test/contacto</loc>",
+    ]);
     expect(body).not.toContain("/talleres");
     expect(body).not.toContain("/intensivos");
     expect(body).not.toContain("/eventos-privados");

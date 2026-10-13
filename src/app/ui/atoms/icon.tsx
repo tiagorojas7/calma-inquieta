@@ -13,6 +13,19 @@ const paths = {
   "chevron-left": <path d="m15 5-7 7 7 7" />,
   "chevron-right": <path d="m9 5 7 7-7 7" />,
   play: <path d="M8 5v14l11-7Z" />,
+  pin: (
+    <>
+      <path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11Z" />
+      <circle cx="12" cy="10" r="2" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  mail: <path d="M4 6h16v12H4zM4 7l8 6 8-6" />,
 } as const;
 export function Icon({
   name,

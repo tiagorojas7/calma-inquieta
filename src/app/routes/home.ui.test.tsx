@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import { serializeJsonLd } from "~/app/seo/json-ld";
 import HomeRoute from "./home";
 
 const fixture = {
@@ -25,6 +26,7 @@ const fixture = {
   contactBand: { heading: "Hablemos", body: "Escribinos" },
   whatsappHref: "https://wa.me/5493510000000",
   instagramHref: "https://www.instagram.com/calma.inquieta/",
+  jsonLd: serializeJsonLd({ "@type": "LocalBusiness", name: "Calma Inquieta" }),
 };
 
 describe("Inicio route", () => {
@@ -73,6 +75,14 @@ describe("Inicio route", () => {
       expect(screen.queryByText("Testimonios")).not.toBeInTheDocument();
       expect(container.textContent).not.toMatch(/\$\s?\d/);
       expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/);
+      const scripts = container.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+      expect(scripts).toHaveLength(1);
+      expect(scripts[0]?.textContent).toBe(fixture.jsonLd);
+      expect(container.textContent.replace(/\D/g, "")).not.toContain(
+        "3517395239",
+      );
       expect(
         screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1))),
       ).toEqual([1, 2, 2, 2, 2]);

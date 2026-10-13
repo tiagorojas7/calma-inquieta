@@ -64,7 +64,12 @@ export function PublicPage({ pages, profile, children }: PublicPageProps) {
         menuOpen={menuOpen}
         onMenuOpenChange={setMenuOpen}
       />
-      <main id="contenido" tabIndex={-1} inert={menuOpen}>
+      <main
+        id="contenido"
+        tabIndex={-1}
+        inert={menuOpen}
+        className="mx-auto w-full max-w-page px-gutter"
+      >
         {children}
       </main>
       <SiteFooter pages={pages} profile={profile} inert={menuOpen} />

@@ -16,7 +16,9 @@ import type { TeachersService } from "~/modules/teachers";
 import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
+  IntensivesService,
 } from "~/modules/workshops";
+import type { SuppliersService, MaterialsService } from "~/modules/materials";
 import { createUnavailableService } from "./unavailable-service";
 
 /** How long `/status` reuses the last database probe (design D12). */
@@ -37,6 +39,9 @@ export interface AppServices {
   readonly teachers: TeachersService;
   readonly monthlyWorkshops: MonthlyWorkshopsService;
   readonly workshopPeriods: WorkshopPeriodsService;
+  readonly intensives: IntensivesService;
+  readonly suppliers: SuppliersService;
+  readonly materials: MaterialsService;
 }
 
 export interface RuntimeConfig {
@@ -95,5 +100,8 @@ export function createRequestServices(
     teachers: createUnavailableService<TeachersService>(),
     monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),
     workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
+    intensives: createUnavailableService<IntensivesService>(),
+    suppliers: createUnavailableService<SuppliersService>(),
+    materials: createUnavailableService<MaterialsService>(),
   };
 }

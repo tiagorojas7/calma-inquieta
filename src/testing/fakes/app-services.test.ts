@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 import { ok } from "~/modules/_shared";
 import type { SystemStatusView } from "~/modules/system-status";
 import { createAdminTestServices, createTestServices } from "./app-services";
+import { testAdminActor } from "./admin-actor";
 import {
   buildRawSiteContent,
   createInMemorySiteContentSource,
 } from "./in-memory-site-content-source";
 import { createSiteContent } from "~/modules/site-content";
 import {
+  buildIntensiveWorkshop,
+  buildMaterial,
+  buildMaterialVariant,
   buildMonthlyWorkshop,
+  buildSupplier,
   buildTurno,
   buildWorkshopPeriod,
 } from "./admin-builders";
@@ -53,6 +58,43 @@ describe("createAdminTestServices", () => {
     expect(turno.defaultCapacity).toBe(20);
     expect(period.status).toBe("open");
   });
+
+  it("fails closed on the intensives, suppliers and materials placeholders", async () => {
+    const services = createAdminTestServices();
+    const actor = testAdminActor();
+    const results = await Promise.all([
+      services.intensives.get(actor, "id"),
+      services.suppliers.list(actor),
+      services.materials.listSelectable(actor),
+    ]);
+    for (const result of results)
+      expect(!result.ok && result.error).toEqual({ kind: "unavailable" });
+  });
+
+  it("applies defaults and overrides in the intensive, supplier and material builders", () => {
+    const intensive = buildIntensiveWorkshop({ capacity: 4 });
+    expect(intensive.id).toBe("intensive-1");
+    expect(intensive.capacity).toBe(4);
+    expect(intensive.status).toBe("draft");
+    expect(buildIntensiveWorkshop().capacity).toBe(10);
+
+    const supplier = buildSupplier({ name: "Otro", active: false });
+    expect(supplier.name).toBe("Otro");
+    expect(supplier.active).toBe(false);
+    expect(buildSupplier().active).toBe(true);
+    expect(buildSupplier().phone).toBeNull();
+
+    const variant = buildMaterialVariant({ label: "Roja", position: 2 });
+    expect(variant.label).toBe("Roja");
+    expect(variant.position).toBe(2);
+    expect(buildMaterialVariant().label).toBe("Única");
+
+    const material = buildMaterial({ category: "Esmalte" });
+    expect(material.category).toBe("Esmalte");
+    expect(material.supplier.id).toBe("supplier-1");
+    expect(material.variants).toHaveLength(1);
+    expect(buildMaterial().category).toBe("Arcilla");
+  });
 });
 
 describe("createTestServices", () => {
@@ -80,6 +122,13 @@ describe("createTestServices", () => {
       (await services.workshopPeriods.list(services.adminAccess as never, "w"))
         .ok,
     ).toBe(false);
+    const actor = testAdminActor();
+    for (const result of await Promise.all([
+      services.intensives.listVisible(actor),
+      services.suppliers.list(actor),
+      services.materials.categorySuggestions(actor),
+    ]))
+      expect(!result.ok && result.error).toEqual({ kind: "unavailable" });
   });
 
   it("replaces one field and keeps the other defaults", async () => {

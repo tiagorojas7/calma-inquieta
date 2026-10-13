@@ -1,10 +1,12 @@
 import type { MediaAsset, ImageUse } from "~/modules/media";
 import type { Teacher } from "~/modules/teachers";
 import type {
+  IntensiveWorkshop,
   MonthlyWorkshop,
   Turno,
   WorkshopPeriod,
 } from "~/modules/workshops";
+import type { Material, MaterialVariant, Supplier } from "~/modules/materials";
 import { Money } from "~/modules/_shared";
 export const buildMediaAsset = (
   overrides: Partial<MediaAsset> = {},
@@ -75,6 +77,64 @@ export const buildWorkshopPeriod = (
   },
   openedBy: "owner@example.com",
   openedAt: new Date("2026-01-01"),
+  audit: { updatedBy: "owner@example.com", updatedAt: new Date("2026-01-01") },
+  ...overrides,
+});
+export const buildIntensiveWorkshop = (
+  overrides: Partial<IntensiveWorkshop> = {},
+): IntensiveWorkshop => ({
+  id: "intensive-1",
+  slug: "intensivo",
+  name: "Intensivo",
+  summary: "Resumen",
+  description: "Descripción",
+  assignment: null,
+  eventDate: "2026-02-07",
+  startsAt: "10:00",
+  endsAt: "18:00",
+  price: testMoney.value,
+  deposit: testMoney.value,
+  capacity: 10,
+  minSeats: 1,
+  policyText: "",
+  materialsIncluded: false,
+  images: [],
+  status: "draft",
+  audit: { updatedBy: "owner@example.com", updatedAt: new Date("2026-01-01") },
+  ...overrides,
+});
+export const buildSupplier = (overrides: Partial<Supplier> = {}): Supplier => ({
+  id: "supplier-1",
+  name: "Proveedor",
+  phone: null,
+  email: null,
+  notes: null,
+  active: true,
+  audit: { updatedBy: "owner@example.com", updatedAt: new Date("2026-01-01") },
+  ...overrides,
+});
+export const buildMaterialVariant = (
+  overrides: Partial<MaterialVariant> = {},
+): MaterialVariant => ({
+  id: "variant-1",
+  label: "Única",
+  price: testMoney.value,
+  available: true,
+  used: false,
+  position: 0,
+  swatch: null,
+  ...overrides,
+});
+export const buildMaterial = (overrides: Partial<Material> = {}): Material => ({
+  id: "material-1",
+  name: "Material",
+  description: "",
+  category: "Arcilla",
+  supplier: buildSupplier(),
+  available: true,
+  active: true,
+  image: null,
+  variants: [buildMaterialVariant()],
   audit: { updatedBy: "owner@example.com", updatedAt: new Date("2026-01-01") },
   ...overrides,
 });

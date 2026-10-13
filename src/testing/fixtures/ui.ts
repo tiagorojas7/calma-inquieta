@@ -53,3 +53,29 @@ export const trustClaimFixtures = [
   { id: "claim-1", label: "Experiencias cuidadas", icon: "heart" as const },
   { id: "claim-2", label: "Para crear en comunidad", icon: "group" as const },
 ] as const;
+
+export const valueItemFixtures = [
+  {
+    id: "value-1",
+    title: "Hacer con calma",
+    text: "Cada taller tiene su ritmo.",
+  },
+  {
+    id: "value-2",
+    title: "Compartir entre todas",
+    text: "La comunidad es parte.",
+  },
+] as const;
+
+export const faqEntryFixtures = [
+  {
+    id: "faq-1",
+    question: "¿Necesito experiencia previa?",
+    answer: "No, te acompañamos paso a paso.",
+  },
+  {
+    id: "faq-2",
+    question: "¿Dónde queda el espacio?",
+    answer: "En Argüello, Córdoba.",
+  },
+] as const;

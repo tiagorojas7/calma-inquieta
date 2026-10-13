@@ -71,9 +71,10 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         eyebrow={data.hero.eyebrow}
         title={
           <>
-            {data.hero.title.lead}
-            <em>{data.hero.title.accent}</em>
-            {data.hero.title.trail}
+            {data.hero.title.lead.trimEnd()} <em>{data.hero.title.accent}</em>
+            {data.hero.title.trail.trim()
+              ? ` ${data.hero.title.trail.trimStart()}`
+              : null}
           </>
         }
         subtitle={data.hero.subtitle}

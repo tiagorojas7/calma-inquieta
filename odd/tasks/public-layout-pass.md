@@ -38,8 +38,8 @@ Strict (AGENTS.md). Runner: `corepack pnpm test <path>`. Tailwind class layout t
 
 ## Tasks
 
-- [ ] T1 Container, gutters, section rhythm, header and footer. Visual-only except landmark wrappers.
-- [ ] T2 Hero two columns on `lg+`, title spaces, CTA spacing, skip link hidden until focus. RED/GREEN for title text and skip link classes.
+- [x] T1 Container, gutters, section rhythm, header and footer. Visual-only except landmark wrappers. Commit 74754d6.
+- [x] T2 Hero two columns on `lg+`, title spaces, CTA spacing, skip link hidden until focus. RED/GREEN for title text and skip link classes. Commit see git log (fix(home)).
 - [ ] T3 Inicio sections (trust row, activity showcase, upcoming list, about teaser, testimonials, contact band). Visual-only.
 - [ ] T4 Quiénes somos, Contacto, coming-soon, error page, mobile nav panel. Visual-only.
 - [ ] T5 Photo stand-ins (hero and gallery). RED/GREEN for manifest, files and dimensions.
@@ -59,4 +59,5 @@ All tasks: delegated direct writer (this worker) executes inline; the work is cl
 
 ## Evidence
 
-(filled per task)
+- T1: RED `public-page.ui.test.tsx > centers the header, main and footer in the page container with gutters` failed (1 failed | 3 passed). GREEN after adding `mx-auto max-w-page px-gutter` on the header inner div, `main`, and footer inner div (11 passed across public-page, site-header, site-footer tests). Header and footer get a `bg-sand-200` band (design token note: sand-200 = header, footer). Class layout itself is not observable in jsdom; only the container classes are asserted. typecheck 0, lint 0.
+- T2: RED `home.ui.test.tsx > keeps the spaces around the italic accent in the hero title`: `Expected "Un espacio para crear con calma y un poquito de inquietud"`, `Received "Un espacio para crear concalmay un poquito de inquietud"`; RED `small-atoms.ui.test.tsx` (SkipLink missing `sr-only`, `focus:not-sr-only`). GREEN: 7 passed (home, small-atoms, hero). Cause: content has `lead`/`trail` without the spaces; fixed in the route composition (trimEnd lead, one space, em, one space + trimStart trail), so content that already carries spaces does not double them (second test). Two-column hero (`lg:grid-cols-2`) and CTA spacing are class-only: visual, no fake test. Built CSS check: compiled `app.css` with `@tailwindcss/node` for `focus:not-sr-only`, `focus:fixed`, `focus:bg-canvas`, `lg:grid-cols-2`, `md:row-span-2`, `max-md:hidden`: all generated.

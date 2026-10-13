@@ -18,20 +18,30 @@ export function HeroSection({
   bajada,
 }: Props) {
   return (
-    <section aria-labelledby="hero-title">
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <Heading level={1} id="hero-title">
-        {title}
-      </Heading>
-      <Text>{subtitle}</Text>
-      <div>
-        <ButtonLink href="/talleres">Ver talleres</ButtonLink>
-        <ButtonLink href="/intensivos" variant="outline">
-          Ver intensivos
-        </ButtonLink>
+    <section
+      aria-labelledby="hero-title"
+      className="grid items-center gap-10 py-section lg:grid-cols-2 lg:gap-16"
+    >
+      <div className="flex flex-col items-start gap-6">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <Heading level={1} id="hero-title">
+          {title}
+        </Heading>
+        <Text className="max-w-prose text-lead">{subtitle}</Text>
+        <div className="flex flex-wrap gap-4">
+          <ButtonLink href="/talleres">Ver talleres</ButtonLink>
+          <ButtonLink href="/intensivos" variant="outline">
+            Ver intensivos
+          </ButtonLink>
+        </div>
+        <Text
+          tone="muted"
+          className="mt-4 w-full max-w-prose border-t border-tan-400 pt-6"
+        >
+          {bajada}
+        </Text>
       </div>
       <HeroCollage images={images} />
-      <Text tone="muted">{bajada}</Text>
     </section>
   );
 }

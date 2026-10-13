@@ -89,4 +89,57 @@ describe("Inicio route", () => {
       await expectNoAxeViolations(container, { page: true });
     },
   );
+
+  it("keeps the spaces around the italic accent in the hero title", async () => {
+    const real = {
+      ...fixture,
+      hero: {
+        ...fixture.hero,
+        title: {
+          lead: "Un espacio para crear con",
+          accent: "calma",
+          trail: "y un poquito de inquietud",
+        },
+      },
+    };
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => real,
+      },
+    ]);
+    render(<Stub initialEntries={["/"]} />);
+    const title = await screen.findByRole("heading", { level: 1 });
+    expect(title.textContent).toBe(
+      "Un espacio para crear con calma y un poquito de inquietud",
+    );
+  });
+
+  it("does not double the spaces when the content already carries them", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => ({
+          ...fixture,
+          hero: {
+            ...fixture.hero,
+            title: { lead: "Un espacio para ", accent: "crear", trail: "" },
+          },
+        }),
+      },
+    ]);
+    render(<Stub initialEntries={["/"]} />);
+    const title = await screen.findByRole("heading", { level: 1 });
+    expect(title.textContent).toBe("Un espacio para crear");
+  });
 });

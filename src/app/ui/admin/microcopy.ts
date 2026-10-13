@@ -11,4 +11,7 @@ export const adminMicrocopy = {
     archived: "Archivado",
     active: "Activo",
   },
+  confirm: {
+    cancel: "Cancelar",
+  },
 } as const;

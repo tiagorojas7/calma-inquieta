@@ -1,6 +1,8 @@
 import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
+import { buildLocalBusinessJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
 import { buildPageMeta } from "~/app/seo/meta";
+import { JsonLdScript } from "~/app/ui/json-ld-script";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
@@ -39,6 +41,9 @@ export async function loader({ context }: Route.LoaderArgs) {
     whatsappHref: whatsapp.ok ? whatsapp.value : undefined,
     instagramHref: profile.instagram.url,
     site: services.site,
+    jsonLd: serializeJsonLd(
+      buildLocalBusinessJsonLd(profile, services.site.baseUrl),
+    ),
     metaInput: {
       title: content.seo.title,
       description: content.seo.description,
@@ -106,6 +111,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         whatsappHref={data.whatsappHref ?? "#"}
         instagramHref={data.instagramHref}
       />
+      <JsonLdScript json={data.jsonLd} />
     </>
   );
 }

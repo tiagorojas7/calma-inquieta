@@ -10,6 +10,11 @@ const SVG_SOURCE =
   "Abstract composition authored for this project in the brand palette (generated with a Python script)";
 const SVG_LICENCE = "Original work for this project; no third-party material";
 
+const PHOTO_LICENCE =
+  "Client brand asset (a photograph from the studio's own published Instagram account); image permission still to be confirmed";
+const photo = (file: string) =>
+  `docs/brand/instagram/${file}, a photograph from the studio's own Instagram account, copied as is (low resolution)`;
+
 const PROFILE_PICTURE_SOURCE =
   "docs/brand/instagram/ig-profile-picture.jpg, the studio's own Instagram profile picture (likely the logo mark)";
 const PROFILE_PICTURE_LICENCE =
@@ -24,30 +29,30 @@ const FONT_REPLACE_WITH =
 export const STAND_IN_ASSETS = [
   {
     id: "hero-1",
-    path: "/media/stand-ins/hero-1.svg",
+    path: "/media/stand-ins/hero-1.jpg",
     kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
+    source: photo("ig-post-05-2026-09-29.jpg"),
+    licence: PHOTO_LICENCE,
     replaceWith:
       "A client photograph of a workshop or of finished pieces, at least 2000 px, with image permission",
   },
   {
     id: "hero-2",
-    path: "/media/stand-ins/hero-2.svg",
+    path: "/media/stand-ins/hero-2.jpg",
     kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
+    source: photo("ig-post-07-2026-09-26.jpg"),
+    licence: PHOTO_LICENCE,
     replaceWith:
       "A client photograph of the space or of a class, at least 2000 px, with image permission",
   },
   {
     id: "hero-3",
-    path: "/media/stand-ins/hero-3.svg",
+    path: "/media/stand-ins/hero-3.jpg",
     kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
+    source: photo("ig-post-01-2026-10-04.jpg"),
+    licence: PHOTO_LICENCE,
     replaceWith:
-      "A client photograph of materials or finished pieces, at least 2000 px, with image permission",
+      "A client photograph of the team or of the space, at least 2000 px, with image permission",
   },
   {
     id: "about-teaser",
@@ -60,50 +65,18 @@ export const STAND_IN_ASSETS = [
   },
   {
     id: "gallery-01",
-    path: "/media/stand-ins/gallery-01.svg",
+    path: "/media/stand-ins/gallery-01.jpg",
     kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
+    source: photo("ig-post-11-2026-09-21.jpg"),
+    licence: PHOTO_LICENCE,
     replaceWith: "A client gallery photograph with image permission",
   },
   {
     id: "gallery-02",
-    path: "/media/stand-ins/gallery-02.svg",
+    path: "/media/stand-ins/gallery-02.jpg",
     kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
-    replaceWith: "A client gallery photograph with image permission",
-  },
-  {
-    id: "gallery-03",
-    path: "/media/stand-ins/gallery-03.svg",
-    kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
-    replaceWith: "A client gallery photograph with image permission",
-  },
-  {
-    id: "gallery-04",
-    path: "/media/stand-ins/gallery-04.svg",
-    kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
-    replaceWith: "A client gallery photograph with image permission",
-  },
-  {
-    id: "gallery-05",
-    path: "/media/stand-ins/gallery-05.svg",
-    kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
-    replaceWith: "A client gallery photograph with image permission",
-  },
-  {
-    id: "gallery-06",
-    path: "/media/stand-ins/gallery-06.svg",
-    kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
+    source: photo("ig-post-12-2026-09-18-collab.jpg"),
+    licence: PHOTO_LICENCE,
     replaceWith: "A client gallery photograph with image permission",
   },
   {

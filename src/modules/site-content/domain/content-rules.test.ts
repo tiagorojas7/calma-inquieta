@@ -83,7 +83,7 @@ describe("validateSiteContent", () => {
     const content = validContent();
     const broken: GalleryImage = {
       id: "gallery-1",
-      ...image("/media/stand-ins/gallery-01.svg", "  "),
+      ...image("/media/stand-ins/gallery-01.jpg", "  "),
     };
 
     const issues = validateSiteContent({
@@ -98,7 +98,7 @@ describe("validateSiteContent", () => {
     const content = validContent();
     const decorative: GalleryImage = {
       id: "gallery-1",
-      ...image("/media/stand-ins/gallery-01.svg", ""),
+      ...image("/media/stand-ins/gallery-01.jpg", ""),
       decorative: true,
     };
 
@@ -119,13 +119,13 @@ describe("validateSiteContent", () => {
         ...content.home,
         hero: {
           ...content.home.hero,
-          images: [image("/media/stand-ins/hero-1.svg", "")],
+          images: [image("/media/stand-ins/hero-1.jpg", "")],
         },
       },
     });
 
     expect(issues).toEqual([
-      { id: "/media/stand-ins/hero-1.svg", rule: "alt-missing" },
+      { id: "/media/stand-ins/hero-1.jpg", rule: "alt-missing" },
     ]);
   });
 
@@ -158,7 +158,7 @@ describe("validateSiteContent", () => {
       id: "video-1",
       youtubeId,
       title: "Video",
-      poster: image("/media/stand-ins/gallery-01.svg"),
+      poster: image("/media/stand-ins/gallery-01.jpg"),
     });
 
     const bad = validateSiteContent({

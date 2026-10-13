@@ -168,11 +168,11 @@ describe("the drafted page content", () => {
     expect(home.testimonials.items).toEqual([]);
   });
 
-  it("has an empty video list and six gallery images with alt text", async () => {
+  it("has an empty video list and five gallery images with alt text", async () => {
     const about = await content.getAboutPage();
 
     expect(about.videos).toEqual([]);
-    expect(about.gallery).toHaveLength(6);
+    expect(about.gallery).toHaveLength(5);
     for (const image of about.gallery) {
       expect(image.alt.trim(), image.id).not.toBe("");
     }
@@ -226,6 +226,6 @@ describe("the drafted page content", () => {
   it("registers every stand-in the manifest lists", async () => {
     const standIns = await content.listStandInAssets();
 
-    expect(standIns).toHaveLength(16);
+    expect(standIns).toHaveLength(12);
   });
 });

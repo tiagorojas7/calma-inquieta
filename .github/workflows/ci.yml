@@ -30,6 +30,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check migrations match the schema (drift gate)
+        run: |
+          pnpm db:generate --name drift-check
+          test -z "$(git status --porcelain -- drizzle)" || {
+            echo "drizzle/ is out of sync with src/platform/db/schema" >&2
+            git status --porcelain -- drizzle >&2
+            exit 1
+          }
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck

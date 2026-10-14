@@ -11,11 +11,11 @@ Change: public-catalog (change 4 of 8) | Store: hybrid | Strict TDD: active (`co
 | Chained PRs recommended | Yes |
 | Suggested split | P0 -> C4-B0 -> C4-B1 -> C4-B2 -> C4-B3 -> C4-B5 (BACK); C4-F0a -> C4-F0b -> C4-F1 / C4-F2 / C4-F3 -> C4-F4 (FRONT); C4-B4 after C4-F1 and C4-F2 |
 | Delivery strategy | ask-on-risk |
-| Chain strategy | pending (recommended: stacked-to-main) |
+| Chain strategy | stacked-to-main (owner-confirmed 2026-10-14) |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main (owner-confirmed 2026-10-14)
 400-line budget risk: High
 
 Recommended chain strategy: `stacked-to-main`. Reasons (design 10.1): each slice is reviewed and merged on its own; change-3 slices keep landing on `main` in between, so a feature branch would need repeated rebases of two chains; the fail-soft empty readers make every intermediate state on `main` shippable. Under `ask-on-risk` the owner confirms this choice before apply. Q1-Q10 are decided; DA1-DA7 are overridable assumptions and do not block apply.

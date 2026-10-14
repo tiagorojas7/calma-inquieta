@@ -11,6 +11,10 @@ import { createDrizzleDatabaseProbe } from "~/modules/system-status/infrastructu
 import { createDbSessionFactory } from "~/platform/db/session";
 import { systemClock } from "~/platform/system-clock";
 import type { AdminAccessState } from "~/modules/admin-access";
+import {
+  createAccessKeyCacheCell,
+  type AccessKeyCacheCell,
+} from "~/modules/admin-access/infrastructure/access-verifier";
 import type { MediaService } from "~/modules/media";
 import type { TeachersService } from "~/modules/teachers";
 import type {
@@ -63,10 +67,14 @@ const siteContent = createSiteContent(createRepositoryContentSource());
 /** State that lives as long as the isolate and is shared by its requests. */
 export interface IsolateState {
   readonly statusProbeMemo: ProbeMemoCell;
+  readonly accessKeys: AccessKeyCacheCell;
 }
 
 export function createIsolateState(): IsolateState {
-  return { statusProbeMemo: createProbeMemoCell() };
+  return {
+    statusProbeMemo: createProbeMemoCell(),
+    accessKeys: createAccessKeyCacheCell(),
+  };
 }
 
 /**

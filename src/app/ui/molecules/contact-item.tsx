@@ -45,21 +45,31 @@ export function TrustItem({
     </div>
   );
 }
-export function DateBadge({ date }: { date: string }) {
-  const d = new Date(`${date}T00:00:00Z`);
+export type DateBadgeParts = {
+  dateTime: string;
+  weekday?: string;
+  day: string;
+  month: string;
+  label: string;
+};
+
+/** Renders preformatted parts as given; the delivery formatter owns the names. */
+export function DateBadge({
+  dateTime,
+  weekday,
+  day,
+  month,
+  label,
+}: DateBadgeParts) {
   return (
     <time
       className="flex min-w-14 flex-col items-center text-center font-semibold uppercase text-clay-800"
-      dateTime={date}
-      aria-label={d.toLocaleDateString("es-AR", {
-        dateStyle: "full",
-        timeZone: "UTC",
-      })}
+      dateTime={dateTime}
+      aria-label={label}
     >
-      <span>{String(d.getUTCDate()).padStart(2, "0")}</span>
-      <span>
-        {d.toLocaleDateString("es-AR", { month: "short", timeZone: "UTC" })}
-      </span>
+      {weekday ? <span>{weekday}</span> : null}
+      <span>{day}</span>
+      <span>{month}</span>
     </time>
   );
 }

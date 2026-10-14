@@ -111,6 +111,21 @@ describe("GalleryGrid", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("renders only the grid and the dialog when the heading is omitted", async () => {
+    const { container } = render(<GalleryGrid images={galleryImageFixtures} />);
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(container.querySelector("section")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(
+      galleryImageFixtures.length,
+    );
+    expect(container.querySelector("dialog")).not.toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: first.alt }));
+    expect(
+      within(screen.getByRole("dialog")).getByRole("img", { name: first.alt }),
+    ).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
   it("has no axe violations with the dialog open", async () => {
     const { container, thumbnail } = setup();
     await userEvent.click(thumbnail(first.alt));

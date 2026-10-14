@@ -13,10 +13,24 @@ const SECRET_NAMES = [
   "HYPERDRIVE_ID",
   "MIGRATION_DATABASE_URL",
   "STATUS_URL",
+  "CF_ACCESS_CLIENT_ID",
+  "CF_ACCESS_CLIENT_SECRET",
 ] as const;
 type SecretName = (typeof SECRET_NAMES)[number];
 
 const GATE_CONDITION = "if: steps.deploy-gate.outputs.ready == 'true'";
+const FORBIDDEN_WORKFLOW_ADMIN_NAMES = [
+  "DEV_ADMIN_EMAIL",
+  "ADMIN_EMAILS",
+  "ACCESS_AUD",
+  "ACCESS_TEAM_DOMAIN",
+] as const;
+
+function forbiddenAdminNames(workflow: string): string[] {
+  return FORBIDDEN_WORKFLOW_ADMIN_NAMES.filter((name) =>
+    new RegExp(`\\b${name}\\b`).test(workflow),
+  );
+}
 
 function indentOf(line: string): number {
   return line.length - line.trimStart().length;
@@ -103,7 +117,7 @@ describe("deploy gate script", () => {
 
     expect(status).toBe(0);
     expect(log).toContain(
-      "::notice::deploy skipped: secrets not provisioned: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, HYPERDRIVE_ID, MIGRATION_DATABASE_URL, STATUS_URL",
+      "::notice::deploy skipped: secrets not provisioned: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, HYPERDRIVE_ID, MIGRATION_DATABASE_URL, STATUS_URL, CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET",
     );
     expect(written.trim()).toBe("ready=false");
   });
@@ -126,7 +140,7 @@ describe("deploy gate script", () => {
 
     expect(status).not.toBe(0);
     expect(log).toContain(
-      "::error::deploy misconfigured: missing HYPERDRIVE_ID, STATUS_URL",
+      "::error::deploy misconfigured: missing HYPERDRIVE_ID, STATUS_URL, CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET",
     );
     expect(written).not.toContain("ready=true");
     for (const name of SECRET_NAMES) {
@@ -139,7 +153,7 @@ describe("deploy gate script", () => {
 
     expect(status).not.toBe(0);
     expect(log).toContain(
-      "::error::deploy misconfigured: missing CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, HYPERDRIVE_ID, MIGRATION_DATABASE_URL",
+      "::error::deploy misconfigured: missing CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, HYPERDRIVE_ID, MIGRATION_DATABASE_URL, CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET",
     );
     expect(log).not.toContain(VALUE("STATUS_URL"));
   });
@@ -239,6 +253,27 @@ describe("deploy job structure", () => {
     }
   });
 
+  it("sends the Access service token only to the smoke check and rejects it at /admin", () => {
+    const smoke = deploySteps().find((step) =>
+      step.includes("Smoke check the deployed status page through Access"),
+    );
+
+    expect(smoke).toContain(
+      "CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}",
+    );
+    expect(smoke).toContain(
+      "CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}",
+    );
+    expect(smoke).toContain("CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}");
+    expect(smoke).toContain(
+      "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}",
+    );
+    expect(smoke).toContain('"${STATUS_URL%/status}/admin"');
+    expect(smoke).toContain('if [ "$code" != "403" ]');
+    expect(smoke).not.toMatch(/(?:-L|--verbose|--trace|\s-v\s)/);
+    expect(smoke).not.toMatch(/echo[^\n]*CF_ACCESS_/);
+  });
+
   it("migrates, then deploys, then smoke-checks, never printing a value", () => {
     const job = deployJobLines().join("\n");
     const substitute = job.indexOf(
@@ -260,6 +295,13 @@ describe("deploy job structure", () => {
 });
 
 describe("workflow safety", () => {
+  it("keeps Worker admin configuration out of CI, including planted names", () => {
+    expect(forbiddenAdminNames(WORKFLOW)).toEqual([]);
+    expect(forbiddenAdminNames("ADMIN_EMAILS: planted-value")).toEqual([
+      "ADMIN_EMAILS",
+    ]);
+  });
+
   it("never uses pull_request_target", () => {
     expect(WORKFLOW).not.toContain("pull_request_target");
   });

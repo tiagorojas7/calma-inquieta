@@ -9,7 +9,7 @@ No automated agent runs or rehearses any of this. Never paste a secret into a ch
 1. Cloudflare: upgrade to Workers Paid (C1) and claim the `workers.dev` subdomain (C2).
 2. Neon: create the project, the runtime role and the `staging` branch (N1 to N4).
 3. Cloudflare: create the scoped API token (C3) and the Hyperdrive config with caching disabled (C4).
-4. Terminal: load the five GitHub secrets (G1), then run CI on `main` (G2).
+4. Cloudflare: configure Access for the status application (Z1–Z3), then load the seven GitHub secrets (G1) and run CI on `main` (G2).
 
 ## Before you start
 
@@ -141,7 +141,15 @@ pnpm exec wrangler hyperdrive get <hyperdrive-id>
 
 The output must show caching disabled, the origin `calma_app` and a Neon host with no `-pooler`.
 
-### G1. Load the five GitHub secrets
+### Z1–Z3. Configure Cloudflare Access before merging the admin gate
+
+1. Create or select the Access application covering the staging Worker URL, including `/status` and `/admin`.
+2. Create a service token restricted to that application. It is only for CI smoke requests and is never an admin identity.
+3. Configure the Access team domain, audience and the Worker secrets `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` and `ADMIN_EMAILS`; set `DEV_ADMIN_EMAIL` only for local development. Keep all values out of GitHub secrets and repository files.
+
+Check: an interactive Access user can reach `/status`, while the service token must receive 403 at `/admin` after deployment.
+
+### G1. Load the seven GitHub secrets
 
 Run each command and paste the value at the prompt, so it stays out of shell history:
 
@@ -151,15 +159,19 @@ gh secret set CLOUDFLARE_ACCOUNT_ID --repo tiagorojas7/calma-inquieta
 gh secret set HYPERDRIVE_ID         --repo tiagorojas7/calma-inquieta
 gh secret set MIGRATION_DATABASE_URL --repo tiagorojas7/calma-inquieta
 gh secret set STATUS_URL            --repo tiagorojas7/calma-inquieta
+gh secret set CF_ACCESS_CLIENT_ID   --repo tiagorojas7/calma-inquieta
+gh secret set CF_ACCESS_CLIENT_SECRET --repo tiagorojas7/calma-inquieta
 ```
 
-| Secret                   | Paste                                                           |
-| ------------------------ | --------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`   | The token from C3                                               |
-| `CLOUDFLARE_ACCOUNT_ID`  | `<account-id>` from C2                                          |
-| `HYPERDRIVE_ID`          | `<hyperdrive-id>` from C4                                       |
-| `MIGRATION_DATABASE_URL` | The `neondb_owner` direct URL from N4                           |
-| `STATUS_URL`             | `https://calma-inquieta.<account-subdomain>.workers.dev/status` |
+| Secret                    | Paste                                                           |
+| ------------------------- | --------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`    | The token from C3                                               |
+| `CLOUDFLARE_ACCOUNT_ID`   | `<account-id>` from C2                                          |
+| `HYPERDRIVE_ID`           | `<hyperdrive-id>` from C4                                       |
+| `MIGRATION_DATABASE_URL`  | The `neondb_owner` direct URL from N4                           |
+| `STATUS_URL`              | `https://calma-inquieta.<account-subdomain>.workers.dev/status` |
+| `CF_ACCESS_CLIENT_ID`     | The Access service-token client id from Z2                      |
+| `CF_ACCESS_CLIENT_SECRET` | The Access service-token client secret from Z2                  |
 
 Check:
 
@@ -167,15 +179,15 @@ Check:
 gh secret list --repo tiagorojas7/calma-inquieta
 ```
 
-The list shows exactly the five names. If you load only some, the `deploy` job fails and names the missing ones; it never prints a value.
+The list shows exactly the seven names. If you load only some, the `deploy` job fails and names the missing ones; it never prints a value.
 
 ### G2. Run CI on `main`
 
 Push to `main` (or open the latest `ci` run on `main` in the Actions tab and choose **Re-run all jobs**). Expected result of the `deploy` job:
 
-1. The first step finds all five secrets and continues.
+1. The first step finds all seven secrets and continues.
 2. Migrations apply to `staging`, then the Worker deploys.
-3. The smoke check passes: `/status` returns `data-status="ok"`.
+3. The Access-authenticated smoke check passes: `/status` returns `data-status="ok"` and `/admin` returns 403 to the service token.
 
 Check yourself:
 
@@ -207,12 +219,12 @@ pnpm exec wrangler deploy --var "SITE_URL:<origin>" --var "BUILD_COMMIT:<sha>"
 
 ## Rollback
 
-| Goal                        | Action                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                   |
-| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                |
-| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all five to make it skip cleanly |
-| Full teardown               | Delete the Hyperdrive config, revoke the API token, delete the Neon project, then delete the five secrets                                               |
+| Goal                        | Action                                                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                    |
+| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                 |
+| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all seven to make it skip cleanly |
+| Full teardown               | Delete the Hyperdrive config, revoke the API token, delete the Neon project, then delete the seven secrets                                               |
 
 Never edit an applied migration. Fix forward with a new migration.
 
@@ -231,5 +243,6 @@ Never edit an applied migration. Fix forward with a new migration.
 - [ ] N1 to N4 done; `calma_app` is not a `neon_superuser` member; two direct URLs copied
 - [ ] C3 token has exactly three account permissions and a 12-month end date
 - [ ] C4 `wrangler hyperdrive get` shows caching disabled
-- [ ] G1 `gh secret list` shows five names
-- [ ] G2 deploy job green and `/status` shows `data-status="ok"`
+- [ ] Z1–Z3 Access application, service token and Worker secrets configured
+- [ ] G1 `gh secret list` shows seven names
+- [ ] G2 deploy job green, `/status` shows `data-status="ok"`, and the service token gets 403 at `/admin`

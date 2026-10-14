@@ -41,13 +41,14 @@ export function tallerToActivityCard(
   taller: PublicTaller,
   content: CatalogContent,
 ) {
+  const schedule = tallerSchedule(taller.turnos, content);
   return {
     id: taller.slug,
     image: taller.images[0] ?? content.fallbackImage,
     title: taller.name,
     description: taller.summary,
-    schedule: tallerSchedule(taller.turnos, content),
-    badge: taller.status === "paused" ? content.shared.paused : undefined,
+    ...(schedule === undefined ? {} : { schedule }),
+    ...(taller.status === "paused" ? { badge: content.shared.paused } : {}),
     href: `/talleres/${taller.slug}`,
     ctaLabel: content.talleres.cardCtaLabel,
   };
@@ -63,7 +64,7 @@ export function intensivoToUpcomingItem(
     date: dateBadgeParts(intensivo.date),
     title: intensivo.name,
     detail: formatTimeRange(intensivo.startsAt, intensivo.endsAt),
-    badge: intensivo.status === "paused" ? content.shared.paused : undefined,
+    ...(intensivo.status === "paused" ? { badge: content.shared.paused } : {}),
     href: `/intensivos/${intensivo.slug}`,
     ctaLabel: content.intensivos.cardCtaLabel,
   };

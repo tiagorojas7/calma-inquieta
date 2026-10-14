@@ -34,11 +34,11 @@ function email(value: string | undefined): string | undefined {
   return EMAIL.safeParse(normalized).success ? normalized : undefined;
 }
 
-export function readAdminConfig(env: Record<string, unknown>): AdminEnvConfig {
+export function readAdminConfig(env: object): AdminEnvConfig {
   const cached = cache.get(env);
   if (cached) return cached;
 
-  const source = env;
+  const source = (name: string): unknown => Reflect.get(env, name);
   const issues: EnvIssue[] = [];
   const issueNames = new Set<string>();
   const addInvalidIssue = (name: string) => {
@@ -47,8 +47,8 @@ export function readAdminConfig(env: Record<string, unknown>): AdminEnvConfig {
       issues.push({ name, reason: "invalid" });
     }
   };
-  const rawDomain = source.ACCESS_TEAM_DOMAIN;
-  const rawAudience = source.ACCESS_AUD;
+  const rawDomain = source("ACCESS_TEAM_DOMAIN");
+  const rawAudience = source("ACCESS_AUD");
   const domain = nonEmpty(rawDomain);
   const audience = nonEmpty(rawAudience);
   const validDomain = domain !== undefined && TEAM_DOMAIN.test(domain);
@@ -63,7 +63,7 @@ export function readAdminConfig(env: Record<string, unknown>): AdminEnvConfig {
     addInvalidIssue("ACCESS_AUD");
 
   const emails = new Set<string>();
-  const rawEmailsValue = source.ADMIN_EMAILS;
+  const rawEmailsValue = source("ADMIN_EMAILS");
   const rawEmails = nonEmpty(rawEmailsValue);
   if (rawEmailsValue !== undefined && typeof rawEmailsValue !== "string")
     addInvalidIssue("ADMIN_EMAILS");
@@ -75,7 +75,7 @@ export function readAdminConfig(env: Record<string, unknown>): AdminEnvConfig {
     }
   }
 
-  const rawDevValue = source.DEV_ADMIN_EMAIL;
+  const rawDevValue = source("DEV_ADMIN_EMAIL");
   const rawDev = nonEmpty(rawDevValue);
   const devAdminEmail = email(rawDev);
   if (rawDevValue !== undefined && typeof rawDevValue !== "string")

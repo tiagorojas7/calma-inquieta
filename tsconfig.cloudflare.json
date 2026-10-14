@@ -15,8 +15,8 @@
     ".react-router/types/**/*"
   ],
   "exclude": [
-    "**/*.test.ts",
-    "**/*.test.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
     "src/platform/db/migrate.ts",
     "src/platform/db/schema.ts"
   ]

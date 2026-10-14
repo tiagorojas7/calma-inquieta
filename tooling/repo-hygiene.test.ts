@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { adminEnvSchema } from "~/platform/admin-env";
 import {
   migrationEnvSchema,
   testEnvSchema,
@@ -32,6 +33,7 @@ const examples = new Map([
 
 const schemaNames = [
   ...Object.keys(workerEnvSchema.shape),
+  ...Object.keys(adminEnvSchema.shape),
   ...Object.keys(migrationEnvSchema.shape),
   ...Object.keys(testEnvSchema.shape),
 ].map((name) => LOCAL_OVERRIDE[name] ?? name);

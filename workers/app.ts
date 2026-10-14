@@ -7,15 +7,156 @@ import { servicesContext } from "~/app/context";
 import {
   createIsolateState,
   createRequestServices,
+  type AppServices,
+  type IsolateState,
 } from "~/composition/request-services";
+import {
+  ADMIN_DENIED_PATH,
+  isAdminPath,
+  runAdminGate,
+} from "~/composition/admin-gate";
+import { readAdminConfig } from "~/platform/admin-env";
+import { withAdminHeaders } from "~/platform/admin-headers";
 import { formatEnvError, readWorkerEnv } from "~/platform/env";
 import {
   unavailableResponse,
   withIndexingHeader,
 } from "~/platform/indexing-header";
 
-// The generated build type declares optional members as `T | undefined`, which
-// ServerBuild rejects under exactOptionalPropertyTypes; the shapes are the same.
+export interface WorkerContext {
+  waitUntil(pending: Promise<unknown>): void;
+}
+
+export type RouterHandler = (
+  request: Request,
+  context: RouterContextProvider,
+) => Promise<Response>;
+
+function plainDeniedResponse(): Response {
+  return new Response("No tenés acceso al panel.", {
+    status: 403,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+function withoutBodyForHead(request: Request, response: Response): Response {
+  if (request.method !== "HEAD") return response;
+
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+function requestUrl(request: Request): URL | null {
+  try {
+    return new URL(request.url);
+  } catch {
+    return null;
+  }
+}
+
+function isHttpLocalhostRequest(request: Request): boolean {
+  const url = requestUrl(request);
+  return url?.protocol === "http:" && url.hostname === "localhost";
+}
+
+function createServices(
+  config: Parameters<typeof createRequestServices>[0],
+  runtime: WorkerContext,
+  isolate: IsolateState,
+  adminAccess: AppServices["adminAccess"],
+): AppServices {
+  return {
+    ...createRequestServices(
+      config,
+      {
+        defer: (pending) => {
+          runtime.waitUntil(pending);
+        },
+      },
+      isolate,
+    ),
+    adminAccess,
+  };
+}
+
+export async function handleRequest(
+  request: Request,
+  env: object,
+  runtime: WorkerContext,
+  isolate: IsolateState,
+  handler: RouterHandler,
+  mode: string,
+): Promise<Response> {
+  const parsed = readWorkerEnv(env, { mode });
+  if (!parsed.ok) {
+    console.error(formatEnvError(parsed.error));
+    return unavailableResponse();
+  }
+
+  const runtimeConfig = {
+    databaseUrl: parsed.value.HYPERDRIVE.connectionString,
+    buildCommit: parsed.value.BUILD_COMMIT,
+    siteUrl: parsed.value.SITE_URL,
+    indexingEnabled: parsed.value.SITE_INDEXING,
+  };
+  const url = requestUrl(request);
+  if (!url) return unavailableResponse();
+  const admin = isAdminPath(url);
+  const adminConfig = readAdminConfig(env);
+  const gate = admin
+    ? await runAdminGate(
+        request,
+        isHttpLocalhostRequest(request)
+          ? adminConfig
+          : { ...adminConfig, devAdminEmail: null },
+        isolate,
+      )
+    : { kind: "not-admin" as const };
+
+  if (gate.kind === "denied" && gate.mode === "plain") {
+    return withoutBodyForHead(request, withAdminHeaders(plainDeniedResponse()));
+  }
+
+  const context = new RouterContextProvider();
+  const adminAccess =
+    gate.kind === "not-admin"
+      ? { kind: "not-evaluated" as const }
+      : gate.adminAccess;
+  context.set(
+    servicesContext,
+    createServices(runtimeConfig, runtime, isolate, adminAccess),
+  );
+  const routedRequest =
+    gate.kind === "denied"
+      ? new Request(new URL(ADMIN_DENIED_PATH, request.url), {
+          method: "GET",
+          headers: request.headers,
+        })
+      : request;
+  const response = await handler(routedRequest, context);
+  const secured = admin
+    ? withAdminHeaders(
+        gate.kind === "denied"
+          ? new Response(response.body, {
+              status: 403,
+              statusText: response.statusText,
+              headers: response.headers,
+            })
+          : response,
+      )
+    : response;
+  return withoutBodyForHead(
+    request,
+    withIndexingHeader(secured, parsed.value.SITE_INDEXING),
+  );
+}
+
+// SAFETY: The generated build type declares optional members as `T | undefined`,
+// which ServerBuild rejects under exactOptionalPropertyTypes; the shapes are the
+// same.
 const handler = createRequestHandler(
   () =>
     import("virtual:react-router/server-build") as unknown as Promise<ServerBuild>,
@@ -26,34 +167,14 @@ const handler = createRequestHandler(
 const isolate = createIsolateState();
 
 export default {
-  async fetch(request, env, ctx) {
-    const parsed = readWorkerEnv(env);
-    if (!parsed.ok) {
-      // Names only in logs; the body stays generic (RC: Worker failure behavior).
-      console.error(formatEnvError(parsed.error));
-      return unavailableResponse();
-    }
-    const context = new RouterContextProvider();
-    context.set(
-      servicesContext,
-      createRequestServices(
-        {
-          databaseUrl: parsed.value.HYPERDRIVE.connectionString,
-          buildCommit: parsed.value.BUILD_COMMIT,
-          siteUrl: parsed.value.SITE_URL,
-          indexingEnabled: parsed.value.SITE_INDEXING,
-        },
-        {
-          defer: (pending) => {
-            ctx.waitUntil(pending);
-          },
-        },
-        isolate,
-      ),
-    );
-    return withIndexingHeader(
-      await handler(request, context),
-      parsed.value.SITE_INDEXING,
+  fetch(request, env, ctx) {
+    return handleRequest(
+      request,
+      env,
+      ctx,
+      isolate,
+      handler,
+      import.meta.env.MODE,
     );
   },
 } satisfies ExportedHandler<Env>;

@@ -83,7 +83,7 @@ describe("home loader", () => {
     const services = createTestServices({ publicCatalog: catalog });
     const result = await loader(createLoaderArgs(services, "/") as never);
     expect(result.monthly[0]?.badge).toBe("Inscripciones pausadas");
-    expect(result.monthly[0]?.schedule).toContain("y 1 turnos más");
+    expect(result.monthly[0]?.schedule).toContain("y 1 turno más");
   });
 
   it.each(["talleres", "intensivos"] as const)(

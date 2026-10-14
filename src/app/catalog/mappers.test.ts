@@ -59,6 +59,22 @@ describe("tallerToActivityCard (Inicio)", () => {
     );
   });
 
+  it("uses the singular when exactly one turno is hidden", () => {
+    const card = tallerToActivityCard(
+      buildPublicTaller({
+        turnos: [
+          buildPublicTurno({ weekday: 1 }),
+          buildPublicTurno({ weekday: 2 }),
+          buildPublicTurno({ weekday: 4 }),
+        ],
+      }),
+      content,
+    );
+    expect(card.schedule).toBe(
+      "Lunes, 10:00 a 12:00 h · Martes, 10:00 a 12:00 h y 1 turno más",
+    );
+  });
+
   it("omits the schedule when there are no turnos", () => {
     const card = tallerToActivityCard(
       buildPublicTaller({ turnos: [] }),

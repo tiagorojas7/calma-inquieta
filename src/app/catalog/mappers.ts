@@ -30,9 +30,12 @@ function tallerSchedule(
   if (hidden <= 0) {
     return shown;
   }
-  const more = fillCopyTemplate(content.shared.moreTurnos, {
-    cantidad: String(hidden),
-  });
+  const more =
+    hidden === 1
+      ? content.shared.moreTurnosOne
+      : fillCopyTemplate(content.shared.moreTurnos, {
+          cantidad: String(hidden),
+        });
   return `${shown} ${more}`;
 }
 

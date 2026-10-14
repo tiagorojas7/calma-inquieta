@@ -1,9 +1,9 @@
 # Design: Public Catalog (Talleres and Intensivos pages from the database, seats, dynamic Inicio, Event JSON-LD)
 
-Change 4 of 8 | Project: calmainquieta | Store: hybrid | Phase: sdd-design | Revision 1 | Date: 2026-10-13
+Change 4 of 8 | Project: calmainquieta | Store: hybrid | Phase: sdd-design | Revision 2 | Date: 2026-10-13
 Inputs: `proposal.md` (revision 1, commit `48ab6fe`, including the "Owner decisions (2026-10-13)" table Q1-Q10), the in-progress specs `specs/public-catalog-reader/spec.md` and `specs/talleres-pages/spec.md` (read only; the spec phase runs in parallel), `AGENTS.md`, code on `main` at `14363b4` (`src/modules/{workshops,teachers,media,materials,admin-access,site-content,_shared}/**`, `src/composition/{request-services,unavailable-service}.ts`, `src/testing/fakes/**`, `src/testing/contracts/database-probe.contract.ts`, `src/platform/db/session.ts`, `src/app/{routes.ts,site-map.ts,context.ts,copy-rules.test.ts,site-map.test.ts}`, `src/app/routes/{home,coming-soon,not-found,public-layout,sitemap}.ts(x)`, `src/app/seo/{json-ld,meta,sitemap,canonical}.ts`, `src/app/ui/{atoms,molecules,organisms,templates}/**`), the archived change-2 design (DS3, DS6, DS9, DS12, DS13, DS14), `docs/design/deviation-register.md`, and the change-3 planning in the `CalmaInquieta-plan` worktree (`openspec/changes/admin-catalog/{design,apply-progress}.md`, `specs/*`; read only).
 
-> **Design in one paragraph.** The public catalog is a second, **actorless read path** inside the `workshops` module. It is two small application services, `PublicTalleresReader` and `PublicIntensivosReader`, grouped as `PublicCatalogService` and exposed through `workshops/index.ts`. Each reader sits on its own **records port** (a narrow, column-allowlisted query interface implemented by a Drizzle adapter that reads only `~/platform/db/schema/workshops`) and on the change-3 `TeacherLookup` and `MediaLookup`. The reader applies the visibility rule (`isVisibleStatus`), the Córdoba date and month rules through the `Clock`, the Q2 offering rule, the orderings and an **explicit projection** into public read models whose `available` field is typed as the literal `null`. Composition puts `publicCatalog` into `AppServices`. Until each adapter lands, composition wires an **empty reader** (fail-soft: empty lists, `null` lookups), never the fail-closed `createUnavailableService` Proxy, so public pages render empty states or 404 instead of a 5xx. FRONT adds four route modules (`/talleres`, `/talleres/:slug`, `/intensivos`, `/intensivos/:slug`), delivery-side formatters and mappers in `src/app/catalog/`, presentational components that extend the change-2 atoms and organisms, a pure `buildEventJsonLd` for intensivo detail pages only (monthly talleres get **no** structured data), and a dynamic sitemap that degrades to the static entries if the catalog read fails. There is no cache, no migration and no new package. Work ships as **6 BACK and 6 FRONT PRs**, each under 400 production lines, stacked to `main`.
+> **Design in one paragraph.** (Revision 2, 2026-10-13: corrective pass after the fresh-context validation; Event fallback image, C4-F3 dependency on C4-B1, visible policy note, detail-only minimum seats, `DateBadge` preformatted parts, `event_date` string mode, closed spec-alignment items.) The public catalog is a second, **actorless read path** inside the `workshops` module. It is two small application services, `PublicTalleresReader` and `PublicIntensivosReader`, grouped as `PublicCatalogService` and exposed through `workshops/index.ts`. Each reader sits on its own **records port** (a narrow, column-allowlisted query interface implemented by a Drizzle adapter that reads only `~/platform/db/schema/workshops`) and on the change-3 `TeacherLookup` and `MediaLookup`. The reader applies the visibility rule (`isVisibleStatus`), the Córdoba date and month rules through the `Clock`, the Q2 offering rule, the orderings and an **explicit projection** into public read models whose `available` field is typed as the literal `null`. Composition puts `publicCatalog` into `AppServices`. Until each adapter lands, composition wires an **empty reader** (fail-soft: empty lists, `null` lookups), never the fail-closed `createUnavailableService` Proxy, so public pages render empty states or 404 instead of a 5xx. FRONT adds four route modules (`/talleres`, `/talleres/:slug`, `/intensivos`, `/intensivos/:slug`), delivery-side formatters and mappers in `src/app/catalog/`, presentational components that extend the change-2 atoms and organisms, a pure `buildEventJsonLd` for intensivo detail pages only (monthly talleres get **no** structured data), and a dynamic sitemap that degrades to the static entries if the catalog read fails. There is no cache, no migration and no new package. Work ships as **6 BACK and 6 FRONT PRs**, each under 400 production lines, stacked to `main`.
 
 ---
 
@@ -18,7 +18,7 @@ Inputs: `proposal.md` (revision 1, commit `48ab6fe`, including the "Owner decisi
 | Q3 | Intensivo detail page at `/intensivos/:slug` | PC8 |
 | Q4, Q5 | No filters; intensivos ordered by nearest date | PC5, PC8 |
 | Q6 | "Consultá por WhatsApp", prefilled with the activity (and turno) | PC11 |
-| Q7 | "Se realiza con un mínimo de N personas" | PC9 (intensivo detail and the card's conditions block) |
+| Q7 | "Se realiza con un mínimo de N personas" | PC9 (intensivo **detail page only**; the spec's card content list omits it, and the spec wins) |
 | Q8 | Inicio features the first 3 visible talleres (by name), without price | PC13 |
 | Q9 | "$ 58.000 / mes" on cards, "Cuota mensual" on the detail page, "10:00 a 12:00 h" everywhere | PC10 |
 | Q10 | Prices are public | PC6, PC12 |
@@ -90,6 +90,7 @@ Inputs: `proposal.md` (revision 1, commit `48ab6fe`, including the "Owner decisi
 
 - Steps 2-6 run only when step 1 returned rows. Each records call opens one session from the existing per-operation `createDbSessionFactory` and closes it in `finally`.
 - `time` columns come back from `pg` as `HH:MM:SS`. The adapter normalizes them to `HH:MM`, and the contract suite asserts `"10:00"`.
+- `intensive_workshop.event_date` MUST reach the record as the `YYYY-MM-DD` **string** (Drizzle `date(…, { mode: "string" })`). A `pg` `Date` is built at local midnight of the runtime zone, so serializing it shifts the day; that would break the spec's "no time-zone shift" date badge and the string comparison in `isUpcoming`. If change 3 declares the column in `Date` mode, the adapter selects it with an explicit ``sql<string>`to_char(event_date, 'YYYY-MM-DD')` `` instead. The contract suite asserts `typeof eventDate === "string"` and the exact value (section 8; verify item in 13.3).
 - The reader then calls `teachers.findByIds` and `media.findAssets` **in parallel** with the de-duplicated ids of the records it holds.
 - **No index and no migration**: `monthly_workshop` has `(status)` and `UNIQUE(slug)`, `workshop_period` has `UNIQUE(workshop_id, period)`, and `intensive_workshop` has `UNIQUE(slug)`. The catalog has tens of rows.
 
@@ -117,7 +118,7 @@ Inputs: `proposal.md` (revision 1, commit `48ab6fe`, including the "Owner decisi
 ### PC5. Córdoba time, the `Clock`, and the offering rule
 
 **Choice**:
-- `cordobaDateOf(instant): string` (`YYYY-MM-DD`) is added next to the change-3 `cordobaMonthOf`, in a new file `src/modules/workshops/application/cordoba-time.ts`, with the same `Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Cordoba" })` technique. Each reader call reads `clock.now()` once, then derives `month = cordobaMonthOf(now)` and `today = cordobaDateOf(now)`.
+- `cordobaDateOf(instant): string` (`YYYY-MM-DD`) goes in a **new file** `src/modules/workshops/application/cordoba-time.ts` (with `cordoba-time.test.ts` beside it), exported from `workshops/index.ts`. It does **not** go into `src/modules/workshops/application/contracts.ts`, where change 3's `cordobaMonthOf` lives on `main`: change-3 slices still edit `contracts.ts`, and a separate file avoids merge conflicts. It uses the same technique as `cordobaMonthOf` (`Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Cordoba", year: "numeric", month: "2-digit", day: "2-digit" })`) and imports `cordobaMonthOf` from `./contracts` rather than duplicating it. Each reader call reads `clock.now()` once, then derives `month = cordobaMonthOf(now)` and `today = cordobaDateOf(now)`.
 - Pure domain rules (`src/modules/workshops/domain/public-catalog-rules.ts`) take strings, never `Date`:
   - `selectOffering(periods, month)`: among the periods whose key is `>= month`, return the one with the **smallest** key, or `null`. This is Q2: the current month when it is open, else the earliest later open month. The adapter already filters, and the rule filters again, so a fake or a future adapter cannot select a past month.
   - `isUpcoming(eventDate, today)`: `eventDate >= today` (ISO string order; DA5).
@@ -174,7 +175,7 @@ layout("routes/public-layout.tsx", [
 
 - Listing and detail are **siblings**, not parent and child, so the detail does not render inside the listing and each has its own `meta`.
 - Detail loaders call `findBySlug(params.slug)`. On `null` they `throw data(null, { status: 404 })`, which the existing layout `ErrorBoundary` renders as the styled Spanish 404 inside the chrome (change-2 DS6). The `meta` error branch returns "Página no encontrada" with `noindex`.
-- The reader rejects a slug that does not match `^[a-z0-9]+(-[a-z0-9]+)*$` or is longer than 80 characters with `null` **before any query** (`isPublicSlug`, domain), so junk paths never reach the database.
+- The reader rejects a slug that does not match `^[a-z0-9]+(-[a-z0-9]+)*$` or is longer than 80 characters with `null` **before any query** (`isPublicSlug`, domain), so junk paths never reach the database. The 80 is **not** a new rule: it is change 3's slug limit (`openspec/changes/admin-catalog/design.md` section 5.7, "Slug | 80"; the pattern is the change-3 `monthly_workshop` check), so no stored slug can exceed it and no visible activity is ever rejected. `isPublicSlug(slug, maxLength)` takes the limit as a parameter, so the domain rule does not care where change 3 puts its constant (`slugify` lives in `application/contracts.ts`, which `domain` may not import). The reader passes change 3's slug-length constant when change 3 exports one (from `workshops/domain` or `workshops/application`, both reachable from `application` in the same module); until then a `PUBLIC_SLUG_MAX_LENGTH = 80` in `public-catalog.ts`, with a comment pointing to change-3 section 5.7, and C4-B2 replaces it with the change-3 constant if it exists (verify item in 13.3). If change 3 ever raises its limit, the import keeps both sides equal.
 - `coming-soon.tsx` keeps serving `/eventos-privados` only. C4-F1 removes `"intensivos"` and C4-F2 removes `"talleres"` from its `supportedSlugs`, so C4-B4 can later narrow `ComingSoonSlug` without a FRONT edit.
 - The `NavLink` already marks `/talleres` current on `/talleres/:slug` (`end` only for `/`), so the "active menu entry on detail" scenario needs a test, not code.
 
@@ -188,10 +189,11 @@ layout("routes/public-layout.tsx", [
 - **Extended (backward-compatible optional props)**:
   - `ActivityCard` gains `schedule?` and `badge?`;
   - `UpcomingItem` gains `detail?` and `badge?`;
-  - `DateBadge` gains `weekday?`;
   - `GalleryGrid`'s `heading` becomes optional; without it, it renders only the grid and the dialog, for use inside a parent section;
   - `Pill` gains a `tone` (`neutral` or `notice`) and real styling (today it is a bare `<span>`).
+- **Changed (not backward-compatible, contained in FRONT)**: `DateBadge`. On `main` it is `DateBadge({ date })` in `src/app/ui/molecules/contact-item.tsx` (re-exported by `date-badge.tsx`) and formats inside `ui` with `toLocaleDateString("es-AR")`. Per PC10 the **FRONT formatter owns the weekday and month names**, so C4-F0b changes it to `DateBadge({ dateTime, weekday?, day, month, label })`: every part arrives preformatted from `dateBadgeParts` (`src/app/catalog/format.ts`), and the component no longer calls `Intl` or `toLocaleDateString`. `label` is the accessible name (for example "sábado 14 de noviembre de 2026"). The month is the abbreviated name ("nov"), which the spec accepts. `UpcomingItem`'s `date` prop becomes the same parts object (`UpcomingList` derives its item type from `UpcomingItem`, so it follows), and C4-F0b updates `info-items.ui.test.tsx` and the `upcomingItemFixture` in `src/testing/fixtures/**` (FRONT carve-out). Today no route passes a `DateBadge` date (Inicio lists are empty arrays), so no page output changes.
 - **New**: `PriceTag`, `PausedNotice`, `TurnoList`, `Breadcrumb`, `TeacherBlock`, `ConditionsNote`, `TallerCard`, `IntensivoCard`, `CatalogGrid`, `ProjectSection`, and the templates `CatalogListingPage`, `TallerDetailPage` and `IntensivoDetailPage`.
+- **`ConditionsNote` is always visible** (spec "Policy note": the policy text "is visible on the page"). It renders a plain block, a small heading (`label`) followed by the policy text as React text with line breaks kept; it does not use a collapsed `<details>`. On the listing card it shows the policy text only. On the detail page it shows the policy text and the minimum seats line ("Se realiza con un mínimo de N personas", Q7); the minimum seats line appears **only on the detail page**, because the spec's card content list omits it.
 - `ActivityCard.image` stays **required**: the delivery mapper resolves the stand-in fallback from `site-content`, so the fallback is always a manifest-registered asset (content-tested by BACK). The `ui` layer never decides which stand-in to use.
 
 **Alternatives considered**: a generic `CatalogCard` with variant props (two very different layouts behind flags); making `image` optional in `ui` with a hardcoded path (an unregistered asset path in `ui`).
@@ -206,9 +208,10 @@ layout("routes/public-layout.tsx", [
   - `formatDuration`: "2 horas", "1 hora", "2 h 30 min", "45 min".
   - `weekdayName(1..7)`: "Lunes" … "Domingo".
   - `formatEventDate("2026-11-14")`: "Sábado 14 de noviembre".
-  - `dateBadgeParts(date)`: weekday, day and month, for example "sáb", "14", "nov".
+  - `dateBadgeParts(date)`: `{ dateTime: "2026-11-14", weekday: "sáb", day: "14", month: "nov", label: "sábado 14 de noviembre de 2026" }`, computed from the `YYYY-MM-DD` string by arithmetic (no `Date` in a local zone), so there is no time-zone shift. These are the only weekday and month names on the page; `DateBadge` renders them as given (PC9).
 - `display-state.ts`: `tallerDisplay(status, offering)` returns `"paused" | "open" | "no-offering"`. Paused takes precedence over no offering (spec "Paused precedence"). `seatsIndicator(display)` returns `{ kind: "limited" } | { kind: "none" }`: "Cupo limitado" only for `open`, never derived from capacity or `available`. Change 5 adds `count` and `full`.
 - `mappers.ts`: read model → props of `TallerCard`, `IntensivoCard`, the detail templates, `ActivityCard` (Inicio) and `UpcomingItem` (Inicio), using `CatalogContent` for labels and the stand-in.
+  - `GalleryGrid` requires `GalleryEntry.id`, and `PublicImage` deliberately has no id (PC6). The mapper synthesizes the key as `` `${index}-${src}` ``: the index makes it unique even when the same stand-in or asset appears twice, and it is stable for one render. No asset id ever reaches the props.
 - `whatsapp.ts`: builds the prefilled `wa.me` links with `buildWhatsAppUrl` and `fillCopyTemplate` (PC11).
 - Weekday and month names are locale **formatting data**, like `Intl` output, not page copy. `src/app/copy-rules.test.ts` scans them with `findCopyViolations` (section 13.2, item 2).
 
@@ -258,10 +261,12 @@ layout("routes/public-layout.tsx", [
   | `location` | `Place` with `name` (profile name) and the `PostalAddress` shared with LocalBusiness (refactored into `buildPostalAddress(profile)`) |
   | `organizer` | `Organization` with the profile name and the canonical `/` |
   | `performer` | `Person` with the teacher name, only when a teacher is present |
-  | `image` | absolute URLs of the activity images, only when there are any |
-  | `offers` | `Offer`: `price` (pesos as a decimal string, for example `"90000"`), `priceCurrency` `ARS`, `url` (the canonical detail URL), `availability` `https://schema.org/LimitedAvailability` when open, `https://schema.org/OutOfStock` when paused |
+  | `image` | always present, as an array of absolute URLs: `canonicalUrl(baseUrl, src)` for each activity image, in position order; when the intensivo has **no images**, exactly `[canonicalUrl(baseUrl, SHARE_IMAGE_PATH)]`, the registered stand-in share image (`SHARE_IMAGE_PATH` is exported by `src/app/seo/meta.ts`, the same image the page meta uses as `og:image` fallback). The catalog stand-in SVGs are never used here (spec "Fallback image") |
+  | `offers` | `Offer`: `price` (the intensivo **price**, never the deposit, in pesos as a decimal string, for example `"45000"`), `priceCurrency` `ARS`, `url` (the canonical detail URL), `availability` `https://schema.org/LimitedAvailability` when open, `https://schema.org/OutOfStock` when paused. The deposit appears nowhere in the object (spec "Deposit is not the price") |
 
-- `EventInput` is a structural type declared in `seo` (strings and numbers), so `seo` stays free of module classes. The loader maps the read model to it.
+- **Availability mapping is fixed to two values**: `LimitedAvailability` (open) and `OutOfStock` (paused), with `eventStatus` `EventScheduled` in both states. **`https://schema.org/SoldOut` is never emitted** in this change: seats are unknown (`available: null`, Q1), so "sold out" would be a false statement. A shape test asserts that the serialized object never contains `SoldOut`.
+- `EventInput` is a structural type declared in `seo` (strings and numbers), so `seo` stays free of module classes. The loader maps the read model to it. Its `images` field is a possibly empty list of paths; the builder applies the fallback above, so the loader never chooses the share image itself.
+- The detail route embeds the Event only on its success branch: a thrown 404 renders the layout `ErrorBoundary`, which has no loader data and no `JsonLdScript`, so a 404 emits no Event (spec "404 emits none").
 - No `remainingAttendeeCapacity` and no `maximumAttendeeCapacity` (Q1: no number). No `validFrom` (there is no public publication date). Serialized with the existing `serializeJsonLd`.
 - **`/intensivos` emits no Event list, and Inicio emits only LocalBusiness**, so each event has exactly one canonical markup location (the detail page).
 - **Monthly talleres emit no structured data**:
@@ -287,7 +292,8 @@ layout("routes/public-layout.tsx", [
   - a link to `/talleres/<slug>` labelled "Ver taller".
 
   **No price** (Q8).
-- Intensivos map to `UpcomingItem` props: the date, the title, `detail` (the time range), the paused `badge`, and a link to `/intensivos/<slug>` labelled "Ver intensivo".
+- The labels, the "y {cantidad} turnos más" template, the paused badge text and the stand-in come from `CatalogContent` (`getCatalogContent()`, C4-B1), read in parallel with the other calls; this is why C4-F3 depends on C4-B1 (PC16).
+- Intensivos map to `UpcomingItem` props: the date (`dateBadgeParts`, PC10), the title, `detail` (the time range), the paused `badge`, and a link to `/intensivos/<slug>` labelled "Ver intensivo".
 - Empty states stay as they are. With the empty readers, Inicio renders exactly what it renders today.
 - A reader error propagates (500), as on every public page (PC3). Section 14 asks whether the owner prefers Inicio to drop the two sections instead.
 
@@ -318,7 +324,7 @@ Edge caching (`s-maxage` with a short TTL, purge on publish) is a launch decisio
   1. FRONT fixtures may import the BACK builders, the fake catalog and `createSeededPublicCatalog`. BACK never edits `src/testing/fixtures/**`.
   2. FRONT narrows `coming-soon.tsx` before BACK narrows `ComingSoonSlug` (C4-F1 and C4-F2, then C4-B4), so no PR edits the other side's files.
   3. The `site-map.test.ts` uniqueness test moves from coming-soon SEO to catalog SEO in the FRONT page slices. BACK changes no FRONT test.
-- **Merge discipline**: BACK merges first. Each FRONT page slice merges only after the reader it shows (C4-B2 for intensivos, C4-B3 for talleres), so the delivery privacy test runs against the real projection. C4-F3 (Inicio) may merge after C4-B0, because with the empty readers it renders exactly today's output. FRONT rebases on `origin/main` before each slice.
+- **Merge discipline**: BACK merges first. Each FRONT page slice merges only after the reader it shows (C4-B2 for intensivos, C4-B3 for talleres), so the delivery privacy test runs against the real projection. C4-F3 (Inicio) may merge after **C4-B0 and C4-B1**, without waiting for the real readers: its mappers need `CatalogContent` from `getCatalogContent()` (C4-B1) for the "Ver taller" and "Ver intensivo" labels, the "y N turnos más" template, the paused badge and the stand-in image, and with the empty readers it renders exactly today's output. FRONT rebases on `origin/main` before each slice.
 
 ---
 
@@ -458,7 +464,7 @@ export function createPublicIntensivosReader(deps: ReaderDeps<PublicIntensivoRec
 export function cordobaDateOf(instant: Date): string;   // "YYYY-MM-DD" in America/Argentina/Cordoba
 
 // src/modules/workshops/domain/public-catalog-rules.ts (C4-B2 / C4-B3; plain strings and numbers)
-export function isPublicSlug(slug: string): boolean;
+export function isPublicSlug(slug: string, maxLength: number): boolean;   // pattern plus change-3 slug limit (PC8)
 export function isUpcoming(eventDate: string, today: string): boolean;
 export function selectOffering<P extends { readonly period: string }>(periods: readonly P[], month: string): P | null;
 export function compareTurnos(a: { weekday: number; startsAt: string }, b: { weekday: number; startsAt: string }): number;
@@ -552,18 +558,18 @@ export function fillCopyTemplate(template: string, values: Readonly<Record<strin
 | `TurnoList` | molecule | New | `items: { key; weekday; timeRange; duration?; seats?; inquiry?: { href; label } }[]` | Taller card (compact), taller detail |
 | `Breadcrumb` | molecule | New | `label` (nav aria-label), `items: { label; href? }[]` (last is `aria-current="page"`) | Both details |
 | `TeacherBlock` | molecule | New | `heading`, `name`, `bioLine?` | Both details |
-| `ConditionsNote` | molecule | New | `summaryLabel`, `minSeats?`, `policyText` (native `<details>`; text rendered as text, line breaks kept) | Intensivo card and detail |
-| `DateBadge` | molecule | Extend | `weekday?` | Intensivo card, Inicio |
+| `ConditionsNote` | molecule | New | `label`, `policyText`, `minSeats?` (preformatted line). Always-visible plain block, never a collapsed `<details>`; text rendered as text, line breaks kept | Intensivo card (`label` and `policyText` only, **no `minSeats`**), intensivo detail (all three) |
+| `DateBadge` | molecule | Change (PC9) | `dateTime`, `weekday?`, `day`, `month`, `label`; all preformatted by `dateBadgeParts`; no `Intl` inside | Intensivo card, `UpcomingItem` (Inicio) |
 | `ActivityCard` | molecule | Extend | `schedule?`, `badge?` | Inicio |
-| `UpcomingItem` | molecule | Extend | `detail?`, `badge?` | Inicio |
+| `UpcomingItem` | molecule | Extend | `date` becomes the `DateBadge` parts object; `detail?`, `badge?` | Inicio |
 | `TallerCard` | molecule | New | `image`, `name`, `teacher?`, `summary`, `turnos`, `price?`, `notice?` (no-offering text), `seats?`, `paused?`, `href`, `ctaLabel` | `/talleres` |
-| `IntensivoCard` | molecule | New | `image`, `date` (badge parts), `name`, `duration`, `teacher?`, `price`, `deposit`, `seats?`, `materialsBadge?`, `paused?`, `conditions`, `href`, `ctaLabel` | `/intensivos` |
+| `IntensivoCard` | molecule | New | `image`, `date` (badge parts), `name`, `duration`, `teacher?`, `price`, `deposit`, `seats?`, `materialsBadge?`, `paused?`, `conditions` (`ConditionsNote` props without `minSeats`), `href`, `ctaLabel` | `/intensivos` |
 | `GalleryGrid` | organism | Extend | `heading` optional | `ProjectSection`, detail galleries |
 | `CatalogGrid` | organism | New | `items: ReactNode[]` or typed cards, `empty: { message; action }` | Both listings |
 | `ProjectSection` | organism | New | `heading`, `title?`, `description?`, `images` | Taller detail |
 | `CatalogListingPage` | template | New | `heading` (h1), `intro`, `children` (grid) | Both listings |
 | `TallerDetailPage` | template | New | breadcrumb, h1, description, teacher, turnos, price or notice, seats, CTA or PausedNotice, project, images | `/talleres/:slug` |
-| `IntensivoDetailPage` | template | New | breadcrumb, h1, date line, duration, time range, teacher, price, deposit, seats, materials, min seats, policy, CTA or PausedNotice, images | `/intensivos/:slug` |
+| `IntensivoDetailPage` | template | New | breadcrumb, h1, date line, duration, time range, teacher, price, deposit, seats, materials, `ConditionsNote` (policy plus min seats, visible), CTA or PausedNotice, images | `/intensivos/:slug` |
 
 Rules:
 - One `h1` per page (the template). Card titles are `h2` on listings and `h3` inside Inicio sections. Detail sections are `h2`, the project title is `h3`.
@@ -615,21 +621,21 @@ Rules:
 
 | Layer | What | Approach | Project | Slice |
 |---|---|---|---|---|
-| Domain | `isPublicSlug` (valid, uppercase, `..`, `%`, 81 chars); `isUpcoming` (yesterday, today, tomorrow); `selectOffering` (current open; current missing → next; two later → earliest; only past → null; empty → null; unsorted input); comparators (weekday then start; collator "acuarela" < "Cerámica" < "Pintura"; slug tie-break; date, start, name) | Pure tables | unit | C4-B2, C4-B3 |
+| Domain | `isPublicSlug` (valid, uppercase, `..`, `%`, exactly the limit accepted, limit + 1 rejected, with the limit 80 from change-3 section 5.7); `isUpcoming` (yesterday, today, tomorrow); `selectOffering` (current open; current missing → next; two later → earliest; only past → null; empty → null; unsorted input); comparators (weekday then start; collator "acuarela" < "Cerámica" < "Pintura"; slug tie-break; date, start, name) | Pure tables | unit | C4-B2, C4-B3 |
 | Application | `cordobaDateOf` at 2026-11-01T01:00Z (2026-10-31), 02:59Z (2026-10-31) and 03:00Z (2026-11-01); offset guard (`Intl` reports GMT-3 in January and July) | Pure | unit | C4-B2 |
 | Application | Readers over in-memory records, fake lookups and `fixedClock`: visibility (draft, archived, cancelled excluded even when a fake returns them); paused gives `paused`; expiry by Córdoba date; offering at the 31-Oct-22:00 boundary; capacity `null` without an offering; DA1 turno rule; DA2 project rule; DA3 teacher rule; DA4 image dropping; `limit` and `RangeError`; invalid slug gives `null` with **zero** records calls (spy); exact-slug, cross-type `null` | In-memory | unit | C4-B2, C4-B3 |
 | Application | Privacy (PC14): sentinel scan and exact key sets | `JSON.stringify` | unit | C4-B2, C4-B3 |
-| Contract | `runPublicIntensivosContract` / `runPublicTalleresContract` against the in-memory records and Drizzle on embedded PostgreSQL (seeded through `seed-catalog.ts` over the change-3 schema); record key sets; `HH:MM` normalization; `Money` round trip | Shared suite | unit, db | C4-B2, C4-B3 |
+| Contract | `runPublicIntensivosContract` / `runPublicTalleresContract` against the in-memory records and Drizzle on embedded PostgreSQL (seeded through `seed-catalog.ts` over the change-3 schema); record key sets; `HH:MM` normalization; `Money` round trip; `eventDate` comes back as the string `"2026-11-14"` (`typeof` string, not a `Date`, identical under `TZ=UTC` and `TZ=America/Argentina/Cordoba`) | Shared suite | unit, db | C4-B2, C4-B3 |
 | Composition | `createRequestServices` exposes `publicCatalog`; with the empty readers, lists `[]`, lookups `null` and slugs `[]`; after wiring, a migrated empty database gives `[]` | Existing `.db.test.ts` | db | C4-B0, C4-B2, C4-B3 |
 | Content | Copy rules over catalog content; template placeholders; `fillCopyTemplate` (fills, repeated keys, missing key throws); fallback stand-in registered; distinct SEO | Unit | unit | C4-B1 |
-| Delivery | `format.ts` tables ("$ 58.000" with U+00A0, `,50`, "1 hora", "2 horas", "2 h 30 min", "45 min", weekday 1-7, "Sábado 14 de noviembre"); `display-state.ts` (paused precedence, seats only when open with an offering) | Pure | unit | C4-F0a |
+| Delivery | `format.ts` tables ("$ 58.000" with U+00A0, `,50`, "1 hora", "2 horas", "2 h 30 min", "45 min", weekday 1-7, "Sábado 14 de noviembre"; `dateBadgeParts("2026-11-14")` gives "sáb", "14", "nov" and its label, identical under `TZ=UTC` and a UTC-03:00 zone); `display-state.ts` (paused precedence, seats only when open with an offering) | Pure | unit | C4-F0a |
 | Delivery | `whatsapp.ts` (decoded `text` contains the name, weekday and time; invalid number gives the Instagram fallback) | Pure | unit | C4-F1 |
 | Delivery | Loaders with `createTestServices({ publicCatalog })`: 200 with data; empty gives 200 plus empty props; `null` gives a thrown 404; a reader that throws gives a thrown error (not an empty state); meta (unique title, description ≤ 160, canonical by slug, `og:image` from the cover, `noindex` while the gate is off and none when on); loader data is plain JSON (no `Money` instance); privacy scan with `createSeededPublicCatalog(fullyPopulatedSeed())` | Unit | unit | C4-F1, C4-F2, C4-F3 |
-| Delivery | `buildEventJsonLd` shape tables: open (`LimitedAvailability`), paused (`OutOfStock`, still `EventScheduled`); `-03:00` dates; no capacity keys; `performer` only with a teacher; `image` only with images; a name containing `</script>` serializes without `<`; JSON-LD present on the intensivo detail and absent on listings | Unit | unit | C4-F4 |
+| Delivery | `buildEventJsonLd` shape tables: open (`LimitedAvailability`), paused (`OutOfStock`, still `EventScheduled`); `SoldOut` absent from the serialized object in both states; `-03:00` dates; no capacity keys; `performer` only with a teacher; `image` entries are absolute https URLs; **Fallback image**: no images gives exactly `[canonicalUrl(base, SHARE_IMAGE_PATH)]`; **Deposit is not the price**: price 45000 and deposit 15000 give `offers.price` `"45000"` and no `price` value equal to 15000 anywhere in the object; a name containing `</script>` serializes without `<`; JSON-LD present on the intensivo detail and absent on listings; **404 emits none**: a route render for an unknown slug and for an invisible (draft) slug contains no `application/ld+json` script of type `Event` | Unit, route stub | unit, ui | C4-F4 |
 | Delivery | Sitemap: static plus dynamic URLs in order; slugs escaped; throwing reader gives static entries, `max-age=300` and the constant log line (no error text); never `/eventos-privados`, `/admin` or `/status` | Unit | unit | C4-F4 |
 | Fitness | `site-map.test.ts`: every page routed; `/talleres/:slug` and `/intensivos/:slug` map to their modules; five static indexable pages; catalog SEO unique. `copy-rules.test.ts` scans the formatter tables | Unit | unit | C4-F1, C4-F2, C4-F0a |
-| Component | Every component in section 6 with axe; cards in open, paused and no-offering states; "Cupo limitado" absent when paused or without an offering; no digits next to "lugares"; `ConditionsNote` renders policy text as text (a `<b>` string is not markup) | Testing Library + axe | ui | C4-F0a, C4-F0b |
-| Route UI | `createRoutesStub` renders of the four pages (with data, empty, paused, no offering), one `h1`, heading order, "Talleres" `aria-current` on the detail, no `form` element, no filter controls; Inicio with data has no `$` digit pattern | Testing Library + axe (`page: true`) | ui | C4-F1, C4-F2, C4-F3 |
+| Component | Every component in section 6 with axe; cards in open, paused and no-offering states; "Cupo limitado" absent when paused or without an offering; no digits next to "lugares"; `ConditionsNote` renders policy text as text (a `<b>` string is not markup) and visibly (`toBeVisible`, no `<details>` element), and without `minSeats` renders no minimum seats line; `DateBadge` renders the given parts verbatim and its `time` has the given `label` as accessible name | Testing Library + axe | ui | C4-F0a, C4-F0b |
+| Route UI | `createRoutesStub` renders of the four pages (with data, empty, paused, no offering), one `h1`, heading order, "Talleres" `aria-current` on the detail, no `form` element, no filter controls; **filter query params are ignored**: `/talleres?franja=manana&tecnica=ceramica` renders the same cards in the same order as `/talleres` [C4-F2], and `/intensivos?desde=2026-11-01&orden=precio` the same as `/intensivos` [C4-F1]; the intensivo policy text is visible on the listing card and the detail (not inside a closed `<details>`), and "Se realiza con un mínimo de" appears on the detail and not on the card [C4-F1]; Inicio with data has no `$` digit pattern [C4-F3] | Testing Library + axe (`page: true`) | ui | C4-F1, C4-F2, C4-F3 |
 | Manual | 360 px and 390 px on the preview; Rich Results Test code-snippet mode on one intensivo's JSON-LD (the preview URL is private); real WhatsApp link on a phone | PR checklist | preview | C4-F1, C4-F2, C4-F4 |
 
 Coverage: the 90 % gate applies to the new `workshops/domain` and `workshops/application` files and to `site-content/domain/copy-template.ts`. About two new `*.db.test.ts` files.
@@ -692,8 +698,8 @@ P0 ─► C4-B0 (contract) ─┬─► C4-B1 (copy; needs only P0, ordered afte
 FRONT (develops against C4-B0 fakes from day one):
 C4-F0a (C4-B0) ─► C4-F0b (C4-F0a) ─┬─► C4-F1 intensivos (C4-B1, C4-B2; adds whatsapp.ts) ─┐
                                    ├─► C4-F2 talleres   (C4-B1, C4-B3) ─┼─► C4-F4 SEO (C4-F1, C4-F2)
-                                   └─► C4-F3 Inicio     (C4-B0, C4-F0b) │
-C4-B4 (coming-soon cleanup) ◄──────────────── C4-F1 + C4-F2 ────────────┘
+                                   │                                    └─► C4-B4 coming-soon cleanup (BACK; C4-F1 + C4-F2)
+                                   └─► C4-F3 Inicio     (C4-B0, C4-B1, C4-F0b)
 ```
 
 Critical path: change-3 B6 → C4-B3 → C4-F2 → C4-F4. Intensivos (C4-B2, C4-F1) ship first, needing only change-3 B2a, B3 and B7.
@@ -710,10 +716,10 @@ Critical path: change-3 B6 → C4-B3 → C4-F2 → C4-F4. Intensivos (C4-B2, C4-
 | C4-B4 | BACK | Retire the coming-soon `talleres` and `intensivos` entries; `ComingSoonSlug = "eventos-privados"`; content tests | C4-F1, C4-F2 | 20-50 | 10-30 |
 | C4-B5 | BACK | Real `MediaLookup` into the public readers (one composition line plus a test) | C4-B2, ch3 B2b, ch3 F1 | 5-20 | 20-40 |
 | C4-F0a | FRONT | `src/app/catalog/{format,display-state}.ts`; `Pill` tones, `PriceTag`, `PausedNotice`, `TurnoList`, `Breadcrumb`, `TeacherBlock`, `ConditionsNote`; copy-rules scan | C4-B0 | 240-330 | 210-290 |
-| C4-F0b | FRONT | `TallerCard`, `IntensivoCard`, `CatalogGrid`, `CatalogListingPage`, extensions of `ActivityCard`, `UpcomingItem`, `DateBadge`, `GalleryGrid`; `src/testing/fixtures/catalog.ts` | C4-F0a | 200-290 | 180-260 |
+| C4-F0b | FRONT | `TallerCard`, `IntensivoCard`, `CatalogGrid`, `CatalogListingPage`, extensions of `ActivityCard`, `UpcomingItem`, `GalleryGrid`, the `DateBadge` preformatted-parts change (PC9) with its test and fixture updates; `src/testing/fixtures/catalog.ts` | C4-F0a | 200-290 | 180-260 |
 | C4-F1 | FRONT | `/intensivos`, `/intensivos/:slug`, `IntensivoDetailPage`, intensivo mappers, `src/app/catalog/whatsapp.ts` (needs the C4-B1 templates), `meta.ts` (`ogImage`, `truncateDescription`), coming-soon narrowing, `PUBLIC_PAGES` intensivos indexable, site-map tests, T1/A7 row | C4-F0b, C4-B1, C4-B2 | 270-360 | 220-300 |
 | C4-F2 | FRONT | `/talleres`, `/talleres/:slug`, `TallerDetailPage`, `ProjectSection`, taller mappers with per-turno links, coming-soon narrowing, `PUBLIC_PAGES` talleres indexable, T1/A7 row | C4-F0b, C4-B1, C4-B3 | 290-380 | 240-320 |
-| C4-F3 | FRONT | Dynamic Inicio (two reader calls, mappers to `ActivityCard` and `UpcomingItem`) | C4-F0b, C4-B0 | 60-120 | 90-140 |
+| C4-F3 | FRONT | Dynamic Inicio (two reader calls plus `getCatalogContent()`, mappers to `ActivityCard` and `UpcomingItem`) | C4-F0b, C4-B0, C4-B1 | 60-120 | 90-140 |
 | C4-F4 | FRONT | `buildEventJsonLd`, `buildPostalAddress`, embedding on the intensivo detail, dynamic sitemap with degrade, deviation-register rows | C4-F1, C4-F2 | 140-220 | 160-230 |
 | **Total** | | 6 BACK + 6 FRONT | | **~2,015-2,830** | **~1,870-2,620** |
 
@@ -791,7 +797,7 @@ The total is above the proposal's BACK estimate and close to its FRONT one. The 
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Change-3 slices land late (B6 above all) | High | Contract first; empty readers; intensivos first; FRONT builds against fakes; C4-F3 can merge early |
+| Change-3 slices land late (B6 above all) | High | Contract first; empty readers; intensivos first; FRONT builds against fakes; C4-F3 can merge early (after C4-B0 and C4-B1) |
 | Change-3 schema drifts from its design revision 2 (column names, `time` mapping, period project nullability) | Medium | Records ports isolate the adapters; re-read change-3 `src/platform/db/schema/workshops.ts` at the start of C4-B2 and C4-B3; the contract suite runs on the real schema |
 | Several database sessions per page (records, teacher lookup, media lookup; Inicio about six) through Hyperdrive | Medium | Lookups run in parallel; measure on the preview in C4-F3; fallback: a request-scoped session factory memo in composition (one connection per request), a composition-only change |
 | A DB outage now takes Inicio down (it was static) | Low-Med | Section 14 asks the owner; the fallback is a two-line loader change |
@@ -804,26 +810,37 @@ The total is above the proposal's BACK estimate and close to its FRONT one. The 
 
 ### 13.2 Points for the spec phase (the spec wins on product rules; tasks reconcile)
 
-1. **public-catalog-reader**, "Lookup by slug": a slug that fails the slug format is "not found" without a query (PC8, P4).
-2. **talleres-pages** and **intensivos-pages**, "Copy rules": weekday and month names and the units "h", "hora(s)" and "min" are formatting data in `src/app/catalog/format.ts`, scanned by the copy test. Labels, headings and messages come from `site-content`. If the spec requires the name tables in `site-content` too, apply moves them (one content entry plus a mapper argument).
-3. **talleres-pages**, "Fee and time formats": the separator after `$` is U+00A0 (no-break space). Tests compare with normalized whitespace.
-4. **talleres-pages**, "Paused state": the paused link label is "Escribinos por WhatsApp" (content entry `shared.pausedLinkLabel`).
-5. **talleres-pages**, "Taller detail content": turnos follow DA1 (only active turnos; with an offering, only those the period holds).
-6. **public-catalog-reader**, "Draft data stays out": the project follows DA2.
-7. **event-structured-data**: Event only on intensivo detail pages (no list on `/intensivos`, none on Inicio); `LimitedAvailability` when open, `OutOfStock` when paused, `EventScheduled` in both; no capacity properties; no monthly-taller markup.
-8. **public-catalog-reader**, "Intensivos expire by Cordoba date": DA5 (visible the whole day).
-9. **seo-foundation**, "Sitemap": on a catalog read failure, the sitemap degrades to the static entries (`max-age=300`) instead of answering 5xx.
-10. **home-page**: Inicio intensivos are limited to 3 (image5), like talleres (Q8).
+Status after the revision-2 validation. Numbering is kept so earlier references stay valid.
+
+**Open** (the parent orchestrator updates the specs; apply follows this design meanwhile):
+
+2. **talleres-pages** and **intensivos-pages**, "Copy rules" (**locale-formatting carve-out**; the parent adds it to the spec): weekday and month names and the units "h", "hora(s)" and "min" are formatting data in `src/app/catalog/format.ts`, scanned by the copy test. Labels, headings and messages come from `site-content`. If the spec instead requires the name tables in `site-content`, apply moves them (one content entry plus a mapper argument).
+3. **talleres-pages**, "Fee and time formats" (**NBSP**; the parent adds it to the spec): the separator after `$` is U+00A0 (no-break space). Tests compare with normalized whitespace. The intensivos spec already allows it.
+7. **event-structured-data** (**availability values**, kept as a verify item in 13.3): Event only on intensivo detail pages (no list on `/intensivos`, none on Inicio); `LimitedAvailability` when open, `OutOfStock` when paused, `EventScheduled` in both; `SoldOut` never emitted; no capacity properties; no monthly-taller markup. The values are confirmed against current Google documentation in C4-F4.
+11. **home-page**, Inicio turnos (the parent adds a spec note accepting it): an Inicio taller card shows at most 2 turnos, followed by "y N turnos más" when there are more (PC13; content template `shared.moreTurnos`).
+12. **intensivos-pages** and **home-page**, date badge (the parent adds a spec note): the FRONT formatter owns the weekday and month names, and `DateBadge` receives preformatted parts (PC9, PC10). The month is abbreviated ("nov"); the intensivos spec already accepts an abbreviated month, and the note extends the same wording to the Inicio date badge.
+
+**Closed** (the specs now agree with this design, or the point is a design-owned detail that the spec leaves open):
+
+1. Closed: "Lookup by slug", a malformed slug is "not found" without a query (PC8, P4).
+4. Closed: the paused link label "Escribinos por WhatsApp" is a content entry (`shared.pausedLinkLabel`); the spec requires a WhatsApp link naming the activity and does not fix the label.
+5. Closed: taller turnos follow DA1.
+6. Closed: the period project follows DA2.
+8. Closed: intensivos expire by Córdoba date, visible the whole day (DA5).
+9. Closed: the sitemap degrade on a read failure (PC12) extends the spec's "never 5xx" sitemap rule; no spec change needed.
+10. Closed: Inicio intensivos are limited to 3, like talleres (Q8).
 
 ### 13.3 Verify in apply (owning slice in brackets)
 
 - [ ] Change-3 `schema/workshops.ts` column names and types match section 3 of its design; `time` columns return `HH:MM:SS` through `pg` [C4-B2, C4-B3].
+- [ ] `intensive_workshop.event_date` reaches the record as a `YYYY-MM-DD` string: the change-3 column is Drizzle `date(…, { mode: "string" })`, or the adapter selects it with `to_char(event_date, 'YYYY-MM-DD')` (PC2). A `pg` `Date` would shift the local day and break the date badge's "no time-zone shift" and `isUpcoming`. The contract test asserts `typeof eventDate === "string"` [C4-B2].
+- [ ] Change 3's slug limit is still 80 (admin-catalog design 5.7) and whether it exports a slug-length constant; if it does, the reader passes that constant to `isPublicSlug` instead of `PUBLIC_SLUG_MAX_LENGTH` (PC8) [C4-B2].
 - [ ] The change-3 Drizzle `TeacherLookup` and `MediaLookup` factory names and signatures, and that `MediaAsset.src` is `/imagenes/<id>.<ext>` [C4-B2].
 - [ ] `Intl.DateTimeFormat` with `America/Argentina/Cordoba` in workerd (`pnpm dev`, one request with a fixed clock hook or a log of `cordobaDateOf`) [C4-B2].
 - [ ] `Intl.Collator("es", { sensitivity: "base" })` order in workerd matches Node for accented names [C4-B3].
 - [ ] React Router 8.4 typegen gives `Route.LoaderArgs` with `params.slug: string` for `talleres/:slug` inside the pathless layout; a thrown `data(null, { status: 404 })` renders the layout boundary with status 404 for document and `.data` requests [C4-F1].
 - [ ] Single-fetch serialization: loader results contain only plain values (a test asserts `JSON.parse(JSON.stringify(x))` equals `x`) [C4-F1].
-- [ ] Current Google Search Central Event structured-data requirements (required: `name`, `startDate`, `location`; recommended fields) and the `offers.availability` values; confirm whether the Course Info rich result is retired; validate one generated object in the Rich Results Test code-snippet mode [C4-F4].
+- [ ] Current Google Search Central Event structured-data requirements (required: `name`, `startDate`, `location`; recommended fields, including `image`) and the `offers.availability` values (`LimitedAvailability` open, `OutOfStock` paused, never `SoldOut`; 13.2 item 7); confirm whether the Course Info rich result is retired; validate one generated object in the Rich Results Test code-snippet mode [C4-F4].
 - [ ] The sitemap resource route is unaffected by the Access-protected preview (Access still fronts it) [C4-F4].
 - [ ] Hyperdrive latency of a detail page with three sessions on the preview; decide on the request-scoped session fallback [C4-F3].
 
@@ -832,6 +849,6 @@ The total is above the proposal's BACK estimate and close to its FRONT one. The 
 ## 14. Open Questions
 
 - [ ] **(Owner, non-blocking)** If the database fails, should Inicio still render (dropping the two activity sections, without empty-state copy) instead of the 500 page? This design follows the reader spec (errors propagate). The alternative is a two-line change in `home.tsx`, and the spec would need an Inicio exception.
-- [ ] **(Spec, non-blocking)** Confirm the points in section 13.2, especially item 2 (where weekday and month names live) and item 7 (the Event mapping).
+- [ ] **(Spec, non-blocking)** The open points in section 13.2: item 2 (locale-formatting carve-out), item 3 (NBSP), item 7 (availability values, verified in C4-F4), item 11 (Inicio "y N turnos más") and item 12 (abbreviated month in the date badge).
 
 None of these blocks `sdd-tasks`.

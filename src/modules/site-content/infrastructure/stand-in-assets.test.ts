@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { aboutContent } from "./content/about";
+import { catalogContent } from "./content/catalog";
 import { homeContent } from "./content/home";
 import { STAND_IN_ASSETS } from "./content/stand-in-assets";
 
@@ -166,6 +167,19 @@ describe("the studio photos", () => {
       ).toEqual({ width: image.width, height: image.height });
       expect(image.alt.trim(), image.src).not.toBe("");
     }
+  });
+
+  it("declares the real size of the decorative catalog fallback image", () => {
+    const image = catalogContent.fallbackImage;
+    expect(
+      STAND_IN_ASSETS.some((asset) => asset.path === image.src),
+      image.src,
+    ).toBe(true);
+    expect(jpegSize(`public${image.src}`)).toEqual({
+      width: image.width,
+      height: image.height,
+    });
+    expect(image.alt).toBe("");
   });
 });
 

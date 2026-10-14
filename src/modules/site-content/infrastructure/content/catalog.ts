@@ -10,8 +10,8 @@ export const catalogContent = {
   fallbackImage: {
     src: "/media/stand-ins/gallery-01.jpg",
     alt: "",
-    width: 1200,
-    height: 900,
+    width: 640,
+    height: 640,
   },
   talleres: {
     seo: {

@@ -1,0 +1,105 @@
+{
+  "id": "a1ff1796-6230-4da6-837c-b82dd53a4be5",
+  "prevId": "19034fb1-d9f6-46a5-83de-27a7e285a8c9",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.media_asset": {
+      "name": "media_asset",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "storage_key": {
+          "name": "storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_type": {
+          "name": "content_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "media_asset_storage_key_unique": {
+          "name": "media_asset_storage_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "storage_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "media_asset_content_type_check": {
+          "name": "media_asset_content_type_check",
+          "value": "\"media_asset\".\"content_type\" IN ('image/jpeg', 'image/png', 'image/webp')"
+        },
+        "media_asset_byte_size_check": {
+          "name": "media_asset_byte_size_check",
+          "value": "\"media_asset\".\"byte_size\" BETWEEN 1 AND 5242880"
+        },
+        "media_asset_width_check": {
+          "name": "media_asset_width_check",
+          "value": "\"media_asset\".\"width\" BETWEEN 1 AND 10000"
+        },
+        "media_asset_height_check": {
+          "name": "media_asset_height_check",
+          "value": "\"media_asset\".\"height\" BETWEEN 1 AND 10000"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

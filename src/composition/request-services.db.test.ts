@@ -36,7 +36,7 @@ describe("createRequestServices", () => {
       ok: true,
       value: {
         status: "ok",
-        latestMigration: "0000_baseline",
+        latestMigration: "0001_media_assets",
         buildCommit: "abc",
       },
     });

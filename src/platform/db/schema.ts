@@ -1,3 +1,3 @@
-// Drizzle schema entry point. The baseline migration defines no business tables;
-// later changes export their table definitions from here for drizzle-kit.
-export {};
+// Drizzle schema entry point for drizzle-kit. One file per module under
+// `schema/`; modules are re-exported here so drizzle.config.ts stays unchanged.
+export * from "./schema/media";

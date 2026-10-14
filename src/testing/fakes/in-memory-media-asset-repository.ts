@@ -11,13 +11,20 @@ export class InMemoryMediaAssetRepository implements MediaAssetRepository {
     this.insertCalls++;
     if (this.failInsert)
       return Promise.reject(new Error("metadata insert failed"));
-    if (this.assets.has(asset.id))
-      return Promise.reject(new Error("asset already exists"));
+    const taken = [...this.assets.values()].some(
+      (stored) => stored.id === asset.id || stored.fileName === asset.fileName,
+    );
+    if (taken) return Promise.reject(new Error("asset already exists"));
     this.assets.set(asset.id, asset);
     return Promise.resolve();
   }
 
-  findById(id: string): Promise<MediaAsset | null> {
-    return Promise.resolve(this.assets.get(id) ?? null);
+  findByIds(ids: readonly string[]): Promise<ReadonlyMap<string, MediaAsset>> {
+    const found = new Map<string, MediaAsset>();
+    for (const id of ids) {
+      const asset = this.assets.get(id);
+      if (asset) found.set(id, asset);
+    }
+    return Promise.resolve(found);
   }
 }

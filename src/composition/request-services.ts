@@ -17,8 +17,13 @@ import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
   IntensivesService,
+  PublicCatalogService,
 } from "~/modules/workshops";
 import type { SuppliersService, MaterialsService } from "~/modules/materials";
+import {
+  EMPTY_PUBLIC_INTENSIVOS,
+  EMPTY_PUBLIC_TALLERES,
+} from "./empty-public-catalog";
 import { createUnavailableService } from "./unavailable-service";
 
 /** How long `/status` reuses the last database probe (design D12). */
@@ -42,6 +47,7 @@ export interface AppServices {
   readonly intensives: IntensivesService;
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
+  readonly publicCatalog: PublicCatalogService;
 }
 
 export interface RuntimeConfig {
@@ -103,5 +109,10 @@ export function createRequestServices(
     intensives: createUnavailableService<IntensivesService>(),
     suppliers: createUnavailableService<SuppliersService>(),
     materials: createUnavailableService<MaterialsService>(),
+    // Fail-soft until each reader lands (design PC3): empty, never a 5xx.
+    publicCatalog: {
+      talleres: EMPTY_PUBLIC_TALLERES,
+      intensivos: EMPTY_PUBLIC_INTENSIVOS,
+    },
   };
 }

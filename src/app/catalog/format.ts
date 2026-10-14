@@ -55,6 +55,17 @@ const MONTH_ABBREVIATIONS = [
   "dic",
 ] as const;
 
+const UNIT_WORDS = ["hora", "horas", "h", "min", "a", "de"] as const;
+
+/** Every locale string the formatters emit, exported for the copy scan. */
+export const CATALOG_FORMAT_TEXT = {
+  weekdayNames: WEEKDAY_NAMES,
+  weekdayAbbreviations: WEEKDAY_ABBREVIATIONS,
+  monthNames: MONTH_NAMES,
+  monthAbbreviations: MONTH_ABBREVIATIONS,
+  unitWords: UNIT_WORDS,
+} as const;
+
 const CENTAVOS_PER_PESO = 100;
 const MINUTES_PER_HOUR = 60;
 

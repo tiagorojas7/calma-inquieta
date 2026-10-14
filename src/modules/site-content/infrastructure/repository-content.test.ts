@@ -308,6 +308,12 @@ describe("the catalog copy", () => {
     );
   });
 
+  it("has a singular form for exactly one more turno", async () => {
+    const catalog = await content.getCatalogContent();
+
+    expect(catalog.shared.moreTurnosOne).toBe("y 1 turno más");
+  });
+
   it("uses a registered stand-in as a decorative fallback image", async () => {
     const catalog = await content.getCatalogContent();
     const standIns = await content.listStandInAssets();

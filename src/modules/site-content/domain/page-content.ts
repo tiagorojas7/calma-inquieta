@@ -173,6 +173,8 @@ export interface CatalogContent {
     readonly pausedLinkLabel: string;
     /** Placeholder: `{cantidad}`. */
     readonly moreTurnos: string;
+    /** Singular form when exactly one more turno is hidden. */
+    readonly moreTurnosOne: string;
     readonly breadcrumbLabel: string;
   };
   /** Prefilled `wa.me` messages, voseo. */

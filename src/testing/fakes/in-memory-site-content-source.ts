@@ -180,6 +180,7 @@ export function buildRawSiteContent(
         inquiryCta: "Consultá por WhatsApp",
         pausedLinkLabel: "Escribinos por WhatsApp",
         moreTurnos: "y {cantidad} turnos más",
+        moreTurnosOne: "y 1 turno más",
         breadcrumbLabel: "Ruta de navegación",
       },
       messages: {

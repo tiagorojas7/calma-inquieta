@@ -64,7 +64,7 @@ describe("runMigrations", () => {
     expect(after).toEqual(before);
   });
 
-  it("creates no business tables in the baseline", async () => {
+  it("creates only the media_asset business table", async () => {
     const { url } = await database;
 
     const tables = await query<{ table_name: string }>(
@@ -72,6 +72,6 @@ describe("runMigrations", () => {
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
     );
 
-    expect(tables).toEqual([]);
+    expect(tables).toEqual([{ table_name: "media_asset" }]);
   });
 });

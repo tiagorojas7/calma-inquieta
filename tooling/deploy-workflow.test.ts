@@ -315,3 +315,32 @@ describe("workflow safety", () => {
     }
   });
 });
+
+describe("ci.yml migration drift gate", () => {
+  const verifyEnd = LINES.findIndex((line) => line === "  deploy:");
+  const verify = LINES.slice(
+    LINES.findIndex((line) => line === "  verify:"),
+    verifyEnd,
+  ).join("\n");
+
+  it("regenerates migrations after install and fails on any change under drizzle/", () => {
+    const install = verify.indexOf("pnpm install --frozen-lockfile");
+    const generate = verify.indexOf("pnpm db:generate --name drift-check");
+    const porcelain = verify.indexOf("git status --porcelain -- drizzle");
+
+    expect(install).toBeGreaterThan(-1);
+    expect(generate).toBeGreaterThan(install);
+    expect(porcelain).toBeGreaterThan(generate);
+    expect(verify).toMatch(/test -z "\$\(git status --porcelain -- drizzle\)"/);
+  });
+
+  it("needs no credentials for the drift check", () => {
+    const start = verify.indexOf("pnpm db:generate --name drift-check");
+    const step = verify.slice(
+      verify.lastIndexOf("- name:", start),
+      start + 300,
+    );
+
+    expect(step).not.toMatch(/secrets\./);
+  });
+});

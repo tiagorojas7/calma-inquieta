@@ -34,8 +34,10 @@ describe("createTestDatabase", () => {
       await client.query("CREATE TABLE only_in_first (id integer)");
       await client.end();
 
-      await expect(tablesIn(first.url)).resolves.toEqual(["only_in_first"]);
-      await expect(tablesIn(second.url)).resolves.toEqual([]);
+      await expect(tablesIn(first.url)).resolves.toContain("only_in_first");
+      await expect(tablesIn(second.url)).resolves.not.toContain(
+        "only_in_first",
+      );
     } finally {
       await first.drop();
       await second.drop();

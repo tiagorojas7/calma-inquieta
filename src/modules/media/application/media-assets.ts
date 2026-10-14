@@ -2,5 +2,6 @@ import type { MediaAsset } from "./read-models";
 
 export interface MediaAssetRepository {
   insert(asset: MediaAsset): Promise<void>;
-  findById(id: string): Promise<MediaAsset | null>;
+  /** Known ids only; unknown ids are absent from the map. */
+  findByIds(ids: readonly string[]): Promise<ReadonlyMap<string, MediaAsset>>;
 }

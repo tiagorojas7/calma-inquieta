@@ -195,7 +195,7 @@ Check yourself:
 curl -fsS https://calma-inquieta.<account-subdomain>.workers.dev/status
 ```
 
-The response contains `data-status="ok"` and the latest migration `0000_baseline`.
+The response contains `data-status="ok"` and the latest migration `0001_media_assets`.
 
 ### Manual deploys
 

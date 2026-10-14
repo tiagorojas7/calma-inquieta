@@ -17,6 +17,7 @@ export class InMemoryImageStorage implements ImageStorage {
   readonly deleteCalls: string[] = [];
   failPut = false;
   failDelete = false;
+  failGet = false;
 
   get keys(): string[] {
     return [...this.objects.keys()];
@@ -36,6 +37,7 @@ export class InMemoryImageStorage implements ImageStorage {
   }
 
   get(key: string): Promise<StoredImage | null> {
+    if (this.failGet) return Promise.reject(new Error("storage get failed"));
     const object = this.objects.get(key);
     return Promise.resolve(
       object

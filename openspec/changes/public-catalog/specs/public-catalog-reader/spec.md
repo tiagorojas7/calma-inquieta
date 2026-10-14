@@ -264,6 +264,8 @@ Until the real catalog adapters are wired, the application MUST provide a reader
 - WHEN a public page loader calls the reader
 - THEN the error propagates to the error boundary (500, Spanish copy, no internal message) and is not rendered as an empty state
 
+Note: Inicio is the exception (owner decision, 2026-10-14). On Inicio a failing read omits the two activity sections and the page answers 200; see the home-page scenario "Catalog read failure on Inicio". Every other public page keeps the rule above.
+
 ### Requirement: Adapter parity
 
 The in-memory fake and the database-backed adapter MUST satisfy the same contract suite, covering visibility, expiry, offering selection, turno ordering, ordering of lists, slug lookup and the privacy allowlist.

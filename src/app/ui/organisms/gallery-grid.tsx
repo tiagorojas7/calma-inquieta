@@ -16,7 +16,7 @@ export function GalleryGrid({
   heading,
   images,
 }: {
-  heading: string;
+  heading?: string;
   images: readonly GalleryEntry[];
 }) {
   const [index, setIndex] = useState<number | null>(null);
@@ -42,9 +42,9 @@ export function GalleryGrid({
     if (event.key === "ArrowLeft") step(-1);
   };
 
-  return (
-    <section className="flex flex-col gap-6 py-section">
-      <Heading level={2}>{heading}</Heading>
+  const body = (
+    <>
+      {heading ? <Heading level={2}>{heading}</Heading> : null}
       <ul className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {images.map(({ id, ...image }, at) => (
           <li key={id}>
@@ -111,6 +111,12 @@ export function GalleryGrid({
           </figure>
         )}
       </dialog>
-    </section>
+    </>
+  );
+  // Without a heading the grid sits inside a parent section.
+  return heading ? (
+    <section className="flex flex-col gap-6 py-section">{body}</section>
+  ) : (
+    body
   );
 }

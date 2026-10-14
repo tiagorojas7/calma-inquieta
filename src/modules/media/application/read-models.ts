@@ -6,10 +6,20 @@ import type {
   Unavailable,
   Result,
 } from "~/modules/_shared";
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+import { MAX_IMAGE_BYTES, type ImageContentType } from "../domain/media-core";
+export { MAX_IMAGE_BYTES, type ImageContentType } from "../domain/media-core";
 export const MAX_UPLOAD_REQUEST_BYTES = MAX_IMAGE_BYTES + 64 * 1024;
 export const MAX_GALLERY_IMAGES = 6;
-export type ImageContentType = "image/jpeg" | "image/png" | "image/webp";
+export function immutableImageHeaders(
+  contentType: ImageContentType,
+): Record<string, string> {
+  return {
+    "Content-Type": contentType,
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+  };
+}
 export interface MediaAsset {
   readonly id: string;
   readonly fileName: string;

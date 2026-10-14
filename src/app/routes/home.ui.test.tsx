@@ -1,9 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { serializeJsonLd } from "~/app/seo/json-ld";
-import HomeRoute from "./home";
+import { createTestServices } from "~/testing/fakes/app-services";
+import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
+import { createLoaderArgs } from "~/testing/react-router";
+import {
+  buildPublicIntensivo,
+  buildPublicTaller,
+} from "~/testing/fakes/public-catalog-builders";
+import HomeRoute, { loader } from "./home";
 
 const fixture = {
   hero: {
@@ -16,6 +23,7 @@ const fixture = {
   trustClaims: [],
   monthly: [],
   intensivos: [],
+  catalogFailed: false,
   teaser: {
     heading: "Quiénes somos",
     body: "Conocenos",
@@ -141,5 +149,75 @@ describe("Inicio route", () => {
     render(<Stub initialEntries={["/"]} />);
     const title = await screen.findByRole("heading", { level: 1 });
     expect(title.textContent).toBe("Un espacio para crear");
+  });
+
+  async function renderRealLoader(
+    catalog: ReturnType<typeof createFakePublicCatalog>,
+  ) {
+    const services = createTestServices({ publicCatalog: catalog });
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => loader(createLoaderArgs(services, "/") as never),
+      },
+    ]);
+    const view = render(<Stub initialEntries={["/"]} />);
+    await screen.findByRole("heading", { level: 1 });
+    return view;
+  }
+
+  it("shows the catalog cards and items with no price", async () => {
+    const { container } = await renderRealLoader(
+      createFakePublicCatalog({
+        talleres: [
+          buildPublicTaller({ slug: "a", name: "Cerámica" }),
+          buildPublicTaller({ slug: "b", name: "Telar", status: "paused" }),
+        ],
+        intensivos: [buildPublicIntensivo({ name: "Intensivo de torno" })],
+      }),
+    );
+    const monthly = screen
+      .getByRole("heading", { name: "Talleres mensuales" })
+      .closest("section");
+    const intensivos = screen
+      .getByRole("heading", { name: "Próximos intensivos" })
+      .closest("section");
+    expect(monthly).toHaveTextContent("Cerámica");
+    expect(monthly).toHaveTextContent("Inscripciones pausadas");
+    expect(monthly).toHaveTextContent("Lunes, 10:00 a 12:00 h");
+    expect(monthly?.querySelector('a[href="/talleres/a"]')).toBeTruthy();
+    expect(intensivos).toHaveTextContent("Intensivo de torno");
+    expect(
+      intensivos?.querySelector('a[href="/intensivos/intensivo-demo"]'),
+    ).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\$\s?\d|58\.000/u);
+    for (const section of [monthly, intensivos]) {
+      section?.remove();
+    }
+    expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/u);
+  });
+
+  it("renders without the two activity sections when the catalog read fails", async () => {
+    const catalog = createFakePublicCatalog();
+    vi.spyOn(catalog.talleres, "list").mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container } = await renderRealLoader(catalog);
+    expect(
+      screen.queryByRole("heading", { name: "Talleres mensuales" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Próximos intensivos" }),
+    ).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("Pronto vamos a");
+    expect(container.textContent).not.toContain("Estamos preparando");
+    expect(container.textContent).not.toContain("Todavía no hay fechas");
+    expect(screen.getByText("Quiénes somos")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    vi.restoreAllMocks();
   });
 });

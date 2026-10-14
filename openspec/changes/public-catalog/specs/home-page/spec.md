@@ -80,6 +80,19 @@ The "Próximos intensivos" section MUST take its list as props and show an Empty
 - WHEN the Inicio loader runs
 - THEN the intensivos list is empty and the EmptyState renders
 
+### Requirement: Inicio survives a catalog read failure
+
+Inicio is the exception to the `public-catalog-reader` rule that a real adapter failure is not hidden (owner decision, 2026-10-14). When the public catalog read throws (for example, the database is down), the Inicio loader MUST still succeed and the page MUST render with status 200 and MUST NOT show the error page. In that case the "Talleres mensuales" and "Próximos intensivos" sections MUST both be omitted, with no EmptyState and no empty-state copy for them. Hero, Quiénes somos teaser and contact band render as usual. The loader SHOULD log the failure by name only (a constant message, no error text and no data). A failure of site-content or the business profile still propagates, as on every public page.
+(Previously: a reader error propagated and Inicio showed the 500 page.)
+
+#### Scenario: Catalog read failure on Inicio
+
+- GIVEN a public catalog reader that throws
+- WHEN the Inicio loader runs and the page renders
+- THEN the status is 200, the page shows no error page, and neither the "Talleres mensuales" nor the "Próximos intensivos" section exists, with no empty-state copy for them
+- AND the Hero, the teaser and the contact band are rendered
+- AND the log holds only a constant message, never the error text or any data
+
 ### Requirement: No invented facts
 
 Inicio MUST NOT show prices, email, testimonials or counts that are not in confirmed site-content, and MUST NOT show currency symbols anywhere. Weekdays, times and dates MAY appear only inside the "Talleres mensuales" and "Próximos intensivos" sections and only when they come from the admin-managed catalog through the reader. Every other section MUST NOT contain clock patterns or dates.

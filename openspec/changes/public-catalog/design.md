@@ -295,7 +295,7 @@ layout("routes/public-layout.tsx", [
 - The labels, the "y {cantidad} turnos más" template, the paused badge text and the stand-in come from `CatalogContent` (`getCatalogContent()`, C4-B1), read in parallel with the other calls; this is why C4-F3 depends on C4-B1 (PC16).
 - Intensivos map to `UpcomingItem` props: the date (`dateBadgeParts`, PC10), the title, `detail` (the time range), the paused `badge`, and a link to `/intensivos/<slug>` labelled "Ver intensivo".
 - Empty states stay as they are. With the empty readers, Inicio renders exactly what it renders today.
-- A reader error propagates (500), as on every public page (PC3). Section 14 asks whether the owner prefers Inicio to drop the two sections instead.
+- **Inicio is the exception to PC3** (owner decision, 2026-10-14, section 14): the loader catches a failure of the catalog read (the two `list` calls and nothing else), logs the constant `"home: catalog read failed"` (no error text, no data) and returns `catalogFailed: true`. The page then omits both activity sections, with no empty-state copy, and answers 200. A failure of site-content or the profile still propagates (500).
 
 ### PC14. Privacy is proven at three levels
 
@@ -800,7 +800,7 @@ The total is above the proposal's BACK estimate and close to its FRONT one. The 
 | Change-3 slices land late (B6 above all) | High | Contract first; empty readers; intensivos first; FRONT builds against fakes; C4-F3 can merge early (after C4-B0 and C4-B1) |
 | Change-3 schema drifts from its design revision 2 (column names, `time` mapping, period project nullability) | Medium | Records ports isolate the adapters; re-read change-3 `src/platform/db/schema/workshops.ts` at the start of C4-B2 and C4-B3; the contract suite runs on the real schema |
 | Several database sessions per page (records, teacher lookup, media lookup; Inicio about six) through Hyperdrive | Medium | Lookups run in parallel; measure on the preview in C4-F3; fallback: a request-scoped session factory memo in composition (one connection per request), a composition-only change |
-| A DB outage now takes Inicio down (it was static) | Low-Med | Section 14 asks the owner; the fallback is a two-line loader change |
+| A DB outage on Inicio (it was static) | Low | Resolved by the owner (section 14): Inicio drops the two activity sections and still answers 200 (PC13) |
 | `Intl` time-zone data in workerd differs (Córdoba month and date) | Low | Same technique as change-3 `cordobaMonthOf` (already a change-3 verify item); offset guard test; workerd check in C4-B2 |
 | Google's Event requirements or the paused mapping differ from this design | Medium | Pure builder with shape tests; verify against current Google docs in C4-F4 before merge; the mapping is one table |
 | Owners expect structured data for monthly talleres | Low | PC12 rationale in the deviation register; revisit at launch |
@@ -848,7 +848,7 @@ Status after the revision-2 validation. Numbering is kept so earlier references 
 
 ## 14. Open Questions
 
-- [ ] **(Owner, non-blocking)** If the database fails, should Inicio still render (dropping the two activity sections, without empty-state copy) instead of the 500 page? This design follows the reader spec (errors propagate). The alternative is a two-line change in `home.tsx`, and the spec would need an Inicio exception.
+- [x] **(Owner, resolved 2026-10-14)** If the database fails, Inicio still renders, dropping the two activity sections without empty-state copy, instead of the 500 page. Hero, Quiénes somos teaser and contact band render as today. The home-page spec carries the exception ("Catalog read failure on Inicio"); PC13 and the Inicio loader follow it.
 - [ ] **(Spec, non-blocking)** The open points in section 13.2: item 2 (locale-formatting carve-out), item 3 (NBSP), item 7 (availability values, verified in C4-F4), item 11 (Inicio "y N turnos más") and item 12 (abbreviated month in the date badge).
 
 None of these blocks `sdd-tasks`.

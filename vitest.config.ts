@@ -30,6 +30,9 @@ export default defineConfig({
           pool: "vmThreads",
           include: ["src/**/*.ui.test.tsx"],
           setupFiles: ["src/testing/ui/setup.ts"],
+          // axe runs and jsdom rendering exceed the 5 s default when another
+          // gate shares this 4-core machine; a hang still fails, just later.
+          testTimeout: 20_000,
         },
       },
       {

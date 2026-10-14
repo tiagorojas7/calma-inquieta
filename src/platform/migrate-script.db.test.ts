@@ -18,7 +18,9 @@ describe("scripts/migrate.ts against a real database", () => {
       {
         env: { ...process.env, MIGRATION_DATABASE_URL: url },
         encoding: "utf8",
-        timeout: 30_000,
+        // Below the db project testTimeout (60 s), so a slow start under load
+        // still reports the script result instead of a killed process.
+        timeout: 55_000,
       },
     );
 

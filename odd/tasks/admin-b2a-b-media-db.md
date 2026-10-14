@@ -25,7 +25,7 @@
 - [x] T4. Serve use case: RED serve tests (found, unknown file name, storage unavailable, immutable headers model); GREEN `serve` in `src/modules/media/application/**`.
 - [x] T5. Schema ownership and upload end to end: RED/GREEN `tooling/architecture/schema-ownership.test.ts` with a planted-violation fixture; db test for `uploadImage` with the Drizzle repository (success, insert failure removes the object).
 - [x] T6. CI drift gate: RED `tooling/deploy-workflow.test.ts` assertion; GREEN `verify` step `pnpm db:generate --name drift-check` then fail on `git status --porcelain -- drizzle`. Note: Pi's B1b slice B also edits `ci.yml` and `deploy-workflow.test.ts`; whichever merges second rebases.
-- [ ] T7. Close: focused tests, lint, typecheck, format; full gate in a free window; work-unit commit(s); PR after owner confirmation.
+- [x] T7. Close: focused tests, lint, typecheck, format; full gate in a free window; work-unit commit(s); PR after owner confirmation.
 
 ## Evidence and progress
 
@@ -38,6 +38,16 @@
 - T6 RED: `corepack pnpm test tooling/deploy-workflow.test.ts` gave `1 failed | 17 passed`. GREEN: drift step in `verify` after install; 18 passed. Local `pnpm db:generate --name drift-check` printed "No schema changes" and left `git status --porcelain -- drizzle` unchanged.
 - Verification: `corepack pnpm test src/modules/media src/testing src/platform/db tooling src/composition/request-services.db.test.ts src/modules/system-status` gave `363 passed (32 files)`; `prettier --check` clean; `corepack pnpm lint` exit 0; `corepack pnpm typecheck` exit 0; `git diff --check` exit 0. Full suite and gate not run.
 
+## Delivery evidence
+
+- Work-unit commits on `feat/admin-catalog-b2a-b-media-db`: `686a0a6` feat(media): persist media assets in Postgres (T1-T3, T5); `91bd427` feat(media): serve stored images by file name (T4); `ad4b6cc` ci: fail when migrations drift from the schema (T6).
+- Parent spot check: `corepack pnpm test src/modules/media src/platform/db tooling/architecture/schema-ownership.test.ts tooling/deploy-workflow.test.ts`: 12 files, 252/252 pass.
+- RDD: `gentle-ai review assess --base-ref e5c0ce4 --committed-only` (unrelated untracked files excluded): risk `high` (shell process in `ci.yml`), review due. Owner granted the review; START created the lineage, but the bound STATUS failed with `operation_timeout` (pre_native, `next_action: stop`). Owner chose to report and continue: occurrence posted on gentle-ai#5422, the candidate was declined (`declined_this_candidate`), and delivery follows ordinary repository policy. No review approval is claimed.
+
+- Full gate 1 (2026-10-14): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` FAIL 1094/1095: `src/platform/migrate-script.db.test.ts` hard-coded one applied migration. Fixed to compare with `journal.entries.length` (RED observed in the gate, GREEN 1/1 focused).
+- Full gate 2: `typecheck` PASS; `test:coverage` 125 files, 1095/1095 PASS, coverage 99.27 % statements, 98.97 % branches (threshold 90 %).
+- [x] T7 closed by the gate above; PR opened after this commit.
+
 ## Next step
 
-T7: parent runs the gate in a free window, commits and assesses.
+Owner review and merge. B1b PRs touch `.github/workflows/ci.yml` and `tooling/deploy-workflow.test.ts` too; whichever merges second rebases.

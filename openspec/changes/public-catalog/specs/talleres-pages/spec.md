@@ -50,7 +50,7 @@ When the reader returns no visible tallers, `/talleres` MUST still render the `h
 
 ### Requirement: Fee and time formats
 
-Fees MUST use the es-AR thousands separator with a currency symbol and a space ("$ 58.000"). On listing cards the fee MUST read "$ 58.000 / mes". On the detail page the fee MUST be labelled "Cuota mensual" with the amount "$ 58.000". Time ranges MUST read "10:00 a 12:00 h" everywhere. Weekday names MUST be Spanish (for example "Lunes", "Miércoles"). Prices MUST be shown publicly.
+Fees MUST use the es-AR thousands separator with a currency symbol and a space ("$ 58.000"). The space after the currency symbol MAY be a no-break space (U+00A0); tests normalize whitespace. On listing cards the fee MUST read "$ 58.000 / mes". On the detail page the fee MUST be labelled "Cuota mensual" with the amount "$ 58.000". Time ranges MUST read "10:00 a 12:00 h" everywhere. Weekday names MUST be Spanish (for example "Lunes", "Miércoles"). Prices MUST be shown publicly.
 
 #### Scenario: Card fee format
 
@@ -254,7 +254,7 @@ Card and detail images MUST come from the taller's images with their alt text. A
 
 ### Requirement: Copy rules and layout
 
-All visible copy on these pages that is not admin-entered data MUST be es-AR with voseo, MUST NOT contain the word "workshop" (any case), and MUST come from `site-content`. The pages MUST work at a 360 px viewport without horizontal scrolling and MUST pass automated accessibility checks. The "Talleres" menu entry MUST be marked current on `/talleres` and on `/talleres/:slug`.
+All visible copy on these pages that is not admin-entered data MUST be es-AR with voseo, MUST NOT contain the word "workshop" (any case), and MUST come from `site-content`. Locale formatting data (weekday and month names, and the units "h", "hora", "horas", "min") MAY live in the FRONT formatter instead of `site-content`, provided the copy test scans it. The pages MUST work at a 360 px viewport without horizontal scrolling and MUST pass automated accessibility checks. The "Talleres" menu entry MUST be marked current on `/talleres` and on `/talleres/:slug`.
 
 #### Scenario: Copy scan
 

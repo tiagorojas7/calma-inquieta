@@ -62,7 +62,7 @@ When the reader returns no visible, non-expired intensivos, `/intensivos` MUST r
 
 ### Requirement: Price, deposit, date and time formats
 
-Prices and deposits MUST use the es-AR thousands separator with a currency symbol and a space ("$ 45.000"). The deposit MUST be labelled "Seña". Time ranges MUST read "10:00 a 12:00 h". The date badge MUST show the weekday, the day number and the month name in Spanish, computed on the Cordoba calendar date, with no time-zone shift. Durations MUST be derived from the time range: whole hours as "2 horas" (one hour as "1 hora"), otherwise "2 h 30 min". Prices MUST be shown publicly.
+Prices and deposits MUST use the es-AR thousands separator with a currency symbol and a space ("$ 45.000"). The space after the currency symbol MAY be a no-break space (U+00A0); tests normalize whitespace. The deposit MUST be labelled "Seña". Time ranges MUST read "10:00 a 12:00 h". The date badge MUST show the weekday, the day number and the month name in Spanish (an abbreviated name such as "nov" is accepted), computed on the Cordoba calendar date, with no time-zone shift. Durations MUST be derived from the time range: whole hours as "2 horas" (one hour as "1 hora"), otherwise "2 h 30 min". Prices MUST be shown publicly.
 
 #### Scenario: Price and deposit
 
@@ -226,7 +226,7 @@ Card and detail images MUST come from the intensivo's images with their alt text
 
 ### Requirement: Intensivos copy, layout and privacy
 
-Static copy on these pages MUST be es-AR with voseo, MUST NOT contain the word "workshop" (any case) and MUST come from `site-content`. The pages MUST work at 360 px without horizontal scrolling and pass automated accessibility checks. The "Intensivos" menu entry MUST be marked current on `/intensivos` and on `/intensivos/:slug`. No response MUST contain a percentage, modality, teacher phone, teacher email or audit field, including embedded loader data and structured data.
+Static copy on these pages MUST be es-AR with voseo, MUST NOT contain the word "workshop" (any case) and MUST come from `site-content`. Locale formatting data (weekday and month names, and the units "h", "hora", "horas", "min") MAY live in the FRONT formatter instead of `site-content`, provided the copy test scans it. The pages MUST work at 360 px without horizontal scrolling and pass automated accessibility checks. The "Intensivos" menu entry MUST be marked current on `/intensivos` and on `/intensivos/:slug`. No response MUST contain a percentage, modality, teacher phone, teacher email or audit field, including embedded loader data and structured data.
 
 #### Scenario: Copy scan
 

@@ -80,7 +80,7 @@ The `Event` MUST include one `offers` object with the intensivo price as a numbe
 
 - GIVEN an intensivo with `available` null and capacity 12
 - WHEN the Event is built
-- THEN no `remainingAttendeeCapacity` key exists and the availability is not a sold-out value
+- THEN no `remainingAttendeeCapacity` key exists and the availability is not a sold-out value (`https://schema.org/SoldOut` is never emitted)
 
 #### Scenario: Deposit is not the price
 

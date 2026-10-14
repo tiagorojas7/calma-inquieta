@@ -1,8 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { microcopy } from "../microcopy";
-export const Pill = ({ children }: PropsWithChildren) => (
-  <span>{children}</span>
-);
+export { Pill } from "./pill";
 export const Divider = () => (
   <hr role="presentation" className="border-tan-400" />
 );

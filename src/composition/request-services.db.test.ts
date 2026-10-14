@@ -171,4 +171,19 @@ describe("createRequestServices", () => {
     expect(first.siteContent).toBe(second.siteContent);
     expect(first.site.indexingEnabled).toBe(false);
   });
+
+  it("creates a plain Access key cache for each isolate", () => {
+    const first = createIsolateState();
+    first.accessKeys.keys.set("old-key", { kty: "RSA", n: "n", e: "AQAB" });
+
+    const second = createIsolateState();
+
+    expect(first.accessKeys.keys.get("old-key")).toEqual({
+      kty: "RSA",
+      n: "n",
+      e: "AQAB",
+    });
+    expect(second.accessKeys.keys).toEqual(new Map());
+    expect(second.accessKeys.fetchedAtMs).toBeNull();
+  });
 });

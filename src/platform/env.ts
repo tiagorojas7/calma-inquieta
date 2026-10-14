@@ -39,6 +39,12 @@ export const workerEnvSchema = z
     HYPERDRIVE: z.object({ connectionString: databaseUrl }),
     BUILD_COMMIT: z.string().min(1),
     SITE_URL: z.url({ protocol: /^https?$/ }),
+    // Its value is validated by readAdminConfig; this schema only detects presence.
+    DEV_ADMIN_EMAIL: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim() === "" ? undefined : value,
+      z.string().optional(),
+    ),
     // The indexing gate defaults to off; only the literal "on" opens it.
     SITE_INDEXING: z
       .enum(["on", "off"])
@@ -103,18 +109,50 @@ export function formatEnvError(error: EnvError): string {
   return `Invalid environment: ${listed}`;
 }
 
-const workerEnvCache = new WeakMap<object, Result<WorkerEnv, EnvError>>();
+const workerEnvCache = new WeakMap<
+  object,
+  Map<string, Result<WorkerEnv, EnvError>>
+>();
+
+export interface ReadWorkerEnvOptions {
+  readonly mode?: string;
+}
+
+function hasSafeDevAdminBypass(env: WorkerEnv, mode: string): boolean {
+  if (env.DEV_ADMIN_EMAIL === undefined) return true;
+  try {
+    const siteUrl = new URL(env.SITE_URL);
+    return (
+      mode === "development" &&
+      siteUrl.protocol === "http:" &&
+      siteUrl.hostname === "localhost"
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
- * Validates the Worker bindings once per `env` object: the runtime hands the
- * same object to every request of an isolate, so later requests skip parsing.
+ * Validates the Worker bindings once per `env` object and mode: the runtime
+ * hands the same object to every request of an isolate, so later requests skip parsing.
  */
-export function readWorkerEnv(env: object): Result<WorkerEnv, EnvError> {
-  const cached = workerEnvCache.get(env);
-  if (cached) {
-    return cached;
+export function readWorkerEnv(
+  env: object,
+  { mode = "production" }: ReadWorkerEnvOptions = {},
+): Result<WorkerEnv, EnvError> {
+  let resultsByMode = workerEnvCache.get(env);
+  if (!resultsByMode) {
+    resultsByMode = new Map();
+    workerEnvCache.set(env, resultsByMode);
   }
-  const result = parseEnv(workerEnvSchema, env as Record<string, unknown>);
-  workerEnvCache.set(env, result);
+  const cached = resultsByMode.get(mode);
+  if (cached) return cached;
+
+  const parsed = parseEnv(workerEnvSchema, env as Record<string, unknown>);
+  const result: Result<WorkerEnv, EnvError> =
+    parsed.ok && !hasSafeDevAdminBypass(parsed.value, mode)
+      ? err({ issues: [{ name: "DEV_ADMIN_EMAIL", reason: "invalid" }] })
+      : parsed;
+  resultsByMode.set(mode, result);
   return result;
 }

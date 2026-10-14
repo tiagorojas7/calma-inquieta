@@ -217,6 +217,7 @@ describe("parseEnv with the worker schema", () => {
   it("keeps the schema shape readable for the hygiene test", () => {
     expect(Object.keys(workerEnvSchema.shape).sort()).toEqual([
       "BUILD_COMMIT",
+      "DEV_ADMIN_EMAIL",
       "HYPERDRIVE",
       "SITE_INDEXING",
       "SITE_URL",
@@ -382,5 +383,40 @@ describe("readWorkerEnv", () => {
 
     expect(first.ok).toBe(false);
     expect(readWorkerEnv(env)).toBe(first);
+  });
+
+  it.each([
+    ["production", "http://localhost:5173"],
+    ["development", "https://localhost:5173"],
+    ["development", "http://127.0.0.1:5173"],
+    ["development", "http://admin.localhost:5173"],
+  ])(
+    "rejects DEV_ADMIN_EMAIL outside the development localhost safeguard (%s, %s)",
+    (mode, siteUrl) => {
+      const result = readWorkerEnv(
+        workerSource({
+          SITE_URL: siteUrl,
+          DEV_ADMIN_EMAIL: "malformed-admin-value",
+        }),
+        { mode },
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: { issues: [{ name: "DEV_ADMIN_EMAIL", reason: "invalid" }] },
+      });
+    },
+  );
+
+  it("accepts a present DEV_ADMIN_EMAIL only for development http localhost", () => {
+    const result = readWorkerEnv(
+      workerSource({
+        SITE_URL: "http://localhost:5173",
+        DEV_ADMIN_EMAIL: "owner@example.test",
+      }),
+      { mode: "development" },
+    );
+
+    expect(result.ok).toBe(true);
   });
 });

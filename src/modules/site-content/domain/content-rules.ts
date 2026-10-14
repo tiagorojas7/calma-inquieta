@@ -41,6 +41,8 @@ function pageSeo(content: RawSiteContent): readonly PageSeo[] {
       id: `coming-soon/${slug}`,
       seo: page.seo,
     })),
+    { id: "catalog/talleres", seo: content.catalog.talleres.seo },
+    { id: "catalog/intensivos", seo: content.catalog.intensivos.seo },
   ];
 }
 
@@ -71,6 +73,11 @@ function contentImages(content: RawSiteContent): readonly {
       image: video.poster,
       decorative: false,
     })),
+    {
+      id: content.catalog.fallbackImage.src,
+      image: content.catalog.fallbackImage,
+      decorative: true,
+    },
   ];
 }
 
@@ -81,6 +88,8 @@ function contentIds(content: RawSiteContent): readonly string[] {
     ...content.home.testimonials.items.map((item) => item.id),
     ...content.about.history.map((entry) => entry.id),
     content.about.valueProposition.id,
+    content.catalog.talleres.intro.id,
+    content.catalog.intensivos.intro.id,
     ...content.about.values.map((value) => value.id),
     ...content.about.gallery.map((image) => image.id),
     ...content.about.videos.map((video) => video.id),
@@ -160,6 +169,10 @@ export function listUnapproved(
     },
     { area: "about:values", items: content.about.values },
     { area: "about:faq", items: content.about.faq },
+    {
+      area: "catalog:intros",
+      items: [content.catalog.talleres.intro, content.catalog.intensivos.intro],
+    },
   ];
   return groups.flatMap(({ area, items }) =>
     items.filter((item) => !item.approved).map(({ id }) => ({ id, area })),

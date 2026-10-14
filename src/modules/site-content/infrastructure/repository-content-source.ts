@@ -2,6 +2,7 @@ import type { SiteContentSource } from "../application/ports";
 import type { RawSiteContent } from "../domain/page-content";
 import { aboutContent } from "./content/about";
 import { businessProfile } from "./content/business-profile";
+import { catalogContent } from "./content/catalog";
 import { comingSoonContent } from "./content/coming-soon";
 import { contactContent } from "./content/contact";
 import { homeContent } from "./content/home";
@@ -13,6 +14,7 @@ const rawSiteContent = {
   about: aboutContent,
   contact: contactContent,
   comingSoon: comingSoonContent,
+  catalog: catalogContent,
   standIns: STAND_IN_ASSETS,
 } as const satisfies RawSiteContent;
 

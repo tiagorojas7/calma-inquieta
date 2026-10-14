@@ -9,6 +9,7 @@ import {
 } from "../domain/content-rules";
 import type {
   AboutPageContent,
+  CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,
   ContactPageContent,
@@ -25,6 +26,8 @@ export interface SiteContent {
   getAboutPage(): Promise<AboutPageContent>;
   getContactPage(): Promise<ContactPageContent>;
   getComingSoonPage(slug: ComingSoonSlug): Promise<ComingSoonContent>;
+  /** Labels, listing copy and WhatsApp templates of the public catalog. */
+  getCatalogContent(): Promise<CatalogContent>;
   listUnapprovedContent(): Promise<
     readonly { readonly id: string; readonly area: string }[]
   >;
@@ -57,6 +60,9 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
     },
     async getComingSoonPage(slug) {
       return (await source.load()).comingSoon[slug];
+    },
+    async getCatalogContent() {
+      return (await source.load()).catalog;
     },
     async listUnapprovedContent() {
       return listUnapproved(await source.load());

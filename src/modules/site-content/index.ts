@@ -12,6 +12,7 @@ export type {
   WhatsAppLine,
   WhatsAppTopic,
 } from "./domain/business-profile";
+export { fillCopyTemplate } from "./domain/copy-template";
 export { findCopyViolations } from "./domain/copy-rules";
 export type { CopyViolation } from "./domain/copy-rules";
 export {
@@ -25,6 +26,7 @@ export type {
   AboutPageContent,
   Approvable,
   ApprovableText,
+  CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,
   ContactPageContent,

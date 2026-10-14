@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createSiteContent } from "../application/site-content";
 import { buildWhatsAppUrl } from "../domain/links";
+import { fillCopyTemplate } from "../domain/copy-template";
 import { findCopyViolations } from "../domain/copy-rules";
 import { validateSiteContent } from "../domain/content-rules";
 import { createRepositoryContentSource } from "./repository-content-source";
@@ -187,7 +188,8 @@ describe("the drafted page content", () => {
       raw.about.history.length +
       1 +
       raw.about.values.length +
-      raw.about.faq.length;
+      raw.about.faq.length +
+      2; // the two catalog listing intros
 
     const unapproved = await content.listUnapprovedContent();
 
@@ -227,5 +229,130 @@ describe("the drafted page content", () => {
     const standIns = await content.listStandInAssets();
 
     expect(standIns).toHaveLength(12);
+  });
+});
+
+const placeholdersIn = (template: string) =>
+  [...template.matchAll(/\{([A-Za-z0-9]+)\}/g)].map((match) => match[1]).sort();
+
+describe("the catalog copy", () => {
+  it("returns the CatalogContent with the spec-named literals", async () => {
+    const catalog = await content.getCatalogContent();
+
+    expect(catalog.talleres.heading).toBe("Talleres");
+    expect(catalog.talleres.cardCtaLabel).toBe("Ver taller");
+    expect(catalog.talleres.feeLabel).toBe("Cuota mensual");
+    expect(catalog.talleres.feeSuffix).toBe("/ mes");
+    expect(catalog.talleres.noOffering).toBe(
+      "Próximamente abrimos inscripciones",
+    );
+    expect(catalog.talleres.projectHeading).toBe(
+      "Proyectos que vamos a realizar",
+    );
+    expect(catalog.intensivos.heading).toBe("Talleres intensivos");
+    expect(catalog.intensivos.cardCtaLabel).toBe("Ver intensivo");
+    expect(catalog.intensivos.depositLabel).toBe("Seña");
+    expect(catalog.shared.seatsLimited).toBe("Cupo limitado");
+    expect(catalog.shared.paused).toBe("Inscripciones pausadas");
+    expect(catalog.shared.inquiryCta).toBe("Consultá por WhatsApp");
+    expect(catalog.shared.pausedLinkLabel).toBe("Escribinos por WhatsApp");
+  });
+
+  it("has no copy violation in any catalog string", async () => {
+    const catalog = await content.getCatalogContent();
+    const strings = stringsIn(catalog);
+
+    expect(strings.length).toBeGreaterThan(30);
+    expect(findCopyViolations(strings)).toEqual([]);
+  });
+
+  it("gives each WhatsApp template exactly its placeholders", async () => {
+    const { messages } = await content.getCatalogContent();
+
+    expect(placeholdersIn(messages.taller)).toEqual(["nombre"]);
+    expect(placeholdersIn(messages.turno)).toEqual([
+      "dia",
+      "horario",
+      "nombre",
+    ]);
+    expect(placeholdersIn(messages.intensivo)).toEqual(["fecha", "nombre"]);
+    expect(placeholdersIn(messages.paused)).toEqual(["nombre"]);
+  });
+
+  it("fills every message template with the filler", async () => {
+    const { messages } = await content.getCatalogContent();
+    const values = {
+      nombre: "Taller Demo",
+      dia: "lunes",
+      horario: "10:00 a 12:00 h",
+      fecha: "sábado 14 de noviembre",
+    };
+
+    for (const template of Object.values(messages)) {
+      const filled = fillCopyTemplate(template, values);
+      expect(filled).toContain("Taller Demo");
+      expect(filled).not.toMatch(/[{}]/);
+    }
+  });
+
+  it("keeps the count placeholders in the shared and intensivos templates", async () => {
+    const catalog = await content.getCatalogContent();
+
+    expect(placeholdersIn(catalog.shared.moreTurnos)).toEqual(["cantidad"]);
+    expect(placeholdersIn(catalog.intensivos.minSeats)).toEqual(["cantidad"]);
+    expect(
+      fillCopyTemplate(catalog.intensivos.minSeats, { cantidad: "4" }),
+    ).toBe("Se realiza con un mínimo de 4 personas");
+    expect(fillCopyTemplate(catalog.shared.moreTurnos, { cantidad: "2" })).toBe(
+      "y 2 turnos más",
+    );
+  });
+
+  it("uses a registered stand-in as a decorative fallback image", async () => {
+    const catalog = await content.getCatalogContent();
+    const standIns = await content.listStandInAssets();
+
+    expect(standIns.map((asset) => asset.path)).toContain(
+      catalog.fallbackImage.src,
+    );
+    expect(catalog.fallbackImage.alt).toBe("");
+  });
+
+  it("gives the two catalog pages SEO copy distinct from every other page", async () => {
+    const raw = await source.load();
+    const { talleres, intensivos } = raw.catalog;
+    const seos = [
+      raw.home.seo,
+      raw.about.seo,
+      raw.contact.seo,
+      ...Object.values(raw.comingSoon).map((page) => page.seo),
+      talleres.seo,
+      intensivos.seo,
+    ];
+
+    for (const seo of [talleres.seo, intensivos.seo]) {
+      expect(seo.title.trim()).not.toBe("");
+      expect(seo.description.trim()).not.toBe("");
+    }
+    expect(new Set(seos.map((seo) => seo.title)).size).toBe(8);
+    expect(new Set(seos.map((seo) => seo.description)).size).toBe(8);
+  });
+
+  it("keeps the two listing intros as unapproved drafts on the checklist", async () => {
+    const { talleres, intensivos } = await content.getCatalogContent();
+    const unapproved = await content.listUnapprovedContent();
+
+    expect(talleres.intro.approved).toBe(false);
+    expect(intensivos.intro.approved).toBe(false);
+    expect(unapproved).toEqual(
+      expect.arrayContaining([
+        { id: talleres.intro.id, area: "catalog:intros" },
+        { id: intensivos.intro.id, area: "catalog:intros" },
+      ]),
+    );
+  });
+
+  it("passes the content validation with the catalog included", async () => {
+    expect(validateSiteContent(await source.load())).toEqual([]);
   });
 });

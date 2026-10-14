@@ -26,6 +26,7 @@ export type {
   AboutPageContent,
   Approvable,
   ApprovableText,
+  CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,
   ContactPageContent,

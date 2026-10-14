@@ -130,12 +130,71 @@ export interface ComingSoonContent {
   readonly whatsappTopic: WhatsAppTopic;
 }
 
+/**
+ * Copy for the public catalog pages (listings, details, cards, WhatsApp
+ * messages). Templates use `{key}` placeholders filled by `fillCopyTemplate`.
+ * No schedule, price, teacher or policy fact lives here: those come only from
+ * the catalog.
+ */
+export interface CatalogContent {
+  /** A registered stand-in with `alt: ""` (decorative). */
+  readonly fallbackImage: ImageRef;
+  readonly talleres: {
+    readonly seo: SeoCopy;
+    readonly heading: string;
+    readonly intro: ApprovableText;
+    readonly emptyMessage: string;
+    readonly cardCtaLabel: string;
+    readonly feeSuffix: string;
+    readonly feeLabel: string;
+    readonly noOffering: string;
+    readonly turnosHeading: string;
+    readonly teacherHeading: string;
+    readonly projectHeading: string;
+  };
+  readonly intensivos: {
+    readonly seo: SeoCopy;
+    readonly heading: string;
+    readonly intro: ApprovableText;
+    readonly emptyMessage: string;
+    readonly cardCtaLabel: string;
+    readonly priceLabel: string;
+    readonly depositLabel: string;
+    readonly materialsIncluded: string;
+    /** Placeholder: `{cantidad}`. */
+    readonly minSeats: string;
+    readonly conditionsLabel: string;
+    readonly teacherHeading: string;
+  };
+  readonly shared: {
+    readonly seatsLimited: string;
+    readonly paused: string;
+    readonly inquiryCta: string;
+    readonly pausedLinkLabel: string;
+    /** Placeholder: `{cantidad}`. */
+    readonly moreTurnos: string;
+    readonly breadcrumbLabel: string;
+  };
+  /** Prefilled `wa.me` messages, voseo. */
+  readonly messages: {
+    /** Placeholder: `{nombre}`. */
+    readonly taller: string;
+    /** Placeholders: `{nombre}`, `{dia}`, `{horario}`. */
+    readonly turno: string;
+    /** Placeholders: `{nombre}`, `{fecha}`. */
+    readonly intensivo: string;
+    /** Placeholder: `{nombre}`. */
+    readonly paused: string;
+  };
+}
+
 export interface RawSiteContent {
   readonly profile: RawBusinessProfile;
   readonly home: HomePageContent;
   readonly about: AboutPageContent;
   readonly contact: ContactPageContent;
   readonly comingSoon: Readonly<Record<ComingSoonSlug, ComingSoonContent>>;
+  readonly catalog: CatalogContent;
   readonly standIns: readonly StandInAsset[];
 }
 

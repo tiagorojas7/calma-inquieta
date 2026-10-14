@@ -237,6 +237,68 @@ describe("validateSiteContent", () => {
       },
     ]);
   });
+
+  it("flags empty SEO copy on a catalog page, naming the page", () => {
+    const content = validContent();
+
+    const issues = validateSiteContent({
+      ...content,
+      catalog: {
+        ...content.catalog,
+        talleres: {
+          ...content.catalog.talleres,
+          seo: { title: "", description: "ok" },
+        },
+        intensivos: {
+          ...content.catalog.intensivos,
+          seo: { title: "ok", description: " " },
+        },
+      },
+    });
+
+    expect(issues).toEqual([
+      { id: "catalog/talleres", rule: "empty-seo" },
+      { id: "catalog/intensivos", rule: "empty-seo" },
+    ]);
+  });
+
+  it("flags a catalog fallback image missing from the stand-in manifest", () => {
+    const content = validContent();
+
+    const issues = validateSiteContent({
+      ...content,
+      catalog: {
+        ...content.catalog,
+        fallbackImage: image("/media/stand-ins/missing.svg", ""),
+      },
+    });
+
+    expect(issues).toEqual([
+      { id: "/media/stand-ins/missing.svg", rule: "unregistered-stand-in" },
+    ]);
+  });
+
+  it("accepts the decorative empty alt on the catalog fallback image", () => {
+    expect(validContent().catalog.fallbackImage.alt).toBe("");
+    expect(validateSiteContent(validContent())).toEqual([]);
+  });
+
+  it("flags a catalog intro id that repeats another content id", () => {
+    const content = validContent();
+
+    const issues = validateSiteContent({
+      ...content,
+      catalog: {
+        ...content.catalog,
+        talleres: {
+          ...content.catalog.talleres,
+          intro: { ...content.catalog.talleres.intro, id: "teaser-body" },
+        },
+      },
+    });
+
+    expect(issues).toEqual([{ id: "teaser-body", rule: "duplicate-id" }]);
+  });
 });
 
 describe("listUnapproved", () => {
@@ -280,6 +342,29 @@ describe("listUnapproved", () => {
       { id: "value-proposition", area: "about:value-proposition" },
       { id: "value-1", area: "about:values" },
       { id: "faq-1", area: "about:faq" },
+    ]);
+  });
+
+  it("lists the unapproved catalog intros under their own area", () => {
+    const content = validContent();
+    const draft: RawSiteContent = {
+      ...content,
+      catalog: {
+        ...content.catalog,
+        talleres: {
+          ...content.catalog.talleres,
+          intro: { ...content.catalog.talleres.intro, approved: false },
+        },
+        intensivos: {
+          ...content.catalog.intensivos,
+          intro: { ...content.catalog.intensivos.intro, approved: false },
+        },
+      },
+    };
+
+    expect(listUnapproved(draft)).toEqual([
+      { id: content.catalog.talleres.intro.id, area: "catalog:intros" },
+      { id: content.catalog.intensivos.intro.id, area: "catalog:intros" },
     ]);
   });
 

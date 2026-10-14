@@ -23,7 +23,13 @@ export const activityFixture = {
 
 export const upcomingItemFixture = {
   id: "intensivo-1",
-  date: "2026-11-14",
+  date: {
+    dateTime: "2026-11-14",
+    weekday: "sáb",
+    day: "14",
+    month: "nov",
+    label: "sábado 14 de noviembre de 2026",
+  },
   title: "Intensivo de otoño",
   href: "/intensivos/otono",
   ctaLabel: "Ver intensivo",

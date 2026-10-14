@@ -1,1 +1,1 @@
-export { DateBadge } from "./contact-item";
+export { DateBadge, type DateBadgeParts } from "./contact-item";

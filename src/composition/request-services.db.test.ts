@@ -130,6 +130,35 @@ describe("createRequestServices", () => {
     expect(profile.instagram.handle).toBe("calma.inquieta");
   });
 
+  it("exposes an empty public catalog that reads without touching the database", async () => {
+    const services = createRequestServices(
+      { databaseUrl: UNREACHABLE_URL, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    const { talleres, intensivos } = services.publicCatalog;
+
+    expect(await talleres.list()).toEqual([]);
+    expect(await talleres.findBySlug("ceramica")).toBeNull();
+    expect(await talleres.listSlugs()).toEqual([]);
+    expect(await intensivos.list({ limit: 3 })).toEqual([]);
+    expect(await intensivos.findBySlug("intensivo-demo")).toBeNull();
+    expect(await intensivos.listSlugs()).toEqual([]);
+  });
+
+  it("serves the empty public catalog on a migrated empty database", async () => {
+    const database = await newDatabase();
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    expect(await services.publicCatalog.talleres.list()).toEqual([]);
+    expect(await services.publicCatalog.intensivos.listSlugs()).toEqual([]);
+  });
+
   it("shares one content reader across requests of the same isolate", () => {
     const config = {
       databaseUrl: UNREACHABLE_URL,

@@ -7,6 +7,7 @@ import {
   buildPublicTeacher,
   buildPublicTurno,
 } from "./public-catalog-builders";
+import { createTestServices } from "./app-services";
 
 describe("public catalog builders", () => {
   it("build neutral invented data with unknown availability", () => {
@@ -95,5 +96,22 @@ describe("createFakePublicCatalog", () => {
 
     expect(await empty.talleres.list()).toEqual([]);
     expect(await empty.intensivos.listSlugs()).toEqual([]);
+  });
+});
+
+describe("createTestServices public catalog", () => {
+  it("defaults to an empty catalog and accepts a seeded one", async () => {
+    const empty = createTestServices();
+    const seeded = createTestServices({
+      publicCatalog: createFakePublicCatalog({
+        talleres: [buildPublicTaller()],
+      }),
+    });
+
+    expect(await empty.publicCatalog.talleres.list()).toEqual([]);
+    expect(await empty.publicCatalog.intensivos.list()).toEqual([]);
+    expect(await seeded.publicCatalog.talleres.listSlugs()).toEqual([
+      "taller-demo",
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import type { AppServices } from "~/composition/request-services";
 import { adminAccessFor } from "./admin-actor";
+import { createFakePublicCatalog } from "./fake-public-catalog";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { ok } from "~/modules/_shared";
 import { createSiteContent } from "~/modules/site-content";
@@ -63,6 +64,7 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/materials").MaterialsService
       >(),
+    publicCatalog: createFakePublicCatalog(),
     ...overrides,
   };
 }

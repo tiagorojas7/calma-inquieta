@@ -3,6 +3,13 @@ import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
+import { seedCatalog } from "~/testing/db/seed-catalog";
+import {
+  buildSeed,
+  fullyPopulatedSeed,
+  seedIntensivo,
+} from "~/testing/fakes/catalog-seed";
+import { createDbSessionFactory } from "~/platform/db/session";
 import { createIsolateState, createRequestServices } from "./request-services";
 
 const UNREACHABLE_URL = "postgres://postgres@127.0.0.1:1/none";
@@ -130,24 +137,34 @@ describe("createRequestServices", () => {
     expect(profile.instagram.handle).toBe("calma.inquieta");
   });
 
-  it("exposes an empty public catalog that reads without touching the database", async () => {
+  it("keeps the talleres placeholder off the database", async () => {
     const services = createRequestServices(
       { databaseUrl: UNREACHABLE_URL, buildCommit: "abc", ...SITE },
       {},
       createIsolateState(),
     );
 
-    const { talleres, intensivos } = services.publicCatalog;
+    const { talleres } = services.publicCatalog;
 
     expect(await talleres.list()).toEqual([]);
     expect(await talleres.findBySlug("ceramica")).toBeNull();
     expect(await talleres.listSlugs()).toEqual([]);
-    expect(await intensivos.list({ limit: 3 })).toEqual([]);
-    expect(await intensivos.findBySlug("intensivo-demo")).toBeNull();
-    expect(await intensivos.listSlugs()).toEqual([]);
   });
 
-  it("serves the empty public catalog on a migrated empty database", async () => {
+  it("does not hide an unreachable database behind an empty intensivos list", async () => {
+    const services = createRequestServices(
+      { databaseUrl: UNREACHABLE_URL, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    await expect(services.publicCatalog.intensivos.list()).rejects.toThrow();
+    await expect(
+      services.publicCatalog.intensivos.findBySlug("intensivo-demo"),
+    ).rejects.toThrow();
+  });
+
+  it("serves an empty public catalog on a migrated empty database", async () => {
     const database = await newDatabase();
     const services = createRequestServices(
       { databaseUrl: database.url, buildCommit: "abc", ...SITE },
@@ -156,7 +173,51 @@ describe("createRequestServices", () => {
     );
 
     expect(await services.publicCatalog.talleres.list()).toEqual([]);
+    expect(await services.publicCatalog.intensivos.list({ limit: 3 })).toEqual(
+      [],
+    );
+    expect(
+      await services.publicCatalog.intensivos.findBySlug("nada"),
+    ).toBeNull();
     expect(await services.publicCatalog.intensivos.listSlugs()).toEqual([]);
+  });
+
+  it("returns a seeded visible intensivo through the wired reader", async () => {
+    const database = await newDatabase();
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        intensivos: [
+          ...fullyPopulatedSeed().intensivos,
+          seedIntensivo({ slug: "pasado", eventDate: "2020-01-01" }),
+        ].map((row) =>
+          row.slug === "intensivo-demo"
+            ? { ...row, eventDate: "2099-01-01" }
+            : row,
+        ),
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    const listed = await services.publicCatalog.intensivos.list();
+
+    expect(listed.map((item) => item.slug)).toEqual(["intensivo-demo"]);
+    expect(listed[0]?.date).toBe("2099-01-01");
+    expect(listed[0]?.teacher?.name).toBe("Lucía Demo");
+    // The media lookup is still the empty placeholder (C4-B5): no image resolves yet.
+    expect(listed[0]?.images).toEqual([]);
+    expect(
+      (await services.publicCatalog.intensivos.findBySlug("intensivo-demo"))
+        ?.slug,
+    ).toBe("intensivo-demo");
+    expect(await services.publicCatalog.intensivos.listSlugs()).toEqual([
+      "intensivo-demo",
+    ]);
   });
 
   it("shares one content reader across requests of the same isolate", () => {

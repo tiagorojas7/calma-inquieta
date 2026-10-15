@@ -4,6 +4,7 @@ import {
   type AdminFailure,
   type Clock,
   type FieldIssue,
+  type Invalid,
   type NotFound,
   type Result,
 } from "~/modules/_shared";
@@ -38,6 +39,10 @@ export interface TeacherServiceDeps {
 
 const duplicateName: FieldIssue<"name"> = { field: "name", code: "duplicate" };
 const notFound: NotFound = { kind: "not-found" };
+const duplicateNameResult = err({
+  kind: "invalid",
+  issues: [duplicateName],
+} satisfies Invalid<"name">);
 
 /**
  * Admin use cases for teachers. Every call needs an AdminActor and checks it
@@ -77,10 +82,13 @@ export function createTeachersService(
     teacher: Teacher,
     active: boolean,
     actor: AdminActor,
-  ): Promise<Teacher> {
+  ): Promise<Result<Teacher, Invalid<"name">>> {
     const next: Teacher = { ...teacher, active, audit: stamp(actor) };
-    await repository.update(next);
-    return next;
+    const saved = await repository.update(next);
+    if (saved.ok) return ok(next);
+    if (saved.error.kind === "name-conflict") return duplicateNameResult;
+    // A vanished row is a defect: it was just loaded by id.
+    throw new Error("teacher vanished between load and save");
   }
 
   return {
@@ -110,8 +118,8 @@ export function createTeachersService(
         active: true,
         audit: stamp(authorized.value),
       };
-      await repository.insert(teacher);
-      return ok(teacher);
+      const inserted = await repository.insert(teacher);
+      return inserted.ok ? ok(teacher) : duplicateNameResult;
     },
 
     async update(actor, id, draft) {
@@ -128,8 +136,10 @@ export function createTeachersService(
         ...valid.value,
         audit: stamp(authorized.value),
       };
-      await repository.update(next);
-      return ok(next);
+      const saved = await repository.update(next);
+      if (saved.ok) return ok(next);
+      if (saved.error.kind === "name-conflict") return duplicateNameResult;
+      return err(notFound);
     },
 
     async archive(actor, id) {
@@ -137,7 +147,10 @@ export function createTeachersService(
       if (!loaded.ok) return loaded;
       const { teacher, actor: admin } = loaded.value;
       if (!teacher.active) return ok(teacher);
-      return ok(await save(teacher, false, admin));
+      const archived = await save(teacher, false, admin);
+      // An archived teacher holds no active name, so a conflict is a defect.
+      if (!archived.ok) throw new Error("unexpected name conflict on archive");
+      return archived;
     },
 
     async reactivate(actor, id) {
@@ -147,7 +160,7 @@ export function createTeachersService(
       if (teacher.active) return ok(teacher);
       if (await isNameTaken(teacher.name, teacher.id))
         return err({ kind: "invalid", issues: [duplicateName] });
-      return ok(await save(teacher, true, admin));
+      return save(teacher, true, admin);
     },
   };
 

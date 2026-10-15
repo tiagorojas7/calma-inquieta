@@ -1,12 +1,18 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import { err, ok } from "~/modules/_shared";
 import { teacher } from "~/platform/db/schema/teachers";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type {
+  NameConflict,
   TeacherFilter,
   TeacherRepository,
 } from "../application/teacher-repository";
 import type { Teacher } from "../application/teachers";
-import { teacherNameKey, type TeacherModality } from "../domain/teacher-core";
+import {
+  compareTeachersByName,
+  teacherNameKey,
+  type TeacherModality,
+} from "../domain/teacher-core";
 
 type Row = typeof teacher.$inferSelect;
 
@@ -37,6 +43,23 @@ function toValues(value: Teacher) {
   };
 }
 
+const ACTIVE_NAME_INDEX = "teacher_active_name_unique";
+
+/** True for a unique violation (23505) on the active-name index, cause chain included. */
+function isActiveNameConflict(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if (
+    "code" in error &&
+    error.code === "23505" &&
+    "constraint" in error &&
+    error.constraint === ACTIVE_NAME_INDEX
+  )
+    return true;
+  return "cause" in error && isActiveNameConflict(error.cause);
+}
+
+const nameConflict = err<NameConflict>({ kind: "name-conflict" });
+
 /** One short-lived session per call; database errors propagate to the caller. */
 export function createDrizzleTeacherRepository(
   openSession: DbSessionFactory,
@@ -55,17 +78,28 @@ export function createDrizzleTeacherRepository(
   return {
     insert: (value) =>
       withSession(async (db) => {
-        await db.insert(teacher).values({ id: value.id, ...toValues(value) });
+        try {
+          await db.insert(teacher).values({ id: value.id, ...toValues(value) });
+        } catch (error) {
+          if (isActiveNameConflict(error)) return nameConflict;
+          throw error;
+        }
+        return ok(undefined);
       }),
 
     update: (value) =>
       withSession(async (db) => {
-        const rows = await db
-          .update(teacher)
-          .set(toValues(value))
-          .where(eq(teacher.id, value.id))
-          .returning({ id: teacher.id });
-        return rows.length > 0;
+        try {
+          const rows = await db
+            .update(teacher)
+            .set(toValues(value))
+            .where(eq(teacher.id, value.id))
+            .returning({ id: teacher.id });
+          return rows.length > 0 ? ok(undefined) : err({ kind: "not-found" });
+        } catch (error) {
+          if (isActiveNameConflict(error)) return nameConflict;
+          throw error;
+        }
       }),
 
     findById: (id) =>
@@ -109,9 +143,8 @@ export function createDrizzleTeacherRepository(
             filter === "all"
               ? undefined
               : eq(teacher.active, filter === "active"),
-          )
-          .orderBy(asc(teacher.nameKey), asc(teacher.id));
-        return rows.map(toTeacher);
+          );
+        return rows.map(toTeacher).sort(compareTeachersByName);
       }),
   };
 }

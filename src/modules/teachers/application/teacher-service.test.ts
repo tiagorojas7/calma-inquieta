@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
 import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-repository";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
+import { err } from "~/modules/_shared";
 import { createTeacherLookup, createTeachersService } from "./teacher-service";
+import type { TeacherRepository } from "./teacher-repository";
 import type { TeacherDraft } from "./teachers";
 
 const START = new Date("2026-10-14T12:00:00.000Z");
@@ -29,6 +31,66 @@ function setup() {
   });
   return { repository, clock, service };
 }
+
+const duplicateNameResult = {
+  ok: false,
+  error: { kind: "invalid", issues: [{ field: "name", code: "duplicate" }] },
+};
+
+/**
+ * Simulates a lost race: the duplicate pre-check passes, then another request
+ * takes the name and the write hits the unique index.
+ */
+function setupLostRace() {
+  const inner = new InMemoryTeacherRepository();
+  const losing: TeacherRepository = {
+    insert: () => Promise.resolve(err({ kind: "name-conflict" })),
+    update: () => Promise.resolve(err({ kind: "name-conflict" })),
+    findById: (id) => inner.findById(id),
+    findByIds: (ids) => inner.findByIds(ids),
+    findActiveByName: (name) => inner.findActiveByName(name),
+    list: (filter) => inner.list(filter),
+  };
+  const honest = createTeachersService({
+    repository: inner,
+    clock: advancingClock(START),
+    newId: () => "seed",
+  });
+  let counter = 0;
+  const service = createTeachersService({
+    repository: losing,
+    clock: advancingClock(START),
+    newId: () => `race-${String(++counter)}`,
+  });
+  return { inner, honest, service };
+}
+
+describe("lost race on the active-name unique index", () => {
+  it("maps a conflicting create to the duplicate-name result", async () => {
+    const { service } = setupLostRace();
+
+    expect(await service.create(owner, draft())).toEqual(duplicateNameResult);
+  });
+
+  it("maps a conflicting update to the duplicate-name result", async () => {
+    const { honest, service } = setupLostRace();
+    const seeded = valueOf(await honest.create(owner, draft()));
+
+    expect(
+      await service.update(owner, seeded.id, draft({ name: "Otra" })),
+    ).toEqual(duplicateNameResult);
+  });
+
+  it("maps a conflicting reactivate to the duplicate-name result", async () => {
+    const { honest, service } = setupLostRace();
+    const seeded = valueOf(await honest.create(owner, draft()));
+    await honest.archive(owner, seeded.id);
+
+    expect(await service.reactivate(owner, seeded.id)).toEqual(
+      duplicateNameResult,
+    );
+  });
+});
 
 function valueOf<T>(result: { ok: boolean; value?: T }): T {
   if (!result.ok || result.value === undefined)

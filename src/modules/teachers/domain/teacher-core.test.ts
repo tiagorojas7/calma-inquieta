@@ -96,6 +96,14 @@ describe("teacherNameKey", () => {
     expect(teacherNameKey(a)).toBe(teacherNameKey(b));
   });
 
+  it("normalizes a decomposed name (base letter plus combining accent) to NFC", () => {
+    const decomposed = "Lucía";
+    const composed = "Lucía";
+
+    expect(decomposed).not.toBe(composed);
+    expect(teacherNameKey(decomposed)).toBe(teacherNameKey(composed));
+  });
+
   it("keeps accents significant", () => {
     expect(teacherNameKey("Lucia")).not.toBe(teacherNameKey("Lucía"));
   });

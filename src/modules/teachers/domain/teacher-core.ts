@@ -37,6 +37,24 @@ export function teacherNameKey(name: string): string {
   return name.trim().normalize("NFC").toLocaleLowerCase("es");
 }
 
+/**
+ * The one list order: Spanish collation on the name key, then id by code unit.
+ * Owned by the code (adapters sort with it) so fake and database agree on
+ * non-ASCII names whatever the database collation is.
+ */
+export function compareTeachersByName(
+  a: { readonly name: string; readonly id: string },
+  b: { readonly name: string; readonly id: string },
+): number {
+  const byName = teacherNameKey(a.name).localeCompare(
+    teacherNameKey(b.name),
+    "es",
+  );
+  if (byName !== 0) return byName;
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+}
+
 function isModality(value: string): value is TeacherModality {
   return value === "own" || value === "third_party";
 }

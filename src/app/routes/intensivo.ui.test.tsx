@@ -84,7 +84,7 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Intensivo Demo" }),
     ).toBeInTheDocument();
-    const text = (container.textContent ?? "").replaceAll(" ", " ");
+    const text = container.textContent.replaceAll(" ", " ");
     for (const expected of [
       "Sábado 14 de noviembre",
       "10:00 a 12:00 h",

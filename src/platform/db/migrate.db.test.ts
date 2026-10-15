@@ -64,14 +64,17 @@ describe("runMigrations", () => {
     expect(after).toEqual(before);
   });
 
-  it("creates only the media_asset business table", async () => {
+  it("creates only the media_asset and teacher business tables", async () => {
     const { url } = await database;
 
     const tables = await query<{ table_name: string }>(
       url,
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
     );
 
-    expect(tables).toEqual([{ table_name: "media_asset" }]);
+    expect(tables).toEqual([
+      { table_name: "media_asset" },
+      { table_name: "teacher" },
+    ]);
   });
 });

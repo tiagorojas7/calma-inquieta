@@ -3,12 +3,15 @@ import { adminAccessFor } from "./admin-actor";
 import { createFakePublicCatalog } from "./fake-public-catalog";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { ok } from "~/modules/_shared";
+import { createSuppliersService } from "~/modules/materials";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
 import {
   buildRawSiteContent,
   createInMemorySiteContentSource,
 } from "./in-memory-site-content-source";
+import { fixedClock } from "./fixed-clock";
+import { InMemorySupplierRepository } from "./in-memory-supplier-repository";
 
 const OK_VIEW: SystemStatusView = {
   status: "ok",
@@ -56,10 +59,11 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/workshops").IntensivesService
       >(),
-    suppliers:
-      createUnavailableService<
-        import("~/modules/materials").SuppliersService
-      >(),
+    suppliers: createSuppliersService({
+      repository: new InMemorySupplierRepository(),
+      clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
+      newId: () => "supplier-test",
+    }),
     materials:
       createUnavailableService<
         import("~/modules/materials").MaterialsService

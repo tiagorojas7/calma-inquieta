@@ -59,16 +59,17 @@ describe("createAdminTestServices", () => {
     expect(period.status).toBe("open");
   });
 
-  it("fails closed on the intensives, suppliers and materials placeholders", async () => {
+  it("keeps intensives and materials unavailable while suppliers list is empty", async () => {
     const services = createAdminTestServices();
     const actor = testAdminActor();
-    const results = await Promise.all([
+    const [intensive, suppliers, materials] = await Promise.all([
       services.intensives.get(actor, "id"),
       services.suppliers.list(actor),
       services.materials.listSelectable(actor),
     ]);
-    for (const result of results)
-      expect(!result.ok && result.error).toEqual({ kind: "unavailable" });
+    expect(!intensive.ok && intensive.error).toEqual({ kind: "unavailable" });
+    expect(suppliers).toEqual({ ok: true, value: [] });
+    expect(!materials.ok && materials.error).toEqual({ kind: "unavailable" });
   });
 
   it("applies defaults and overrides in the intensive, supplier and material builders", () => {
@@ -123,12 +124,14 @@ describe("createTestServices", () => {
         .ok,
     ).toBe(false);
     const actor = testAdminActor();
-    for (const result of await Promise.all([
+    const [intensives, suppliers, materials] = await Promise.all([
       services.intensives.listVisible(actor),
       services.suppliers.list(actor),
       services.materials.categorySuggestions(actor),
-    ]))
-      expect(!result.ok && result.error).toEqual({ kind: "unavailable" });
+    ]);
+    expect(!intensives.ok && intensives.error).toEqual({ kind: "unavailable" });
+    expect(suppliers).toEqual({ ok: true, value: [] });
+    expect(!materials.ok && materials.error).toEqual({ kind: "unavailable" });
   });
 
   it("replaces one field and keeps the other defaults", async () => {

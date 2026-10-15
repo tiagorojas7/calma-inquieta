@@ -33,3 +33,8 @@
 - Work-unit commits: `6f089e5` feat(teachers): add teacher validation and service; `5ab9a2e` feat(teachers): persist teachers in Postgres.
 - Parent spot check: `corepack pnpm test src/modules/teachers src/testing/fakes/in-memory-teacher-repository.test.ts`: 4 files, 77/77 pass.
 - Full gate (2026-10-15, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 133 files, 1241/1241 PASS, coverage 98.84 % statements, 98.36 % branches.
+- RDD: assess risk `medium` (executable `drizzle/0002_teachers.sql`), review due (`slice_budget_reached`). Owner granted; one `review-reliability` lens; result **approved**, acknowledged (`review-4a248d2072fc849d`, authority burned).
+- Non-blocking follow-ups from the review (separate later work):
+  - R3-001: a concurrent create/update/reactivate that passes the duplicate check gets SQLSTATE 23505 from the unique index; the service throws instead of returning the typed duplicate-name `invalid` result. Map 23505 to that result and test it.
+  - R3-002: list order differs for non-ASCII names (fake `localeCompare("en")`, Postgres orders `name_key` by collation, byte order under C). Decide one ordering and add a non-ASCII contract case.
+  - R3-003: no test proves the NFC step of `teacherNameKey` (decomposed vs composed input).

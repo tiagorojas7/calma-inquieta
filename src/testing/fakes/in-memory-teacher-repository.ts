@@ -1,6 +1,11 @@
-import { teacherNameKey } from "~/modules/teachers/domain/teacher-core";
+import { err, ok, type NotFound, type Result } from "~/modules/_shared";
+import {
+  compareTeachersByName,
+  teacherNameKey,
+} from "~/modules/teachers/domain/teacher-core";
 import type { Teacher } from "~/modules/teachers";
 import type {
+  NameConflict,
   TeacherFilter,
   TeacherRepository,
 } from "~/modules/teachers/application/teacher-repository";
@@ -20,21 +25,22 @@ export class InMemoryTeacherRepository implements TeacherRepository {
     );
   }
 
-  insert(teacher: Teacher): Promise<void> {
+  insert(teacher: Teacher): Promise<Result<void, NameConflict>> {
     if (this.teachers.has(teacher.id))
       return Promise.reject(new Error("teacher already exists"));
     if (this.nameTakenByAnother(teacher))
-      return Promise.reject(new Error("active teacher name already taken"));
+      return Promise.resolve(err({ kind: "name-conflict" }));
     this.teachers.set(teacher.id, teacher);
-    return Promise.resolve();
+    return Promise.resolve(ok(undefined));
   }
 
-  update(teacher: Teacher): Promise<boolean> {
-    if (!this.teachers.has(teacher.id)) return Promise.resolve(false);
+  update(teacher: Teacher): Promise<Result<void, NameConflict | NotFound>> {
+    if (!this.teachers.has(teacher.id))
+      return Promise.resolve(err({ kind: "not-found" }));
     if (this.nameTakenByAnother(teacher))
-      return Promise.reject(new Error("active teacher name already taken"));
+      return Promise.resolve(err({ kind: "name-conflict" }));
     this.teachers.set(teacher.id, teacher);
-    return Promise.resolve(true);
+    return Promise.resolve(ok(undefined));
   }
 
   findById(id: string): Promise<Teacher | null> {
@@ -62,13 +68,7 @@ export class InMemoryTeacherRepository implements TeacherRepository {
     const selected = [...this.teachers.values()].filter(
       (teacher) => filter === "all" || teacher.active === (filter === "active"),
     );
-    selected.sort((a, b) => {
-      const byName = teacherNameKey(a.name).localeCompare(
-        teacherNameKey(b.name),
-        "en",
-      );
-      return byName !== 0 ? byName : a.id.localeCompare(b.id, "en");
-    });
+    selected.sort(compareTeachersByName);
     return Promise.resolve(selected);
   }
 }

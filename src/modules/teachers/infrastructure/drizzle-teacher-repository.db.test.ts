@@ -65,15 +65,34 @@ describe("createDrizzleTeacherRepository", () => {
     }
   });
 
-  it("reports an active-name collision with SQLSTATE 23505", async () => {
+  it("derives the typed name conflict from SQLSTATE 23505 on the active-name index", async () => {
+    const { repo, openSession } = await freshRepository();
+    await repo.insert(buildStoredTeacher());
+    const session = await openSession();
+    try {
+      const failure = await session.db
+        .execute(
+          sql`INSERT INTO teacher (id, name, name_key, bio_line, modality, updated_by, updated_at)
+              VALUES (${ID_B}, 'X', 'lucía pérez', 'bio', 'own', 'a@example.com', now())`,
+        )
+        .catch((e: unknown) => e);
+      expect(sqlState(failure)).toBe("23505");
+    } finally {
+      await session.close();
+    }
+
+    expect(
+      await repo.insert(buildStoredTeacher({ id: ID_B, name: "LUCÍA PÉREZ" })),
+    ).toEqual({ ok: false, error: { kind: "name-conflict" } });
+  });
+
+  it("still rejects a duplicate id instead of reporting a name conflict", async () => {
     const { repo } = await freshRepository();
     await repo.insert(buildStoredTeacher());
 
-    const failure = await repo
-      .insert(buildStoredTeacher({ id: ID_B, name: "LUCÍA PÉREZ" }))
-      .catch((e: unknown) => e);
-
-    expect(sqlState(failure)).toBe("23505");
+    await expect(
+      repo.insert(buildStoredTeacher({ name: "Otra" })),
+    ).rejects.toThrow();
   });
 
   it("refuses an unknown modality with SQLSTATE 23514", async () => {

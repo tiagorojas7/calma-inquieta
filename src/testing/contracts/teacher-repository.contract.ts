@@ -149,9 +149,11 @@ export function runTeacherRepositoryContract(
       const repo = await create();
       await repo.insert(buildStoredTeacher());
 
-      await expect(
-        repo.insert(buildStoredTeacher({ id: ID_B, name: "lucía pérez" })),
-      ).rejects.toThrow();
+      expect(
+        await repo.insert(
+          buildStoredTeacher({ id: ID_B, name: "lucía pérez" }),
+        ),
+      ).toEqual({ ok: false, error: { kind: "name-conflict" } });
     });
 
     it.each([
@@ -161,9 +163,9 @@ export function runTeacherRepositoryContract(
       const repo = await create();
       await repo.insert(buildStoredTeacher({ id: ID_A, name: first }));
 
-      await expect(
-        repo.insert(buildStoredTeacher({ id: ID_B, name: second })),
-      ).rejects.toThrow();
+      expect(
+        await repo.insert(buildStoredTeacher({ id: ID_B, name: second })),
+      ).toEqual({ ok: false, error: { kind: "name-conflict" } });
     });
 
     it("treats names that differ by an accent as different", async () => {
@@ -201,10 +203,13 @@ export function runTeacherRepositoryContract(
         },
       });
 
-      expect(await repo.update(changed)).toBe(true);
+      expect(await repo.update(changed)).toEqual({
+        ok: true,
+        value: undefined,
+      });
       expect(await repo.findById(ID_A)).toEqual(changed);
-      expect(await repo.update(buildStoredTeacher({ id: ID_UNKNOWN }))).toBe(
-        false,
+      expect(await repo.update(buildStoredTeacher({ id: ID_UNKNOWN }))).toEqual(
+        { ok: false, error: { kind: "not-found" } },
       );
     });
 
@@ -213,9 +218,10 @@ export function runTeacherRepositoryContract(
       await repo.insert(buildStoredTeacher({ id: ID_A, name: "Ana" }));
       await repo.insert(buildStoredTeacher({ id: ID_B, name: "Beto" }));
 
-      await expect(
-        repo.update(buildStoredTeacher({ id: ID_B, name: "ANA" })),
-      ).rejects.toThrow();
+      expect(
+        await repo.update(buildStoredTeacher({ id: ID_B, name: "ANA" })),
+      ).toEqual({ ok: false, error: { kind: "name-conflict" } });
+      expect((await repo.findById(ID_B))?.name).toBe("Beto");
     });
 
     it("rejects reactivating onto a name an active teacher now holds", async () => {
@@ -223,9 +229,39 @@ export function runTeacherRepositoryContract(
       await repo.insert(buildStoredTeacher({ id: ID_A, active: false }));
       await repo.insert(buildStoredTeacher({ id: ID_B }));
 
-      await expect(
-        repo.update(buildStoredTeacher({ id: ID_A, active: true })),
-      ).rejects.toThrow();
+      expect(
+        await repo.update(buildStoredTeacher({ id: ID_A, active: true })),
+      ).toEqual({ ok: false, error: { kind: "name-conflict" } });
+      expect((await repo.findById(ID_A))?.active).toBe(false);
+    });
+
+    it("detects a decomposed name as the same active name as its composed form", async () => {
+      const repo = await create();
+      await repo.insert(buildStoredTeacher({ id: ID_A, name: "Lucía" }));
+
+      expect(
+        await repo.insert(buildStoredTeacher({ id: ID_B, name: "Lucía" })),
+      ).toEqual({ ok: false, error: { kind: "name-conflict" } });
+    });
+
+    it("orders names by Spanish collation: accents and case do not outrank letters (Álvaro before ana because l comes before n), and Ñ sorts after N and before Z", async () => {
+      const repo = await create();
+      const names = ["Zoe", "Álvaro", "Ñandú", "Nora", "ana"];
+      for (const [index, name] of names.entries())
+        await repo.insert(
+          buildStoredTeacher({
+            id: `00000000-0000-4000-8000-00000000000${String(index)}`,
+            name,
+          }),
+        );
+
+      expect((await repo.list("all")).map((t) => t.name)).toEqual([
+        "Álvaro",
+        "ana",
+        "Nora",
+        "Ñandú",
+        "Zoe",
+      ]);
     });
 
     it("frees the name when a teacher is archived", async () => {

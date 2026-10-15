@@ -17,7 +17,7 @@
 - [x] T3. Shared repository contract run by the fake.
 - [x] T4. Schema `teachers.ts` and generated migration `0002_teachers`; journal checks stay green.
 - [x] T5. Drizzle repository passing the shared contract on embedded Postgres.
-- [ ] T6. Close: focused checks, lint, typecheck, full gate, commits, PR.
+- [x] T6. Close: focused checks, lint, typecheck, full gate, commits, PR.
 
 ## Evidence and progress
 
@@ -30,3 +30,6 @@
 - Verification: scoped test run 36 files / 282 tests pass; lint, typecheck, diff --check and prettier --check clean. One native crash 0xC0000409 on request-services.db.test.ts, rerun once, passed.
 - Design deviation (owner-approved 2026-10-14): the design's `UNIQUE INDEX ON (lower(name)) WHERE active` is replaced by a `name_key text NOT NULL` column (`teacherNameKey`: trim, NFC, `toLocaleLowerCase("es")`, accents kept) with the partial unique index on `name_key` WHERE active, because C-locale `lower()` does not fold non-ASCII capitals. RED: 5 db tests failed (LUCIA/Lucia and Nandu cases, column list, SQLSTATE 23505, find by name). GREEN after regenerating the single `0002_teachers` migration.
 - Deferred: (1) assignment warning is built by B4 from `listAssignmentsOfTeacher`; B3 archive never consults assignments and always succeeds. (2) resolved by the name_key deviation above. (3) Max name/bio length not specified: no too-long rule.
+- Work-unit commits: `6f089e5` feat(teachers): add teacher validation and service; `5ab9a2e` feat(teachers): persist teachers in Postgres.
+- Parent spot check: `corepack pnpm test src/modules/teachers src/testing/fakes/in-memory-teacher-repository.test.ts`: 4 files, 77/77 pass.
+- Full gate (2026-10-15, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 133 files, 1241/1241 PASS, coverage 98.84 % statements, 98.36 % branches.

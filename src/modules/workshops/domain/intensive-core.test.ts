@@ -5,6 +5,7 @@ import {
   checkTransition,
   cordobaLocalOf,
   startsInFuture,
+  unmetEditRules,
   unmetPublishRules,
   validateIntensiveCore,
   validateSchedule,
@@ -477,6 +478,9 @@ describe("checkTransition", () => {
   );
 });
 
+// The facts() schedule starts 2026-11-07 10:00 Córdoba (13:00 UTC).
+const BEFORE = new Date("2026-11-07T12:59:00Z");
+
 describe("unmetPublishRules", () => {
   const facts = (overrides: Partial<PublishFacts> = {}): PublishFacts => ({
     name: "Torno",
@@ -491,23 +495,27 @@ describe("unmetPublishRules", () => {
   });
 
   it("lists nothing for a complete intensivo", () => {
-    expect(unmetPublishRules(facts())).toEqual([]);
+    expect(unmetPublishRules(facts(), BEFORE)).toEqual([]);
     expect(
       unmetPublishRules(
         facts({
           assignment: { active: true, modality: "own", percentageBp: null },
         }),
+        BEFORE,
       ),
     ).toEqual([]);
   });
 
   it("names a missing or archived teacher alone", () => {
-    expect(unmetPublishRules(facts({ assignment: null }))).toEqual(["teacher"]);
+    expect(unmetPublishRules(facts({ assignment: null }), BEFORE)).toEqual([
+      "teacher",
+    ]);
     expect(
       unmetPublishRules(
         facts({
           assignment: { active: false, modality: "own", percentageBp: null },
         }),
+        BEFORE,
       ),
     ).toEqual(["teacher"]);
   });
@@ -522,6 +530,7 @@ describe("unmetPublishRules", () => {
             percentageBp: null,
           },
         }),
+        BEFORE,
       ),
     ).toEqual(["percentage"]);
   });
@@ -543,6 +552,7 @@ describe("unmetPublishRules", () => {
           minSeats: 1,
           assignment: null,
         }),
+        BEFORE,
       ),
     ).toEqual([
       "name",
@@ -558,10 +568,65 @@ describe("unmetPublishRules", () => {
 
   it("flags a deposit above the price and minimum seats above the capacity", () => {
     expect(
-      unmetPublishRules(facts({ deposit: pesos(30001), minSeats: 9 })),
+      unmetPublishRules(facts({ deposit: pesos(30001), minSeats: 9 }), BEFORE),
     ).toEqual(["deposit", "min-seats"]);
     expect(
-      unmetPublishRules(facts({ deposit: Money.zero(), minSeats: 0 })),
+      unmetPublishRules(facts({ deposit: Money.zero(), minSeats: 0 }), BEFORE),
     ).toEqual(["deposit", "min-seats"]);
+  });
+
+  it("accepts a start one Córdoba minute ahead", () => {
+    expect(unmetPublishRules(facts(), BEFORE)).toEqual([]);
+  });
+
+  it("refuses a start at the current Córdoba minute and after it", () => {
+    expect(
+      unmetPublishRules(facts(), new Date("2026-11-07T13:00:00Z")),
+    ).toEqual(["future-start"]);
+    expect(
+      unmetPublishRules(facts(), new Date("2026-11-07T13:00:59Z")),
+    ).toEqual(["future-start"]);
+    expect(
+      unmetPublishRules(facts(), new Date("2026-11-08T03:00:00Z")),
+    ).toEqual(["future-start"]);
+  });
+
+  it("places future-start after time-range and skips it for an invalid range", () => {
+    const after = new Date("2026-11-08T03:00:00Z");
+    expect(
+      unmetPublishRules(facts({ assignment: null, capacity: 0 }), after),
+    ).toEqual(["teacher", "future-start", "capacity", "min-seats"]);
+    expect(
+      unmetPublishRules(
+        facts({
+          schedule: {
+            eventDate: "2026-11-07",
+            startsAt: "18:00",
+            endsAt: "10:00",
+          },
+        }),
+        after,
+      ),
+    ).toEqual(["time-range"]);
+  });
+});
+
+describe("unmetEditRules", () => {
+  const facts: PublishFacts = {
+    name: "Torno",
+    slug: "torno",
+    schedule: { eventDate: "2020-01-04", startsAt: "10:00", endsAt: "18:00" },
+    price: pesos(30000),
+    deposit: pesos(10000),
+    capacity: 8,
+    minSeats: 4,
+    assignment: { active: true, modality: "own", percentageBp: null },
+  };
+
+  it("checks every publish rule except the future start", () => {
+    expect(unmetEditRules(facts)).toEqual([]);
+    expect(unmetEditRules({ ...facts, assignment: null, capacity: 0 })).toEqual(
+      ["teacher", "capacity", "min-seats"],
+    );
   });
 });

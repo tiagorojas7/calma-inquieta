@@ -301,6 +301,7 @@ export type PublishRuleName =
   | "teacher"
   | "percentage"
   | "time-range"
+  | "future-start"
   | "price"
   | "deposit"
   | "capacity"
@@ -321,9 +322,31 @@ export interface PublishFacts {
   } | null;
 }
 
-/** Every publish rule the stored facts fail, in a fixed order. */
+/**
+ * Every publish rule the stored facts fail, in a fixed order. A start not
+ * strictly after the current Córdoba minute fails `future-start`.
+ */
 export function unmetPublishRules(
   facts: PublishFacts,
+  now: Date,
+): readonly PublishRuleName[] {
+  return collectUnmetRules(facts, now);
+}
+
+/**
+ * The publish rules a published or paused intensivo must keep satisfying
+ * while it is edited: all of them except `future-start`. An event that
+ * already started stays editable; a schedule change is guarded separately.
+ */
+export function unmetEditRules(
+  facts: PublishFacts,
+): readonly PublishRuleName[] {
+  return collectUnmetRules(facts, null);
+}
+
+function collectUnmetRules(
+  facts: PublishFacts,
+  now: Date | null,
 ): readonly PublishRuleName[] {
   const unmet: PublishRuleName[] = [];
   const name = facts.name.trim();
@@ -340,6 +363,8 @@ export function unmetPublishRules(
   )
     unmet.push("percentage");
   if (!validateSchedule(facts.schedule).ok) unmet.push("time-range");
+  else if (now !== null && !startsInFuture(facts.schedule, now))
+    unmet.push("future-start");
   if (facts.price.compare(ZERO) <= 0) unmet.push("price");
   if (
     facts.deposit.compare(ZERO) <= 0 ||

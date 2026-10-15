@@ -355,6 +355,7 @@ export type IntensivePublishRule =
   | "teacher"
   | "percentage"
   | "time-range"
+  | "future-start"
   | "price"
   | "deposit"
   | "capacity"
@@ -378,7 +379,10 @@ export interface IntensivesService {
     a: AdminActor,
     id: string,
     d: IntensiveWorkshopDraft,
-  ): R<IntensiveWorkshop, Invalid<IntensiveWorkshopField>>;
+  ): R<
+    IntensiveWorkshop,
+    Invalid<IntensiveWorkshopField> | RulesUnmet<IntensivePublishRule>
+  >;
   delete(a: AdminActor, id: string): R<void, RulesUnmet<"draft-only">>;
   publish(
     a: AdminActor,

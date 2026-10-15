@@ -23,6 +23,7 @@ import {
   assignmentPercentage,
   checkTransition,
   startsInFuture,
+  unmetEditRules,
   unmetPublishRules,
   validateIntensiveCore,
   validateSchedule,
@@ -343,13 +344,27 @@ export function createIntensivesService(
     return saveInPlace({ ...current, status: to, audit: stamp(admin) });
   }
 
+  /**
+   * The publish rules a record fails. Publishing (and resuming) also needs a
+   * future start; editing a live record does not, because an event that has
+   * started stays editable and a schedule change is guarded on its own.
+   */
   async function unmetRules(
     current: StoredIntensive,
+    moment: "publish" | "edit",
+    /** The stored record an edit starts from; its assignment may be kept as is. */
+    previous?: StoredIntensive,
   ): Promise<RulesUnmet<IntensivePublishRule> | null> {
     const teacher = current.teacherId
       ? (await teachers.findByIds([current.teacherId])).get(current.teacherId)
       : undefined;
-    const rules = unmetPublishRules({
+    // An assignment left untouched survives the teacher's archiving.
+    const assignmentKept =
+      previous !== undefined &&
+      current.teacherId !== null &&
+      current.teacherId === previous.teacherId &&
+      current.percentage?.basisPoints === previous.percentage?.basisPoints;
+    const facts = {
       name: current.name,
       slug: current.slug,
       schedule: current,
@@ -359,12 +374,16 @@ export function createIntensivesService(
       minSeats: current.minSeats,
       assignment: teacher
         ? {
-            active: teacher.active,
+            active: teacher.active || assignmentKept,
             modality: teacher.modality,
             percentageBp: current.percentage?.basisPoints ?? null,
           }
         : null,
-    });
+    };
+    const rules =
+      moment === "publish"
+        ? unmetPublishRules(facts, clock.now())
+        : unmetEditRules(facts);
     return rules.length > 0 ? { kind: "rules-unmet", rules } : null;
   }
 
@@ -407,6 +426,11 @@ export function createIntensivesService(
       const fields = await resolveFields(draft, current);
       if (!fields.ok) return fields;
       const next = merge(current, fields.value, admin);
+      // A live intensivo must keep meeting the publish rules after the edit.
+      if (current.status === "published" || current.status === "paused") {
+        const unmet = await unmetRules(next, "edit", current);
+        if (unmet !== null) return err(unmet);
+      }
       const saved = await repository.update(next);
       if (saved.ok) return ok(await readModel(next));
       return saved.error.kind === "slug-conflict"
@@ -422,7 +446,10 @@ export function createIntensivesService(
         ? err(notFound)
         : err({ kind: "rules-unmet", rules: ["draft-only"] });
     },
-    publish: (actor, id) => transition(actor, id, "published", unmetRules),
+    publish: (actor, id) =>
+      transition(actor, id, "published", (current) =>
+        unmetRules(current, "publish"),
+      ),
     pause: (actor, id) => transition(actor, id, "paused"),
     cancel: (actor, id) => transition(actor, id, "cancelled"),
     archive: (actor, id) => transition(actor, id, "archived"),

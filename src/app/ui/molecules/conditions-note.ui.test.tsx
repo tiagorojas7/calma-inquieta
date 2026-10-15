@@ -46,3 +46,20 @@ describe("ConditionsNote", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("ConditionsNote heading level", () => {
+  it("renders an h3 by default and an h2 when asked", () => {
+    const { rerender } = render(
+      <ConditionsNote label="Condiciones" policyText="Texto." />,
+    );
+    expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent(
+      "Condiciones",
+    );
+    rerender(
+      <ConditionsNote label="Condiciones" policyText="Texto." level={2} />,
+    );
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Condiciones",
+    );
+  });
+});

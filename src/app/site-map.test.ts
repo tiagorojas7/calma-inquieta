@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import routes from "./routes";
 import { createTestServices } from "~/testing/fakes/app-services";
+import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
+import { buildPublicIntensivo } from "~/testing/fakes/public-catalog-builders";
+import { createLoaderArgs } from "~/testing/react-router";
+import { loader as intensivoLoader } from "./routes/intensivo";
 import { buildSitemapXml } from "./seo/sitemap";
 import { PUBLIC_PAGES } from "./site-map";
 
@@ -76,10 +80,14 @@ describe("public site map", () => {
     );
   });
 
-  it("maps /intensivos to the intensivos listing module", () => {
+  it("maps /intensivos and /intensivos/:slug to the catalog modules", () => {
+    const entries = flatten(routes);
+    expect(entries.find((entry) => entry.path === "/intensivos")?.file).toBe(
+      "routes/intensivos.tsx",
+    );
     expect(
-      flatten(routes).find((entry) => entry.path === "/intensivos")?.file,
-    ).toBe("routes/intensivos.tsx");
+      entries.find((entry) => entry.path === "/intensivos/:slug")?.file,
+    ).toBe("routes/intensivo.tsx");
   });
 
   it("maps /contacto to the contact page module", () => {
@@ -94,8 +102,24 @@ describe("public site map", () => {
     ).toBe("routes/about.tsx");
   });
 
-  it("keeps titles and descriptions unique across the six pages", async () => {
-    const { siteContent } = createTestServices();
+  it("keeps titles and descriptions unique across the pages and two intensivo details", async () => {
+    const services = createTestServices({
+      publicCatalog: createFakePublicCatalog({
+        intensivos: [
+          buildPublicIntensivo({
+            slug: "uno",
+            name: "Intensivo Uno",
+            summary: "Primer resumen.",
+          }),
+          buildPublicIntensivo({
+            slug: "dos",
+            name: "Intensivo Dos",
+            summary: "Segundo resumen.",
+          }),
+        ],
+      }),
+    });
+    const { siteContent } = services;
     const [home, about, contact, talleres, eventos, catalog] =
       await Promise.all([
         siteContent.getHomePage(),
@@ -113,8 +137,21 @@ describe("public site map", () => {
       eventos,
       catalog.intensivos,
     ].map((page) => page.seo);
-    expect(new Set(seo.map((entry) => entry.title)).size).toBe(6);
-    expect(new Set(seo.map((entry) => entry.description)).size).toBe(6);
+    const details = await Promise.all(
+      ["uno", "dos"].map(async (slug) => {
+        const result = await intensivoLoader({
+          ...createLoaderArgs(services, `/intensivos/${slug}`),
+          params: { slug },
+        } as never);
+        return {
+          title: result.metaInput.title,
+          description: result.metaInput.description,
+        };
+      }),
+    );
+    const all = [...seo, ...details];
+    expect(new Set(all.map((entry) => entry.title)).size).toBe(8);
+    expect(new Set(all.map((entry) => entry.description)).size).toBe(8);
   });
 
   it("lists exactly the four indexable pages in the sitemap", () => {

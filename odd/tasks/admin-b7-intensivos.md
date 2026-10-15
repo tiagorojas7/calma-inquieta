@@ -19,7 +19,7 @@
 - [ ] T5. After B8a merges: rebase, schema, generated migration, Drizzle repository passing the contract on embedded Postgres (checklist below).
 - [ ] T5b. Owner decision: publish (and restore to `published`) requires a start strictly after the current Córdoba minute, typed `rules-unmet` (RED then GREEN, domain, service and contract where relevant).
 - [ ] T5c. Review finding: `update` on `published`/`paused` re-checks the publish rules and refuses with the typed `rules-unmet` result (RED then GREEN).
-- [ ] T6. Close: full gate, commits, PR.
+- [x] T6. Close: full gate, commits, PR.
 
 PR2 route: delegated direct (T5 touches 4+ files to read and 2+ non-trivial files to write), one bounded writer for T5, T5b and T5c; the parent spot-checks, commits, gates and opens the PR.
 
@@ -89,3 +89,13 @@ PR2 route: delegated direct (T5 touches 4+ files to read and 2+ non-trivial file
 - T5 adapter RED: `drizzle-intensive-repository.db.test.ts` failed (Cannot find module `./drizzle-intensive-repository`). GREEN: 43 tests (21 contract + 22 extra db cases).
 - Deviations: schema is `src/platform/db/schema/workshops.ts` (exported from `schema.ts`); the PK constraint is named `intensive_image_pkey`; `position` allows 0-5 (six images). Extra db cases beyond the checklist: 12 check violations (23514), unknown teacher/asset (23503), update rollback on a failing gallery, cascade on draft delete, insert/update slug race, session closing. No eslint config change (all folders already classified); nothing wired into `src/composition/**`.
 - Verification: `corepack pnpm test src/modules/workshops src/testing src/platform src/composition tooling/architecture`: 38 files, 476 tests pass; `lint`, `typecheck`, `format:check`, `git diff --check`: clean.
+
+## PR2 delivery
+
+- Work-unit commits: `0010c27` feat(workshops): persist intensivos in Postgres; `7f9cab8` feat(workshops): require a future start to publish and re-check rules on edit; `2ded8fd` docs(odd): record B7 phase 2 progress.
+- Parent spot check: `corepack pnpm test src/modules/workshops src/testing/fakes/in-memory-intensive-repository.test.ts`: 6 files, 249/249 pass (before the archived-teacher adjustment; the writer then reported `src/modules/workshops src/testing` 21 files, 349/349 pass).
+- Full gate (2026-10-15, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 141 files, 1547/1547 PASS, coverage 98.09 % statements, 97.02 % branches.
+- Size: about 447 non-test, non-generated production lines (schema 114, adapter 264, service 35, core 27, contracts 6, schema index 1), plus tests and the generated migration and snapshot.
+- RDD: assess `medium` (executable `drizzle/0004_intensive_workshops.sql`), review due (`slice_budget_reached`); owner granted; the first bound STATUS timed out while the full gate was running and passed on retry after it; one `review-reliability` lens, **approved**, acknowledged (`review-2e4c4d05a27c4585`, authority burned).
+- Non-blocking follow-up from the review (separate later work):
+  - [ ] R3-edit-same-day-earlier-start-unproved: no test proves that an edit on a `published`/`paused` intensivo that moves the start earlier on the same date, into the past, is refused with `eventDate/in-past` (`intensive-service.ts` update path).

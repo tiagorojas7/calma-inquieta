@@ -1,11 +1,18 @@
 import type { AdminActor } from "~/modules/admin-access";
 import type {
   AdminFailure,
+  Audit,
   Invalid,
   NotFound,
   Result,
 } from "~/modules/_shared";
-export type TeacherModality = "own" | "third_party";
+import type {
+  TeacherDraft,
+  TeacherField,
+  TeacherModality,
+} from "../domain/teacher-core";
+
+export type { TeacherDraft, TeacherField, TeacherModality };
 export interface Teacher {
   readonly id: string;
   readonly name: string;
@@ -14,16 +21,8 @@ export interface Teacher {
   readonly email: string | null;
   readonly modality: TeacherModality;
   readonly active: boolean;
-  readonly audit: { updatedBy: string; updatedAt: Date };
+  readonly audit: Audit;
 }
-export interface TeacherDraft {
-  readonly name: string;
-  readonly bioLine: string;
-  readonly phone: string;
-  readonly email: string;
-  readonly modality: string;
-}
-export type TeacherField = "name" | "bioLine" | "phone" | "email" | "modality";
 export interface TeachersService {
   list(
     actor: AdminActor,

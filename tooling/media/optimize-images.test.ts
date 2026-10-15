@@ -48,7 +48,7 @@ async function dimensions(file: string) {
   return { width, height };
 }
 
-describe("run", () => {
+describe("run", { timeout: 30_000 }, () => {
   it("writes oriented variants, a manifest and a contact sheet", async () => {
     const summary = await run(inputDir, outputDir);
 

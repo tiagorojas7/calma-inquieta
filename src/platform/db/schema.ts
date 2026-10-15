@@ -3,3 +3,4 @@
 export * from "./schema/materials";
 export * from "./schema/media";
 export * from "./schema/teachers";
+export * from "./schema/workshops";

@@ -12,11 +12,7 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     .replace(/\.data$/, "")
     .slice(requestPathname.lastIndexOf("/") + 1);
   const candidate = (params as { slug?: string }).slug ?? pathname;
-  const supportedSlugs = [
-    "talleres",
-    "intensivos",
-    "eventos-privados",
-  ] as const;
+  const supportedSlugs = ["talleres", "eventos-privados"] as const;
   if (!supportedSlugs.includes(candidate as (typeof supportedSlugs)[number])) {
     throw data(null, { status: 404 });
   }

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSeed,
+  createSeededPublicCatalog,
   fullyPopulatedSeed,
   PRIVACY_SENTINELS,
   seedIntensivo,
   seedMediaLookup,
   seedTeacherLookup,
 } from "./catalog-seed";
+import { fixedClock } from "./fixed-clock";
 import { createInMemoryPublicIntensivoRecords } from "./in-memory-public-catalog-records";
 
 const FROM = { fromDate: "2026-11-01" };
@@ -142,5 +144,19 @@ describe("the seed lookups", () => {
 
     expect([...teachers.keys()]).toEqual([teacherId]);
     expect([...assets.keys()]).toEqual([assetId]);
+  });
+});
+
+describe("createSeededPublicCatalog", () => {
+  it("serves the seed through the real intensivos reader and no talleres yet", async () => {
+    const catalog = createSeededPublicCatalog(
+      fullyPopulatedSeed(),
+      fixedClock(new Date("2026-10-15T15:00:00Z")),
+    );
+
+    expect((await catalog.intensivos.list()).map((item) => item.slug)).toEqual([
+      "intensivo-demo",
+    ]);
+    expect(await catalog.talleres.list()).toEqual([]);
   });
 });

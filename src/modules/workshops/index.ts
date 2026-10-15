@@ -7,3 +7,4 @@ export {
   type IntensiveServiceDeps,
   type IntensiveUseCases,
 } from "./application/intensive-service";
+export { createPublicIntensivosReader } from "./application/public-intensivos-reader";

@@ -1,8 +1,15 @@
-import { Money } from "~/modules/_shared";
+import { Money, type Clock } from "~/modules/_shared";
 import type { MediaAsset, MediaLookup } from "~/modules/media";
 import type { Teacher, TeacherLookup } from "~/modules/teachers";
-import type { CatalogImageRef, IntensiveStatus } from "~/modules/workshops";
+import {
+  createPublicIntensivosReader,
+  type CatalogImageRef,
+  type IntensiveStatus,
+  type PublicCatalogService,
+} from "~/modules/workshops";
 import { buildMediaAsset, buildTeacher } from "./admin-builders";
+import { createFakePublicCatalog } from "./fake-public-catalog";
+import { createInMemoryPublicIntensivoRecords } from "./in-memory-public-catalog-records";
 
 /**
  * What the change-3 tables hold, in the shape the catalog tests share: the
@@ -185,5 +192,24 @@ export function seedMediaLookup(seed: CatalogSeed): MediaLookup {
             .map((asset) => [asset.id, asset]),
         ),
       ),
+  };
+}
+
+/**
+ * The real readers over in-memory records and seed lookups, for loader privacy
+ * tests (PC14, delivery level). The talleres reader joins in C4-B3.
+ */
+export function createSeededPublicCatalog(
+  seed: CatalogSeed,
+  clock: Clock,
+): PublicCatalogService {
+  return {
+    talleres: createFakePublicCatalog().talleres,
+    intensivos: createPublicIntensivosReader({
+      records: createInMemoryPublicIntensivoRecords(seed),
+      teachers: seedTeacherLookup(seed),
+      media: seedMediaLookup(seed),
+      clock,
+    }),
   };
 }

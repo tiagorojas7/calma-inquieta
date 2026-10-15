@@ -10,7 +10,9 @@ import type { CatalogSeed, SeedIntensivo } from "./catalog-seed";
  * in published/paused, `eventDate >= fromDate`) and select the same columns.
  */
 
-function toRecord(row: SeedIntensivo): PublicIntensivoRecord {
+export function toPublicIntensivoRecord(
+  row: SeedIntensivo,
+): PublicIntensivoRecord {
   return {
     slug: row.slug,
     name: row.name,
@@ -43,12 +45,14 @@ export function createInMemoryPublicIntensivoRecords(
     );
   return {
     listVisible: ({ fromDate }) =>
-      Promise.resolve(visible(fromDate).map(toRecord)),
+      Promise.resolve(visible(fromDate).map(toPublicIntensivoRecord)),
     findVisibleBySlug: (slug, { fromDate }) => {
       const row = visible(fromDate).find(
         (candidate) => candidate.slug === slug,
       );
-      return Promise.resolve(row === undefined ? null : toRecord(row));
+      return Promise.resolve(
+        row === undefined ? null : toPublicIntensivoRecord(row),
+      );
     },
     listVisibleSlugs: ({ fromDate }) =>
       Promise.resolve(visible(fromDate).map((row) => row.slug)),

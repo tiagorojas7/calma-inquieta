@@ -39,6 +39,19 @@ describe("workshop contract helpers", () => {
       expect(parsePercentage(input)).toEqual(err(error));
     expect(parsePercentage("0")).toEqual(ok({ basisPoints: 0 }));
     expect(parsePercentage("100")).toEqual(ok({ basisPoints: 10000 }));
+    // Exact basis points: no floating-point drift (1.15 * 100 is 114.99...).
+    const exact = [
+      ["1.15", 115],
+      ["0.29", 29],
+      ["4.35", 435],
+      ["0.07", 7],
+      ["12,5", 1250],
+      ["35.5", 3550],
+      ["007", 700],
+      ["100.00", 10000],
+    ] as const;
+    for (const [input, basisPoints] of exact)
+      expect(parsePercentage(input)).toEqual(ok({ basisPoints }));
     for (const input of ["", "2026-2", "2026-13", "26-02", "2026/02"]) {
       expect(parsePeriodKey(input)).toEqual(err("invalid-format"));
     }

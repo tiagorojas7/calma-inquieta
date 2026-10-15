@@ -24,9 +24,10 @@ export function parsePercentage(
   const value = text.trim().replace(",", ".");
   if (!value) return err("required");
   if (!/^\d+(?:\.\d+)?$/.test(value)) return err("invalid-format");
-  const decimals = value.split(".")[1]?.length ?? 0;
-  if (decimals > 2) return err("too-many-decimals");
-  const basisPoints = Number(value) * 100;
+  const [whole = "", fraction = ""] = value.split(".");
+  if (fraction.length > 2) return err("too-many-decimals");
+  // Integer arithmetic on the digits: Number("1.15") * 100 drifts.
+  const basisPoints = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
   return basisPoints <= 10000
     ? { ok: true, value: { basisPoints } }
     : err("out-of-range");

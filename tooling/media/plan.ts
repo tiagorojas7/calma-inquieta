@@ -45,7 +45,7 @@ export function planOutputNames(fileNames: readonly string[]): PlannedImage[] {
     const name = outputBaseName(source);
     const count = (used.get(name) ?? 0) + 1;
     used.set(name, count);
-    return { source, base: count === 1 ? name : `${name}-${count}` };
+    return { source, base: count === 1 ? name : `${name}-${String(count)}` };
   });
 }
 

@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "typecheck": "wrangler types && react-router typegen && tsc -b",
     "db:generate": "drizzle-kit generate",
+    "media:optimize": "tsx tooling/media/optimize-images.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "typegen": "wrangler types && react-router typegen",
     "dev": "react-router dev",

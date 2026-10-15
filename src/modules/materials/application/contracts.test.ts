@@ -107,6 +107,9 @@ describe("materials contract signatures", () => {
       ErrorOf<ReturnType<SuppliersService["archive"]>>
     >().toEqualTypeOf<AdminFailure | NotFound>();
     expectTypeOf<
+      ErrorOf<ReturnType<SuppliersService["reactivate"]>>
+    >().toEqualTypeOf<AdminFailure | NotFound | Invalid<"name">>();
+    expectTypeOf<
       ErrorOf<ReturnType<MaterialsService["create"]>>
     >().toEqualTypeOf<AdminFailure | MaterialError>();
     expectTypeOf<

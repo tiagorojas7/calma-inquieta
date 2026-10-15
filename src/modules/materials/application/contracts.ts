@@ -7,6 +7,9 @@ import type {
   Result,
 } from "~/modules/_shared";
 import type { ImageUse, ImageUseDraft } from "~/modules/media";
+import type { SupplierDraft, SupplierField } from "../domain/supplier-core";
+
+export type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export const DEFAULT_VARIANT_LABEL = "Única";
 export interface Supplier {
@@ -18,13 +21,6 @@ export interface Supplier {
   readonly active: boolean;
   readonly audit: Audit;
 }
-export interface SupplierDraft {
-  readonly name: string;
-  readonly phone: string;
-  readonly email: string;
-  readonly notes: string;
-}
-export type SupplierField = "name" | "phone" | "email" | "notes";
 export interface SuppliersService {
   list(
     a: AdminActor,
@@ -52,7 +48,7 @@ export interface SuppliersService {
   reactivate(
     a: AdminActor,
     id: string,
-  ): Promise<Result<Supplier, AdminFailure | NotFound>>;
+  ): Promise<Result<Supplier, AdminFailure | NotFound | Invalid<"name">>>;
 }
 export interface MaterialVariant {
   readonly id: string;

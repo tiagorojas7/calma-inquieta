@@ -54,9 +54,10 @@ Phase 1: `src/modules/materials/**` (domain, application, index), `src/testing/f
 - Phase-2 work-unit commit: `f3957e7` (`feat(materials): persist suppliers in Postgres`), 14 files, 647 insertions / 9 deletions including generated migration/snapshot and this doc update.
 - RDD ASSESS for `b919cfb..f3957e7`: native assessment unavailable (`schema incompatible`), risk `unassessable`. The implementation writer observed schema GREEN and its DB run reported 20/20 before the host cutoff; a separate read-only verifier reran DB 20/20 with clean exit and completed aggregate/static verification. No native review approval is claimed.
 - Full gate (2026-10-15, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `test:coverage`, and `build` PASS. Coverage: 137 files / 1296 tests; 98.1% statements, 97.11% branches, 97.93% functions, 99.26% lines. Build: client 7.45 s, SSR 10.04 s. Eight jsdom canvas "Not implemented" messages were non-fatal and pre-existing test-environment noise.
+- Native review: INSPECT prepared the committed `ae210a4..88d9b4e` candidate, but ordinary START failed before authority with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). No retry, receipt or approval is claimed. Final ASSESS with `nativeReviewOutcome: unavailable` also returned `unassessable` because native assess was schema-incompatible; the required writer/self and independent-verifier evidence plus full gate are recorded above.
 - Gate-lock incident: the first wait script misclassified Claude's fresh UTC lock as stale, but process inspection immediately found Claude's active `test:coverage`; B8a ran no gate command, restored the original lock, and waited for the owner-confirmed release. B8a then acquired its own lock, ran the gate sequentially, and released it.
 - Worktree reused from B1b: uncommitted `odd/tasks/admin-b1b-gate.md` preserved in stash "preserve uncommitted b1b-gate doc before b8a worktree reuse"; branch `feat/admin-catalog-b1b-worker-deploy` left untouched (not pushed to origin).
 
 ## Next step
 
-- Run the native candidate review path, record final evidence, push, and open the PR with `size:exception`; owner merges.
+- Commit this review outcome, push the feature branch, and open the PR with `size:exception`; owner merges.

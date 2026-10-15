@@ -64,3 +64,10 @@
    - `deleteDraft`: one `DELETE ... WHERE id = $1 AND status = 'draft'`, then distinguish `not-draft` from `not-found` by a read in the same transaction; images cascade.
    - Extra db cases: CHECK violations reject (deposit above price, min seats above capacity, percentage without teacher, bad slug); `RESTRICT` when deleting a teacher or media asset in use; a race on the slug index.
 5. Wire nothing into `src/composition/**` in this slice unless the PR needs it (`createUnavailableService` stays until the admin routes slice).
+
+## PR1 delivery (phase 1, owner approved size:exception 2026-10-15)
+
+- Work-unit commits: `baa84a1` fix(workshops): parse percentages without float drift; `c0165cd` feat(workshops): add intensivo rules, service and repository contract.
+- Parent spot check: `corepack pnpm test src/modules/workshops src/testing/fakes/in-memory-intensive-repository.test.ts`: 5 files, 188/188 pass.
+- Full gate (under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 1417/1419, the two failures are the known W1 full-load flakes (`src/platform/migrate-script.test.ts` subprocess `status: null`, `tooling/architecture/architecture.test.ts` 120 s timeout). Isolated rerun of both files: 2 files, 19/19 PASS. The coverage table is not printed when a test fails, so CI's `test:coverage` on the PR is the coverage proof; the writer's scoped run of `src/modules/workshops/**` reported 98.99 % statements, 97.74 % branches.
+- Owner decisions 2026-10-15: publish MUST require a start strictly after the current Córdoba minute (implement with TDD in PR2); editing cancelled or archived intensivos IS allowed (keep); admin list newest-first (keep).

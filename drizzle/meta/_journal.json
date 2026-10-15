@@ -29,6 +29,13 @@
       "when": 1792067963339,
       "tag": "0003_suppliers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792078248060,
+      "tag": "0004_intensive_workshops",
+      "breakpoints": true
     }
   ]
 }

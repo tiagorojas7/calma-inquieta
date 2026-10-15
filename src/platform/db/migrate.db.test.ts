@@ -64,7 +64,7 @@ describe("runMigrations", () => {
     expect(after).toEqual(before);
   });
 
-  it("creates the media_asset, supplier, and teacher business tables", async () => {
+  it("creates only the business tables", async () => {
     const { url } = await database;
 
     const tables = await query<{ table_name: string }>(
@@ -73,6 +73,8 @@ describe("runMigrations", () => {
     );
 
     expect(tables).toEqual([
+      { table_name: "intensive_image" },
+      { table_name: "intensive_workshop" },
       { table_name: "media_asset" },
       { table_name: "supplier" },
       { table_name: "teacher" },

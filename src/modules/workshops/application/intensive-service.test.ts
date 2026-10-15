@@ -517,6 +517,150 @@ describe("update", () => {
     ).toMatchObject({ ok: true, value: { capacity: 9, status: "published" } });
   });
 
+  it.each(["published", "paused"] as const)(
+    "refuses an update that clears the teacher of a %s intensivo and persists nothing",
+    async (status) => {
+      const { repository, service } = setup();
+      const created = valueOf(await service.create(owner, draft()));
+      valueOf(await service.publish(owner, created.id));
+      if (status === "paused") valueOf(await service.pause(owner, created.id));
+      const before = repository.items.get(created.id);
+
+      expect(
+        await service.update(
+          owner,
+          created.id,
+          draft({
+            slug: created.slug,
+            name: "Otro nombre",
+            teacherId: "",
+            percentage: "",
+          }),
+        ),
+      ).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["teacher"] },
+      });
+      expect(repository.items.get(created.id)).toBe(before);
+    },
+  );
+
+  it("keeps refusing a missing percentage of a third-party teacher on a published intensivo", async () => {
+    const { repository, service } = setup();
+    const created = valueOf(await service.create(owner, draft()));
+    valueOf(await service.publish(owner, created.id));
+    const before = repository.items.get(created.id);
+
+    expect(
+      await service.update(
+        owner,
+        created.id,
+        draft({ slug: created.slug, percentage: "" }),
+      ),
+    ).toEqual(invalid({ field: "percentage", code: "required" }));
+    expect(repository.items.get(created.id)).toBe(before);
+  });
+
+  it.each(["published", "paused"] as const)(
+    "keeps a %s intensivo editable after its assigned teacher was archived",
+    async (status) => {
+      const { teacherRepository, service } = setup();
+      const created = valueOf(await service.create(owner, draft()));
+      valueOf(await service.publish(owner, created.id));
+      if (status === "paused") valueOf(await service.pause(owner, created.id));
+      teacherRepository.teachers.set("t-paid", { ...PAID, active: false });
+
+      expect(
+        await service.update(
+          owner,
+          created.id,
+          draft({ slug: created.slug, description: "Descripción corregida" }),
+        ),
+      ).toMatchObject({
+        ok: true,
+        value: { description: "Descripción corregida", status },
+      });
+    },
+  );
+
+  it("still refuses to clear or change the percentage of an archived teacher's published intensivo", async () => {
+    const { teacherRepository, service } = setup();
+    const created = valueOf(await service.create(owner, draft()));
+    valueOf(await service.publish(owner, created.id));
+    teacherRepository.teachers.set("t-paid", { ...PAID, active: false });
+
+    expect(
+      await service.update(
+        owner,
+        created.id,
+        draft({ slug: created.slug, teacherId: "", percentage: "" }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "rules-unmet", rules: ["teacher"] },
+    });
+    expect(
+      await service.update(
+        owner,
+        created.id,
+        draft({ slug: created.slug, percentage: "60" }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "rules-unmet", rules: ["teacher"] },
+    });
+  });
+
+  it("reports field issues before unmet publish rules", async () => {
+    const { service } = setup();
+    const created = valueOf(await service.create(owner, draft()));
+    valueOf(await service.publish(owner, created.id));
+
+    expect(
+      await service.update(
+        owner,
+        created.id,
+        draft({ slug: created.slug, teacherId: "", percentage: "", price: "" }),
+      ),
+    ).toMatchObject({ ok: false, error: { kind: "invalid" } });
+  });
+
+  it("does not re-check the future start on an edit that keeps the schedule", async () => {
+    const { clock, service } = setup();
+    const created = valueOf(await service.create(owner, draft()));
+    valueOf(await service.publish(owner, created.id));
+    clock.advance(40 * 24 * 3600 * 1000);
+
+    expect(
+      await service.update(
+        owner,
+        created.id,
+        draft({ slug: created.slug, name: "Ya ocurrió" }),
+      ),
+    ).toMatchObject({ ok: true, value: { name: "Ya ocurrió" } });
+  });
+
+  it.each(["draft", "cancelled", "archived"] as const)(
+    "lets a %s intensivo drop its teacher",
+    async (status) => {
+      const { service } = setup();
+      const created = valueOf(await service.create(owner, draft()));
+      if (status === "cancelled") {
+        valueOf(await service.publish(owner, created.id));
+        valueOf(await service.cancel(owner, created.id));
+      } else if (status === "archived")
+        valueOf(await service.archive(owner, created.id));
+
+      expect(
+        await service.update(
+          owner,
+          created.id,
+          draft({ slug: created.slug, teacherId: "", percentage: "" }),
+        ),
+      ).toMatchObject({ ok: true, value: { assignment: null, status } });
+    },
+  );
+
   it("lets a draft change to a past date", async () => {
     const { service } = setup();
     const created = valueOf(await service.create(owner, draft()));
@@ -718,6 +862,74 @@ describe("lifecycle", () => {
     teacherRepository.teachers.set("t-paid", PAID);
     expect(await service.publish(owner, created.id)).toMatchObject({
       value: { status: "published" },
+    });
+  });
+
+  describe("future start", () => {
+    // 2026-11-07 10:00 Córdoba is 13:00 UTC.
+    const startMs = Date.parse("2026-11-07T13:00:00Z");
+
+    it("refuses to publish a start that already passed and stays a draft", async () => {
+      const { repository, clock, service, created } = await drafted();
+      clock.advance(startMs + 3_600_000 - START.getTime());
+
+      expect(await service.publish(owner, created.id)).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["future-start"] },
+      });
+      expect(repository.items.get(created.id)?.status).toBe("draft");
+    });
+
+    it("publishes one minute before the start and refuses the exact minute", async () => {
+      const { clock, service, created } = await drafted();
+      clock.advance(startMs - 60_000 - START.getTime());
+      expect(await service.publish(owner, created.id)).toMatchObject({
+        ok: true,
+        value: { status: "published" },
+      });
+
+      const second = await drafted();
+      second.clock.advance(startMs - START.getTime());
+      expect(await second.service.publish(owner, second.created.id)).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["future-start"] },
+      });
+    });
+
+    it("still refuses within the start minute, seconds in", async () => {
+      const { clock, service, created } = await drafted();
+      clock.advance(startMs + 59_000 - START.getTime());
+
+      expect(await service.publish(owner, created.id)).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["future-start"] },
+      });
+    });
+
+    it("refuses to restore a paused intensivo whose start passed", async () => {
+      const { repository, clock, service, created } = await drafted();
+      valueOf(await service.publish(owner, created.id));
+      valueOf(await service.pause(owner, created.id));
+      clock.advance(startMs + 60_000 - START.getTime());
+
+      expect(await service.publish(owner, created.id)).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["future-start"] },
+      });
+      expect(repository.items.get(created.id)?.status).toBe("paused");
+    });
+
+    it("lists future-start with the other unmet rules", async () => {
+      const { clock, service, created } = await drafted({
+        teacherId: "",
+        percentage: "",
+      });
+      clock.advance(startMs + 60_000 - START.getTime());
+
+      expect(await service.publish(owner, created.id)).toEqual({
+        ok: false,
+        error: { kind: "rules-unmet", rules: ["teacher", "future-start"] },
+      });
     });
   });
 

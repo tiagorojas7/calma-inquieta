@@ -1,7 +1,7 @@
 # Admin B7: intensivos
 
 - Work unit: task 11 of `openspec/changes/admin-catalog/tasks.md` (B7). ODD, BACK.
-- Branch/worktree: `feat/admin-catalog-b7-intensivos` from `origin/main` `ae210a4`, in `../CalmaInquieta-front`.
+- Branch/worktree: `feat/admin-catalog-b7-intensivos` from `origin/main` `ae210a4`, in `../CalmaInquieta-front` (PR1, merged as #44). PR2: `feat/admin-catalog-b7-intensivos-db` from `origin/main` `360a354` (after B8a #46 and the teachers follow-ups #45); next free migration number `0004`.
 - Objective: deliver intensivos (one-date time range, deposit bounds, capacity and minimum seats, teacher assignment with percentage, lifecycle, future reschedule, visibility, draft-only delete) with a fake and a Drizzle repository that pass one shared contract, plus the schema extension and generated migration.
 - Why: B7 unblocks the change-4 intensivos chain (C4-B2 reader, C4-F1 listing and detail).
 - Spec and design: `openspec/changes/admin-catalog/specs/intensive-workshops/spec.md`, the intensivo sections of `design.md`, and the existing contract seam in `src/modules/workshops/application/contracts.ts` (B0b).
@@ -17,7 +17,11 @@
 - [x] T3. Application service with the in-memory fake, including actor audit and the teacher lookup.
 - [x] T4. Shared repository contract run by the fake.
 - [ ] T5. After B8a merges: rebase, schema, generated migration, Drizzle repository passing the contract on embedded Postgres (checklist below).
-- [ ] T6. Close: full gate, commits, PR.
+- [ ] T5b. Owner decision: publish (and restore to `published`) requires a start strictly after the current Córdoba minute, typed `rules-unmet` (RED then GREEN, domain, service and contract where relevant).
+- [ ] T5c. Review finding: `update` on `published`/`paused` re-checks the publish rules and refuses with the typed `rules-unmet` result (RED then GREEN).
+- [x] T6. Close: full gate, commits, PR.
+
+PR2 route: delegated direct (T5 touches 4+ files to read and 2+ non-trivial files to write), one bounded writer for T5, T5b and T5c; the parent spot-checks, commits, gates and opens the PR.
 
 ## Evidence and progress
 
@@ -74,3 +78,24 @@
 - RDD: assess `medium`, review due (`slice_budget_reached`); owner granted; `review-reliability` **approved**, acknowledged (`review-9a1f69d0b3cb20f3`, authority burned). Non-blocking findings, both scheduled for PR2 with TDD:
   - R3-update-bypasses-publish-rules: `update` on a `published`/`paused` intensivo does not re-check the publish rules, so clearing the teacher leaves it published without an assignment. PR2: re-apply the publish rules on `update` for `published`/`paused` and refuse with the typed `rules-unmet` result.
   - R3-publish-no-future-check: the owner's future-start rule (above) is not yet enforced.
+
+## Evidence and progress (PR2)
+
+- T5b RED: `domain/intensive-core.test.ts`, 3 failed (`unmetEditRules is not a function`; future-start expectations). GREEN: 94 domain tests pass. Service RED (T5b and T5c together): 8 failed in `intensive-service.test.ts` (5 future-start publish/restore cases, 3 update re-check cases). GREEN: 20 files, 304 tests pass across `src/modules/workshops` and `src/testing`.
+- New rule code: `future-start` (placed right after `time-range`; skipped when the time range is itself invalid, so it never double-reports). `unmetPublishRules(facts, now)` includes it; `unmetEditRules(facts)` is the same list without it. Publish and the paused-to-published restore use the first; the exact current Córdoba minute is refused, one minute earlier is accepted (tested).
+- T5c decision: `update` on `published`/`paused` runs `unmetEditRules` on the merged record after field validation passes (field issues are reported first as `invalid`) and returns `rules-unmet` without writing. The future-start rule is NOT part of this re-check: the existing `eventDate/in-past` guard already refuses a changed schedule that starts in the past, and an unchanged schedule that has since passed must stay editable (existing test kept). Consequences: clearing the teacher is `rules-unmet ["teacher"]`; a third-party percentage removal is still caught earlier as `invalid percentage/required`; a published or paused intensivo whose assigned teacher was archived since stays editable (see the owner decision below). `IntensivesService.update` now types `RulesUnmet<IntensivePublishRule>`; `IntensivePublishRule` gained `future-start`. Not a repository concern, so no contract change.
+- T5c owner decision (2026-10-15): a published or paused intensivo whose already-assigned teacher was archived later MUST stay editable without reassigning; the phase 1 rule that an existing assignment survives the archiving now holds in every status. The update re-check treats the teacher as active only when the edit keeps both the teacher id and the percentage; clearing the teacher, changing the percentage or assigning another teacher on such a record is still checked (`rules-unmet ["teacher"]`, or `not-selectable`/`unknown-reference` for a new archived or unknown teacher). RED: `keeps a published|paused intensivo editable after its assigned teacher was archived`, 2 failed (2 failed | 81 passed). GREEN: `src/modules/workshops` + `src/testing`, 21 files, 349 tests pass.
+- T5 RED: stale expectations (`database-probe.contract.ts`, `in-memory-database-probe.test.ts`, `migration-catalog.test.ts`, `request-services.db.test.ts`, `migrate.db.test.ts` table list, runbook) set to `0004_intensive_workshops` first: 3 failed (latest migration `0003_suppliers`; table list). Migration generated with `corepack pnpm db:generate --name intensive_workshops` as `drizzle/0004_intensive_workshops.sql` (+ `meta/0004_snapshot.json`, journal). GREEN: 7 files, 38 tests pass.
+- T5 adapter RED: `drizzle-intensive-repository.db.test.ts` failed (Cannot find module `./drizzle-intensive-repository`). GREEN: 43 tests (21 contract + 22 extra db cases).
+- Deviations: schema is `src/platform/db/schema/workshops.ts` (exported from `schema.ts`); the PK constraint is named `intensive_image_pkey`; `position` allows 0-5 (six images). Extra db cases beyond the checklist: 12 check violations (23514), unknown teacher/asset (23503), update rollback on a failing gallery, cascade on draft delete, insert/update slug race, session closing. No eslint config change (all folders already classified); nothing wired into `src/composition/**`.
+- Verification: `corepack pnpm test src/modules/workshops src/testing src/platform src/composition tooling/architecture`: 38 files, 476 tests pass; `lint`, `typecheck`, `format:check`, `git diff --check`: clean.
+
+## PR2 delivery
+
+- Work-unit commits: `0010c27` feat(workshops): persist intensivos in Postgres; `7f9cab8` feat(workshops): require a future start to publish and re-check rules on edit; `2ded8fd` docs(odd): record B7 phase 2 progress.
+- Parent spot check: `corepack pnpm test src/modules/workshops src/testing/fakes/in-memory-intensive-repository.test.ts`: 6 files, 249/249 pass (before the archived-teacher adjustment; the writer then reported `src/modules/workshops src/testing` 21 files, 349/349 pass).
+- Full gate (2026-10-15, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 141 files, 1547/1547 PASS, coverage 98.09 % statements, 97.02 % branches.
+- Size: about 447 non-test, non-generated production lines (schema 114, adapter 264, service 35, core 27, contracts 6, schema index 1), plus tests and the generated migration and snapshot.
+- RDD: assess `medium` (executable `drizzle/0004_intensive_workshops.sql`), review due (`slice_budget_reached`); owner granted; the first bound STATUS timed out while the full gate was running and passed on retry after it; one `review-reliability` lens, **approved**, acknowledged (`review-2e4c4d05a27c4585`, authority burned).
+- Non-blocking follow-up from the review (separate later work):
+  - [ ] R3-edit-same-day-earlier-start-unproved: no test proves that an edit on a `published`/`paused` intensivo that moves the start earlier on the same date, into the past, is refused with `eventDate/in-past` (`intensive-service.ts` update path).

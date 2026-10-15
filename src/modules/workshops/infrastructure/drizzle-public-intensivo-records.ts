@@ -33,9 +33,7 @@ const COLUMNS = {
   status: intensiveWorkshop.status,
 };
 
-type Row = {
-  [K in keyof typeof COLUMNS]: (typeof COLUMNS)[K]["_"]["data"];
-};
+type Row = Pick<typeof intensiveWorkshop.$inferSelect, keyof typeof COLUMNS>;
 
 function toMoney(centavos: number): Money {
   const money = Money.fromCentavos(centavos);

@@ -1,4 +1,6 @@
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import { afterAll, describe, expect, it } from "vitest";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { runPublicIntensivosContract } from "~/testing/contracts/public-catalog.contract";
 import { seedCatalog } from "~/testing/db/seed-catalog";
@@ -21,29 +23,36 @@ afterAll(async () => {
 
 type OpenSession = ReturnType<typeof createDbSessionFactory>;
 
-async function seededDatabase(seed: CatalogSeed) {
+async function seededWithUrl(seed: CatalogSeed) {
   const database = await createTestDatabase();
   created.push(database);
   const openSession = createDbSessionFactory({
     connectionString: database.url,
   });
   await seedCatalog(openSession, seed);
-  return openSession;
+  return { openSession, url: database.url };
+}
+
+async function seededDatabase(seed: CatalogSeed) {
+  return (await seededWithUrl(seed)).openSession;
 }
 
 /** A session factory that counts the statements its sessions send. */
-function counting(openSession: OpenSession) {
+function counting(connectionString: string) {
   let statements = 0;
   const open: OpenSession = async () => {
-    const session = await openSession();
-    const original = session.db.$client.query.bind(session.db.$client);
-    vi.spyOn(session.db.$client, "query").mockImplementation(((
-      ...args: unknown[]
-    ) => {
-      statements += 1;
-      return (original as (...a: unknown[]) => unknown)(...args);
-    }) as never);
-    return session;
+    const client = new pg.Client({ connectionString });
+    await client.connect();
+    return {
+      db: drizzle(client, {
+        logger: {
+          logQuery: () => {
+            statements += 1;
+          },
+        },
+      }),
+      close: () => client.end(),
+    };
   };
   return { open, statements: () => statements };
 }
@@ -158,7 +167,7 @@ describe("the Drizzle public intensivo records", () => {
   it.each([1, 5])(
     "sends two statements per call for %i intensivos",
     async (count) => {
-      const openSession = await seededDatabase(
+      const { url } = await seededWithUrl(
         buildSeed({
           assets: fullyPopulatedSeed().assets,
           teachers: fullyPopulatedSeed().teachers,
@@ -175,9 +184,9 @@ describe("the Drizzle public intensivo records", () => {
           ),
         }),
       );
-      const list = counting(openSession);
-      const bySlug = counting(openSession);
-      const slugs = counting(openSession);
+      const list = counting(url);
+      const bySlug = counting(url);
+      const slugs = counting(url);
 
       await createDrizzlePublicIntensivoRecords(list.open).listVisible(FROM);
       await createDrizzlePublicIntensivoRecords(bySlug.open).findVisibleBySlug(

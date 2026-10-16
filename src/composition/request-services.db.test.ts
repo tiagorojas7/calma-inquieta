@@ -13,7 +13,11 @@ import { createDbSessionFactory } from "~/platform/db/session";
 import { createIsolateState, createRequestServices } from "./request-services";
 
 const UNREACHABLE_URL = "postgres://postgres@127.0.0.1:1/none";
-const SITE = { siteUrl: "https://calma.example.test", indexingEnabled: false };
+const SITE = {
+  siteUrl: "https://calma.example.test",
+  indexingEnabled: false,
+  mediaBucket: null,
+};
 
 // Creating a database is the slow part of these tests, so each test file keeps
 // the number small: one shared migrated database plus one that a test drops.
@@ -121,6 +125,7 @@ describe("createRequestServices", () => {
         databaseUrl: UNREACHABLE_URL,
         buildCommit: "abc",
         siteUrl: "https://calma.example.workers.dev",
+        mediaBucket: null,
         indexingEnabled: true,
       },
       {},

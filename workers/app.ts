@@ -17,6 +17,7 @@ import {
 } from "~/composition/admin-gate";
 import { readAdminConfig } from "~/platform/admin-env";
 import { withAdminHeaders } from "~/platform/admin-headers";
+import { readMediaBinding } from "~/platform/r2";
 import { formatEnvError, readWorkerEnv } from "~/platform/env";
 import {
   unavailableResponse,
@@ -101,6 +102,7 @@ export async function handleRequest(
     buildCommit: parsed.value.BUILD_COMMIT,
     siteUrl: parsed.value.SITE_URL,
     indexingEnabled: parsed.value.SITE_INDEXING,
+    mediaBucket: readMediaBinding(env),
   };
   const url = requestUrl(request);
   if (!url) return unavailableResponse();

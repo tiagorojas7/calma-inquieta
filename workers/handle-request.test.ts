@@ -345,3 +345,21 @@ describe("handleRequest", () => {
     },
   );
 });
+
+describe("handleRequest without the MEDIA binding", () => {
+  it("still serves a public page", async () => {
+    const route = handler(new Response("home", { status: 200 }));
+
+    const response = await handleRequest(
+      new Request("https://calma.test/"),
+      env,
+      runtime,
+      createIsolateState(),
+      route,
+      "development",
+    );
+
+    expect(response.status).toBe(200);
+    expect(route).toHaveBeenCalledOnce();
+  });
+});

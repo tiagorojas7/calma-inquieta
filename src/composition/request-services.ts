@@ -15,7 +15,11 @@ import {
   createAccessKeyCacheCell,
   type AccessKeyCacheCell,
 } from "~/modules/admin-access/infrastructure/access-verifier";
-import type { MediaService } from "~/modules/media";
+import { createMediaService, type MediaService } from "~/modules/media";
+import { createDrizzleMediaAssetRepository } from "~/modules/media/infrastructure/drizzle-media-asset-repository";
+import { createR2ImageStorage } from "~/modules/media/infrastructure/r2-image-storage";
+import { createUnavailableImageStorage } from "~/modules/media/infrastructure/unavailable-image-storage";
+import type { R2BucketLike } from "~/platform/r2";
 import { createTeacherLookup, type TeachersService } from "~/modules/teachers";
 import { createDrizzleTeacherRepository } from "~/modules/teachers/infrastructure/drizzle-teacher-repository";
 import {
@@ -62,6 +66,8 @@ export interface RuntimeConfig {
   readonly buildCommit: string;
   readonly siteUrl: string;
   readonly indexingEnabled: boolean;
+  /** `null` when the `MEDIA` binding is absent: images degrade, pages do not. */
+  readonly mediaBucket: R2BucketLike | null;
 }
 
 // Static data with no connection to open: one reader serves every request (DS4).
@@ -113,7 +119,13 @@ export function createRequestServices(
       indexingEnabled: config.indexingEnabled,
     },
     adminAccess: { kind: "not-evaluated" },
-    media: createUnavailableService<MediaService>(),
+    media: createMediaService({
+      storage: config.mediaBucket
+        ? createR2ImageStorage(config.mediaBucket)
+        : createUnavailableImageStorage(),
+      repository: createDrizzleMediaAssetRepository(openSession),
+      clock: systemClock,
+    }),
     teachers: createUnavailableService<TeachersService>(),
     monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),
     workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),

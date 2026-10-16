@@ -28,3 +28,9 @@ A repeatable `pnpm media:optimize <inputDir> <outputDir>` that turns raw client 
 - T3: RED was `Cannot find module './optimize-images'`; GREEN was 19 passed in `tooling/media`. Commit `08578d6`. A 1000 px wide oriented source gets 480 and 960 variants only (no 1600, since that would upscale).
 - T4: note in `docs/design/brand-swap-guide.md`; `.gitignore` gets `media-originals/`.
 - Route: delegated direct, one writer. Review tier: not assessed here (parent owns it).
+
+## Delivery
+
+- Rebased on origin/main `dbe29c2` (commits `7cdec15`, `5443c68`, `338853d`).
+- Real run on the client folder (2026-10-15): 181 photos processed, 54 videos skipped as unsupported, input 118.72 MB, output 34.71 MB; outputs in `../CalmaInquieta-media/optimized` (outside the repo).
+- Full gate (2026-10-16, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 154/155 files, 1697 tests passed; the only failure was the known native Vitest crash `0xC0000409` on `drizzle-supplier-repository.db.test.ts`. Isolated rerun of that file plus `tooling/media`: 3 files, 39/39 PASS.

@@ -9,6 +9,11 @@ const env = {
   SITE_INDEXING: "off",
   DEV_ADMIN_EMAIL: "owner@example.test",
   ADMIN_EMAILS: "owner@example.test",
+  MEDIA: {
+    put: () => Promise.resolve(),
+    get: () => Promise.resolve(null),
+    delete: () => Promise.resolve(),
+  },
 };
 
 const runtime = { waitUntil: () => undefined };
@@ -346,20 +351,110 @@ describe("handleRequest", () => {
   );
 });
 
-describe("handleRequest without the MEDIA binding", () => {
-  it("still serves a public page", async () => {
-    const route = handler(new Response("home", { status: 200 }));
+describe("handleRequest without a usable MEDIA binding", () => {
+  it("warns once and still serves public requests when MEDIA is absent", async () => {
+    const { MEDIA: _, ...envWithoutMedia } = env;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const isolate = createIsolateState();
+
+    expect(Object.hasOwn(envWithoutMedia, "MEDIA")).toBe(false);
+
+    const firstResponse = await handleRequest(
+      new Request("https://calma.test/"),
+      envWithoutMedia,
+      runtime,
+      isolate,
+      handler(new Response("home", { status: 200 })),
+      "development",
+    );
+    const secondResponse = await handleRequest(
+      new Request("https://calma.test/about"),
+      envWithoutMedia,
+      runtime,
+      isolate,
+      handler(new Response("about", { status: 200 })),
+      "development",
+    );
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("MEDIA binding is unavailable.");
+  });
+
+  it("warns once for repeated requests with a malformed binding without exposing its value", async () => {
+    const malformedMedia = { credential: "secret" };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const isolate = createIsolateState();
+    const malformedEnv = { ...env, MEDIA: malformedMedia };
+
+    const firstResponse = await handleRequest(
+      new Request("https://calma.test/"),
+      malformedEnv,
+      runtime,
+      isolate,
+      handler(new Response("home", { status: 200 })),
+      "development",
+    );
+    const secondResponse = await handleRequest(
+      new Request("https://calma.test/about"),
+      malformedEnv,
+      runtime,
+      isolate,
+      handler(new Response("about", { status: 200 })),
+      "development",
+    );
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith("MEDIA binding is unavailable.");
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining(malformedMedia),
+    );
+  });
+
+  it("warns once for each isolate with an unavailable binding", async () => {
+    const { MEDIA: _, ...envWithoutMedia } = env;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const firstResponse = await handleRequest(
+      new Request("https://calma.test/"),
+      envWithoutMedia,
+      runtime,
+      createIsolateState(),
+      handler(new Response("home", { status: 200 })),
+      "development",
+    );
+    const secondResponse = await handleRequest(
+      new Request("https://calma.test/about"),
+      envWithoutMedia,
+      runtime,
+      createIsolateState(),
+      handler(new Response("about", { status: 200 })),
+      "development",
+    );
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenNthCalledWith(1, "MEDIA binding is unavailable.");
+    expect(warn).toHaveBeenNthCalledWith(2, "MEDIA binding is unavailable.");
+  });
+
+  it("does not warn for a structural R2 bucket", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const response = await handleRequest(
       new Request("https://calma.test/"),
       env,
       runtime,
       createIsolateState(),
-      route,
+      handler(new Response("home", { status: 200 })),
       "development",
     );
 
     expect(response.status).toBe(200);
-    expect(route).toHaveBeenCalledOnce();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

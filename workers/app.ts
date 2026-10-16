@@ -33,6 +33,15 @@ export type RouterHandler = (
   context: RouterContextProvider,
 ) => Promise<Response>;
 
+const isolatesWithUnavailableMedia = new WeakSet<IsolateState>();
+
+function warnUnavailableMediaOnce(isolate: IsolateState): void {
+  if (isolatesWithUnavailableMedia.has(isolate)) return;
+
+  isolatesWithUnavailableMedia.add(isolate);
+  console.warn("MEDIA binding is unavailable.");
+}
+
 function plainDeniedResponse(): Response {
   return new Response("No tenés acceso al panel.", {
     status: 403,
@@ -85,7 +94,7 @@ function createServices(
 
 export async function handleRequest(
   request: Request,
-  env: object,
+  env: Record<string, unknown>,
   runtime: WorkerContext,
   isolate: IsolateState,
   handler: RouterHandler,
@@ -97,12 +106,15 @@ export async function handleRequest(
     return unavailableResponse();
   }
 
+  const mediaBucket = readMediaBinding(env);
+  if (mediaBucket === null) warnUnavailableMediaOnce(isolate);
+
   const runtimeConfig = {
     databaseUrl: parsed.value.HYPERDRIVE.connectionString,
     buildCommit: parsed.value.BUILD_COMMIT,
     siteUrl: parsed.value.SITE_URL,
     indexingEnabled: parsed.value.SITE_INDEXING,
-    mediaBucket: readMediaBinding(env),
+    mediaBucket,
   };
   const url = requestUrl(request);
   if (!url) return unavailableResponse();

@@ -202,7 +202,9 @@ The response contains `data-status="ok"` and the latest migration `0004_intensiv
 
 Do this once, **before** the first deploy of the change that adds the `MEDIA` binding to `wrangler.jsonc` (admin catalog B2b). A deploy that names a bucket which does not exist fails, and no code path creates a bucket for you. It needs no new GitHub secret and no new Worker variable: the binding and both bucket names are committed in `wrangler.jsonc`.
 
-In your own terminal, in the repository checkout, signed in as in C4:
+First, enable R2 on the account. This is a one-time step, done only in the dashboard. Open Cloudflare, go to **R2 Object Storage**, choose **Enable R2** (or **Purchase R2 Plan**), and accept the terms. The free tier covers this site; check the plan details the dashboard shows before you confirm. If you skip this step, `bucket create` fails with `Please enable R2 through the Cloudflare Dashboard. [code: 10042]`.
+
+Then, in your own terminal, in the repository checkout, signed in as in C4:
 
 ```sh
 pnpm exec wrangler r2 bucket create calma-inquieta-media

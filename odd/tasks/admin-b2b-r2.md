@@ -51,7 +51,7 @@ Focused tests, `corepack pnpm lint`, `corepack pnpm typecheck`, `corepack pnpm f
 - Non-blocking follow-ups from the review (separate later work):
   - [ ] R3-orphan-object-on-metadata-failure (WARNING): an upload that stores the R2 object and then fails to write the metadata row leaves an orphan object (`request-services.ts`).
   - [ ] R3-overwrite-guard-sim-only (WARNING): the `etagDoesNotMatch` no-overwrite guard is only proven on the local simulation.
-  - [ ] R4-silent-binding-degradation (WARNING): a missing or malformed `MEDIA` binding degrades silently; log it once with the binding name only.
+  - [x] R4-silent-binding-degradation (WARNING): complete; an absent or malformed `MEDIA` binding logs the fixed names-only warning once per Worker isolate while public requests remain fail-soft.
   - [x] R4-r2-proxy-startup-timeout (WARNING): complete; `src/modules/media/infrastructure/r2-image-storage.r2.test.ts` already sets an explicit `beforeAll(..., 60_000)` timeout.
   - [x] R2-runbook-teardown-order (WARNING): complete; the full-teardown guidance now requires emptying and verifying both private buckets before deleting preview, then production.
   - [ ] Suggestions: `db` project name now also covers the R2 suite; duplicated image-type literals in the adapter; `media-binding.test.ts` catches all errors; the worker test does not prove that the binding is absent; the R2 suite is coupled to the db global setup.

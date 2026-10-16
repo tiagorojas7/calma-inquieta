@@ -36,7 +36,7 @@ No full gate may run while B6 owns or is preparing to own `C:/Temp/calma-gate.lo
 ## Tasks
 
 - [x] **T1 — Harden the bounded R2 operational follow-ups.** Record the pre-existing explicit proxy-startup timeout, clarify teardown order, run focused checks, independently verify the diff, and create one Conventional Commit.
-- [ ] **T2 — Report unavailable MEDIA binding once per isolate.** Prove missing, malformed, repeated, and valid binding behavior with strict TDD; keep public responses fail-soft; independently verify and create one Conventional Commit.
+- [x] **T2 — Report unavailable MEDIA binding once per isolate.** Prove missing, malformed, repeated, and valid binding behavior with strict TDD; keep public responses fail-soft; independently verify and create one Conventional Commit.
 
 ## Evidence
 
@@ -48,4 +48,6 @@ No full gate may run while B6 owns or is preparing to own `C:/Temp/calma-gate.lo
 - T2 RED: `corepack pnpm test workers/handle-request.test.ts` failed 2 warning assertions because no warning was emitted.
 - T2 GREEN: focused Worker test passed 40/40 after triangulating absent, malformed, repeated same-isolate, distinct-isolate, and valid binding cases.
 - T2 independent verification: PASS; targeted Prettier and `git diff --check origin/main` passed.
-- T2 full gate deferred to avoid overlap with B6; native review and commit pending.
+- T2 work-unit commit: `c709e4b26d849f7d1597128da1dcada75d9201d2` (`fix(worker): report unavailable media binding once`).
+- T2 native review: unavailable; START failed before lineage creation with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). ASSESS treated the candidate as high/unassessable and required writer self-verification plus an independent verifier; both passed.
+- T2 full gate deferred to avoid overlap with B6; focused behavior test, formatting, diff check, structural readback, and independent verification passed.

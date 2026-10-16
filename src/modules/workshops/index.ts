@@ -16,6 +16,19 @@ export {
   type WorkshopPeriodLookup,
 } from "./application/monthly-workshop-service";
 export type { IntensiveRepository } from "./application/intensive-repository";
+export type {
+  DeletePeriodOutcome,
+  PeriodExists,
+  StoredWorkshopPeriod,
+  WorkshopPeriodRepository,
+} from "./application/workshop-period-repository";
+export {
+  createPeriodTurnoUsageLookup,
+  createWorkshopPeriodLookup,
+  createWorkshopPeriodsService,
+  type WorkshopPeriodServiceDeps,
+  type WorkshopPeriodUseCases,
+} from "./application/workshop-period-service";
 export {
   createIntensivesService,
   type IntensiveServiceDeps,

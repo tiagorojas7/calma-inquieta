@@ -1,0 +1,383 @@
+import {
+  err,
+  ok,
+  type AdminFailure,
+  type Clock,
+  type FieldIssue,
+  type Invalid,
+  type NotFound,
+  type Result,
+  type RulesUnmet,
+  type TransitionRefused,
+} from "~/modules/_shared";
+import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
+import type { MediaLookup } from "~/modules/media";
+import type { TeacherLookup } from "~/modules/teachers";
+import {
+  assignmentPercentage,
+  checkMonthlyTransition,
+  unmetMonthlyPublishRules,
+  validateMonthlyCore,
+  type MonthlyCore,
+  type PercentageSubmission,
+} from "../domain/monthly-workshop-core";
+import {
+  parsePercentage,
+  slugify,
+  type MonthlyWorkshop,
+  type MonthlyWorkshopDraft,
+  type MonthlyWorkshopField,
+  type MonthlyWorkshopsService,
+  type Percentage,
+  type WorkshopPublishRule,
+  type WorkshopStatus,
+} from "./contracts";
+import type {
+  MonthlyWorkshopRepository,
+  StoredMonthlyWorkshop,
+} from "./monthly-workshop-repository";
+type MaybeActor = AdminActor | null | undefined;
+export type MonthlyWorkshopUseCases = {
+  [K in keyof MonthlyWorkshopsService]: MonthlyWorkshopsService[K] extends (
+    actor: AdminActor,
+    ...rest: infer Rest
+  ) => infer Return
+    ? (actor: MaybeActor, ...rest: Rest) => Return
+    : never;
+};
+export interface ActiveTurnoLookup {
+  countActiveForWorkshop(workshopId: string): Promise<number>;
+}
+/** Read-only seam until B6 owns period persistence. */
+export interface WorkshopPeriodLookup {
+  hasPeriods(workshopId: string): Promise<boolean>;
+}
+export interface MonthlyWorkshopServiceDeps {
+  readonly repository: MonthlyWorkshopRepository;
+  readonly teachers: TeacherLookup;
+  readonly media: MediaLookup;
+  readonly activeTurnos: ActiveTurnoLookup;
+  readonly periods: WorkshopPeriodLookup;
+  readonly clock: Clock;
+  readonly newId?: () => string;
+}
+const live: readonly WorkshopStatus[] = ["draft", "published", "paused"];
+const visible: readonly WorkshopStatus[] = ["published", "paused"];
+const duplicate: FieldIssue<"slug"> = { field: "slug", code: "duplicate" };
+const notFound: NotFound = { kind: "not-found" };
+const submission = (text: string): PercentageSubmission => {
+  if (!text.trim()) return { kind: "blank" };
+  const parsed = parsePercentage(text);
+  return parsed.ok
+    ? { kind: "value", basisPoints: parsed.value.basisPoints }
+    : parsed.error === "required"
+      ? { kind: "blank" }
+      : { kind: "invalid", code: parsed.error };
+};
+
+export function createMonthlyWorkshopsService(
+  deps: MonthlyWorkshopServiceDeps,
+): MonthlyWorkshopUseCases {
+  const { repository, teachers, activeTurnos, periods, clock } = deps;
+  const newId = deps.newId ?? (() => crypto.randomUUID());
+  const stamp = (actor: AdminActor) => ({
+    updatedBy: actor.email,
+    updatedAt: clock.now(),
+  });
+  const model = async (
+    stored: StoredMonthlyWorkshop,
+  ): Promise<MonthlyWorkshop> => {
+    const teacher = stored.teacherId
+      ? (await teachers.findByIds([stored.teacherId])).get(stored.teacherId)
+      : undefined;
+    return {
+      id: stored.id,
+      slug: stored.slug,
+      name: stored.name,
+      summary: stored.summary,
+      description: stored.description,
+      technique: stored.technique,
+      defaultFee: stored.defaultFee,
+      assignment: teacher
+        ? {
+            teacher: {
+              id: teacher.id,
+              name: teacher.name,
+              active: teacher.active,
+            },
+            percentage: stored.percentage,
+          }
+        : null,
+      images: [],
+      status: stored.status,
+      turnos: [],
+      audit: stored.audit,
+    };
+  };
+  async function fields(
+    draft: MonthlyWorkshopDraft,
+    current: StoredMonthlyWorkshop | null,
+  ): Promise<
+    Result<
+      {
+        core: MonthlyCore;
+        teacherId: string | null;
+        percentage: Percentage | null;
+      },
+      Invalid<MonthlyWorkshopField>
+    >
+  > {
+    const slug = draft.slug.trim() || slugify(draft.name);
+    const core = validateMonthlyCore({ ...draft, slug });
+    const issues: FieldIssue<MonthlyWorkshopField>[] = core.ok
+      ? []
+      : [...core.error.issues];
+    const teacherId = draft.teacherId.trim();
+    let percentage: Percentage | null = null;
+    if (teacherId) {
+      const teacher = (await teachers.findByIds([teacherId])).get(teacherId);
+      if (!teacher)
+        issues.push({ field: "teacherId", code: "unknown-reference" });
+      else if (!teacher.active && teacherId !== current?.teacherId)
+        issues.push({ field: "teacherId", code: "not-selectable" });
+      else {
+        const value = assignmentPercentage(
+          teacher.modality,
+          submission(draft.percentage),
+        );
+        if (!value.ok) issues.push(value.error);
+        else
+          percentage =
+            value.value === null ? null : { basisPoints: value.value };
+      }
+    } else if (draft.percentage.trim())
+      issues.push({ field: "teacherId", code: "required" });
+    if (core.ok) {
+      const holder = await repository.findBySlug(slug);
+      if (holder && holder.id !== current?.id) issues.push(duplicate);
+    }
+    return !core.ok || issues.length
+      ? err({ kind: "invalid", issues })
+      : ok({ core: core.value, teacherId: teacherId || null, percentage });
+  }
+  const stored = (
+    base: { id: string; status: WorkshopStatus },
+    resolved: {
+      core: MonthlyCore;
+      teacherId: string | null;
+      percentage: Percentage | null;
+    },
+    actor: AdminActor,
+  ): StoredMonthlyWorkshop => ({
+    ...base,
+    ...resolved.core,
+    teacherId: resolved.teacherId,
+    percentage: resolved.percentage,
+    audit: stamp(actor),
+  });
+  async function load(
+    actor: MaybeActor,
+    id: string,
+  ): Promise<
+    Result<
+      { value: StoredMonthlyWorkshop; actor: AdminActor },
+      AdminFailure | NotFound
+    >
+  > {
+    const admin = requireAdminActor(actor);
+    if (!admin.ok) return admin;
+    const value = await repository.findById(id);
+    return value ? ok({ value, actor: admin.value }) : err(notFound);
+  }
+  async function transition(
+    actor: MaybeActor,
+    id: string,
+    status: WorkshopStatus,
+  ): Promise<
+    Result<
+      MonthlyWorkshop,
+      | AdminFailure
+      | NotFound
+      | TransitionRefused<WorkshopStatus>
+      | RulesUnmet<WorkshopPublishRule>
+    >
+  > {
+    const loaded = await load(actor, id);
+    if (!loaded.ok) return loaded;
+    const allowed = checkMonthlyTransition(loaded.value.value.status, status);
+    if (!allowed.ok) return allowed;
+    const current = loaded.value.value;
+    if (status === "published") {
+      const teacher = current.teacherId
+        ? (await teachers.findByIds([current.teacherId])).get(current.teacherId)
+        : undefined;
+      const rules = unmetMonthlyPublishRules({
+        name: current.name,
+        slug: current.slug,
+        defaultFee: current.defaultFee,
+        assignment: teacher
+          ? {
+              active: teacher.active,
+              modality: teacher.modality,
+              percentageBp: current.percentage?.basisPoints ?? null,
+            }
+          : null,
+        activeTurnos: await activeTurnos.countActiveForWorkshop(current.id),
+      });
+      if (rules.length) return err({ kind: "rules-unmet", rules });
+    }
+    const next = { ...current, status, audit: stamp(loaded.value.actor) };
+    const saved = await repository.update(next);
+    if (!saved.ok)
+      throw new Error("workshop vanished or conflicting during transition");
+    return ok(await model(next));
+  }
+  async function nonPublishTransition(
+    actor: MaybeActor,
+    id: string,
+    status: WorkshopStatus,
+  ): Promise<
+    Result<
+      MonthlyWorkshop,
+      AdminFailure | NotFound | TransitionRefused<WorkshopStatus>
+    >
+  > {
+    const result = await transition(actor, id, status);
+    if (result.ok) return result;
+    if (result.error.kind === "rules-unmet")
+      throw new Error("unexpected publish rules");
+    return err(result.error);
+  }
+  return {
+    async list(actor, filter) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const items = await repository.list(
+        filter.status === "live" ? live : [filter.status],
+      );
+      return ok(
+        await Promise.all(
+          items.map(async (item) => {
+            const teacher = item.teacherId
+              ? (await teachers.findByIds([item.teacherId])).get(item.teacherId)
+              : undefined;
+            return {
+              id: item.id,
+              name: item.name,
+              teacherName: teacher?.name ?? null,
+              status: item.status,
+              activeTurnos: await activeTurnos.countActiveForWorkshop(item.id),
+              acceptsNewRequests: item.status === "published",
+            };
+          }),
+        ),
+      );
+    },
+    async listVisible(actor) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const items = await repository.list(visible);
+      return ok(
+        await Promise.all(
+          items.map(async (item) => {
+            const teacher = item.teacherId
+              ? (await teachers.findByIds([item.teacherId])).get(item.teacherId)
+              : undefined;
+            return {
+              id: item.id,
+              name: item.name,
+              teacherName: teacher?.name ?? null,
+              status: item.status,
+              activeTurnos: await activeTurnos.countActiveForWorkshop(item.id),
+              acceptsNewRequests: item.status === "published",
+            };
+          }),
+        ),
+      );
+    },
+    async get(actor, id) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const item = await repository.findById(id);
+      return item ? ok(await model(item)) : err(notFound);
+    },
+    async create(actor, draft) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      if (draft.images.length > 0) return err({ kind: "unavailable" });
+      const resolved = await fields(draft, null);
+      if (!resolved.ok) return resolved;
+      const value = stored(
+        { id: newId(), status: "draft" },
+        resolved.value,
+        admin.value,
+      );
+      const inserted = await repository.insert(value);
+      return inserted.ok
+        ? ok(await model(value))
+        : err({ kind: "invalid", issues: [duplicate] });
+    },
+    async update(actor, id, draft) {
+      const loaded = await load(actor, id);
+      if (!loaded.ok) return loaded;
+      if (draft.images.length > 0) return err({ kind: "unavailable" });
+      const resolved = await fields(draft, loaded.value.value);
+      if (!resolved.ok) return resolved;
+      if (
+        loaded.value.value.status === "published" &&
+        draft.slug.trim() &&
+        draft.slug.trim() !== loaded.value.value.slug &&
+        !draft.confirmSlugChange
+      )
+        return err({
+          kind: "invalid",
+          issues: [{ field: "slug", code: "confirmation-required" }],
+        });
+      const value = stored(
+        loaded.value.value,
+        resolved.value,
+        loaded.value.actor,
+      );
+      const saved = await repository.update(value);
+      return saved.ok
+        ? ok(await model(value))
+        : saved.error.kind === "slug-conflict"
+          ? err({ kind: "invalid", issues: [duplicate] })
+          : err(notFound);
+    },
+    async delete(actor, id) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const current = await repository.findById(id);
+      if (!current) return err(notFound);
+      if (current.status !== "draft" || (await periods.hasPeriods(id)))
+        return err({ kind: "rules-unmet", rules: ["draft-without-periods"] });
+      const result = await repository.deleteDraft(id);
+      return result === "deleted"
+        ? ok(undefined)
+        : result === "not-found"
+          ? err(notFound)
+          : err({ kind: "rules-unmet", rules: ["draft-without-periods"] });
+    },
+    publish: (actor, id) => transition(actor, id, "published"),
+    pause: (actor, id) => nonPublishTransition(actor, id, "paused"),
+    archive: (actor, id) => nonPublishTransition(actor, id, "archived"),
+    restore: (actor, id) => nonPublishTransition(actor, id, "draft"),
+    addTurno: () => Promise.reject(new Error("turnos are not implemented")),
+    updateTurno: () => Promise.reject(new Error("turnos are not implemented")),
+    retireTurno: () => Promise.reject(new Error("turnos are not implemented")),
+    reactivateTurno: () =>
+      Promise.reject(new Error("turnos are not implemented")),
+    deleteTurno: () => Promise.reject(new Error("turnos are not implemented")),
+    listAssignmentsOfTeacher: (actor) => {
+      const admin = requireAdminActor(actor);
+      return Promise.resolve(
+        admin.ok ? ok({ monthly: [], intensives: [] }) : admin,
+      );
+    },
+    techniqueSuggestions: (actor) => {
+      const admin = requireAdminActor(actor);
+      return Promise.resolve(admin.ok ? ok([]) : admin);
+    },
+  };
+}

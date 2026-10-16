@@ -18,6 +18,50 @@ import {
 import { mediaAsset } from "./media";
 import { teacher } from "./teachers";
 
+export const monthlyWorkshop = pgTable(
+  "monthly_workshop",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    summary: text("summary").notNull(),
+    description: text("description").notNull(),
+    technique: text("technique").notNull(),
+    defaultFeeCentavos: bigint("default_fee_centavos", {
+      mode: "number",
+    }).notNull(),
+    teacherId: uuid("teacher_id").references(() => teacher.id, {
+      onDelete: "restrict",
+    }),
+    agreedPercentageBp: integer("agreed_percentage_bp"),
+    status: text("status").notNull(),
+    updatedBy: text("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("monthly_workshop_slug_unique").on(table.slug),
+    index("monthly_workshop_teacher_idx").on(table.teacherId),
+    index("monthly_workshop_status_idx").on(table.status),
+    check(
+      "monthly_workshop_slug_check",
+      sql`${table.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(${table.slug}) <= 80`,
+    ),
+    check("monthly_workshop_fee_check", sql`${table.defaultFeeCentavos} > 0`),
+    check(
+      "monthly_workshop_percentage_range_check",
+      sql`${table.agreedPercentageBp} IS NULL OR ${table.agreedPercentageBp} BETWEEN 0 AND 10000`,
+    ),
+    check(
+      "monthly_workshop_percentage_teacher_check",
+      sql`${table.agreedPercentageBp} IS NULL OR ${table.teacherId} IS NOT NULL`,
+    ),
+    check(
+      "monthly_workshop_status_check",
+      sql`${table.status} IN ('draft', 'published', 'paused', 'archived')`,
+    ),
+  ],
+);
+
 // No cancellation-deadline column: the cancellation policy is free text.
 export const intensiveWorkshop = pgTable(
   "intensive_workshop",

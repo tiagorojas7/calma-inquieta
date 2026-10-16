@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Teacher } from "~/modules/teachers";
 import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
+import { InMemoryTurnoRepository } from "~/testing/fakes/in-memory-turno-repository";
 import { createMonthlyWorkshopsService } from "./monthly-workshop-service";
 
 const actor = { kind: "admin-actor" as const, email: "admin@example.com" };
@@ -36,12 +37,13 @@ function teacher(overrides: Partial<Teacher> = {}): Teacher {
 function service(
   teachers: readonly Teacher[] = [],
   repository = new InMemoryMonthlyWorkshopRepository(),
-  activeTurnos = 0,
   hasPeriods = false,
 ) {
   let nextId = 1;
+  const turnos = new InMemoryTurnoRepository(repository);
   return {
     repository,
+    turnos,
     service: createMonthlyWorkshopsService({
       repository,
       teachers: {
@@ -55,9 +57,8 @@ function service(
           ),
       },
       media: { findAssets: () => Promise.resolve(new Map()) },
-      activeTurnos: {
-        countActiveForWorkshop: () => Promise.resolve(activeTurnos),
-      },
+      turnos,
+      turnoUsage: { isUsed: () => Promise.resolve(false) },
       periods: { hasPeriods: () => Promise.resolve(hasPeriods) },
       clock,
       newId: () =>
@@ -264,13 +265,14 @@ describe("monthly workshops service", () => {
     ).toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 
-  it("publishes when the B4 turno seam reports an active turno", async () => {
-    const { service: subject } = service([teacher()], undefined, 1);
+  it("publishes when the turno repository has an active turno", async () => {
+    const { service: subject } = service([teacher()]);
     const created = await subject.create(
       actor,
       draft({ teacherId: "teacher-1", percentage: "35,5" }),
     );
     if (!created.ok) throw new Error("fixture");
+    await subject.addTurno(actor, created.value.id, turnoDraft());
     expect(await subject.publish(actor, created.value.id)).toMatchObject({
       ok: true,
       value: { status: "published" },
@@ -282,12 +284,13 @@ describe("monthly workshops service", () => {
       kind: "admin-actor" as const,
       email: "other@example.com",
     };
-    const { service: subject, repository } = service([teacher()], undefined, 1);
+    const { service: subject, repository } = service([teacher()]);
     const created = await subject.create(
       actor,
       draft({ teacherId: "teacher-1", percentage: "10" }),
     );
     if (!created.ok) throw new Error("fixture");
+    await subject.addTurno(actor, created.value.id, turnoDraft());
     const before = await repository.findById(created.value.id);
     if (!before) throw new Error("fixture");
 
@@ -331,7 +334,7 @@ describe("monthly workshops service", () => {
   });
 
   it("refuses to delete drafts that have periods through the read-only period seam", async () => {
-    const { service: subject, repository } = service([], undefined, 0, true);
+    const { service: subject, repository } = service([], undefined, true);
     const created = await subject.create(actor, draft());
     if (!created.ok) throw new Error("fixture");
 
@@ -412,7 +415,7 @@ describe("monthly workshops service", () => {
   });
 
   it("shows published and paused workshops while hiding draft and archived workshops", async () => {
-    const { service: subject, repository } = service([teacher()], undefined, 1);
+    const { service: subject, repository } = service([teacher()]);
     const draftWorkshop = await subject.create(actor, draft({ slug: "draft" }));
     const publishedWorkshop = await subject.create(
       actor,
@@ -433,6 +436,8 @@ describe("monthly workshops service", () => {
       !archivedWorkshop.ok
     )
       throw new Error("fixture");
+    await subject.addTurno(actor, publishedWorkshop.value.id, turnoDraft());
+    await subject.addTurno(actor, pausedWorkshop.value.id, turnoDraft());
     await subject.publish(actor, publishedWorkshop.value.id);
     await subject.publish(actor, pausedWorkshop.value.id);
     await subject.pause(actor, pausedWorkshop.value.id);
@@ -484,5 +489,198 @@ describe("monthly workshops service", () => {
     expect((await repository.findById(created.value.id))?.audit.updatedBy).toBe(
       actor.email,
     );
+  });
+});
+
+const turnoDraft = (overrides = {}) => ({
+  label: " Mañana ",
+  weekday: "2",
+  startsAt: "09:00",
+  endsAt: "10:00",
+  defaultCapacity: "8",
+  ...overrides,
+});
+function turnoService() {
+  const repository = new InMemoryMonthlyWorkshopRepository();
+  const turnos = new InMemoryTurnoRepository(repository);
+  let nextId = 1;
+  return {
+    repository,
+    turnos,
+    subject: createMonthlyWorkshopsService({
+      repository,
+      teachers: { findByIds: () => Promise.resolve(new Map()) },
+      media: { findAssets: () => Promise.resolve(new Map()) },
+      turnos,
+      turnoUsage: { isUsed: () => Promise.resolve(false) },
+      periods: { hasPeriods: () => Promise.resolve(false) },
+      clock,
+      newId: () => `turno-${String(nextId++)}`,
+    }),
+  };
+}
+describe("monthly workshop turno mutations", () => {
+  it("denies first and hydrates sorted turnos with real active counts", async () => {
+    const { subject } = turnoService();
+    expect(await subject.addTurno(null, "unknown", turnoDraft())).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+    await subject.addTurno(
+      actor,
+      created.value.id,
+      turnoDraft({
+        label: "Late",
+        weekday: "2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+      }),
+    );
+    await subject.addTurno(
+      actor,
+      created.value.id,
+      turnoDraft({
+        label: "Early",
+        weekday: "1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+      }),
+    );
+    expect(await subject.get(actor, created.value.id)).toMatchObject({
+      ok: true,
+      value: { turnos: [{ label: "Early" }, { label: "Late" }] },
+    });
+    expect(await subject.list(actor, { status: "live" })).toMatchObject({
+      ok: true,
+      value: [{ activeTurnos: 2 }],
+    });
+  });
+  it("validates, maps label races, and stamps only successful mutations", async () => {
+    const { subject, repository, turnos } = turnoService();
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+    const before = await repository.findById(created.value.id);
+    expect(
+      await subject.addTurno(
+        actor,
+        created.value.id,
+        turnoDraft({ label: "" }),
+      ),
+    ).toMatchObject({ ok: false, error: { kind: "invalid" } });
+    expect(await repository.findById(created.value.id)).toEqual(before);
+    const added = await subject.addTurno(
+      actor,
+      created.value.id,
+      turnoDraft({ label: "Ñandú" }),
+    );
+    if (!added.ok) throw new Error("fixture");
+    turnos.listForWorkshop = () => Promise.resolve([]);
+    expect(
+      await subject.addTurno(
+        actor,
+        created.value.id,
+        turnoDraft({ label: "ñANDÚ" }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "label", code: "duplicate" }],
+      },
+    });
+  });
+  it("rolls back a turno mutation when its owning workshop audit cannot be saved", async () => {
+    const { subject, repository, turnos } = turnoService();
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+    const before = await repository.findById(created.value.id);
+    const update = repository.update.bind(repository);
+    repository.update = () =>
+      Promise.resolve({ ok: false, error: { kind: "not-found" as const } });
+
+    await expect(
+      subject.addTurno(actor, created.value.id, turnoDraft()),
+    ).resolves.toEqual({ ok: false, error: { kind: "not-found" } });
+    expect(await turnos.listForWorkshop(created.value.id)).toEqual([]);
+    expect(await repository.findById(created.value.id)).toEqual(before);
+    repository.update = update;
+  });
+
+  it("refuses deleting the last active turno of a published workshop without changing its audit", async () => {
+    const { subject, repository } = turnoService();
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+    const added = await subject.addTurno(actor, created.value.id, turnoDraft());
+    if (!added.ok) throw new Error("fixture");
+    const turno = added.value.turnos[0];
+    if (!turno) throw new Error("fixture");
+    const stored = await repository.findById(created.value.id);
+    if (!stored) throw new Error("fixture");
+    await repository.update({ ...stored, status: "published" });
+    const before = await repository.findById(created.value.id);
+
+    await expect(
+      subject.deleteTurno(actor, created.value.id, turno.id),
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: "rules-unmet",
+        rules: ["last-active-turno-of-published"],
+      },
+    });
+    expect(await subject.get(actor, created.value.id)).toMatchObject({
+      ok: true,
+      value: { turnos: [{ id: turno.id, active: true }] },
+    });
+    expect(await repository.findById(created.value.id)).toEqual(before);
+  });
+
+  it("guards published last active, rechecks reactivation, and keeps used turnos", async () => {
+    const { subject, repository, turnos } = turnoService();
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+    const added = await subject.addTurno(actor, created.value.id, turnoDraft());
+    if (!added.ok) throw new Error("fixture");
+    const turno = added.value.turnos[0];
+    if (!turno) throw new Error("fixture");
+    const stored = await repository.findById(created.value.id);
+    if (!stored) throw new Error("fixture");
+    await repository.update({ ...stored, status: "published" });
+    expect(
+      await subject.retireTurno(actor, created.value.id, turno.id),
+    ).toEqual({
+      ok: false,
+      error: { kind: "rules-unmet", rules: ["last-active-turno-of-published"] },
+    });
+    await repository.update({ ...stored, status: "paused" });
+    expect(
+      await subject.retireTurno(actor, created.value.id, turno.id),
+    ).toMatchObject({ ok: true, value: { turnos: [{ active: false }] } });
+    const update = turnos.update.bind(turnos);
+    turnos.update = (value) =>
+      value.id === turno.id && value.active
+        ? Promise.resolve({
+            ok: false,
+            error: { kind: "label-conflict" as const },
+          })
+        : update(value);
+    expect(
+      await subject.reactivateTurno(actor, created.value.id, turno.id),
+    ).toEqual({ ok: false, error: { kind: "label-conflict" } });
+    const used = createMonthlyWorkshopsService({
+      repository,
+      teachers: { findByIds: () => Promise.resolve(new Map()) },
+      media: { findAssets: () => Promise.resolve(new Map()) },
+      turnos,
+      turnoUsage: { isUsed: (id) => Promise.resolve(id === turno.id) },
+      periods: { hasPeriods: () => Promise.resolve(false) },
+      clock,
+    });
+    expect(await used.deleteTurno(actor, created.value.id, turno.id)).toEqual({
+      ok: false,
+      error: { kind: "rules-unmet", rules: ["turno-used"] },
+    });
   });
 });

@@ -43,7 +43,7 @@ describe("public site map", () => {
         id: "intensivos",
         path: "/intensivos",
         label: "Intensivos",
-        indexable: false,
+        indexable: true,
       },
       {
         id: "eventos-privados",
@@ -65,7 +65,7 @@ describe("public site map", () => {
       },
     ]);
     const pages = PUBLIC_PAGES as readonly { indexable: boolean }[];
-    expect(pages.filter((page) => page.indexable)).toHaveLength(3);
+    expect(pages.filter((page) => page.indexable)).toHaveLength(4);
   });
 
   it("leaves no public page unrouted", () => {
@@ -74,6 +74,12 @@ describe("public site map", () => {
     expect(PUBLIC_PAGES.filter((page) => !routed.includes(page.path))).toEqual(
       [],
     );
+  });
+
+  it("maps /intensivos to the intensivos listing module", () => {
+    expect(
+      flatten(routes).find((entry) => entry.path === "/intensivos")?.file,
+    ).toBe("routes/intensivos.tsx");
   });
 
   it("maps /contacto to the contact page module", () => {
@@ -90,29 +96,35 @@ describe("public site map", () => {
 
   it("keeps titles and descriptions unique across the six pages", async () => {
     const { siteContent } = createTestServices();
-    const [home, about, contact, talleres, intensivos, eventos] =
+    const [home, about, contact, talleres, eventos, catalog] =
       await Promise.all([
         siteContent.getHomePage(),
         siteContent.getAboutPage(),
         siteContent.getContactPage(),
         siteContent.getComingSoonPage("talleres"),
-        siteContent.getComingSoonPage("intensivos"),
         siteContent.getComingSoonPage("eventos-privados"),
+        siteContent.getCatalogContent(),
       ]);
-    const seo = [home, about, contact, talleres, intensivos, eventos].map(
-      (page) => page.seo,
-    );
+    const seo = [
+      home,
+      about,
+      contact,
+      talleres,
+      eventos,
+      catalog.intensivos,
+    ].map((page) => page.seo);
     expect(new Set(seo.map((entry) => entry.title)).size).toBe(6);
     expect(new Set(seo.map((entry) => entry.description)).size).toBe(6);
   });
 
-  it("lists exactly the three indexable pages in the sitemap", () => {
+  it("lists exactly the four indexable pages in the sitemap", () => {
     const xml = buildSitemapXml(
       "https://example.test",
       PUBLIC_PAGES.filter((page) => page.indexable).map((page) => page.path),
     );
     expect(xml.match(/<loc>[^<]+<\/loc>/g)).toEqual([
       "<loc>https://example.test/</loc>",
+      "<loc>https://example.test/intensivos</loc>",
       "<loc>https://example.test/quienes-somos</loc>",
       "<loc>https://example.test/contacto</loc>",
     ]);

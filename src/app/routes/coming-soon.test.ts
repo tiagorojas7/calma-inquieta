@@ -52,10 +52,7 @@ describe("coming soon loader", () => {
     expect(result.instagramHref).toContain("instagram.com");
   });
 
-  it.each([
-    ["intensivos", "coming-soon%2Fintensivos"],
-    ["eventos-privados", "coming-soon%2Feventos-privados"],
-  ])(
+  it.each([["eventos-privados", "coming-soon%2Feventos-privados"]])(
     "loads %s from its React Router client data request without route params",
     async (slug, routeId) => {
       const result = await loader({
@@ -69,6 +66,15 @@ describe("coming soon loader", () => {
       expect(result.slug).toBe(slug);
     },
   );
+
+  it("no longer serves intensivos as a coming-soon page", async () => {
+    await expect(
+      loader({
+        ...createLoaderArgs(createTestServices(), "/intensivos"),
+        params: {},
+      } as never),
+    ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
 
   it("returns a 404 response for an unsupported pathname", async () => {
     await expect(

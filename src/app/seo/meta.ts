@@ -10,6 +10,8 @@ export type PageMetaInput = {
   baseUrl: string;
   indexingEnabled: boolean;
   comingSoon?: boolean;
+  /** Path or URL of the share image; defaults to the site share image. */
+  ogImage?: string;
 };
 export function buildPageMeta(input: PageMetaInput) {
   if (!input.description.trim())
@@ -33,9 +35,23 @@ export function buildPageMeta(input: PageMetaInput) {
     { property: "og:locale", content: "es_AR" },
     {
       property: "og:image",
-      content: canonicalUrl(input.baseUrl, SHARE_IMAGE_PATH),
+      content: canonicalUrl(input.baseUrl, input.ogImage ?? SHARE_IMAGE_PATH),
     },
     { name: "twitter:card", content: "summary_large_image" },
     ...(robots ? [{ name: "robots", content: robots }] : []),
   ];
+}
+
+const ELLIPSIS = "…";
+
+/**
+ * Cuts `text` to at most `limit` characters, at the last word boundary, and
+ * appends an ellipsis. Text that already fits is returned untouched.
+ */
+export function truncateDescription(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const room = text.slice(0, limit - ELLIPSIS.length + 1);
+  const boundary = room.lastIndexOf(" ");
+  const cut = boundary > 0 ? room.slice(0, boundary) : room.slice(0, -1);
+  return `${cut.trimEnd()}${ELLIPSIS}`;
 }

@@ -19,7 +19,7 @@
 - [x] B5-T1. Map the contract seam, turno requirements, B4 integration, Unicode uniqueness, B6 history boundary, migration sequence, excluded parallel-work surfaces, and reviewable split.
 - [x] B5-T2. B5a RED: add exhaustive domain/service/shared-contract tests for label/weekday/time/capacity normalization, non-ASCII conflict keys, lifecycle/refusals, aggregate audit, history rules, typed races, and deterministic weekday/time/id order.
 - [x] B5-T3. B5a GREEN/REFACTOR: implement turno domain helpers, repository port, in-memory fake, usage seam, and the five service operations; hydrate workshop turnos and replace B4's active-turno placeholder through the real turno repository seam.
-- [ ] B5-T4. Verify B5a, assess/review as configured, and commit the behavior/fake work unit.
+- [x] B5-T4. Verify B5a, assess/review as configured, and commit the behavior/fake work unit.
 - [ ] B5-T5. B5b RED: run the shared repository contract against an absent Drizzle adapter and add exact PostgreSQL constraint/cause-chain, round-trip, order, FK/check, and rollback cases.
 - [ ] B5-T6. B5b GREEN/REFACTOR: add `workshop_turno` schema additively, update migration expectations, generate `0006_workshop_turnos`, and implement the Drizzle adapter without touching B6 tables.
 - [ ] B5-T7. Verify focused and full project gates under `C:/Temp/calma-gate.lock`, assess/review as configured, and commit the persistence work unit.
@@ -56,4 +56,8 @@
 
 ## Next step
 
-Commit B5a as one behavior/fake work unit, run committed-range assessment/review as configured, record evidence, then start B5b persistence.
+- B5a work-unit commit: `d610ed4` (`feat(workshops): add turno lifecycle behavior`), 11 files, 923 additions and 26 deletions including tests and this task document.
+- Native review: committed-range ASSESS for `10ca8c4..d610ed4` was schema-incompatible/unassessable. INSPECT prepared a candidate, but START failed before authority with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). No retry, lineage, receipt or approval is claimed. Final ASSESS with `nativeReviewOutcome: unavailable` requires writer self-verification plus an independent verifier; both are recorded above.
+- B5a rollback boundary: revert `d610ed4`; it contains no schema or migration.
+
+Start B5b with Drizzle contract RED, then add the schema, generated `0006_workshop_turnos`, adapter and migration expectations.

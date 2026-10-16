@@ -39,6 +39,17 @@ Licence rule: keep a licence text next to every font file, and the manifest `lic
 
 Content and manifest edits are BACK work (`src/modules/**`).
 
+### Optimizing client photos
+
+```sh
+pnpm media:optimize <inputDir> <outputDir>
+```
+
+- Reads the images (`.jpg`, `.jpeg`, `.png`, `.webp`) directly inside `inputDir` and writes `<name>-{480,960,1600}.webp` to `outputDir`. Sizes larger than the source are never produced, and EXIF rotation is applied.
+- `outputDir` also gets `manifest.json` (oriented dimensions and bytes per variant, which the `Image` atom needs for `width`, `height` and `srcSet`) and `contact-sheet.html` to pick photos. Re-runs skip images that are already up to date.
+- Copy only the chosen variants into `public/media/<area>/`. The originals never enter the repo: keep them outside it, or in `media-originals/`, which is git-ignored.
+- Videos are not processed here; the script lists them as unsupported.
+
 ## 4. Favicon and share image
 
 | Asset       | Current stand-in                                                                 | Where it is wired                                                              |

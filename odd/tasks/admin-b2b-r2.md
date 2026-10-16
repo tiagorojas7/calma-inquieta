@@ -47,3 +47,11 @@ Focused tests, `corepack pnpm lint`, `corepack pnpm typecheck`, `corepack pnpm f
 - Full gate (2026-10-16, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 158/158 files, 1714/1714 tests, coverage 98.12 % statements, 96.96 % branches.
 - TDD disclosure (parent review): observed RED exists for `readMediaBinding` (missing module) and for the R2 adapter (missing module, after a syntax slip in the contract edit). The media service, composition, worker and Vitest-project tests were written together with their code, without a separately observed RED; they pass and cover the behavior, but strict RED-first was not followed for them.
 - Merge precondition: the owner runs runbook step R1 (create the private buckets `calma-inquieta-media` and `calma-inquieta-media-preview`) before this merges, because CI deploys `wrangler.jsonc` with the `MEDIA` binding and a deploy that names a missing bucket fails.
+- RDD (2026-10-16): assess `high` (`vitest.config.ts` process boundary). The owner granted the review. On gentle-ai 3.4.0 the bound STATUS timed out twice, so the owner stopped there and upgraded to 4.2.0. On 4.2.0 a 4-lens review ran and was **approved**, then acknowledged (`review-55d28c38711ca4dc`, authority burned).
+- Non-blocking follow-ups from the review (separate later work):
+  - [ ] R3-orphan-object-on-metadata-failure (WARNING): an upload that stores the R2 object and then fails to write the metadata row leaves an orphan object (`request-services.ts`).
+  - [ ] R3-overwrite-guard-sim-only (WARNING): the `etagDoesNotMatch` no-overwrite guard is only proven on the local simulation.
+  - [ ] R4-silent-binding-degradation (WARNING): a missing or malformed `MEDIA` binding degrades silently; log it once with the binding name only.
+  - [ ] R4-r2-proxy-startup-timeout (WARNING): the `getPlatformProxy` start in the R2 suite has no explicit timeout.
+  - [ ] R2-runbook-teardown-order (WARNING): the runbook teardown order for buckets (empty them before deleting) needs a clearer sequence.
+  - [ ] Suggestions: `db` project name now also covers the R2 suite; duplicated image-type literals in the adapter; `media-binding.test.ts` catches all errors; the worker test does not prove that the binding is absent; the R2 suite is coupled to the db global setup.

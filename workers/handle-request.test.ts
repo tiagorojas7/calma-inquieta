@@ -353,7 +353,8 @@ describe("handleRequest", () => {
 
 describe("handleRequest without a usable MEDIA binding", () => {
   it("warns once and still serves public requests when MEDIA is absent", async () => {
-    const { MEDIA: _, ...envWithoutMedia } = env;
+    const envWithoutMedia = { ...env };
+    delete envWithoutMedia.MEDIA;
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const isolate = createIsolateState();
 
@@ -415,7 +416,8 @@ describe("handleRequest without a usable MEDIA binding", () => {
   });
 
   it("warns once for each isolate with an unavailable binding", async () => {
-    const { MEDIA: _, ...envWithoutMedia } = env;
+    const envWithoutMedia = { ...env };
+    delete envWithoutMedia.MEDIA;
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const firstResponse = await handleRequest(

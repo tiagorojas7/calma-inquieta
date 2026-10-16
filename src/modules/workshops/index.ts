@@ -5,6 +5,7 @@ export type { MonthlyWorkshopRepository } from "./application/monthly-workshop-r
 export type {
   StoredTurno,
   TurnoLabelConflict,
+  TurnoMutation,
   TurnoRepository,
 } from "./application/turno-repository";
 export {

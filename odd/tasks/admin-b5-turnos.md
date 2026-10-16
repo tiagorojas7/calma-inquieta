@@ -20,8 +20,8 @@
 - [x] B5-T2. B5a RED: add exhaustive domain/service/shared-contract tests for label/weekday/time/capacity normalization, non-ASCII conflict keys, lifecycle/refusals, aggregate audit, history rules, typed races, and deterministic weekday/time/id order.
 - [x] B5-T3. B5a GREEN/REFACTOR: implement turno domain helpers, repository port, in-memory fake, usage seam, and the five service operations; hydrate workshop turnos and replace B4's active-turno placeholder through the real turno repository seam.
 - [x] B5-T4. Verify B5a, assess/review as configured, and commit the behavior/fake work unit.
-- [ ] B5-T5. B5b RED: run the shared repository contract against an absent Drizzle adapter and add exact PostgreSQL constraint/cause-chain, round-trip, order, FK/check, and rollback cases.
-- [ ] B5-T6. B5b GREEN/REFACTOR: add `workshop_turno` schema additively, update migration expectations, generate `0006_workshop_turnos`, and implement the Drizzle adapter without touching B6 tables.
+- [x] B5-T5. B5b RED: run the shared repository contract against an absent Drizzle adapter and add exact PostgreSQL constraint/cause-chain, round-trip, order, FK/check, and rollback cases.
+- [x] B5-T6. B5b GREEN/REFACTOR: add `workshop_turno` schema additively, update migration expectations, generate `0006_workshop_turnos`, and implement the Drizzle adapter without touching B6 tables.
 - [ ] B5-T7. Verify focused and full project gates under `C:/Temp/calma-gate.lock`, assess/review as configured, and commit the persistence work unit.
 
 ## Acceptance criteria
@@ -59,5 +59,13 @@
 - B5a work-unit commit: `d610ed4` (`feat(workshops): add turno lifecycle behavior`), 11 files, 923 additions and 26 deletions including tests and this task document.
 - Native review: committed-range ASSESS for `10ca8c4..d610ed4` was schema-incompatible/unassessable. INSPECT prepared a candidate, but START failed before authority with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). No retry, lineage, receipt or approval is claimed. Final ASSESS with `nativeReviewOutcome: unavailable` requires writer self-verification plus an independent verifier; both are recorded above.
 - B5a rollback boundary: revert `d610ed4`; it contains no schema or migration.
+- B5b writer completed the additive schema, generated `0006_workshop_turnos`, Drizzle adapter and migration expectations. Writer checks pass: fake 6/6, Drizzle 15/15, migration/architecture 36/36, workshops 283 tests, lint/typecheck/format/diff clean.
+- Independent B5b verification confirmed schema, contract parity, Unicode key, ordering, time conversion, exact/nested 23505 handling, rollback, migration expectations and excluded-path compliance. It found one proof gap: the successful atomic mutate test does not directly reread and assert the persisted owning-workshop audit. Its aggregate workshops run also hit the known Windows embedded-Postgres worker crash (`3221226505`) after the same Drizzle file passed 15/15 in isolation.
 
-Start B5b with Drizzle contract RED, then add the schema, generated `0006_workshop_turnos`, adapter and migration expectations.
+- Persisted-audit proof RED exposed PostgreSQL's raw timestamp string representation; GREEN normalizes the direct assertion. Drizzle now passes 16/16 and directly rereads both the child turno and owning-workshop audit after commit.
+- Independent final verification: Drizzle 16/16, workshops 284/284, lint/typecheck/format/diff checks PASS. Parent DB spot check encountered the known Windows Vitest worker exit `3221226505` after 7/16 assertions; it is contradicted by the two complete independent Drizzle runs (15/15 then 16/16) and the complete 284-test aggregate run. Parent then spot-checked the fake contract: 6/6 PASS. The locked full gate remains authoritative for closure.
+- B5b authored production: 228 additions excluding tests/docs/generated migration. Changed paths remain inside authorized schema/adapter/test/migration/catalog/runbook surfaces; no B6, public reader, app, or composition production file changed.
+
+- Final locked gate PASS: format, lint, typecheck, build, coverage and diff check all exited 0. Coverage ran 148 files / 1616 tests, all passed in 926.76 s; 94.30% statements, 91.51% branches, 96.59% functions and 96.57% lines. Build completed client and SSR in 13.44 s. Non-fatal warnings: Wrangler update notice, boundaries `mode` deprecation, build plugin timings, and eight jsdom canvas messages. No Windows worker crash occurred. The owned gate lock was released.
+
+Commit B5b as the persistence work unit, then run committed-range assessment/review as configured and record final evidence.

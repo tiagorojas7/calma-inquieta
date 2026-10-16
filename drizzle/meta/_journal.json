@@ -43,6 +43,13 @@
       "when": 1792088082719,
       "tag": "0005_monthly_workshops",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792159963173,
+      "tag": "0006_workshop_turnos",
+      "breakpoints": true
     }
   ]
 }

@@ -62,6 +62,41 @@ export const monthlyWorkshop = pgTable(
   ],
 );
 
+export const workshopTurno = pgTable(
+  "workshop_turno",
+  {
+    id: uuid("id").primaryKey(),
+    workshopId: uuid("workshop_id")
+      .notNull()
+      .references(() => monthlyWorkshop.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    labelKey: text("label_key").notNull(),
+    weekday: smallint("weekday").notNull(),
+    startsAt: time("starts_at").notNull(),
+    endsAt: time("ends_at").notNull(),
+    defaultCapacity: integer("default_capacity").notNull(),
+    active: boolean("active").notNull(),
+  },
+  (table) => [
+    uniqueIndex("workshop_turno_workshop_label_key_unique").on(
+      table.workshopId,
+      table.labelKey,
+    ),
+    check(
+      "workshop_turno_weekday_check",
+      sql`${table.weekday} BETWEEN 1 AND 7`,
+    ),
+    check(
+      "workshop_turno_time_range_check",
+      sql`${table.endsAt} > ${table.startsAt}`,
+    ),
+    check(
+      "workshop_turno_capacity_check",
+      sql`${table.defaultCapacity} BETWEEN 1 AND 500`,
+    ),
+  ],
+);
+
 // No cancellation-deadline column: the cancellation policy is free text.
 export const intensiveWorkshop = pgTable(
   "intensive_workshop",

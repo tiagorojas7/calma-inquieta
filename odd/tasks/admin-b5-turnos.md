@@ -22,7 +22,7 @@
 - [x] B5-T4. Verify B5a, assess/review as configured, and commit the behavior/fake work unit.
 - [x] B5-T5. B5b RED: run the shared repository contract against an absent Drizzle adapter and add exact PostgreSQL constraint/cause-chain, round-trip, order, FK/check, and rollback cases.
 - [x] B5-T6. B5b GREEN/REFACTOR: add `workshop_turno` schema additively, update migration expectations, generate `0006_workshop_turnos`, and implement the Drizzle adapter without touching B6 tables.
-- [ ] B5-T7. Verify focused and full project gates under `C:/Temp/calma-gate.lock`, assess/review as configured, and commit the persistence work unit.
+- [x] B5-T7. Verify focused and full project gates under `C:/Temp/calma-gate.lock`, assess/review as configured, and commit the persistence work unit.
 
 ## Acceptance criteria
 
@@ -68,4 +68,8 @@
 
 - Final locked gate PASS: format, lint, typecheck, build, coverage and diff check all exited 0. Coverage ran 148 files / 1616 tests, all passed in 926.76 s; 94.30% statements, 91.51% branches, 96.59% functions and 96.57% lines. Build completed client and SSR in 13.44 s. Non-fatal warnings: Wrangler update notice, boundaries `mode` deprecation, build plugin timings, and eight jsdom canvas messages. No Windows worker crash occurred. The owned gate lock was released.
 
-Commit B5b as the persistence work unit, then run committed-range assessment/review as configured and record final evidence.
+- B5b work-unit commit: `ab150b3` (`feat(workshops): persist workshop turnos`), 15 files, 1,521 additions and 33 deletions including generated migration/snapshot and tests.
+- Native review: committed-range ASSESS for `74c35ad..ab150b3` was schema-incompatible/unassessable. INSPECT prepared a candidate, but START failed before authority with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). No retry, lineage, receipt or approval is claimed. Final ASSESS with `nativeReviewOutcome: unavailable` requires writer self-verification plus an independent verifier; both and the full locked gate are recorded above.
+- B5b rollback boundary: revert `ab150b3`; if migration `0006` was applied, retain it or remove with a new forward migration rather than editing history.
+
+B5 is complete. Next dependency slice is B6 periods and “Abrir mes”, on a new stacked feature branch.

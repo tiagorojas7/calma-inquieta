@@ -10,6 +10,7 @@ No automated agent runs or rehearses any of this. Never paste a secret into a ch
 2. Neon: create the project, the runtime role and the `staging` branch (N1 to N4).
 3. Cloudflare: create the scoped API token (C3) and the Hyperdrive config with caching disabled (C4).
 4. Cloudflare: configure Access for the status application (Z1–Z3), then load the seven GitHub secrets (G1) and run CI on `main` (G2).
+5. Cloudflare: create the two R2 buckets for images (R1) before the first deploy that contains the `MEDIA` binding.
 
 ## Before you start
 
@@ -197,6 +198,31 @@ curl -fsS https://calma-inquieta.<account-subdomain>.workers.dev/status
 
 The response contains `data-status="ok"` and the latest migration `0004_intensive_workshops`.
 
+### R1. Create the R2 buckets for images
+
+Do this once, **before** the first deploy of the change that adds the `MEDIA` binding to `wrangler.jsonc` (admin catalog B2b). A deploy that names a bucket which does not exist fails, and no code path creates a bucket for you. It needs no new GitHub secret and no new Worker variable: the binding and both bucket names are committed in `wrangler.jsonc`.
+
+In your own terminal, in the repository checkout, signed in as in C4:
+
+```sh
+pnpm exec wrangler r2 bucket create calma-inquieta-media
+pnpm exec wrangler r2 bucket create calma-inquieta-media-preview
+```
+
+Keep both buckets **private**: do not enable the public `r2.dev` URL or a custom domain. Images are served only through the Worker route `/imagenes/<id>.<ext>`.
+
+Check:
+
+```sh
+pnpm exec wrangler r2 bucket list
+```
+
+The list shows exactly `calma-inquieta-media` (production, used by deploys) and `calma-inquieta-media-preview` (used only by `wrangler dev --remote`). Local `pnpm dev` and the tests use a local simulation and never touch either bucket.
+
+Fallback: if the first deploy fails with an R2 authorization error, edit the CI token from C3 and add **Account / Workers R2 Storage / Read**, then **Edit** if it still fails, and record the change in `docs/adr/0005-admin-access-and-media.md`. Do not add an R2 API token or S3 credential: the Worker uses the binding only.
+
+Until R1 is done, the Worker still runs when deployed from a configuration without the binding: public pages are unaffected, uploads answer a storage-unavailable error and `/imagenes/*` answers 404.
+
 ### Manual deploys
 
 CI is the normal way to deploy. If you ever run `wrangler deploy` by hand, pass both variables explicitly:
@@ -219,12 +245,12 @@ pnpm exec wrangler deploy --var "SITE_URL:<origin>" --var "BUILD_COMMIT:<sha>"
 
 ## Rollback
 
-| Goal                        | Action                                                                                                                                                   |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                    |
-| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                 |
-| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all seven to make it skip cleanly |
-| Full teardown               | Delete the Hyperdrive config, revoke the API token, delete the Neon project, then delete the seven secrets                                               |
+| Goal                        | Action                                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                     |
+| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                  |
+| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all seven to make it skip cleanly  |
+| Full teardown               | Delete the Hyperdrive config, revoke the API token, delete the Neon project, then delete the seven secrets (empty the R2 buckets first, then delete them) |
 
 Never edit an applied migration. Fix forward with a new migration.
 
@@ -244,5 +270,6 @@ Never edit an applied migration. Fix forward with a new migration.
 - [ ] C3 token has exactly three account permissions and a 12-month end date
 - [ ] C4 `wrangler hyperdrive get` shows caching disabled
 - [ ] Z1–Z3 Access application, service token and Worker secrets configured
+- [ ] R1 `wrangler r2 bucket list` shows the production and preview image buckets, both private
 - [ ] G1 `gh secret list` shows seven names
 - [ ] G2 deploy job green, `/status` shows `data-status="ok"`, and the service token gets 403 at `/admin`

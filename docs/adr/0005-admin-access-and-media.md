@@ -19,3 +19,11 @@ The deploy gate requires seven ordered GitHub secret names. Its smoke request su
 ## Consequences
 
 The isolate keeps only the access key cache's plain data and request services receive the gate result. A manual Access smoke remains an owner runbook step after the Cloudflare policy and secrets are provisioned. Before admin delivery routes exist, a document denial can render the public 404 body at `/sin-acceso`; it still has status 403 and never executes an admin route.
+
+## Media storage binding (admin catalog B2b)
+
+Images are stored in a Cloudflare R2 bucket bound to the Worker as `MEDIA` (`wrangler.jsonc` `r2_buckets`: bucket `calma-inquieta-media`, preview bucket `calma-inquieta-media-preview`). The binding is read outside every env schema by `readMediaBinding` (`src/platform/r2.ts`), which checks structurally for `put`, `get` and `delete` and returns `null` otherwise. `MEDIA` is never a variable, never listed in `.dev.vars.example` and never enters the Worker-wide env schema, so a missing or malformed binding cannot fail a public page.
+
+Composition builds `ImageStorage` from the binding: the R2 adapter when present, an always-failing adapter when absent. An upload then answers `storage-unavailable` and serving answers unavailable, which the image route maps to 404. The R2 adapter refuses to overwrite an existing key (`etagDoesNotMatch: "*"`), matching the in-memory fake.
+
+The `ImageStorage` contract suite runs against the fake in the `unit` project and against wrangler's local, in-memory R2 simulation (`getPlatformProxy`, `persist: false`) in `*.r2.test.ts` files, which run in the `db` project and are excluded from `unit`. The bucket is created by the owner (runbook R1); no agent runs a Cloudflare command. If the first deploy after R1 fails with an R2 authorization error, the owner adds Account / Workers R2 Storage / Read, then Edit, to the CI token (runbook C3 fallback).

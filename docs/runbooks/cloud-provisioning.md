@@ -247,12 +247,23 @@ pnpm exec wrangler deploy --var "SITE_URL:<origin>" --var "BUILD_COMMIT:<sha>"
 
 ## Rollback
 
-| Goal                        | Action                                                                                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                     |
-| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                  |
-| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all seven to make it skip cleanly  |
-| Full teardown               | Delete the Hyperdrive config, revoke the API token, delete the Neon project, then delete the seven secrets (empty the R2 buckets first, then delete them) |
+| Goal                        | Action                                                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bad Worker version          | `pnpm exec wrangler rollback` (or delete the Worker in the dashboard)                                                                                    |
+| Bad data on `staging`       | Reset the `staging` branch from `main` in the Neon console (it holds no business data; 6 hours of point-in-time restore)                                 |
+| Switch deployment off again | `gh secret delete <NAME> --repo tiagorojas7/calma-inquieta` for any one secret; the gate then fails by name, or delete all seven to make it skip cleanly |
+| Full teardown               | Follow the full teardown sequence below.                                                                                                                 |
+
+### Full teardown sequence
+
+1. Delete the Hyperdrive config and Neon project.
+2. Make sure no deployed Worker still uses the `MEDIA` binding.
+3. While you still have account authorization to manage R2, empty both private R2 buckets.
+4. Verify both buckets are empty.
+5. Delete `calma-inquieta-media-preview`.
+6. Delete `calma-inquieta-media`.
+7. Keep the buckets private throughout: do not enable an `r2.dev` URL or custom domain, and do not create R2 API or S3 credentials.
+8. Revoke the API token and delete the seven secrets.
 
 Never edit an applied migration. Fix forward with a new migration.
 

@@ -41,3 +41,9 @@ Focused tests, `corepack pnpm lint`, `corepack pnpm typecheck`, `corepack pnpm f
 - T4: `media-service.test.ts`, `composition/media-binding.test.ts` (absent binding -> storage-unavailable / unavailable serve) and a worker test without `MEDIA` (public page 200) pass.
 - T5: `wrangler.jsonc` `r2_buckets`, ADR-0005 section and runbook R1 written. No new secret or binding beyond the R1 buckets.
 - Next: final checks and commits.
+
+## Delivery
+
+- Full gate (2026-10-16, under `C:/Temp/calma-gate.lock`): `format:check`, `lint`, `typecheck`, `build` PASS; `test:coverage` 158/158 files, 1714/1714 tests, coverage 98.12 % statements, 96.96 % branches.
+- TDD disclosure (parent review): observed RED exists for `readMediaBinding` (missing module) and for the R2 adapter (missing module, after a syntax slip in the contract edit). The media service, composition, worker and Vitest-project tests were written together with their code, without a separately observed RED; they pass and cover the behavior, but strict RED-first was not followed for them.
+- Merge precondition: the owner runs runbook step R1 (create the private buckets `calma-inquieta-media` and `calma-inquieta-media-preview`) before this merges, because CI deploys `wrangler.jsonc` with the `MEDIA` binding and a deploy that names a missing bucket fails.

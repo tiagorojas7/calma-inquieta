@@ -12,6 +12,13 @@
     "SITE_URL": "http://localhost:5173",
     "SITE_INDEXING": "off",
   },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "calma-inquieta-media",
+      "preview_bucket_name": "calma-inquieta-media-preview",
+    },
+  ],
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

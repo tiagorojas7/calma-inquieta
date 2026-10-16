@@ -22,7 +22,7 @@ export default defineConfig({
             "workers/**/*.test.ts",
           ],
           // `*.ui.test.tsx` needs a DOM and runs in the `ui` project.
-          exclude: ["**/*.db.test.ts", "**/*.ui.test.tsx"],
+          exclude: ["**/*.db.test.ts", "**/*.r2.test.ts", "**/*.ui.test.tsx"],
         },
       },
       {
@@ -44,7 +44,7 @@ export default defineConfig({
         test: {
           name: "db",
           environment: "node",
-          include: ["src/**/*.db.test.ts"],
+          include: ["src/**/*.db.test.ts", "src/**/*.r2.test.ts"],
           globalSetup: ["src/testing/db/global-setup.ts"],
           hookTimeout: 60_000,
           testTimeout: 60_000,

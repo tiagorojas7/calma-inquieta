@@ -94,7 +94,7 @@ function createServices(
 
 export async function handleRequest(
   request: Request,
-  env: Record<string, unknown>,
+  env: object,
   runtime: WorkerContext,
   isolate: IsolateState,
   handler: RouterHandler,

@@ -31,9 +31,12 @@ No full gate may run while B6 owns or is preparing to own `C:/Temp/calma-gate.lo
 
 ## Tasks
 
-- [ ] **T1 — Harden the bounded R2 operational follow-ups.** Record the pre-existing explicit proxy-startup timeout, clarify teardown order, run focused checks, independently verify the diff, and create one Conventional Commit.
+- [x] **T1 — Harden the bounded R2 operational follow-ups.** Record the pre-existing explicit proxy-startup timeout, clarify teardown order, run focused checks, independently verify the diff, and create one Conventional Commit.
 
 ## Evidence
 
 - Readback found `beforeAll(..., 60_000)` in `src/modules/media/infrastructure/r2-image-storage.r2.test.ts`; the review follow-up was stale and requires no code edit.
-- Remaining evidence pending.
+- Writer verification: targeted Prettier check passed after formatting; `git diff --check origin/main` passed.
+- Independent verification: PASS for scope, teardown safety, exact checkbox closure, explicit timeout readback, targeted Prettier, and diff check.
+- Work-unit commit: `20858780a637c473fb422c2ddf9e6292bf6a501a` (`docs(runbook): clarify R2 teardown order`).
+- Full tests and full gate skipped: documentation/task evidence only; no production or test code changed.

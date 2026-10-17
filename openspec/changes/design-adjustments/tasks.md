@@ -144,8 +144,8 @@ Shorthand: specs **MR** media-registry, **AV** ambient-video, **DM** decorative-
 
 ## Phase 0: P0 planning PR (docs only)
 
-- [ ] 0.1 [BACK] Commit `openspec/changes/design-adjustments/{proposal.md,explore.md,design.md,tasks.md,specs/**}` on branch `docs/design-adjustments-planning`. Verify `corepack pnpm format:check` exits 0. Commit `docs(openspec): add design-adjustments planning artifacts`.
-- [ ] 0.2 [BACK] Open the P0 PR to `main` with label `size:exception` (docs only).
+- [x] 0.1 [BACK] Commit `openspec/changes/design-adjustments/{proposal.md,explore.md,design.md,tasks.md,specs/**}` on branch `docs/design-adjustments-planning`. Verify `corepack pnpm format:check` exits 0. Commit `docs(openspec): add design-adjustments planning artifacts`.
+- [x] 0.2 [BACK] Open the P0 PR to `main` with label `size:exception` (docs only).
 - [ ] 0.3 [OWNER] Merge P0.
 
 ## Phase 1: DA-1 minimal derive tooling (BACK, optional)

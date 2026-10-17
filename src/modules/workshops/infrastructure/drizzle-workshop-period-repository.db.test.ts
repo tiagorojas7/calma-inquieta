@@ -174,7 +174,7 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
     expect(await repo.findById(value.id)).toBeNull();
   });
 
-  it("orders periods deterministically and keeps snapshots immutable after teacher edits", async () => {
+  it("orders periods deterministically and keeps the teacher name snapshot after teacher edits", async () => {
     const { repo, openSession } = await freshRepository();
     await repo.insert(
       period({ id: "00000000-0000-4000-8000-000000000102", period: "2026-09" }),
@@ -196,7 +196,7 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
     expect(
       (await repo.findById("00000000-0000-4000-8000-000000000103"))?.snapshot,
     ).toMatchObject({
-      teacher: { name: "Changed", active: false },
+      teacher: { name: "Teacher", active: false },
       modality: "own",
     });
   });
@@ -229,7 +229,7 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
     }
   });
 
-  it("keeps stored snapshot identity, modality, and percentage across assignment and teacher edits", async () => {
+  it("keeps stored snapshot identity, name, modality, and percentage across assignment and teacher edits", async () => {
     const { repo, openSession } = await freshRepository();
     const value = period({
       snapshot: {
@@ -259,7 +259,7 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
     }
     expect(await repo.findById(value.id)).toMatchObject({
       snapshot: {
-        teacher: { id: IDS.teacher, name: "Changed teacher", active: false },
+        teacher: { id: IDS.teacher, name: "Teacher", active: false },
         modality: "third_party",
         percentage: { basisPoints: 2500 },
       },

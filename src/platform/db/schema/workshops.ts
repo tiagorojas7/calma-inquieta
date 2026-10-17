@@ -81,6 +81,7 @@ export const workshopPeriod = pgTable(
     snapshotTeacherId: uuid("snapshot_teacher_id")
       .notNull()
       .references(() => teacher.id, { onDelete: "restrict" }),
+    snapshotTeacherName: text("snapshot_teacher_name").notNull(),
     snapshotTeacherModality: text("snapshot_teacher_modality").notNull(),
     snapshotPercentageBp: integer("snapshot_percentage_bp"),
     status: text("status").notNull().default("draft"),

@@ -42,6 +42,7 @@ function values(value: StoredWorkshopPeriod) {
     projectTitle: value.project.title || null,
     projectDescription: value.project.description || null,
     snapshotTeacherId: value.snapshot.teacher.id,
+    snapshotTeacherName: value.snapshot.teacher.name,
     snapshotTeacherModality: value.snapshot.modality,
     snapshotPercentageBp: value.snapshot.percentage?.basisPoints ?? null,
     status: value.status,
@@ -134,7 +135,7 @@ async function load(
     snapshot: {
       teacher: {
         id: snapshotTeacher.id,
-        name: snapshotTeacher.name,
+        name: root.snapshotTeacherName,
         active: snapshotTeacher.active,
       },
       modality:

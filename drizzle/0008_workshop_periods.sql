@@ -16,6 +16,7 @@ CREATE TABLE "workshop_period" (
 	"project_title" text,
 	"project_description" text,
 	"snapshot_teacher_id" uuid NOT NULL,
+	"snapshot_teacher_name" text NOT NULL,
 	"snapshot_teacher_modality" text NOT NULL,
 	"snapshot_percentage_bp" integer,
 	"status" text DEFAULT 'draft' NOT NULL,

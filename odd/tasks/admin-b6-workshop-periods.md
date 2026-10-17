@@ -2,7 +2,7 @@
 
 - Work unit: item 10 of `openspec/changes/admin-catalog/tasks.md` (B6). ODD, BACK.
 - Branch/worktree: `feat/admin-catalog-b6-workshop-periods`, stacked on completed B5 commit `4799693`, in `../CalmaInquieta-b1b`.
-- Objective: deliver workshop periods and “Abrir mes” with Córdoba month semantics, deterministic prefill, per-turno capacities, assignment-isolated teacher/id/name/modality and initial-percentage snapshots, editable non-closed period percentage, effective closure, transactional fake/Drizzle parity, and generated migration `0007_workshop_periods`.
+- Objective: deliver workshop periods and “Abrir mes” with Córdoba month semantics, deterministic prefill, per-turno capacities, assignment-isolated teacher/id/name/modality and initial-percentage snapshots, editable non-closed period percentage, effective closure, transactional fake/Drizzle parity, and ordered generated migrations `0007_workshop_turno_composite_unique` + `0008_workshop_periods`.
 - Why: B6 makes monthly workshop configuration historical and is the dependency for B9 offers and later enrollment/renewal flows.
 - Requirements: item 10 of `openspec/changes/admin-catalog/tasks.md`, period requirements in `openspec/changes/admin-catalog/specs/workshop-periods/spec.md`, relevant design sections, and existing `WorkshopPeriodsService` contracts/builders.
 - Constraints: strict TDD (`AGENTS.md`); hexagonal boundaries; fixed `Clock`; America/Argentina/Cordoba month boundaries; all opening-rule failures aggregate; opening and compound writes are atomic; fake and Drizzle run one shared contract. Do not edit workshop `public-*`, `src/composition/request-services.ts`, `src/app/**`, unrelated intensivo tables, or B9 material-offer persistence. `src/modules/workshops/index.ts` edits must be additive.
@@ -36,7 +36,7 @@
 - Draft/open/closed transitions are typed; effectively closed periods reject every write and remain readable; only drafts delete.
 - Fake and Drizzle run one shared contract with newest-first deterministic order and complete rollback on compound failure.
 - B6 implements period-backed `TurnoUsageLookup` without making B5 import B6 infrastructure.
-- Migration is generated as `0007_workshop_periods`; existing monthly/turno/intensivo definitions remain unchanged except additive period declarations.
+- Migrations are generator-produced as prerequisite `0007_workshop_turno_composite_unique` followed by `0008_workshop_periods`; existing monthly/turno/intensivo definitions remain unchanged except additive period declarations.
 - B9 materials, C4-B2 public readers, composition production and FRONT files remain untouched.
 
 ## Verification plan
@@ -46,7 +46,7 @@
 - Parent spot check after each work unit.
 - Final full gate under `C:/Temp/calma-gate.lock`: format, lint, typecheck, build, coverage and diff check.
 - Runtime boundary: embedded PostgreSQL period repository contract and generated migrations.
-- Rollback boundary: B6 period domain/application/fake/Drizzle files, additive period schema declarations, generated `0007` artifacts and latest-migration expectations; B4/B5 history remains.
+- Rollback boundary: B6 period domain/application/fake/Drizzle files, additive period schema declarations, generated `0007`/`0008` artifacts and latest-migration expectations; B4/B5 history remains.
 
 ## Progress and evidence
 
@@ -68,8 +68,10 @@
 - Independent persistence verification found one catalog-form mismatch: `UNIQUE(workshop_id, period)` was emitted as a unique index rather than the table constraint stated by the design. The schema now uses `unique()` for both workshop-period composite uniques; unmerged `0008_workshop_periods` was regenerated and contains inline `CONSTRAINT workshop_period_workshop_period_unique UNIQUE(workshop_id, period)`. The B5 canary (16/16), period DB suite (12/12), fake/catalog suite (24/24), format and diff checks remain green after regeneration.
 
 - Final independent persistence re-verification PASS: B5 migration canary 16/16; period DB 12/12; fake/catalog 24/24; migration/request-services DB 13/13; workshops 316/316; lint, typecheck, format and diff check PASS. No blocking findings.
-- Native workspace START was attempted twice after selecting all six intended untracked paths, but candidate-view preparation rejected before native START (`candidate-owner-preparation-failed`, `lineage_created: false`, no mutation). The generated snapshots make the workspace projection substantially larger; the safe fallback is to commit the verified work unit and request native review as the exact committed range from B6a commit `830e9c5`.
+- Native workspace START was attempted twice after selecting all six intended untracked paths, but candidate-view preparation rejected before native START (`candidate-owner-preparation-failed`, `lineage_created: false`, no mutation). The generated snapshots make the workspace projection substantially larger; the verified persistence work unit was therefore committed as `23cb55d`, and native review was retried as the exact committed range from B6a commit `830e9c5`.
+- Native committed-range review lineage `review-796ac46770e5cd31` found one real CRITICAL, `R3-snapshot-teacher-name-drift`: persistence joined `teacher.name`, so later renames changed the historical period snapshot. The exact correction-plan submission (60 diff-line estimate within the 200-line budget) timed out before native mutation and returned `next_action: stop`; review approval is therefore unavailable. Strict TDD correction changed two existing DB assertions RED (received `Changed`/`Changed teacher` instead of `Teacher`), persisted non-null `snapshot_teacher_name`, read the stored name while retaining live `teacher.active`, and regenerated unmerged `0008` through `drizzle-kit drop` + `pnpm db:generate --name workshop_periods`. Correction size: 23 diff lines.
+- Correction verification: focused period DB 12/12; migration/catalog/request-services 27/27; fresh whole workshops module 13 files / 316 tests PASS; lint, typecheck, format:check and diff check PASS. One prior aggregate workshops attempt passed all 316 assertions but exited on transient embedded-PostgreSQL `too many clients already`; the immediate fresh isolated rerun was fully green. ASSESS treated native review as unavailable and required writer self-verification plus an independent verifier; both are satisfied.
 
 ## Next step
 
-Commit the verified B6 persistence work unit, retry native review for committed range `830e9c5..HEAD`, then run the locked full gate and record final evidence.
+Commit the teacher-name snapshot correction, notify the coordinating session, acquire the shared gate lock, run the full locked gate, and record final B6 evidence.

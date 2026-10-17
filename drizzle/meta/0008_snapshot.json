@@ -1,5 +1,5 @@
 {
-  "id": "aecc5707-1770-49b9-b3da-364723e6cc1f",
+  "id": "997e673d-e08a-422a-9f63-953511898ec2",
   "prevId": "ac5b04cc-6140-4a8e-a21b-4a73ccae68c3",
   "version": "7",
   "dialect": "postgresql",
@@ -872,6 +872,12 @@
         "snapshot_teacher_id": {
           "name": "snapshot_teacher_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_teacher_name": {
+          "name": "snapshot_teacher_name",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },

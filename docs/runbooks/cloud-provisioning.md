@@ -56,33 +56,33 @@ Neon console, New project:
 | Postgres version | 17                                             |
 | Database name    | `calma`                                        |
 
-Check: the default branch `main` exists, with owner role `neondb_owner` and database `calma`.
+Check: the default branch `main` exists with database `calma`. Copy the exact owner-role name shown by Neon. Neon derives it from the database name, so expect `calma_owner` for `calma`; record the displayed value as `<owner-role>` and use it in N2–N4 and the later secret/rotation steps.
 
 ### N2. Create the runtime role on `main`
 
 Generate a password for `calma_app` in the password manager. Use letters and digits only, so it never needs URL encoding inside a connection string.
 
-Neon console, branch `main`, SQL Editor, database `calma`. Replace the placeholder and run the whole block. This creates roles and grants only. **Do not run migrations on `main`**; it holds no tables or data until the launch change.
+Neon console, branch `main`, SQL Editor, database `calma`. Replace both placeholders, including every `<owner-role>` occurrence with the exact name recorded in N1, and run the whole block. This creates roles and grants only. **Do not run migrations on `main`**; it holds no tables or data until the launch change.
 
 ```sql
 CREATE ROLE calma_app WITH LOGIN PASSWORD '<password-from-password-manager>';
 GRANT CONNECT ON DATABASE calma TO calma_app;
 GRANT USAGE ON SCHEMA public TO calma_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE <owner-role> IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO calma_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE <owner-role> IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO calma_app;
-CREATE SCHEMA IF NOT EXISTS drizzle AUTHORIZATION neondb_owner;
+CREATE SCHEMA IF NOT EXISTS drizzle AUTHORIZATION <owner-role>;
 GRANT USAGE ON SCHEMA drizzle TO calma_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA drizzle
+ALTER DEFAULT PRIVILEGES FOR ROLE <owner-role> IN SCHEMA drizzle
   GRANT SELECT ON TABLES TO calma_app;
 ```
 
-Check, in the same editor:
+Check, in the same editor, after replacing `<owner-role>`:
 
 ```sql
 SELECT rolname, pg_has_role(rolname, 'neon_superuser', 'member') AS is_superuser
-FROM pg_roles WHERE rolname IN ('calma_app', 'neondb_owner');
+FROM pg_roles WHERE rolname IN ('calma_app', '<owner-role>');
 ```
 
 `calma_app` must show `false`. A role created with SQL gets least privilege; only roles created in the console, CLI or API join `neon_superuser`, which is why this step uses SQL.
@@ -98,7 +98,7 @@ Neon console, branch `staging`, Connect. Turn **Connection pooling off** (the ho
 
 | Role           | Use for                                     | Becomes secret           |
 | -------------- | ------------------------------------------- | ------------------------ |
-| `neondb_owner` | Running migrations in CI                    | `MIGRATION_DATABASE_URL` |
+| `<owner-role>` | Running migrations in CI                    | `MIGRATION_DATABASE_URL` |
 | `calma_app`    | Hyperdrive in C4 only (not a GitHub secret) | none                     |
 
 Check: both strings start with `postgres://`, name database `calma`, and end with `sslmode=require`. Keep `sslmode=require` and drop any other query parameter if the console adds one.
@@ -169,7 +169,7 @@ gh secret set CF_ACCESS_CLIENT_SECRET --repo tiagorojas7/calma-inquieta
 | `CLOUDFLARE_API_TOKEN`    | The token from C3                                               |
 | `CLOUDFLARE_ACCOUNT_ID`   | `<account-id>` from C2                                          |
 | `HYPERDRIVE_ID`           | `<hyperdrive-id>` from C4                                       |
-| `MIGRATION_DATABASE_URL`  | The `neondb_owner` direct URL from N4                           |
+| `MIGRATION_DATABASE_URL`  | The `<owner-role>` direct URL from N4                           |
 | `STATUS_URL`              | `https://calma-inquieta.<account-subdomain>.workers.dev/status` |
 | `CF_ACCESS_CLIENT_ID`     | The Access service-token client id from Z2                      |
 | `CF_ACCESS_CLIENT_SECRET` | The Access service-token client secret from Z2                  |
@@ -237,13 +237,13 @@ pnpm exec wrangler deploy --var "SITE_URL:<origin>" --var "BUILD_COMMIT:<sha>"
 
 ## Troubleshooting
 
-| Symptom                                              | Likely cause and fix                                                                                                    |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `deploy misconfigured: missing <names>`              | A secret is absent or empty. Run `gh secret set` for each listed name                                                   |
-| `wrangler deploy` fails with an authentication error | Token lacks a permission. Apply the fallback in C3                                                                      |
-| `db:migrate` fails with a permission error           | The URL is not the `neondb_owner` URL, or it is pooled. Redo N4 and `gh secret set MIGRATION_DATABASE_URL`              |
-| `/status` returns `degraded` after a good deploy     | Hyperdrive points at the wrong role or branch, or `staging` is waking. Run `wrangler hyperdrive get`, retry in a minute |
-| Smoke check fails right after deploy                 | Propagation delay. Re-run the `deploy` job                                                                              |
+| Symptom                                              | Likely cause and fix                                                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `deploy misconfigured: missing <names>`              | A secret is absent or empty. Run `gh secret set` for each listed name                                                     |
+| `wrangler deploy` fails with an authentication error | Token lacks a permission. Apply the fallback in C3                                                                        |
+| `db:migrate` fails with a permission error           | The URL is not the `<owner-role>` URL recorded in N1, or it is pooled. Redo N4 and `gh secret set MIGRATION_DATABASE_URL` |
+| `/status` returns `degraded` after a good deploy     | Hyperdrive points at the wrong role or branch, or `staging` is waking. Run `wrangler hyperdrive get`, retry in a minute   |
+| Smoke check fails right after deploy                 | Propagation delay. Re-run the `deploy` job                                                                                |
 
 ## Rollback
 
@@ -273,7 +273,7 @@ Never edit an applied migration. Fix forward with a new migration.
 | ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Cloudflare API token    | Every 12 months      | Create a new token (C3), `gh secret set CLOUDFLARE_API_TOKEN`, delete the old token                                                        |
 | `calma_app` password    | On suspicion of leak | `ALTER ROLE calma_app PASSWORD '...'` on `main` and `staging`, then `wrangler hyperdrive update <hyperdrive-id> --connection-string="..."` |
-| `neondb_owner` password | On suspicion of leak | Reset it in the Neon console, copy the new `staging` direct URL, `gh secret set MIGRATION_DATABASE_URL`                                    |
+| `<owner-role>` password | On suspicion of leak | Reset the N1 owner role in the Neon console, copy the new `staging` direct URL, `gh secret set MIGRATION_DATABASE_URL`                     |
 
 ## Checklist
 

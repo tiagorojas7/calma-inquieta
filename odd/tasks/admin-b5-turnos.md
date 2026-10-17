@@ -1,7 +1,7 @@
 # Admin B5: workshop turnos
 
 - Work unit: item 9 of `openspec/changes/admin-catalog/tasks.md` (B5). ODD, BACK.
-- Branch/worktree: `feat/admin-catalog-b5-turnos`, stacked on B4 commit `9b826ad`, in `../CalmaInquieta-b1b`.
+- Branch/worktree: `feat/admin-catalog-b5-turnos`, rebased B5-only onto merged B4 at `origin/main` `c819f2e`, in isolated integration worktree `../CalmaInquieta-b5-integration`.
 - Objective: deliver monthly workshop turnos with normalized case-insensitive labels, weekday/time/capacity rules, deterministic display order, lifecycle/history protection, shared fake/Drizzle repository parity, and generated migration `0006_workshop_turnos`.
 - Why: B5 replaces B4's turno placeholders and unblocks B6 period capacity/snapshot behavior.
 - Requirements: item 9 of `openspec/changes/admin-catalog/tasks.md`, turno requirements in `openspec/changes/admin-catalog/specs/monthly-workshops/spec.md`, relevant design sections, and the existing contracts in `src/modules/workshops/application/contracts.ts`.
@@ -73,3 +73,6 @@
 - B5b rollback boundary: revert `ab150b3`; if migration `0006` was applied, retain it or remove with a new forward migration rather than editing history.
 
 B5 is complete. Next dependency slice is B6 periods and “Abrir mes”, on a new stacked feature branch.
+
+- Integration readiness: only the four B5 commits were replayed onto merged B4; the redundant historical B4 formatting commit was excluded. Current B5 commits are `8b1a644` (behavior), `0bd02a4` (B5a evidence), `d477f32` (persistence), and `fe0d2f1` (delivery evidence). Migration remains generator-produced as `0006_workshop_turnos`; drift check reports no schema changes. Focused integration suite passes 4 files / 45 tests.
+- Authoritative integration gate ran under `C:/Temp/calma-gate.lock`: format, lint, typecheck, build, coverage, migration drift, and diff check PASS. Coverage: 167 files / 1805 tests, 94.52% statements, 91.73% branches, 96.89% functions, and 96.74% lines; worktree clean. Earlier unlocked/contended attempts exposed unrelated Windows worker/time-out flakes in migration, intensivo, home UI, and supplier tests; each implicated runtime boundary passed isolated, and the final quiet locked coverage run was fully green. The lock was released.

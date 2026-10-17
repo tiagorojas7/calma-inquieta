@@ -1,7 +1,7 @@
 # Admin B4: monthly workshops
 
 - Work unit: item 8 of `openspec/changes/admin-catalog/tasks.md` (B4). ODD, BACK.
-- Branch/worktree: `feat/admin-catalog-b4-monthly-workshops` from `origin/main` `8cc1fc6`, in `../CalmaInquieta-b1b`.
+- Branch/worktree: `feat/admin-catalog-b4-monthly-workshops`, rebased from original base `8cc1fc6` onto current `origin/main` `b71ae79`, in isolated integration worktree `../CalmaInquieta-b4-integration`.
 - Objective: deliver monthly workshops with typed domain/application behavior, fake and Drizzle repositories running one shared contract, additive schema definitions, and generated migration `0005_monthly_workshops`.
 - Why: B4 is the persistence and behavior prerequisite for B5 turnos and B6 periods.
 - Requirements: `openspec/changes/admin-catalog/specs/monthly-workshops/spec.md`, relevant sections of `openspec/changes/admin-catalog/design.md`, task item 8, and the existing seam in `src/modules/workshops/application/contracts.ts`.
@@ -61,6 +61,8 @@ Final proof pass added explicit archive/restore preservation, draft/archived vis
 Parent spot check initially ran from the wrong worktree and found no tests; read-only incident diagnosis confirmed the correct path and no new mutation. Corrected command in `CalmaInquieta-b1b`: 2 files, 19/19 PASS.
 
 The external gate completed and released its lock. This session then acquired `C:/Temp/calma-gate.lock` atomically. First full-gate pass: format, lint, typecheck, build and `git diff --check` PASS; `test:coverage` failed 1/1585 because the database-probe contract still expected `0004_intensive_workshops`. RED was observed; both the shared contract and in-memory migrated fixture were corrected to `0005_monthly_workshops`. Focused probes then passed (fake 4/4; isolated Drizzle 6/6). Final locked gate: format, lint, typecheck and build PASS; `test:coverage` 145 files, 1585/1585 PASS in 771.55 s, coverage 95.39% statements, 93.39% branches, 94.37% functions and 97.05% lines; `git diff --check` PASS. Eight jsdom canvas warnings were non-fatal. The owned lock was released.
+
 - Work-unit commit: `42cfec1` (`feat(workshops): add monthly workshop persistence`), 21 files, 2,581 additions and 5 deletions including generated migration/snapshot and this task document.
 - Native review: INSPECT prepared committed range `8cc1fc6..42cfec1`, but START failed before authority with `candidate-owner-preparation-failed` (`lineage_created: false`, no mutation). No retry, lineage, receipt or approval is claimed. Final ASSESS with `nativeReviewOutcome: unavailable` was schema-incompatible/unassessable and required writer self-verification plus an independent verifier; both records and the full gate are captured above.
 - Rollback boundary: revert `42cfec1`; the additive migration remains harmless if already applied, while a later removal must use a new forward migration.
+- Integration readiness: branch rebased cleanly onto `origin/main` `b71ae79`; generated migration remains `0005_monthly_workshops`, `pnpm db:generate --name drift-check` reports no schema changes, focused B4 verification passes 4 files / 37 tests, lint passes, and the only interrupted full-gate check was this document's Prettier drift, now normalized. The PR is one cohesive persistence-parity slice with tests and generated artifacts; its approximately 2,625 changed lines require the established `size:exception` label.

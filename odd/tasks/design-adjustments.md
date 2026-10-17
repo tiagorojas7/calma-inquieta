@@ -52,7 +52,10 @@ The deployed site still shows the baseline design and stand-in media. The approv
 
 ## Progress and evidence
 
-- P0 artifact audit completed read-only. The apparent proposal/design discrepancies are historical inputs explicitly superseded by the design section 9 lean amendment and authoritative `tasks.md`; no corrective artifact rewrite is required before P0.
+- P0 artifact audit completed read-only. The apparent proposal/design discrepancies are historical inputs explicitly superseded by the design section 9 lean amendment and authoritative `tasks.md`; no corrective artifact rewrite was required.
+- P0 work-unit commit: `9138d0e0643a8cbe6aeb166b2e5a513c4a48d032` (`docs(openspec): add design-adjustments planning artifacts`), exactly one commit over remote `main` at `3ecfaf1` when created.
+- P0 checks: `corepack pnpm format:check`, `corepack pnpm typecheck`, `corepack pnpm lint`, and `git diff --check origin/main...HEAD` passed. An independent verifier confirmed 13 documentation-only paths and 2,881 additions. Focused tests and runtime harness are N/A because P0 changes no executable behavior. Rollback boundary: revert `9138d0e`.
+- P0 native assessment was unavailable because its response was schema-incompatible, so the returned fail-closed plan required writer verification plus an independent verifier; both passed. Native START then failed before lineage creation with `candidate-owner-preparation-failed`, performed no mutation, and was reported at `Gentleman-Programming/gentle-ai#4952` comment `6229014577`. Delivery continues under ordinary repository policy with native review unavailable for this candidate.
 - DA-1 audit completed read-only: skip rule is false; expected edit surfaces are `tooling/media/derive.ts`, `tooling/media/derive.test.ts`, `package.json`, and `docs/media/pipeline.md`.
 - DA-2 inventory completed read-only: all required physical image sources and the loop source are present. The wording describes 15 selections while the inventory contains 14 unique source/crop selections; implementation treats hero mobile and desktop jobs separately and must preserve the exact design recipe.
 - Admin F0a and C4-B3 are tracked as separate project lanes and are not part of this feature's write scope.
@@ -60,4 +63,4 @@ The deployed site still shows the baseline design and stand-in media. The approv
 
 ## Next step
 
-Complete P0 as one documentation work unit, then create an isolated DA-1 worktree stacked on the P0 commit and delegate its strict-TDD implementation.
+Push P0 and open its docs PR, then create an isolated DA-1 worktree stacked on the P0 commit and delegate its strict-TDD implementation.

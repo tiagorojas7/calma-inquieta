@@ -50,6 +50,20 @@
       "when": 1792159963173,
       "tag": "0006_workshop_turnos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792201671971,
+      "tag": "0007_workshop_turno_composite_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792205724442,
+      "tag": "0008_workshop_periods",
+      "breakpoints": true
     }
   ]
 }

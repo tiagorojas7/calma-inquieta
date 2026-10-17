@@ -1,0 +1,1 @@
+ALTER TABLE "workshop_turno" ADD CONSTRAINT "workshop_turno_workshop_id_unique" UNIQUE("workshop_id","id");

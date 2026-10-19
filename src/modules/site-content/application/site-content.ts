@@ -6,6 +6,7 @@ import {
   approvedTrustClaims,
   listUnapproved,
   publishableTestimonials,
+  publishedImages,
 } from "../domain/content-rules";
 import type {
   AboutPageContent,
@@ -22,7 +23,7 @@ export interface SiteContent {
   getBusinessProfile(): Promise<BusinessProfile>;
   /** Trust claims approved only; testimonials consented only. */
   getHomePage(): Promise<HomePageContent>;
-  /** Values, gallery, videos and FAQ are `[]` when empty. */
+  /** Values, gallery, videos and FAQ are `[]` when empty; the gallery keeps published images only. */
   getAboutPage(): Promise<AboutPageContent>;
   getContactPage(): Promise<ContactPageContent>;
   getComingSoonPage(slug: ComingSoonSlug): Promise<ComingSoonContent>;
@@ -53,7 +54,8 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       };
     },
     async getAboutPage() {
-      return (await source.load()).about;
+      const raw = await source.load();
+      return { ...raw.about, gallery: publishedImages(raw.about.gallery, raw) };
     },
     async getContactPage() {
       return (await source.load()).contact;

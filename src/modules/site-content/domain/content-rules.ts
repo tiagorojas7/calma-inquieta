@@ -6,6 +6,13 @@ import type {
   Testimonial,
   TrustClaim,
 } from "./page-content";
+import {
+  isPublishable,
+  mentionsExcludedSource,
+  srcSetPaths,
+  validateMediaRegistry,
+  type MediaAsset,
+} from "./media";
 
 /** A testimonial is listed only when written consent and its recording date are on file. */
 export function publishableTestimonials(
@@ -44,6 +51,70 @@ function pageSeo(content: RawSiteContent): readonly PageSeo[] {
     { id: "catalog/talleres", seo: content.catalog.talleres.seo },
     { id: "catalog/intensivos", seo: content.catalog.intensivos.seo },
   ];
+}
+
+const STAND_IN_FOLDER = "/media/stand-ins/";
+
+type PathRule = Extract<
+  ContentIssue["rule"],
+  | "excluded-source"
+  | "unregistered-stand-in"
+  | "unregistered-media"
+  | "unpublishable-media"
+  | "rights-missing"
+>;
+
+function imagePaths(image: ImageRef): readonly string[] {
+  return [image.src, ...(image.srcSet ? srcSetPaths(image.srcSet) : [])];
+}
+
+function assetPaths(asset: MediaAsset): readonly string[] {
+  return asset.kind === "image"
+    ? asset.variants.map(({ path }) => path)
+    : asset.sources.map(({ path }) => path);
+}
+
+/** Why a content path may not be shown; null for a registered stand-in or a publishable media path. */
+function pathRule(path: string, content: RawSiteContent): PathRule | null {
+  const { media } = content;
+  if (mentionsExcludedSource(path, media.excluded)) {
+    return "excluded-source";
+  }
+  if (content.standIns.some((asset) => asset.path === path)) {
+    return null;
+  }
+  const asset = media.assets.find((candidate) =>
+    assetPaths(candidate).includes(path),
+  );
+  if (!asset) {
+    return path.startsWith(STAND_IN_FOLDER)
+      ? "unregistered-stand-in"
+      : "unregistered-media";
+  }
+  if (isPublishable(asset, media)) {
+    return null;
+  }
+  return media.rights.some(({ sourceId }) => sourceId === asset.sourceId)
+    ? "unpublishable-media"
+    : "rights-missing";
+}
+
+/** True for a registered stand-in or a path of a publishable media asset. */
+export function isPublishedPath(
+  path: string,
+  content: RawSiteContent,
+): boolean {
+  return pathRule(path, content) === null;
+}
+
+/** Keeps the images whose `src` and every `srcSet` path are published; `[]` when none is. */
+export function publishedImages<T extends ImageRef>(
+  images: readonly T[],
+  content: RawSiteContent,
+): readonly T[] {
+  return images.filter((image) =>
+    imagePaths(image).every((path) => isPublishedPath(path, content)),
+  );
 }
 
 /** Every image the content shows, with the identifier a failure should name. */
@@ -114,14 +185,16 @@ export function validateSiteContent(
   content: RawSiteContent,
 ): readonly ContentIssue[] {
   const issues: ContentIssue[] = [];
-  const registered = new Set(content.standIns.map((asset) => asset.path));
 
   for (const { id, image, decorative } of contentImages(content)) {
     if (!decorative && image.alt.trim() === "") {
       issues.push({ id, rule: "alt-missing" });
     }
-    if (!registered.has(image.src)) {
-      issues.push({ id: image.src, rule: "unregistered-stand-in" });
+    for (const path of imagePaths(image)) {
+      const rule = pathRule(path, content);
+      if (rule) {
+        issues.push({ id: path, rule });
+      }
     }
   }
   for (const claim of content.home.trustClaims) {
@@ -142,10 +215,12 @@ export function validateSiteContent(
   const repeated = [
     ...duplicates(contentIds(content)),
     ...duplicates(content.standIns.map((asset) => asset.id)),
+    ...duplicates(content.media.assets.map((asset) => asset.id)),
   ];
   for (const id of repeated) {
     issues.push({ id, rule: "duplicate-id" });
   }
+  issues.push(...validateMediaRegistry(content.media));
   return issues;
 }
 

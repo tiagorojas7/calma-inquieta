@@ -1,4 +1,5 @@
 import type { RawBusinessProfile, WhatsAppTopic } from "./business-profile";
+import type { MediaRegistry, MediaRule } from "./media";
 import type { StandInAsset } from "./stand-in";
 
 export interface SeoCopy {
@@ -21,6 +22,8 @@ export interface ImageRef {
   readonly alt: string;
   readonly width: number;
   readonly height: number;
+  /** Responsive candidates ("path 480w, path 960w"); every path is gated like `src`. */
+  readonly srcSet?: string;
 }
 
 export interface TrustClaim extends Approvable {
@@ -198,6 +201,7 @@ export interface RawSiteContent {
   readonly comingSoon: Readonly<Record<ComingSoonSlug, ComingSoonContent>>;
   readonly catalog: CatalogContent;
   readonly standIns: readonly StandInAsset[];
+  readonly media: MediaRegistry;
 }
 
 export interface ContentIssue {
@@ -208,5 +212,10 @@ export interface ContentIssue {
     | "video-id"
     | "empty-seo"
     | "duplicate-id"
-    | "unregistered-stand-in";
+    | "unregistered-stand-in"
+    | MediaRule;
+  /** Registry issues only: the offending variant or source path. */
+  readonly path?: string;
+  /** Registry issues only: the offending source id. */
+  readonly sourceId?: string;
 }

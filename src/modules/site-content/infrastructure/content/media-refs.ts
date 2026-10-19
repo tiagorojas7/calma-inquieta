@@ -1,8 +1,12 @@
 import { toImageRef } from "../../domain/media";
-import type { ArtDirectedImage, ImageRef } from "../../domain/page-content";
+import type {
+  AmbientLoop,
+  ArtDirectedImage,
+  ImageRef,
+} from "../../domain/page-content";
 import { MEDIA_ASSETS } from "./media-assets";
 
-/** The ids of the registered image assets (video ids arrive with the loop). */
+/** The ids of the registered image assets. */
 export type ImageAssetId = Extract<
   (typeof MEDIA_ASSETS)[number],
   { readonly kind: "image" }
@@ -26,4 +30,34 @@ export function artDirected(
   desktop: ImageAssetId,
 ): ArtDirectedImage {
   return { mobile: imageRef(mobile), desktop: imageRef(desktop) };
+}
+
+/** The ids of the registered video assets. */
+export type VideoAssetId = Extract<
+  (typeof MEDIA_ASSETS)[number],
+  { readonly kind: "video" }
+>["id"];
+
+/**
+ * One registered loop as a content reference: its sources in registry order and
+ * the poster of its `posterId`, decorative (empty alt). An id that is not a
+ * registered video, or a poster that is not a registered image, throws.
+ */
+export function loopRef(id: VideoAssetId): AmbientLoop {
+  const video = MEDIA_ASSETS.find((candidate) => candidate.id === id);
+  if (video?.kind !== "video") {
+    throw new Error(`"${id}" is not a registered video asset`);
+  }
+  const poster = MEDIA_ASSETS.find(
+    (candidate) => candidate.id === video.posterId,
+  );
+  if (poster?.kind !== "image") {
+    throw new Error(`"${video.posterId}" is not a registered image asset`);
+  }
+  return {
+    poster: { ...toImageRef(poster), alt: "" },
+    sources: video.sources.map(({ path, type }) => ({ src: path, type })),
+    width: video.width,
+    height: video.height,
+  };
 }

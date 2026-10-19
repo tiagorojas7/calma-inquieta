@@ -1,5 +1,5 @@
 import type { HomePageContent } from "../../domain/page-content";
-import { artDirected, imageRef } from "./media-refs";
+import { artDirected, imageRef, loopRef } from "./media-refs";
 
 /**
  * Inicio. Drafted from docs/brand/dmr-calma-inquieta.md and the client
@@ -24,6 +24,7 @@ export const homeContent = {
     primaryCtaLabel: "Ver talleres",
     secondaryCtaLabel: "Ver intensivos",
     image: artDirected("home-hero-mobile", "home-hero-desktop"),
+    loop: loopRef("home-loop"),
   },
   trustClaims: [
     {

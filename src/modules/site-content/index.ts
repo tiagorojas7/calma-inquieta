@@ -33,6 +33,7 @@ export type {
 } from "./domain/media";
 export type {
   AboutPageContent,
+  AmbientLoop,
   Approvable,
   ApprovableText,
   ArtDirectedImage,

@@ -43,6 +43,8 @@ export const MEDIA_RIGHTS: readonly RightsEntry[] = [
   handsOnly("img-20260325-wa0013"),
   handsOnly("img-20260411-wa0110"),
   handsOnly("img-20260306-wa0071"),
+  // The ambient loop: hands and a forearm show from about the third second (owner decision 2026-10-19).
+  handsOnly("vid-20261014-185300580"),
   // Every other placed source shows no people.
   noPeople("img-20260819-174607732-hdr"),
   noPeople("img-20260530-wa0021"),

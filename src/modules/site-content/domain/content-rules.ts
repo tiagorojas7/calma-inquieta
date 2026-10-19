@@ -1,4 +1,5 @@
 import type {
+  AmbientLoop,
   ContentIssue,
   ImageRef,
   RawSiteContent,
@@ -146,6 +147,21 @@ function hasShareImage(media: MediaRegistry): boolean {
   );
 }
 
+/** Every path of a loop: the poster (src and srcSet) and each video source. */
+function loopPaths(loop: AmbientLoop): readonly string[] {
+  return [...imagePaths(loop.poster), ...loop.sources.map(({ src }) => src)];
+}
+
+/** The loop when every one of its paths is published; otherwise nothing. */
+export function publishedLoop(
+  loop: AmbientLoop | undefined,
+  content: RawSiteContent,
+): AmbientLoop | undefined {
+  return loop && loopPaths(loop).every((path) => isPublishedPath(path, content))
+    ? loop
+    : undefined;
+}
+
 /** Every image the content shows, with the identifier a failure should name. */
 function contentImages(content: RawSiteContent): readonly {
   readonly id: string;
@@ -231,6 +247,13 @@ export function validateSiteContent(
       if (rule) {
         issues.push({ id: path, rule });
       }
+    }
+  }
+  const { loop } = content.home.hero;
+  for (const path of loop ? loopPaths(loop) : []) {
+    const rule = pathRule(path, content);
+    if (rule) {
+      issues.push({ id: path, rule });
     }
   }
   for (const claim of content.home.trustClaims) {

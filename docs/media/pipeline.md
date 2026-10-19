@@ -46,23 +46,30 @@ printed fragment.
 
 ## Ambient loop
 
-Run these commands manually in the external media workspace. Adjust the crop
-offset (`285` for the reviewed mirror) to the source and record the selected
-offset here with the asset review.
+Run these commands manually in the external media workspace. The source is
+`VID_20261014_185300580.mp4` (1920x1080 with a -90 degree rotation tag, so
+ffmpeg turns it into 1080x1920 before the filters). The crop offset `285` is
+the centered 4:5 window; it was reviewed and used as is. `-frames:v 180` keeps
+exactly 6.000 seconds at 30 fps (`-t 6` produced 6.033 s in the MP4).
 
 ```sh
-ffmpeg -ss 0 -t 6 -i VID_20261014_185300580.mp4 -an -map_metadata -1 \
+ffmpeg -i VID_20261014_185300580.mp4 -frames:v 180 -an -map_metadata -1 \
   -vf "crop=1080:1350:0:285,scale=720:900:flags=lanczos,fps=30,format=yuv420p" \
   -c:v libx264 -profile:v high -preset slow -crf 28 -movflags +faststart home-loop.mp4
-ffmpeg -ss 0 -t 6 -i VID_20261014_185300580.mp4 -an -map_metadata -1 \
+ffmpeg -i VID_20261014_185300580.mp4 -frames:v 180 -an -map_metadata -1 \
   -vf "crop=1080:1350:0:285,scale=720:900:flags=lanczos,fps=30" \
-  -c:v libvpx-vp9 -b:v 0 -crf 36 -row-mt 1 -deadline good home-loop.webm
-ffmpeg -ss 0 -i VID_20261014_185300580.mp4 -frames:v 1 \
+  -c:v libvpx-vp9 -b:v 0 -crf 42 -row-mt 1 -deadline good home-loop.webm
+ffmpeg -i VID_20261014_185300580.mp4 -frames:v 1 \
   -vf "crop=1080:1350:0:285,scale=720:900" home-loop-poster.png
 ```
 
-The poster goes through the image recipe. Rename each video from its final
-bytes before adding it to `public/media/video/`:
+The WebM uses `-crf 42`: `-crf 36` gave 2.18 MB, over the 1,572,864 byte
+budget, while 42 gives about 1.28 MB (the MP4 at crf 28 is about 1.12 MB).
+
+The poster goes through the image recipe (job `home-loop-poster`, area `video`):
+put `home-loop-poster.png` in the source folder and run `media:derive`.
+Rename each video from its final bytes before adding it to
+`public/media/video/`:
 
 ```sh
 for ext in mp4 webm; do hash=$(sha256sum "home-loop.$ext" | cut -c1-8); mv "home-loop.$ext" "home-loop-720.$hash.$ext"; done

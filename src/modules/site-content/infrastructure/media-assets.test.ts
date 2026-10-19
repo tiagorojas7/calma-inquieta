@@ -6,6 +6,7 @@ import { findCopyViolations } from "../domain/copy-rules";
 import {
   DEFAULT_SHARE_IMAGE,
   mentionsExcludedSource,
+  publishedPaths,
   validateMediaRegistry,
   type ExcludedSource,
   type MediaArea,
@@ -388,5 +389,121 @@ describe("the media refs", () => {
       mobile: imageRef("home-hero-mobile"),
       desktop: imageRef("home-hero-desktop"),
     });
+  });
+});
+
+describe("the ambient loop", () => {
+  const VIDEO_DIR = "/media/video/";
+  const videoFiles = allMediaFiles.filter(
+    (path) => path.startsWith(VIDEO_DIR) && /\.(mp4|webm)$/.test(path),
+  );
+  const loops = assets.filter((asset) => asset.kind === "video");
+  const loop = loops.find(({ id }) => id === "home-loop");
+  const mp4 = videoFiles.find((path) => path.endsWith(".mp4"));
+  const webm = videoFiles.find((path) => path.endsWith(".webm"));
+
+  /** Handler types of every `hdlr` box found in the bytes ("vide", "soun"). */
+  function handlerTypes(bytes: Buffer): string[] {
+    const types: string[] = [];
+    let at = bytes.indexOf("hdlr", 0, "latin1");
+    while (at !== -1) {
+      // box type, then version and flags (4), pre_defined (4), handler_type (4)
+      types.push(bytes.subarray(at + 12, at + 16).toString("latin1"));
+      at = bytes.indexOf("hdlr", at + 4, "latin1");
+    }
+    return types;
+  }
+
+  it("the loop MP4 has no soun handler", () => {
+    expect(mp4).toBeDefined();
+    const types = handlerTypes(bytesOf(mp4 ?? ""));
+    expect(types).toContain("vide");
+    expect(types).not.toContain("soun");
+  });
+
+  it("the loop WebM has no A_OPUS or A_VORBIS codec id", () => {
+    expect(webm).toBeDefined();
+    const bytes = bytesOf(webm ?? "");
+    expect(bytes.indexOf("V_VP9", 0, "latin1")).toBeGreaterThan(-1);
+    expect(bytes.indexOf("A_OPUS", 0, "latin1")).toBe(-1);
+    expect(bytes.indexOf("A_VORBIS", 0, "latin1")).toBe(-1);
+  });
+
+  it("each video file is at most 1,572,864 bytes", () => {
+    expect(videoFiles).toHaveLength(2);
+    for (const file of videoFiles) {
+      expect(statSync(`public${file}`).size, file).toBeLessThanOrEqual(
+        VIDEO_BUDGET,
+      );
+    }
+  });
+
+  it("the video asset has durationSeconds at most 6 and audio false", () => {
+    expect(loop).toMatchObject({
+      kind: "video",
+      area: "video",
+      width: 720,
+      height: 900,
+      audio: false,
+    });
+    expect(
+      loop?.kind === "video" ? loop.durationSeconds : 99,
+    ).toBeLessThanOrEqual(6);
+  });
+
+  it("exactly one loop (one WebM and one MP4) exists under public/media/video", () => {
+    expect(videoFiles.filter((path) => path.endsWith(".webm"))).toHaveLength(1);
+    expect(videoFiles.filter((path) => path.endsWith(".mp4"))).toHaveLength(1);
+    expect(loops).toHaveLength(1);
+    expect(loop?.kind === "video" ? loop.sources : []).toEqual([
+      { path: webm, type: "video/webm" },
+      { path: mp4, type: "video/mp4" },
+    ]);
+    for (const file of videoFiles) {
+      expect(file).toMatch(/^\/media\/video\/home-loop-720\.[0-9a-f]{8}\./);
+    }
+  });
+
+  it("the poster resolves to a registered image with width and height", () => {
+    const poster = assets.find(
+      (asset) => loop?.kind === "video" && asset.id === loop.posterId,
+    );
+    expect(poster).toMatchObject({ kind: "image", area: "video" });
+    if (poster?.kind !== "image") {
+      return;
+    }
+    expect(poster.decorative).toBe(true);
+    for (const variant of poster.variants) {
+      expect(variant.width).toBeGreaterThan(0);
+      expect(variant.height).toBeGreaterThan(0);
+      expect(variant.width / variant.height).toBeCloseTo(4 / 5, 2);
+      expect(variant.path.startsWith(VIDEO_DIR)).toBe(true);
+    }
+  });
+
+  it("the loop source is in the ledger as hands, not required, and is not excluded", () => {
+    expect(
+      MEDIA_RIGHTS.find(
+        ({ sourceId }) => sourceId === "vid-20261014-185300580",
+      ),
+    ).toEqual({
+      sourceId: "vid-20261014-185300580",
+      people: "hands",
+      consent: "not-required",
+    });
+    expect(loop?.sourceId).toBe("vid-20261014-185300580");
+    expect(mentionsExcludedSource(loop?.sourceId ?? "", EXCLUDED_SOURCES)).toBe(
+      false,
+    );
+  });
+
+  it("the loop asset is publishable", () => {
+    const published = publishedPaths(registry);
+    expect(loops).toHaveLength(1);
+    for (const asset of loops) {
+      for (const { path } of asset.sources) {
+        expect(published.has(path), path).toBe(true);
+      }
+    }
   });
 });

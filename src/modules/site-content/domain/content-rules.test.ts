@@ -14,9 +14,11 @@ import {
   type ImageAsset,
   type MediaRegistry,
   type RightsEntry,
+  type VideoAsset,
 } from "./media";
 import type { StandInAsset } from "./stand-in";
 import type {
+  AmbientLoop,
   GalleryImage,
   ImageRef,
   RawSiteContent,
@@ -705,10 +707,25 @@ describe("validateSiteContent share image", () => {
   const withShare = (
     assets: readonly ImageAsset[],
     media: Partial<MediaRegistry> = {},
-  ): RawSiteContent => ({
-    ...validContent(),
-    media: { assets, rights: assets.map(noPeople), excluded: [], ...media },
-  });
+  ): RawSiteContent => {
+    const base = validContent();
+    // The default hero loop stays registered; only the share assets vary.
+    const loopAssets = base.media.assets.filter(({ area }) => area === "video");
+    return {
+      ...base,
+      media: {
+        assets: [...assets, ...loopAssets],
+        rights: [
+          ...assets.map(noPeople),
+          ...base.media.rights.filter(
+            ({ sourceId }) => sourceId === "test-loop-source",
+          ),
+        ],
+        excluded: [],
+        ...media,
+      },
+    };
+  };
 
   const issue = { id: "share", rule: "share-image-missing" };
 
@@ -858,5 +875,151 @@ describe("summarizeLaunchGate", () => {
         excluded: [],
       }),
     ).toEqual({ imageStandIns: [], fontStandIns: [], unpublishedMedia: [] });
+  });
+});
+
+describe("validateSiteContent ambient loop", () => {
+  const posterPath = (width: number) =>
+    `/media/video/home-loop-poster-${String(width)}.0a1b2c3d.webp`;
+  const webmPath = "/media/video/home-loop-720.0a1b2c3d.webm";
+  const mp4Path = "/media/video/home-loop-720.0a1b2c3d.mp4";
+  const poster: ImageAsset = {
+    kind: "image",
+    id: "home-loop-poster",
+    sourceId: "loop-source",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      { width: 480, height: 600, path: posterPath(480) },
+      { width: 720, height: 900, path: posterPath(720) },
+    ],
+  };
+  const video: VideoAsset = {
+    kind: "video",
+    id: "home-loop",
+    sourceId: "loop-source",
+    area: "video",
+    width: 720,
+    height: 900,
+    durationSeconds: 6,
+    audio: false,
+    sources: [
+      { path: webmPath, type: "video/webm" },
+      { path: mp4Path, type: "video/mp4" },
+    ],
+    posterId: "home-loop-poster",
+  };
+  const loop: AmbientLoop = {
+    poster: {
+      src: posterPath(720),
+      srcSet: `${posterPath(480)} 480w, ${posterPath(720)} 720w`,
+      alt: "",
+      width: 720,
+      height: 900,
+    },
+    sources: [
+      { src: webmPath, type: "video/webm" },
+      { src: mp4Path, type: "video/mp4" },
+    ],
+    width: 720,
+    height: 900,
+  };
+  const withLoop = (
+    registry: Partial<MediaRegistry>,
+    ambient: AmbientLoop = loop,
+  ): RawSiteContent => {
+    // Start without the fixture's own loop assets so ids stay unique.
+    const fixture = validContent();
+    const bare: RawSiteContent = {
+      ...fixture,
+      media: {
+        ...fixture.media,
+        assets: fixture.media.assets.filter(({ area }) => area !== "video"),
+        rights: fixture.media.rights.filter(
+          ({ sourceId }) => sourceId !== "test-loop-source",
+        ),
+      },
+    };
+    const base = withMedia(bare, registry);
+    return {
+      ...base,
+      home: { ...base.home, hero: { ...base.home.hero, loop: ambient } },
+    };
+  };
+  const row = (
+    people: RightsEntry["people"],
+    consent: RightsEntry["consent"],
+  ): RightsEntry => ({ sourceId: "loop-source", people, consent });
+
+  it("loop poster and sources are walked like image paths", () => {
+    const published = withLoop({
+      assets: [poster, video],
+      rights: [row("none", "not-required")],
+    });
+    expect(validateSiteContent(published)).toEqual([]);
+
+    expect(validateSiteContent(withLoop({}))).toEqual([
+      { id: posterPath(720), rule: "unregistered-media" },
+      { id: posterPath(480), rule: "unregistered-media" },
+      { id: posterPath(720), rule: "unregistered-media" },
+      { id: webmPath, rule: "unregistered-media" },
+      { id: mp4Path, rule: "unregistered-media" },
+    ]);
+
+    expect(
+      validateSiteContent(
+        withLoop({
+          assets: [poster, video],
+          rights: [row("faces", "pending")],
+        }),
+      ),
+    ).toEqual([
+      { id: posterPath(720), rule: "unpublishable-media" },
+      { id: posterPath(480), rule: "unpublishable-media" },
+      { id: posterPath(720), rule: "unpublishable-media" },
+      { id: webmPath, rule: "unpublishable-media" },
+      { id: mp4Path, rule: "unpublishable-media" },
+    ]);
+
+    expect(
+      validateSiteContent(withLoop({ assets: [poster, video], rights: [] })),
+    ).toEqual([
+      { id: posterPath(720), rule: "rights-missing" },
+      { id: posterPath(480), rule: "rights-missing" },
+      { id: posterPath(720), rule: "rights-missing" },
+      { id: webmPath, rule: "rights-missing" },
+      { id: mp4Path, rule: "rights-missing" },
+    ]);
+  });
+
+  it("a loop whose source mentions an excluded source yields excluded-source", () => {
+    const leaked = "/media/video/vid-20260717-155248707-720.0a1b2c3d.mp4";
+    const issues = validateSiteContent(
+      withLoop(
+        {
+          assets: [poster, video],
+          rights: [row("none", "not-required")],
+          excluded: [
+            {
+              sourceId: "VID_20260717_155248707",
+              reason: "minor",
+              decidedOn: "2026-10-16",
+            },
+          ],
+        },
+        {
+          ...loop,
+          sources: [...loop.sources, { src: leaked, type: "video/mp4" }],
+        },
+      ),
+    );
+
+    expect(issues).toContainEqual({ id: leaked, rule: "excluded-source" });
+  });
+
+  it("content without a loop reports nothing for it", () => {
+    expect(validateSiteContent(validContent())).toEqual([]);
   });
 });

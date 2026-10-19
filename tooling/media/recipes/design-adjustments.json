@@ -108,5 +108,13 @@
     "area": "contact",
     "widths": [480, 960],
     "format": "webp"
+  },
+  {
+    "id": "home-loop-poster",
+    "source": "home-loop-poster.png",
+    "area": "video",
+    "aspect": 0.8,
+    "widths": [480, 720],
+    "format": "webp"
   }
 ]

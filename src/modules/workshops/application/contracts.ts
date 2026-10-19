@@ -10,6 +10,7 @@ import {
   type TransitionRefused,
 } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
+import type { TurnoLabelConflict } from "./turno-repository";
 import type { ImageUse, ImageUseDraft } from "~/modules/media";
 
 export interface Percentage {
@@ -203,12 +204,19 @@ export interface MonthlyWorkshopsService {
     w: string,
     t: string,
   ): R<MonthlyWorkshop, RulesUnmet<"last-active-turno-of-published">>;
-  reactivateTurno(a: AdminActor, w: string, t: string): R<MonthlyWorkshop>;
+  reactivateTurno(
+    a: AdminActor,
+    w: string,
+    t: string,
+  ): R<MonthlyWorkshop, TurnoLabelConflict>;
   deleteTurno(
     a: AdminActor,
     w: string,
     t: string,
-  ): R<MonthlyWorkshop, RulesUnmet<"turno-used">>;
+  ): R<
+    MonthlyWorkshop,
+    RulesUnmet<"turno-used" | "last-active-turno-of-published">
+  >;
   listAssignmentsOfTeacher(
     a: AdminActor,
     id: string,

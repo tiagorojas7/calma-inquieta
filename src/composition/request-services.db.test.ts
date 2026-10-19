@@ -47,7 +47,7 @@ describe("createRequestServices", () => {
       ok: true,
       value: {
         status: "ok",
-        latestMigration: "0005_monthly_workshops",
+        latestMigration: "0006_workshop_turnos",
         buildCommit: "abc",
       },
     });

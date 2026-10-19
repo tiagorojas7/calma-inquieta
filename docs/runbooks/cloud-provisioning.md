@@ -196,7 +196,7 @@ Check yourself:
 curl -fsS https://calma-inquieta.<account-subdomain>.workers.dev/status
 ```
 
-The response contains `data-status="ok"` and the latest migration `0004_intensive_workshops`.
+The response contains `data-status="ok"` and the latest migration `0006_workshop_turnos`.
 
 ### R1. Create the R2 buckets for images
 

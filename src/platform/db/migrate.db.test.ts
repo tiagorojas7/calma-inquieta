@@ -79,6 +79,7 @@ describe("runMigrations", () => {
       { table_name: "monthly_workshop" },
       { table_name: "supplier" },
       { table_name: "teacher" },
+      { table_name: "workshop_turno" },
     ]);
   });
 });

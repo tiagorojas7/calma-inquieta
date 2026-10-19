@@ -21,6 +21,7 @@ import {
   type MonthlyCore,
   type PercentageSubmission,
 } from "../domain/monthly-workshop-core";
+import { validateTurnoCore } from "../domain/turno-core";
 import {
   parsePercentage,
   slugify,
@@ -36,6 +37,7 @@ import type {
   MonthlyWorkshopRepository,
   StoredMonthlyWorkshop,
 } from "./monthly-workshop-repository";
+import type { StoredTurno, TurnoRepository } from "./turno-repository";
 type MaybeActor = AdminActor | null | undefined;
 export type MonthlyWorkshopUseCases = {
   [K in keyof MonthlyWorkshopsService]: MonthlyWorkshopsService[K] extends (
@@ -45,8 +47,9 @@ export type MonthlyWorkshopUseCases = {
     ? (actor: MaybeActor, ...rest: Rest) => Return
     : never;
 };
-export interface ActiveTurnoLookup {
-  countActiveForWorkshop(workshopId: string): Promise<number>;
+/** Read-only B6 seam: B5 must not persist or inspect periods. */
+export interface TurnoUsageLookup {
+  isUsed(turnoId: string): Promise<boolean>;
 }
 /** Read-only seam until B6 owns period persistence. */
 export interface WorkshopPeriodLookup {
@@ -56,7 +59,8 @@ export interface MonthlyWorkshopServiceDeps {
   readonly repository: MonthlyWorkshopRepository;
   readonly teachers: TeacherLookup;
   readonly media: MediaLookup;
-  readonly activeTurnos: ActiveTurnoLookup;
+  readonly turnos: TurnoRepository;
+  readonly turnoUsage: TurnoUsageLookup;
   readonly periods: WorkshopPeriodLookup;
   readonly clock: Clock;
   readonly newId?: () => string;
@@ -78,7 +82,7 @@ const submission = (text: string): PercentageSubmission => {
 export function createMonthlyWorkshopsService(
   deps: MonthlyWorkshopServiceDeps,
 ): MonthlyWorkshopUseCases {
-  const { repository, teachers, activeTurnos, periods, clock } = deps;
+  const { repository, teachers, turnos, turnoUsage, periods, clock } = deps;
   const newId = deps.newId ?? (() => crypto.randomUUID());
   const stamp = (actor: AdminActor) => ({
     updatedBy: actor.email,
@@ -110,7 +114,18 @@ export function createMonthlyWorkshopsService(
         : null,
       images: [],
       status: stored.status,
-      turnos: [],
+      turnos: await Promise.all(
+        (await turnos.listForWorkshop(stored.id)).map(async (turno) => ({
+          id: turno.id,
+          label: turno.label,
+          weekday: turno.weekday,
+          startsAt: turno.startsAt,
+          endsAt: turno.endsAt,
+          defaultCapacity: turno.defaultCapacity,
+          active: turno.active,
+          usedByPeriods: await turnoUsage.isUsed(turno.id),
+        })),
+      ),
       audit: stored.audit,
     };
   };
@@ -222,7 +237,7 @@ export function createMonthlyWorkshopsService(
               percentageBp: current.percentage?.basisPoints ?? null,
             }
           : null,
-        activeTurnos: await activeTurnos.countActiveForWorkshop(current.id),
+        activeTurnos: await turnos.countActiveForWorkshop(current.id),
       });
       if (rules.length) return err({ kind: "rules-unmet", rules });
     }
@@ -266,7 +281,7 @@ export function createMonthlyWorkshopsService(
               name: item.name,
               teacherName: teacher?.name ?? null,
               status: item.status,
-              activeTurnos: await activeTurnos.countActiveForWorkshop(item.id),
+              activeTurnos: await turnos.countActiveForWorkshop(item.id),
               acceptsNewRequests: item.status === "published",
             };
           }),
@@ -288,7 +303,7 @@ export function createMonthlyWorkshopsService(
               name: item.name,
               teacherName: teacher?.name ?? null,
               status: item.status,
-              activeTurnos: await activeTurnos.countActiveForWorkshop(item.id),
+              activeTurnos: await turnos.countActiveForWorkshop(item.id),
               acceptsNewRequests: item.status === "published",
             };
           }),
@@ -363,12 +378,111 @@ export function createMonthlyWorkshopsService(
     pause: (actor, id) => nonPublishTransition(actor, id, "paused"),
     archive: (actor, id) => nonPublishTransition(actor, id, "archived"),
     restore: (actor, id) => nonPublishTransition(actor, id, "draft"),
-    addTurno: () => Promise.reject(new Error("turnos are not implemented")),
-    updateTurno: () => Promise.reject(new Error("turnos are not implemented")),
-    retireTurno: () => Promise.reject(new Error("turnos are not implemented")),
-    reactivateTurno: () =>
-      Promise.reject(new Error("turnos are not implemented")),
-    deleteTurno: () => Promise.reject(new Error("turnos are not implemented")),
+    async addTurno(actor, workshopId, draft) {
+      const loaded = await load(actor, workshopId);
+      if (!loaded.ok) return loaded;
+      const core = validateTurnoCore(draft);
+      if (!core.ok) return core;
+      const value: StoredTurno = {
+        id: newId(),
+        workshopId,
+        ...core.value,
+        active: true,
+      };
+      const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
+      const inserted = await turnos.mutate(next, { kind: "insert", value });
+      if (!inserted.ok)
+        return inserted.error.kind === "label-conflict"
+          ? err({
+              kind: "invalid",
+              issues: [{ field: "label", code: "duplicate" }],
+            })
+          : err(notFound);
+      return ok(await model(next));
+    },
+    async updateTurno(actor, workshopId, turnoId, draft) {
+      const loaded = await load(actor, workshopId);
+      if (!loaded.ok) return loaded;
+      const current = await turnos.findById(turnoId);
+      if (!current || current.workshopId !== workshopId) return err(notFound);
+      const core = validateTurnoCore(draft);
+      if (!core.ok) return core;
+      const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
+      const savedTurno = await turnos.mutate(next, {
+        kind: "update",
+        value: { ...current, ...core.value },
+      });
+      if (!savedTurno.ok)
+        return savedTurno.error.kind === "label-conflict"
+          ? err({
+              kind: "invalid",
+              issues: [{ field: "label", code: "duplicate" }],
+            })
+          : err(notFound);
+      return ok(await model(next));
+    },
+    async retireTurno(actor, workshopId, turnoId) {
+      const loaded = await load(actor, workshopId);
+      if (!loaded.ok) return loaded;
+      const current = await turnos.findById(turnoId);
+      if (!current || current.workshopId !== workshopId) return err(notFound);
+      if (
+        current.active &&
+        loaded.value.value.status === "published" &&
+        (await turnos.countActiveForWorkshop(workshopId)) === 1
+      )
+        return err({
+          kind: "rules-unmet",
+          rules: ["last-active-turno-of-published"],
+        });
+      const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
+      const changed = await turnos.mutate(next, {
+        kind: "update",
+        value: { ...current, active: false },
+      });
+      if (!changed.ok) return err(notFound);
+      return ok(await model(next));
+    },
+    async reactivateTurno(actor, workshopId, turnoId) {
+      const loaded = await load(actor, workshopId);
+      if (!loaded.ok) return loaded;
+      const current = await turnos.findById(turnoId);
+      if (!current || current.workshopId !== workshopId) return err(notFound);
+      const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
+      const changed = await turnos.mutate(next, {
+        kind: "update",
+        value: { ...current, active: true },
+      });
+      if (!changed.ok)
+        return changed.error.kind === "label-conflict"
+          ? err(changed.error)
+          : err(notFound);
+      return ok(await model(next));
+    },
+    async deleteTurno(actor, workshopId, turnoId) {
+      const loaded = await load(actor, workshopId);
+      if (!loaded.ok) return loaded;
+      const current = await turnos.findById(turnoId);
+      if (!current || current.workshopId !== workshopId) return err(notFound);
+      if (await turnoUsage.isUsed(turnoId))
+        return err({ kind: "rules-unmet", rules: ["turno-used"] });
+      if (
+        current.active &&
+        loaded.value.value.status === "published" &&
+        (await turnos.countActiveForWorkshop(workshopId)) === 1
+      )
+        return err({
+          kind: "rules-unmet",
+          rules: ["last-active-turno-of-published"],
+        });
+      const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
+      const deleted = await turnos.mutate(next, {
+        kind: "delete",
+        id: turnoId,
+      });
+      if (!deleted.ok) return err(notFound);
+      return ok(await model(next));
+    },
     listAssignmentsOfTeacher: (actor) => {
       const admin = requireAdminActor(actor);
       return Promise.resolve(

@@ -77,8 +77,10 @@ describe("runMigrations", () => {
       { table_name: "intensive_workshop" },
       { table_name: "media_asset" },
       { table_name: "monthly_workshop" },
+      { table_name: "period_turno" },
       { table_name: "supplier" },
       { table_name: "teacher" },
+      { table_name: "workshop_period" },
       { table_name: "workshop_turno" },
     ]);
   });

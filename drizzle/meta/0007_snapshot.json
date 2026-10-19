@@ -1,0 +1,882 @@
+{
+  "id": "ac5b04cc-6140-4a8e-a21b-4a73ccae68c3",
+  "prevId": "766e170a-1cb6-4edb-8a1f-2f7b20f41bce",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.supplier": {
+      "name": "supplier",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "supplier_active_name_unique": {
+          "name": "supplier_active_name_unique",
+          "columns": [
+            {
+              "expression": "name_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"supplier\".\"active\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.media_asset": {
+      "name": "media_asset",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "storage_key": {
+          "name": "storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_type": {
+          "name": "content_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "media_asset_storage_key_unique": {
+          "name": "media_asset_storage_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "storage_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "media_asset_content_type_check": {
+          "name": "media_asset_content_type_check",
+          "value": "\"media_asset\".\"content_type\" IN ('image/jpeg', 'image/png', 'image/webp')"
+        },
+        "media_asset_byte_size_check": {
+          "name": "media_asset_byte_size_check",
+          "value": "\"media_asset\".\"byte_size\" BETWEEN 1 AND 5242880"
+        },
+        "media_asset_width_check": {
+          "name": "media_asset_width_check",
+          "value": "\"media_asset\".\"width\" BETWEEN 1 AND 10000"
+        },
+        "media_asset_height_check": {
+          "name": "media_asset_height_check",
+          "value": "\"media_asset\".\"height\" BETWEEN 1 AND 10000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.teacher": {
+      "name": "teacher",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bio_line": {
+          "name": "bio_line",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modality": {
+          "name": "modality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "teacher_active_name_unique": {
+          "name": "teacher_active_name_unique",
+          "columns": [
+            {
+              "expression": "name_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"teacher\".\"active\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "teacher_modality_check": {
+          "name": "teacher_modality_check",
+          "value": "\"teacher\".\"modality\" IN ('own', 'third_party')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.intensive_image": {
+      "name": "intensive_image",
+      "schema": "",
+      "columns": {
+        "intensive_id": {
+          "name": "intensive_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "media_asset_id": {
+          "name": "media_asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alt": {
+          "name": "alt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "intensive_image_intensive_id_intensive_workshop_id_fk": {
+          "name": "intensive_image_intensive_id_intensive_workshop_id_fk",
+          "tableFrom": "intensive_image",
+          "tableTo": "intensive_workshop",
+          "columnsFrom": [
+            "intensive_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "intensive_image_media_asset_id_media_asset_id_fk": {
+          "name": "intensive_image_media_asset_id_media_asset_id_fk",
+          "tableFrom": "intensive_image",
+          "tableTo": "media_asset",
+          "columnsFrom": [
+            "media_asset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "intensive_image_pkey": {
+          "name": "intensive_image_pkey",
+          "columns": [
+            "intensive_id",
+            "position"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "intensive_image_position_check": {
+          "name": "intensive_image_position_check",
+          "value": "\"intensive_image\".\"position\" BETWEEN 0 AND 5"
+        },
+        "intensive_image_alt_check": {
+          "name": "intensive_image_alt_check",
+          "value": "btrim(\"intensive_image\".\"alt\") <> '' AND length(\"intensive_image\".\"alt\") <= 200"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.intensive_workshop": {
+      "name": "intensive_workshop",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teacher_id": {
+          "name": "teacher_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agreed_percentage_bp": {
+          "name": "agreed_percentage_bp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_date": {
+          "name": "event_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_centavos": {
+          "name": "price_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deposit_centavos": {
+          "name": "deposit_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "min_seats": {
+          "name": "min_seats",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "policy_text": {
+          "name": "policy_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "materials_included": {
+          "name": "materials_included",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "intensive_workshop_slug_unique": {
+          "name": "intensive_workshop_slug_unique",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "intensive_workshop_teacher_idx": {
+          "name": "intensive_workshop_teacher_idx",
+          "columns": [
+            {
+              "expression": "teacher_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "intensive_workshop_status_idx": {
+          "name": "intensive_workshop_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "intensive_workshop_teacher_id_teacher_id_fk": {
+          "name": "intensive_workshop_teacher_id_teacher_id_fk",
+          "tableFrom": "intensive_workshop",
+          "tableTo": "teacher",
+          "columnsFrom": [
+            "teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "intensive_workshop_slug_check": {
+          "name": "intensive_workshop_slug_check",
+          "value": "\"intensive_workshop\".\"slug\" ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(\"intensive_workshop\".\"slug\") <= 80"
+        },
+        "intensive_workshop_time_range_check": {
+          "name": "intensive_workshop_time_range_check",
+          "value": "\"intensive_workshop\".\"ends_at\" > \"intensive_workshop\".\"starts_at\""
+        },
+        "intensive_workshop_price_check": {
+          "name": "intensive_workshop_price_check",
+          "value": "\"intensive_workshop\".\"price_centavos\" > 0"
+        },
+        "intensive_workshop_deposit_check": {
+          "name": "intensive_workshop_deposit_check",
+          "value": "\"intensive_workshop\".\"deposit_centavos\" > 0 AND \"intensive_workshop\".\"deposit_centavos\" <= \"intensive_workshop\".\"price_centavos\""
+        },
+        "intensive_workshop_capacity_check": {
+          "name": "intensive_workshop_capacity_check",
+          "value": "\"intensive_workshop\".\"capacity\" BETWEEN 1 AND 500"
+        },
+        "intensive_workshop_min_seats_check": {
+          "name": "intensive_workshop_min_seats_check",
+          "value": "\"intensive_workshop\".\"min_seats\" BETWEEN 1 AND \"intensive_workshop\".\"capacity\""
+        },
+        "intensive_workshop_percentage_range_check": {
+          "name": "intensive_workshop_percentage_range_check",
+          "value": "\"intensive_workshop\".\"agreed_percentage_bp\" IS NULL OR \"intensive_workshop\".\"agreed_percentage_bp\" BETWEEN 0 AND 10000"
+        },
+        "intensive_workshop_percentage_teacher_check": {
+          "name": "intensive_workshop_percentage_teacher_check",
+          "value": "\"intensive_workshop\".\"agreed_percentage_bp\" IS NULL OR \"intensive_workshop\".\"teacher_id\" IS NOT NULL"
+        },
+        "intensive_workshop_status_check": {
+          "name": "intensive_workshop_status_check",
+          "value": "\"intensive_workshop\".\"status\" IN ('draft', 'published', 'paused', 'cancelled', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_workshop": {
+      "name": "monthly_workshop",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "technique": {
+          "name": "technique",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_fee_centavos": {
+          "name": "default_fee_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teacher_id": {
+          "name": "teacher_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agreed_percentage_bp": {
+          "name": "agreed_percentage_bp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "monthly_workshop_slug_unique": {
+          "name": "monthly_workshop_slug_unique",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monthly_workshop_teacher_idx": {
+          "name": "monthly_workshop_teacher_idx",
+          "columns": [
+            {
+              "expression": "teacher_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monthly_workshop_status_idx": {
+          "name": "monthly_workshop_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monthly_workshop_teacher_id_teacher_id_fk": {
+          "name": "monthly_workshop_teacher_id_teacher_id_fk",
+          "tableFrom": "monthly_workshop",
+          "tableTo": "teacher",
+          "columnsFrom": [
+            "teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_workshop_slug_check": {
+          "name": "monthly_workshop_slug_check",
+          "value": "\"monthly_workshop\".\"slug\" ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(\"monthly_workshop\".\"slug\") <= 80"
+        },
+        "monthly_workshop_fee_check": {
+          "name": "monthly_workshop_fee_check",
+          "value": "\"monthly_workshop\".\"default_fee_centavos\" > 0"
+        },
+        "monthly_workshop_percentage_range_check": {
+          "name": "monthly_workshop_percentage_range_check",
+          "value": "\"monthly_workshop\".\"agreed_percentage_bp\" IS NULL OR \"monthly_workshop\".\"agreed_percentage_bp\" BETWEEN 0 AND 10000"
+        },
+        "monthly_workshop_percentage_teacher_check": {
+          "name": "monthly_workshop_percentage_teacher_check",
+          "value": "\"monthly_workshop\".\"agreed_percentage_bp\" IS NULL OR \"monthly_workshop\".\"teacher_id\" IS NOT NULL"
+        },
+        "monthly_workshop_status_check": {
+          "name": "monthly_workshop_status_check",
+          "value": "\"monthly_workshop\".\"status\" IN ('draft', 'published', 'paused', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.workshop_turno": {
+      "name": "workshop_turno",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label_key": {
+          "name": "label_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekday": {
+          "name": "weekday",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_capacity": {
+          "name": "default_capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "workshop_turno_workshop_label_key_unique": {
+          "name": "workshop_turno_workshop_label_key_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "label_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "workshop_turno_workshop_id_monthly_workshop_id_fk": {
+          "name": "workshop_turno_workshop_id_monthly_workshop_id_fk",
+          "tableFrom": "workshop_turno",
+          "tableTo": "monthly_workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "workshop_turno_workshop_id_unique": {
+          "name": "workshop_turno_workshop_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workshop_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "workshop_turno_weekday_check": {
+          "name": "workshop_turno_weekday_check",
+          "value": "\"workshop_turno\".\"weekday\" BETWEEN 1 AND 7"
+        },
+        "workshop_turno_time_range_check": {
+          "name": "workshop_turno_time_range_check",
+          "value": "\"workshop_turno\".\"ends_at\" > \"workshop_turno\".\"starts_at\""
+        },
+        "workshop_turno_capacity_check": {
+          "name": "workshop_turno_capacity_check",
+          "value": "\"workshop_turno\".\"default_capacity\" BETWEEN 1 AND 500"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

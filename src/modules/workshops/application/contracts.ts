@@ -437,7 +437,10 @@ export interface WorkshopPeriodsService {
     p: string,
   ): R<
     WorkshopPeriod,
-    | Invalid<"period">
+    | (Invalid<"period"> & {
+        /** Opening eligibility failures returned alongside a malformed/out-of-range key. */
+        readonly rules?: readonly OpenMonthRule[];
+      })
     | RulesUnmet<OpenMonthRule>
     | { readonly kind: "period-exists"; readonly periodId: string }
   >;

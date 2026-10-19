@@ -3,7 +3,9 @@ import {
   bigint,
   boolean,
   check,
+  char,
   date,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -12,11 +14,13 @@ import {
   text,
   time,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { mediaAsset } from "./media";
 import { teacher } from "./teachers";
+export { teacher } from "./teachers";
 
 export const monthlyWorkshop = pgTable(
   "monthly_workshop",
@@ -62,6 +66,60 @@ export const monthlyWorkshop = pgTable(
   ],
 );
 
+export const workshopPeriod = pgTable(
+  "workshop_period",
+  {
+    id: uuid("id").primaryKey(),
+    workshopId: uuid("workshop_id")
+      .notNull()
+      .references(() => monthlyWorkshop.id, { onDelete: "restrict" }),
+    period: char("period", { length: 7 }).notNull(),
+    feeCentavos: bigint("fee_centavos", { mode: "number" }).notNull(),
+    materialsRequired: boolean("materials_required").notNull(),
+    projectTitle: text("project_title"),
+    projectDescription: text("project_description"),
+    snapshotTeacherId: uuid("snapshot_teacher_id")
+      .notNull()
+      .references(() => teacher.id, { onDelete: "restrict" }),
+    snapshotTeacherName: text("snapshot_teacher_name").notNull(),
+    snapshotTeacherModality: text("snapshot_teacher_modality").notNull(),
+    snapshotPercentageBp: integer("snapshot_percentage_bp"),
+    status: text("status").notNull().default("draft"),
+    openedBy: text("opened_by").notNull(),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull(),
+    updatedBy: text("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    unique("workshop_period_workshop_period_unique").on(
+      table.workshopId,
+      table.period,
+    ),
+    unique("workshop_period_workshop_id_unique").on(table.workshopId, table.id),
+    check(
+      "workshop_period_period_check",
+      sql`${table.period} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`,
+    ),
+    check("workshop_period_fee_check", sql`${table.feeCentavos} > 0`),
+    check(
+      "workshop_period_snapshot_modality_check",
+      sql`${table.snapshotTeacherModality} IN ('own', 'third_party')`,
+    ),
+    check(
+      "workshop_period_snapshot_percentage_check",
+      sql`${table.snapshotPercentageBp} IS NULL OR ${table.snapshotPercentageBp} BETWEEN 0 AND 10000`,
+    ),
+    check(
+      "workshop_period_snapshot_percentage_modality_check",
+      sql`(${table.snapshotTeacherModality} = 'third_party') = (${table.snapshotPercentageBp} IS NOT NULL)`,
+    ),
+    check(
+      "workshop_period_status_check",
+      sql`${table.status} IN ('draft', 'open', 'closed')`,
+    ),
+  ],
+);
+
 export const workshopTurno = pgTable(
   "workshop_turno",
   {
@@ -82,6 +140,7 @@ export const workshopTurno = pgTable(
       table.workshopId,
       table.labelKey,
     ),
+    unique("workshop_turno_workshop_id_unique").on(table.workshopId, table.id),
     check(
       "workshop_turno_weekday_check",
       sql`${table.weekday} BETWEEN 1 AND 7`,
@@ -93,6 +152,36 @@ export const workshopTurno = pgTable(
     check(
       "workshop_turno_capacity_check",
       sql`${table.defaultCapacity} BETWEEN 1 AND 500`,
+    ),
+  ],
+);
+
+export const periodTurno = pgTable(
+  "period_turno",
+  {
+    periodId: uuid("period_id").notNull(),
+    turnoId: uuid("turno_id").notNull(),
+    workshopId: uuid("workshop_id").notNull(),
+    capacity: integer("capacity").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "period_turno_pkey",
+      columns: [table.periodId, table.turnoId],
+    }),
+    foreignKey({
+      name: "period_turno_workshop_period_fk",
+      columns: [table.workshopId, table.periodId],
+      foreignColumns: [workshopPeriod.workshopId, workshopPeriod.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "period_turno_workshop_turno_fk",
+      columns: [table.workshopId, table.turnoId],
+      foreignColumns: [workshopTurno.workshopId, workshopTurno.id],
+    }).onDelete("restrict"),
+    check(
+      "period_turno_capacity_check",
+      sql`${table.capacity} BETWEEN 1 AND 500`,
     ),
   ],
 );

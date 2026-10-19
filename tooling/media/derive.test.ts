@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
-import { cropBox, deriveJob, encodeIco, hashedName } from "./derive";
+import {
+  cropBox,
+  deriveJob,
+  encodeIco,
+  GRADE_PRESETS,
+  hashedName,
+} from "./derive";
 
 sharp.cache(false);
 
@@ -298,5 +304,92 @@ describe("deriveJob", () => {
 
     expect(share.variants[0]?.path).toMatch(/\.jpg$/);
     expect(webp.variants[0]?.path).toMatch(/\.webp$/);
+  });
+});
+
+describe("grade", () => {
+  async function greySource(prefix: string): Promise<string> {
+    const root = await temporaryDirectory(prefix);
+    await sharp({
+      create: { width: 64, height: 48, channels: 3, background: "#808080" },
+    })
+      .png()
+      .toFile(join(root, "source.png"));
+    return root;
+  }
+
+  function job(grade?: "warm") {
+    return {
+      id: "graded",
+      source: "source.png",
+      area: "home",
+      widths: [64],
+      format: "png" as const,
+      ...(grade === undefined ? {} : { grade }),
+    };
+  }
+
+  async function outputOf(root: string, grade?: "warm"): Promise<Buffer> {
+    const printed = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+    const result = await deriveJob(job(grade), root, root);
+    printed.mockRestore();
+    const variant = result.variants[0];
+    return readFile(join(root, "public", variant?.path ?? ""));
+  }
+
+  it("exposes the warm preset with explicit numeric parameters", () => {
+    expect(GRADE_PRESETS.warm).toEqual({
+      red: 1.08,
+      green: 1.01,
+      blue: 0.86,
+      contrast: 0.93,
+      brightness: 1.05,
+      saturation: 0.9,
+    });
+  });
+
+  it("a graded output differs from an ungraded one", async () => {
+    const root = await greySource("media-grade-differs-");
+
+    const plain = await outputOf(root);
+    const graded = await outputOf(root, "warm");
+
+    expect(graded.equals(plain)).toBe(false);
+  });
+
+  it("a warm grade raises mean red relative to blue on a neutral grey image", async () => {
+    const root = await greySource("media-grade-warm-");
+
+    const plain = (await sharp(await outputOf(root)).stats()).channels;
+    const graded = (await sharp(await outputOf(root, "warm")).stats()).channels;
+
+    const [plainRed, , plainBlue] = plain.map(({ mean }) => mean);
+    const [gradedRed, , gradedBlue] = graded.map(({ mean }) => mean);
+    expect(plainRed).toBeCloseTo(plainBlue ?? 0, 0);
+    expect((gradedRed ?? 0) - (gradedBlue ?? 0)).toBeGreaterThan(8);
+  });
+
+  it("an omitted grade leaves the output byte-identical to the plain pipeline", async () => {
+    const root = await greySource("media-grade-omitted-");
+
+    const output = await outputOf(root);
+
+    const expected = await sharp(join(root, "source.png"))
+      .rotate()
+      .resize({ width: 64, withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    expect(output.equals(expected)).toBe(true);
+  });
+
+  it("rejects an unknown grade before writing", async () => {
+    const root = await greySource("media-grade-unknown-");
+
+    await expect(
+      deriveJob({ ...job(), grade: "neon" as "warm" }, root, root),
+    ).rejects.toThrow(/Unknown grade/);
+    await expect(stat(join(root, "public"))).rejects.toThrow();
   });
 });

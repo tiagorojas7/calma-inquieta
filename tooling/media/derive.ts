@@ -11,6 +11,25 @@ export interface FocusPoint {
   readonly y: number;
 }
 
+/**
+ * Named colour grades. Every value is explicit so a re-derive is reproducible:
+ * `red`, `green` and `blue` scale the channels (a white-balance shift),
+ * `contrast` pivots linearly around mid-grey (below 1 softens), `brightness`
+ * and `saturation` are multipliers for sharp `modulate`.
+ */
+export const GRADE_PRESETS = {
+  warm: {
+    red: 1.08,
+    green: 1.01,
+    blue: 0.86,
+    contrast: 0.93,
+    brightness: 1.05,
+    saturation: 0.9,
+  },
+} as const;
+
+export type GradeName = keyof typeof GRADE_PRESETS;
+
 export interface DeriveJob {
   readonly id: string;
   readonly source: string;
@@ -21,6 +40,7 @@ export interface DeriveJob {
   readonly format: ImageFormat;
   readonly quality?: number;
   readonly background?: string;
+  readonly grade?: GradeName;
 }
 
 export interface DerivedVariant {
@@ -146,6 +166,34 @@ function extensionFor(format: ImageFormat): string {
   return format === "jpeg" ? "jpg" : format;
 }
 
+function gradeFor(name: string | undefined) {
+  if (name === undefined) return undefined;
+  if (!Object.hasOwn(GRADE_PRESETS, name)) {
+    throw new Error(
+      `Unknown grade "${name}": use one of ${Object.keys(GRADE_PRESETS).join(", ")}`,
+    );
+  }
+  return GRADE_PRESETS[name as GradeName];
+}
+
+function applyGrade(
+  image: SharpImage,
+  grade: (typeof GRADE_PRESETS)[GradeName] | undefined,
+): SharpImage {
+  if (grade === undefined) return image;
+  return image
+    .recomb([
+      [grade.red, 0, 0],
+      [0, grade.green, 0],
+      [0, 0, grade.blue],
+    ])
+    .linear(grade.contrast, 128 * (1 - grade.contrast))
+    .modulate({
+      brightness: grade.brightness,
+      saturation: grade.saturation,
+    });
+}
+
 async function encode(
   input: SharpImage,
   format: Exclude<ImageFormat, "ico">,
@@ -188,6 +236,7 @@ export async function deriveJob(
 ): Promise<DerivedJob> {
   const area = safeSegment("area", job.area);
   const id = safeSegment("id", job.id);
+  const grade = gradeFor(job.grade);
   const sourcePath = isAbsolute(job.source)
     ? job.source
     : join(sourceRoot, job.source);
@@ -208,7 +257,10 @@ export async function deriveJob(
   for (const width of widths) {
     const prepared =
       crop === undefined ? input.clone() : input.clone().extract(crop);
-    const rendered = prepared.resize({ width, withoutEnlargement: true });
+    const rendered = applyGrade(
+      prepared.resize({ width, withoutEnlargement: true }),
+      grade,
+    );
     let output: Buffer;
     if (job.format === "ico") {
       const temporary = join(outputDir, `.tmp-${id}-${String(width)}.ico`);

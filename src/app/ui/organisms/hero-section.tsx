@@ -17,6 +17,8 @@ type Props = {
   subtitle: string;
   image: { mobile: Img; desktop: Img };
   bajada: string;
+  /** Decorative slot anchored to the still photo's corner (the butterfly). */
+  ornament?: ReactNode;
 };
 
 /** The viewport from which the desktop still replaces the phone still. */
@@ -33,6 +35,7 @@ export function HeroSection({
   subtitle,
   image,
   bajada,
+  ornament,
 }: Props) {
   return (
     <section
@@ -75,6 +78,7 @@ export function HeroSection({
               },
             ]}
           />
+          {ornament}
         </div>
       </div>
     </section>

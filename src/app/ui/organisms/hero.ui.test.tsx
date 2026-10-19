@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -26,7 +27,7 @@ const image = {
   },
 };
 
-function renderHero() {
+function renderHero(ornament?: ReactNode) {
   return render(
     <MemoryRouter>
       <HeroSection
@@ -39,6 +40,7 @@ function renderHero() {
         subtitle="Un espacio para encontrarnos."
         image={image}
         bajada="Equilibrio entre serenidad y movimiento"
+        ornament={ornament}
       />
     </MemoryRouter>,
   );
@@ -143,6 +145,19 @@ describe("HeroSection", () => {
     expect(HERO_STILL_SIZES).toBe(
       "(min-width: 30rem) 28rem, calc(100vw - 2.5rem)",
     );
+  });
+
+  it("the ornament slot renders inside the still photo wrapper", () => {
+    const { container } = renderHero(<span data-testid="ornament" />);
+    const wrapper = container.querySelector("picture")?.parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveClass("order-first", "relative");
+    expect(wrapper).toContainElement(screen.getByTestId("ornament"));
+  });
+
+  it("renders no ornament by default", () => {
+    const { container } = renderHero();
+    expect(container.querySelector("[data-testid]")).toBeNull();
   });
 
   it("has no axe violations", async () => {

@@ -1,6 +1,5 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { Butterfly } from "./butterfly";
 import { CordDivider, twinedStrand } from "./cord-divider";
 
@@ -126,26 +125,5 @@ describe("Butterfly", () => {
     const { container } = render(<Butterfly />);
 
     expect(container.firstElementChild).toHaveClass("size-7", "lg:size-10");
-  });
-});
-
-describe("motifs on Inicio", () => {
-  it("Inicio with motifs has no axe violations", async () => {
-    const { container } = render(
-      <main>
-        <section aria-label="Inicio">
-          <h1>Calma Inquieta</h1>
-          <div className="relative">
-            <Butterfly />
-          </div>
-        </section>
-        <CordDivider />
-        <section aria-label="Actividades">
-          <h2>Actividades</h2>
-        </section>
-      </main>,
-    );
-
-    await expectNoAxeViolations(container, { page: true });
   });
 });

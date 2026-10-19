@@ -4,6 +4,32 @@ export type {
   SupplierServiceDeps,
   SupplierUseCases,
 } from "./application/supplier-service";
+export {
+  MaterialNameConflictError,
+  MaterialVariantLabelConflictError,
+} from "./application/material-repository";
+export type {
+  MaterialFilter,
+  MaterialRepository,
+} from "./application/material-repository";
+export {
+  createMaterialLookup,
+  createMaterialsService,
+} from "./application/material-service";
+export type {
+  MaterialLookupDeps,
+  MaterialServiceDeps,
+  MaterialUseCases,
+} from "./application/material-service";
+export {
+  materialNameKey,
+  validateMaterialDraft,
+  variantLabelKey,
+} from "./domain/material-core";
+export type {
+  ValidMaterialDraft,
+  ValidMaterialVariantDraft,
+} from "./domain/material-core";
 export { SupplierNameConflictError } from "./application/supplier-repository";
 export type {
   SupplierFilter,

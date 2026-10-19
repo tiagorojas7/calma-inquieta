@@ -6,9 +6,11 @@ import type {
   NotFound,
   Result,
 } from "~/modules/_shared";
-import type { ImageUse, ImageUseDraft } from "~/modules/media";
+import type { ImageUse } from "~/modules/media";
+import type { MaterialDraft, MaterialField } from "../domain/material-core";
 import type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
+export type { MaterialDraft, MaterialField } from "../domain/material-core";
 export type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export const DEFAULT_VARIANT_LABEL = "Única";
@@ -80,23 +82,6 @@ export interface MaterialSummary {
   readonly active: boolean;
   readonly available: boolean;
 }
-export interface MaterialDraft {
-  readonly name: string;
-  readonly description: string;
-  readonly category: string;
-  readonly supplierId: string;
-  readonly available: boolean;
-  readonly image: ImageUseDraft | null;
-  readonly variants: readonly {
-    readonly id?: string;
-    readonly label: string;
-    readonly price: string;
-    readonly available: boolean;
-    readonly swatch: string;
-  }[];
-}
-export type MaterialField =
-  "name" | "description" | "category" | "supplierId" | "image" | "variants";
 export type MaterialError =
   Invalid<MaterialField> | { readonly kind: "variant-in-use" };
 export interface MaterialLookup {
@@ -134,7 +119,7 @@ export interface MaterialsService {
   reactivate(
     a: AdminActor,
     id: string,
-  ): Promise<Result<Material, AdminFailure | NotFound>>;
+  ): Promise<Result<Material, AdminFailure | NotFound | Invalid<"name">>>;
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;

@@ -7,6 +7,8 @@ import {
   listUnapproved,
   publishableTestimonials,
   publishedImages,
+  summarizeLaunchGate,
+  type LaunchGate,
 } from "../domain/content-rules";
 import type {
   AboutPageContent,
@@ -25,6 +27,7 @@ export interface SiteContent {
   getHomePage(): Promise<HomePageContent>;
   /** Values, gallery, videos and FAQ are `[]` when empty; the gallery keeps published images only. */
   getAboutPage(): Promise<AboutPageContent>;
+  /** The photo is returned only when its asset is publishable. */
   getContactPage(): Promise<ContactPageContent>;
   getComingSoonPage(slug: ComingSoonSlug): Promise<ComingSoonContent>;
   /** Labels, listing copy and WhatsApp templates of the public catalog. */
@@ -34,6 +37,8 @@ export interface SiteContent {
   >;
   /** The length is the number of stand-ins remaining (the launch gate). */
   listStandInAssets(): Promise<readonly StandInAsset[]>;
+  /** Image stand-ins, font stand-ins and unpublished media, for the launch checklist. */
+  getLaunchGate(): Promise<LaunchGate>;
 }
 
 /** Applies the domain rules to whatever the source loads; it caches nothing. */
@@ -58,7 +63,11 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       return { ...raw.about, gallery: publishedImages(raw.about.gallery, raw) };
     },
     async getContactPage() {
-      return (await source.load()).contact;
+      const raw = await source.load();
+      const { photo, ...contact } = raw.contact;
+      return photo && publishedImages([photo], raw).length > 0
+        ? { ...contact, photo }
+        : contact;
     },
     async getComingSoonPage(slug) {
       return (await source.load()).comingSoon[slug];
@@ -71,6 +80,10 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
     },
     async listStandInAssets() {
       return (await source.load()).standIns;
+    },
+    async getLaunchGate() {
+      const raw = await source.load();
+      return summarizeLaunchGate(raw.standIns, raw.media);
     },
   };
 }

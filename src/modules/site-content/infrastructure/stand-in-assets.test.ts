@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jpegSize, pngSize } from "~/testing/media/image-size";
 import { aboutContent } from "./content/about";
@@ -34,7 +34,10 @@ describe("the stand-in manifest and the files, both ways", () => {
         `${asset.id} has no file`,
       ).toBe(true);
     }
-    expect(mediaRows).toHaveLength(8);
+    expect(mediaRows.map((asset) => asset.id)).toEqual([
+      "gallery-01",
+      "favicon",
+    ]);
   });
 
   it("shape-checks the four font rows, whose files arrive with the tokens", () => {
@@ -77,15 +80,10 @@ describe("every manifest entry", () => {
 });
 
 describe("the profile-picture derived assets", () => {
-  const derived = STAND_IN_ASSETS.filter(
-    (asset) => asset.kind === "favicon" || asset.kind === "share-image",
-  );
+  const derived = STAND_IN_ASSETS.filter((asset) => asset.kind === "favicon");
 
-  it("registers one favicon and one share image", () => {
-    expect(derived.map((asset) => asset.kind).sort()).toEqual([
-      "favicon",
-      "share-image",
-    ]);
+  it("registers one favicon and no share image", () => {
+    expect(derived.map((asset) => asset.kind)).toEqual(["favicon"]);
   });
 
   it("cites the profile picture and notes it is likely the logo mark", () => {
@@ -95,14 +93,10 @@ describe("the profile-picture derived assets", () => {
     }
   });
 
-  it("ships a 48 px favicon and a 1200 by 630 share image", () => {
+  it("ships a 48 px favicon", () => {
     expect(pngSize(`${STAND_IN_DIR}/favicon.png`)).toEqual({
       width: 48,
       height: 48,
-    });
-    expect(jpegSize(`${STAND_IN_DIR}/share-default.jpg`)).toEqual({
-      width: 1200,
-      height: 630,
     });
   });
 });
@@ -118,14 +112,8 @@ describe("the studio photos", () => {
     height: number;
   }[];
 
-  it("registers the three hero photos and two gallery photos as stand-ins", () => {
-    expect(photoRows.map((asset) => asset.id)).toEqual([
-      "hero-1",
-      "hero-2",
-      "hero-3",
-      "gallery-01",
-      "gallery-02",
-    ]);
+  it("registers only the catalog fallback photo as a stand-in", () => {
+    expect(photoRows.map((asset) => asset.id)).toEqual(["gallery-01"]);
     for (const asset of photoRows) {
       expect(asset.source, asset.id).toContain("docs/brand/instagram/ig-post-");
     }
@@ -142,19 +130,14 @@ describe("the studio photos", () => {
     expect(contentImages.map((image) => image.src)).not.toContain(mobile.src);
   });
 
-  it("points every gallery image at a registered JPEG of the declared size", () => {
+  it("no gallery image is a stand-in any more", () => {
     const registered = new Set<string>(
       STAND_IN_ASSETS.map((asset) => asset.path),
     );
 
     expect(contentImages.length).toBeGreaterThan(0);
     for (const image of contentImages) {
-      expect(registered.has(image.src), image.src).toBe(true);
-      expect(image.src.endsWith(".jpg"), image.src).toBe(true);
-      expect(
-        jpegSize(`public${image.src}`),
-        `${image.src} size differs from the content`,
-      ).toEqual({ width: image.width, height: image.height });
+      expect(registered.has(image.src), image.src).toBe(false);
       expect(image.alt.trim(), image.src).not.toBe("");
     }
   });
@@ -173,25 +156,30 @@ describe("the studio photos", () => {
   });
 });
 
-describe("the SVG compositions", () => {
-  const svgs = files.filter((file) => file.endsWith(".svg"));
+describe("the replaced stand-ins", () => {
+  const RETIRED = [
+    "hero-1",
+    "hero-2",
+    "hero-3",
+    "gallery-02",
+    "share-default",
+    "about-teaser",
+  ] as const;
 
-  it("are the one expected file", () => {
-    expect(svgs.sort()).toEqual(["about-teaser.svg"]);
-  });
+  it("have no manifest row and no file", () => {
+    const rowText = JSON.stringify(STAND_IN_ASSETS);
+    const rowIds: readonly string[] = STAND_IN_ASSETS.map((asset) => asset.id);
 
-  it.each(svgs.map((file) => [file] as const))(
-    "%s has no text and no external reference",
-    (file) => {
-      const svg = readFileSync(`${STAND_IN_DIR}/${file}`, "utf8");
-
-      expect(svg).toContain("<svg");
-      expect(svg).not.toMatch(/<text|<image|<script|<foreignObject/i);
-      expect(svg).not.toMatch(/href\s*=|@import|url\(\s*["']?https?:/i);
-      // The only absolute URL an SVG may carry is its namespace.
-      expect(svg.replace("http://www.w3.org/2000/svg", "")).not.toContain(
-        "http",
+    for (const id of RETIRED) {
+      expect(rowIds.includes(id), `${id} still has a row`).toBe(false);
+      expect(
+        files.filter((file) => file.startsWith(id)),
+        `${id} still has a file`,
+      ).toEqual([]);
+      expect(rowText, `${id} is still named in a row`).not.toContain(
+        `/media/stand-ins/${id}.`,
       );
-    },
-  );
+    }
+    expect(files.sort()).toEqual(["favicon.png", "gallery-01.jpg"]);
+  });
 });

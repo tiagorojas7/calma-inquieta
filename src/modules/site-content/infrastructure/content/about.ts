@@ -1,4 +1,5 @@
 import type { AboutPageContent } from "../../domain/page-content";
+import { imageRef } from "./media-refs";
 
 /**
  * Quiénes somos. Drafted from docs/brand/dmr-calma-inquieta.md (sections 2 and
@@ -61,42 +62,18 @@ export const aboutContent = {
       text: "Valoramos a quienes enseñan y a quienes crean, y lo decimos con nombre propio.",
     },
   ],
+  /** The ten curated photos, in the curation order; the reserves are not registered. */
   gallery: [
-    {
-      id: "gallery-01",
-      src: "/media/stand-ins/gallery-01.jpg",
-      alt: "Mueble de madera con dos canastos de fibra tejida en el estante inferior",
-      width: 640,
-      height: 640,
-    },
-    {
-      id: "gallery-02",
-      src: "/media/stand-ins/gallery-02.jpg",
-      alt: "Una mujer sostiene un limón junto a un limonero cargado de frutos",
-      width: 360,
-      height: 640,
-    },
-    {
-      id: "gallery-03",
-      src: "/media/stand-ins/hero-1.jpg",
-      alt: "Estantería de cestería con cuerda de papel negra tejida sobre una estructura de hierro",
-      width: 480,
-      height: 640,
-    },
-    {
-      id: "gallery-04",
-      src: "/media/stand-ins/hero-2.jpg",
-      alt: "Grupo de mujeres sonrientes posando juntas en el patio del espacio durante un encuentro",
-      width: 640,
-      height: 480,
-    },
-    {
-      id: "gallery-05",
-      src: "/media/stand-ins/hero-3.jpg",
-      alt: "Tres mujeres con sombreros posan abrazadas frente a un ventanal, con árboles al fondo",
-      width: 640,
-      height: 640,
-    },
+    { id: "about-gallery-01", ...imageRef("about-espacio") },
+    { id: "about-gallery-02", ...imageRef("about-manos-aro") },
+    { id: "about-gallery-03", ...imageRef("about-espejo-flecos") },
+    { id: "about-gallery-04", ...imageRef("about-mesa-taller") },
+    { id: "about-gallery-05", ...imageRef("about-macrame") },
+    { id: "about-gallery-06", ...imageRef("about-ceramica-manos") },
+    { id: "about-gallery-07", ...imageRef("about-cuenco-tejido") },
+    { id: "about-gallery-08", ...imageRef("about-acuarela") },
+    { id: "about-gallery-09", ...imageRef("about-comunidad") },
+    { id: "about-gallery-10", ...imageRef("about-jarrones") },
   ],
   videos: [],
   faq: [

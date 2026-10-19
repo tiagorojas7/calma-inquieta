@@ -1,5 +1,5 @@
 import type { HomePageContent } from "../../domain/page-content";
-import { artDirected } from "./media-refs";
+import { artDirected, imageRef } from "./media-refs";
 
 /**
  * Inicio. Drafted from docs/brand/dmr-calma-inquieta.md and the client
@@ -65,12 +65,7 @@ export const homeContent = {
       approved: false,
       text: "Somos un multiespacio de arte en Argüello. Nos gusta crear con las manos, aprender juntas y que cada persona se lleve algo hecho por ella.",
     },
-    image: {
-      src: "/media/stand-ins/about-teaser.svg",
-      alt: "Composición abstracta de círculos concéntricos que recuerdan un ovillo de hilo",
-      width: 800,
-      height: 1000,
-    },
+    image: imageRef("home-teaser"),
     linkLabel: "Conocenos",
   },
   testimonials: {

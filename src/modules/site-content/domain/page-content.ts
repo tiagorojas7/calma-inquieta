@@ -128,6 +128,8 @@ export interface ContactPageContent {
   readonly seo: SeoCopy;
   readonly heading: string;
   readonly intro: string;
+  /** A photo of the space; the reader withholds it unless its asset is publishable. */
+  readonly photo?: ImageRef;
 }
 
 export type ComingSoonSlug = "talleres" | "intensivos" | "eventos-privados";

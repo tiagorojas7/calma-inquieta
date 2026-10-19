@@ -6,6 +6,7 @@ import type {
   Testimonial,
   TrustClaim,
 } from "./page-content";
+import type { StandInAsset } from "./stand-in";
 import {
   DEFAULT_SHARE_IMAGE,
   isPublishable,
@@ -170,6 +171,15 @@ function contentImages(content: RawSiteContent): readonly {
       image: video.poster,
       decorative: false,
     })),
+    ...(content.contact.photo
+      ? [
+          {
+            id: content.contact.photo.src,
+            image: content.contact.photo,
+            decorative: false,
+          },
+        ]
+      : []),
     {
       id: content.catalog.fallbackImage.src,
       image: content.catalog.fallbackImage,
@@ -251,6 +261,29 @@ export function validateSiteContent(
     issues.push({ id: "share", rule: "share-image-missing" });
   }
   return issues;
+}
+
+export interface LaunchGate {
+  /** Image-like stand-ins (images, favicon, share image) still shipped. */
+  readonly imageStandIns: readonly StandInAsset[];
+  /** Font stand-ins, reported apart: they wait on the client's typefaces. */
+  readonly fontStandIns: readonly StandInAsset[];
+  /** Ids of registered assets that are not publishable yet. */
+  readonly unpublishedMedia: readonly string[];
+}
+
+/** Three honest numbers for the launch checklist instead of one undifferentiated count. */
+export function summarizeLaunchGate(
+  standIns: readonly StandInAsset[],
+  media: MediaRegistry,
+): LaunchGate {
+  return {
+    imageStandIns: standIns.filter(({ kind }) => kind !== "font"),
+    fontStandIns: standIns.filter(({ kind }) => kind === "font"),
+    unpublishedMedia: media.assets
+      .filter((asset) => !isPublishable(asset, media))
+      .map(({ id }) => id),
+  };
 }
 
 /** Drafted prose still waiting for the client's approval, for the launch checklist. */

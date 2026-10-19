@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_SHARE_IMAGE } from "~/modules/site-content";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
 import {
@@ -120,6 +121,25 @@ describe("home loader", () => {
     await expect(
       loader(createLoaderArgs(services, "/") as never),
     ).rejects.toThrow("content down");
+  });
+});
+
+describe("home meta share image", () => {
+  it("meta contains og:image and the two size tags", async () => {
+    const services = createTestServices();
+    const result = await loader(createLoaderArgs(services, "/") as never);
+    const descriptors = meta({ loaderData: result } as never);
+
+    expect(descriptors).toEqual(
+      expect.arrayContaining([
+        {
+          property: "og:image",
+          content: `${services.site.baseUrl}${DEFAULT_SHARE_IMAGE.path}`,
+        },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+      ]),
+    );
   });
 });
 

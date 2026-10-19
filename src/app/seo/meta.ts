@@ -1,6 +1,6 @@
+import { DEFAULT_SHARE_IMAGE } from "~/modules/site-content";
 import { canonicalUrl } from "./canonical";
 
-export const SHARE_IMAGE_PATH = "/media/stand-ins/share-default.jpg";
 export type PageMetaInput = {
   title: string;
   description: string;
@@ -10,7 +10,7 @@ export type PageMetaInput = {
   baseUrl: string;
   indexingEnabled: boolean;
   comingSoon?: boolean;
-  /** Path or URL of the share image; defaults to the site share image. */
+  /** Path or URL of the share image; defaults to the registered site share image. */
   ogImage?: string;
 };
 export function buildPageMeta(input: PageMetaInput) {
@@ -35,8 +35,24 @@ export function buildPageMeta(input: PageMetaInput) {
     { property: "og:locale", content: "es_AR" },
     {
       property: "og:image",
-      content: canonicalUrl(input.baseUrl, input.ogImage ?? SHARE_IMAGE_PATH),
+      content: canonicalUrl(
+        input.baseUrl,
+        input.ogImage ?? DEFAULT_SHARE_IMAGE.path,
+      ),
     },
+    // An override has an unknown size, so the size tags describe the default only.
+    ...(input.ogImage === undefined
+      ? [
+          {
+            property: "og:image:width",
+            content: String(DEFAULT_SHARE_IMAGE.width),
+          },
+          {
+            property: "og:image:height",
+            content: String(DEFAULT_SHARE_IMAGE.height),
+          },
+        ]
+      : []),
     { name: "twitter:card", content: "summary_large_image" },
     ...(robots ? [{ name: "robots", content: robots }] : []),
   ];

@@ -42,6 +42,15 @@ function filesUnder(directory: string): string[] {
 
 const isTestFile = (path: string) => /\.test\.tsx?$/.test(path);
 
+/** The paths an image reference can make the browser request. */
+const pathsOf = (image: { src: string; srcSet?: string }) => [
+  image.src,
+  ...(image.srcSet ?? "")
+    .split(",")
+    .map((entry) => entry.trim().split(" ")[0] ?? "")
+    .filter((path) => path !== ""),
+];
+
 describe("the repository content", () => {
   it("passes every validation rule, including registered image paths", async () => {
     const raw = await source.load();
@@ -212,11 +221,10 @@ describe("the drafted page content", () => {
     }
   });
 
-  it("has an empty video list and five gallery images with alt text", async () => {
+  it("has an empty video list and alt text on every gallery image", async () => {
     const about = await content.getAboutPage();
 
     expect(about.videos).toEqual([]);
-    expect(about.gallery).toHaveLength(5);
     for (const image of about.gallery) {
       expect(image.alt.trim(), image.id).not.toBe("");
     }
@@ -271,7 +279,42 @@ describe("the drafted page content", () => {
   it("registers every stand-in the manifest lists", async () => {
     const standIns = await content.listStandInAssets();
 
-    expect(standIns).toHaveLength(12);
+    expect(standIns.map(({ id }) => id)).toEqual([
+      "gallery-01",
+      "favicon",
+      "font-cormorant-garamond-400-normal",
+      "font-cormorant-garamond-400-italic",
+      "font-montserrat-400-normal",
+      "font-montserrat-600-normal",
+    ]);
+  });
+
+  it("serves every image of Inicio, Quiénes somos and Contacto from the stand-ins or the registry, never both", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const about = await content.getAboutPage();
+    const contact = await content.getContactPage();
+    const images = [
+      home.hero.image.mobile,
+      home.hero.image.desktop,
+      home.teaser.image,
+      ...about.gallery,
+      ...(contact.photo ? [contact.photo] : []),
+    ];
+    const registered = new Set(
+      raw.media.assets.flatMap((asset) =>
+        asset.kind === "image"
+          ? asset.variants.map((variant) => variant.path)
+          : [],
+      ),
+    );
+
+    for (const image of images) {
+      for (const path of pathsOf(image)) {
+        const standIn = raw.standIns.some((row) => row.path === path);
+        expect(standIn !== registered.has(path), path).toBe(true);
+      }
+    }
   });
 });
 
@@ -457,5 +500,183 @@ describe("media registry", () => {
         exclusionToken(sourceId),
       );
     }
+  });
+});
+
+const GALLERY_ORDER = [
+  "about-espacio",
+  "about-manos-aro",
+  "about-espejo-flecos",
+  "about-mesa-taller",
+  "about-macrame",
+  "about-ceramica-manos",
+  "about-cuenco-tejido",
+  "about-acuarela",
+  "about-comunidad",
+  "about-jarrones",
+] as const;
+
+const CURATION_RESERVES = [
+  "img-20260804-185559792-hdr",
+  "img-20260917-180559720-hdr",
+  "img-20260718-wa0044",
+  "img-20260420-wa0046",
+  "img-20260312-wa0051",
+  "img-20260530-wa0020",
+] as const;
+
+const PRIVATE_EVENT_SOURCES = [
+  "img-20261015-wa0018",
+  "img-20260926-144641667-hdr",
+] as const;
+
+describe("the curated gallery", () => {
+  it("the gallery has ten entries in curation order", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+    const alts = GALLERY_ORDER.map((id) => {
+      const asset = raw.media.assets.find((candidate) => candidate.id === id);
+      if (asset?.kind !== "image") {
+        throw new Error(`${id} is not a registered image`);
+      }
+      return asset.alt;
+    });
+
+    expect(about.gallery).toHaveLength(10);
+    expect(about.gallery.map((image) => image.alt)).toEqual(alts);
+    expect(new Set(about.gallery.map((image) => image.id)).size).toBe(10);
+  });
+
+  it("every gallery image is a published registry path with a srcSet", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+
+    expect(about.gallery.length).toBeGreaterThan(0);
+    for (const image of about.gallery) {
+      expect(image.srcSet, image.id).toBeDefined();
+      const paths = pathsOf(image);
+      expect(paths.length, image.id).toBeGreaterThan(1);
+      for (const path of paths) {
+        expect(path.startsWith("/media/about/"), path).toBe(true);
+        expect(isPublishedPath(path, raw), path).toBe(true);
+        expect(
+          raw.standIns.some((standIn) => standIn.path === path),
+          path,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("the curation reserves are not registered", async () => {
+    const raw = await source.load();
+    const registered = exclusionToken(JSON.stringify(raw.media.assets));
+
+    for (const sourceId of CURATION_RESERVES) {
+      expect(
+        raw.media.assets.some((asset) => asset.sourceId === sourceId),
+        `${sourceId} is the source of an asset`,
+      ).toBe(false);
+      expect(registered, `${sourceId} appears in an asset`).not.toContain(
+        exclusionToken(sourceId),
+      );
+    }
+  });
+
+  it("no page image belongs to the two private-event face sources", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const about = await content.getAboutPage();
+    const images = [
+      home.hero.image.mobile,
+      home.hero.image.desktop,
+      home.teaser.image,
+      ...about.gallery,
+    ];
+
+    let owned = 0;
+    for (const image of images) {
+      for (const path of pathsOf(image)) {
+        const owner = raw.media.assets.find(
+          (asset) =>
+            asset.kind === "image" &&
+            asset.variants.some((variant) => variant.path === path),
+        );
+        owned += owner ? 1 : 0;
+        expect(PRIVATE_EVENT_SOURCES, path).not.toContain(owner?.sourceId);
+      }
+    }
+    expect(owned).toBeGreaterThan(30);
+  });
+});
+
+describe("the curated teaser", () => {
+  it("the teaser image is the published home-teaser asset and not a stand-in", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const asset = raw.media.assets.find(({ id }) => id === "home-teaser");
+    if (asset?.kind !== "image") {
+      throw new Error("home-teaser is not a registered image");
+    }
+
+    expect(home.teaser.image.alt).toBe(asset.alt);
+    expect(home.teaser.image.alt.trim()).not.toBe("");
+    expect(home.teaser.image.width / home.teaser.image.height).toBeCloseTo(
+      4 / 5,
+      2,
+    );
+    expect(pathsOf(home.teaser.image)).toEqual([
+      home.teaser.image.src,
+      ...asset.variants.map((variant) => variant.path),
+    ]);
+    for (const path of pathsOf(home.teaser.image)) {
+      expect(path.startsWith("/media/home/"), path).toBe(true);
+      expect(isPublishedPath(path, raw), path).toBe(true);
+      expect(
+        raw.standIns.some((standIn) => standIn.path === path),
+        path,
+      ).toBe(false);
+    }
+  });
+});
+
+describe("the curated contact photo", () => {
+  it("the contact photo is a published registry asset and not a stand-in", async () => {
+    const raw = await source.load();
+    const contact = await content.getContactPage();
+    const asset = raw.media.assets.find(({ id }) => id === "contact-fachada");
+    if (asset?.kind !== "image") {
+      throw new Error("contact-fachada is not a registered image");
+    }
+    const photo = contact.photo;
+
+    expect(asset.sourceId).toBe("img-20260530-wa0019");
+    expect(photo).toBeDefined();
+    if (!photo) {
+      return;
+    }
+    expect(photo.alt).toBe(asset.alt);
+    expect(photo.alt.trim()).not.toBe("");
+    expect(photo.width / photo.height).toBeCloseTo(3 / 4, 2);
+    for (const path of pathsOf(photo)) {
+      expect(path.startsWith("/media/contact/"), path).toBe(true);
+      expect(isPublishedPath(path, raw), path).toBe(true);
+      expect(
+        raw.standIns.some((standIn) => standIn.path === path),
+        path,
+      ).toBe(false);
+    }
+  });
+});
+
+describe("the launch gate on the repository content", () => {
+  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are four and unpublishedMedia is empty", async () => {
+    const gate = await content.getLaunchGate();
+
+    expect(gate.imageStandIns.map(({ id }) => id)).toEqual([
+      "gallery-01",
+      "favicon",
+    ]);
+    expect(gate.fontStandIns).toHaveLength(4);
+    expect(gate.unpublishedMedia).toEqual([]);
   });
 });

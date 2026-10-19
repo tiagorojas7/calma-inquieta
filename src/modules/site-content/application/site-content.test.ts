@@ -125,6 +125,63 @@ describe("createSiteContent", () => {
     expect(about.gallery).toEqual(base.about.gallery);
   });
 
+  it("getContactPage drops an unpublishable photo", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/contact/contact-pending-480.0a1b2c3d.webp";
+    const pending = {
+      ...base,
+      contact: {
+        ...base.contact,
+        photo: {
+          src: path,
+          alt: "El frente del local",
+          width: 480,
+          height: 640,
+        },
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "contact-pending",
+            sourceId: "contact-pending-source",
+            area: "contact",
+            alt: "El frente del local",
+            format: "webp",
+            variants: [{ width: 480, height: 640, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "contact-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    } satisfies RawSiteContent;
+
+    const withheld = await content(pending).getContactPage();
+    expect(withheld).not.toHaveProperty("photo");
+    expect(withheld.heading).toBe("Contacto");
+
+    const granted = await content({
+      ...pending,
+      media: {
+        ...pending.media,
+        rights: [
+          {
+            sourceId: "contact-pending-source",
+            people: "none",
+            consent: "not-required",
+          },
+        ],
+      },
+    }).getContactPage();
+    expect(granted.photo?.src).toBe(path);
+  });
+
   it("returns the contact page and the coming-soon page of the requested slug", async () => {
     const reader = content();
 
@@ -149,6 +206,27 @@ describe("createSiteContent", () => {
     expect(await content().listUnapprovedContent()).toEqual([]);
   });
 
+  it("getLaunchGate splits kinds", async () => {
+    const base = buildRawSiteContent();
+    const font = {
+      id: "font-a",
+      path: "/fonts/a.woff2",
+      kind: "font",
+      source: "test",
+      licence: "test",
+      replaceWith: "test",
+    } as const;
+
+    const gate = await content({
+      ...base,
+      standIns: [...base.standIns, font],
+    }).getLaunchGate();
+
+    expect(gate.fontStandIns).toEqual([font]);
+    expect(gate.imageStandIns).toEqual(base.standIns);
+    expect(gate.unpublishedMedia).toEqual([]);
+  });
+
   it("lists the stand-in manifest, whose length is the launch gate", async () => {
     const base = buildRawSiteContent();
 
@@ -166,6 +244,7 @@ describe("createSiteContent", () => {
       reader.getHomePage(),
       reader.getAboutPage(),
       reader.getContactPage(),
+      reader.getLaunchGate(),
       reader.getComingSoonPage("talleres"),
       reader.listUnapprovedContent(),
       reader.listStandInAssets(),

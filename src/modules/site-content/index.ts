@@ -14,6 +14,7 @@ export type {
 } from "./domain/business-profile";
 export { fillCopyTemplate } from "./domain/copy-template";
 export { findCopyViolations } from "./domain/copy-rules";
+export type { LaunchGate } from "./domain/content-rules";
 export type { CopyViolation } from "./domain/copy-rules";
 export {
   buildDirectionsUrl,

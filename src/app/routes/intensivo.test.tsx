@@ -192,7 +192,8 @@ describe("intensivo meta", () => {
     });
     expect(await descriptors({ images: false })).toContainEqual({
       property: "og:image",
-      content: "https://example.test/media/stand-ins/share-default.jpg",
+      content:
+        "https://example.test/media/share/share-default-1200.0bcfa824.jpg",
     });
   });
 

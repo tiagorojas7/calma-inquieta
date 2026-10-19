@@ -321,3 +321,121 @@ describe("Inicio route", () => {
     });
   });
 });
+
+describe("Inicio motifs", () => {
+  const claims = [{ id: "c1", label: "Materiales incluidos" }];
+  const testimonials = [{ id: "t1", quote: "Muy lindo", author: "Ana" }];
+
+  async function renderInicio(overrides: Record<string, unknown>) {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => ({ ...fixture, ...overrides }),
+      },
+    ]);
+    const view = render(<Stub initialEntries={["/"]} />);
+    await screen.findByRole("heading", { level: 1 });
+    return view;
+  }
+
+  const cordsIn = (container: HTMLElement) =>
+    [...container.querySelectorAll(".motif-cord-a")].map(
+      (path) => path.closest("[aria-hidden]") as Element,
+    );
+  const follows = (a: Element, b: Element) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  const rows = [
+    { name: "catalog read, claims", failed: false, claims, count: 3 },
+    { name: "catalog read, no claims", failed: false, claims: [], count: 3 },
+    { name: "catalog failed, claims", failed: true, claims, count: 2 },
+    { name: "catalog failed, no claims", failed: true, claims: [], count: 2 },
+  ];
+
+  it.each(rows)("places the cords for $name", async (row) => {
+    const { container } = await renderInicio({
+      catalogFailed: row.failed,
+      trustClaims: row.claims,
+    });
+    expect(cordsIn(container)).toHaveLength(row.count);
+  });
+
+  it("the first cord follows the trust row when it renders", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const trust = screen.getByRole("region", { name: "Confianza" });
+    expect(follows(trust, cordsIn(container)[0] as Element)).toBe(true);
+    expect(container.querySelector(".motif-cord-a")).not.toBeNull();
+  });
+
+  it("with no claims the first cord follows the hero section", async () => {
+    const { container } = await renderInicio({ trustClaims: [] });
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const first = cordsIn(container)[0] as Element;
+    expect(follows(hero as Element, first)).toBe(true);
+    expect(first.previousElementSibling).toBe(hero);
+  });
+
+  it("no cord sits between the h1 section and the trust row", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const trust = screen.getByRole("region", { name: "Confianza" });
+    expect(hero?.nextElementSibling).toBe(trust);
+    expect(container.querySelectorAll(".motif-cord-a")).not.toHaveLength(0);
+  });
+
+  it.each(rows)("no two cords are adjacent for $name", async (row) => {
+    const { container } = await renderInicio({
+      catalogFailed: row.failed,
+      trustClaims: row.claims,
+      testimonials,
+    });
+    expect(cordsIn(container)).toHaveLength(row.count);
+    for (const cord of cordsIn(container)) {
+      expect(cordsIn(container)).not.toContain(cord.previousElementSibling);
+      expect(cordsIn(container)).not.toContain(cord.nextElementSibling);
+    }
+  });
+
+  it("no cord sits after the contact band", async () => {
+    const { container } = await renderInicio({});
+    const band = screen
+      .getByRole("heading", { name: "Hablemos" })
+      .closest("section");
+    for (const cord of cordsIn(container)) {
+      expect(follows(band as Element, cord)).toBe(false);
+    }
+    expect(cordsIn(container)).toHaveLength(3);
+  });
+
+  it("exactly one butterfly exists and it is inside the hero area", async () => {
+    const { container } = await renderInicio({});
+    const butterflies = container.querySelectorAll(".motif-flight");
+    expect(butterflies).toHaveLength(1);
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(hero).toContainElement(butterflies[0] as HTMLElement);
+  });
+
+  it("the text and links of Inicio are equal with and without motifs", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const snapshot = (root: Element) => ({
+      text: root.textContent,
+      links: [...root.querySelectorAll("a")].map((a) => a.outerHTML),
+    });
+    const withMotifs = snapshot(container);
+    const bare = container.cloneNode(true) as HTMLElement;
+    for (const motif of bare.querySelectorAll(".motif-flight")) motif.remove();
+    for (const cord of cordsIn(bare)) cord.remove();
+    expect(bare.querySelectorAll("svg.h-6")).toHaveLength(0);
+    expect(snapshot(bare)).toEqual(withMotifs);
+  });
+
+  it("Inicio with the motifs has no axe violations", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    await expectNoAxeViolations(container, { page: true });
+  });
+});

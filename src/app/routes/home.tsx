@@ -10,6 +10,8 @@ import {
   intensivoToUpcomingItem,
   tallerToActivityCard,
 } from "~/app/catalog/mappers";
+import { Butterfly } from "~/app/ui/atoms/butterfly";
+import { CordDivider } from "~/app/ui/atoms/cord-divider";
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
@@ -127,8 +129,10 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         subtitle={data.hero.subtitle}
         image={data.hero.image}
         bajada={data.hero.bajada}
+        ornament={<Butterfly />}
       />
       <TrustRow claims={data.trustClaims} />
+      <CordDivider />
       {data.catalogFailed ? null : (
         <div className="grid gap-x-12 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -156,6 +160,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           </div>
         </div>
       )}
+      {data.catalogFailed ? null : <CordDivider />}
       <AboutTeaser
         heading={data.teaser.heading}
         body={data.teaser.body}
@@ -165,6 +170,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         heading={data.testimonialsHeading}
         items={data.testimonials}
       />
+      <CordDivider />
       <ContactBand
         heading={data.contactBand.heading}
         body={data.contactBand.body}

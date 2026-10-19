@@ -1,0 +1,108 @@
+/*
+ * Decorative motifs (design AD11, AD12): the paper-cord draw-in and the
+ * butterfly flight. Every animation lives inside prefers-reduced-motion:
+ * no-preference; without it the cord is fully drawn and the butterfly rests
+ * at its perch. Only transform, opacity and stroke-dashoffset are animated.
+ */
+.motif-flight {
+  --motif-fly: 0.5;
+}
+
+@media (min-width: 64rem) {
+  .motif-flight {
+    --motif-fly: 1;
+  }
+}
+
+.motif-wing-left {
+  transform-box: fill-box;
+  transform-origin: right center;
+}
+
+.motif-wing-right {
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+@keyframes motif-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes motif-flight {
+  0% {
+    transform: translate(
+        calc(var(--motif-fly) * -140px),
+        calc(var(--motif-fly) * 120px)
+      )
+      rotate(-10deg);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(
+        calc(var(--motif-fly) * -90px),
+        calc(var(--motif-fly) * 30px)
+      )
+      rotate(8deg);
+    opacity: 1;
+  }
+  55% {
+    transform: translate(
+        calc(var(--motif-fly) * -40px),
+        calc(var(--motif-fly) * 70px)
+      )
+      rotate(-6deg);
+  }
+  85% {
+    transform: translate(
+        calc(var(--motif-fly) * -8px),
+        calc(var(--motif-fly) * 6px)
+      )
+      rotate(4deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+}
+
+@keyframes motif-flap {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0.35);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motif-flight {
+    animation: motif-flight 4.5s cubic-bezier(0.45, 0.05, 0.35, 1) 0.8s 1 both;
+    will-change: transform;
+  }
+
+  .motif-wing {
+    animation: motif-flap 0.28s ease-in-out 16 alternate;
+  }
+
+  @supports (animation-timeline: view()) {
+    .motif-cord-a,
+    .motif-cord-b {
+      stroke-dasharray: 1;
+      animation: motif-draw linear both;
+      animation-timeline: view();
+    }
+
+    .motif-cord-a {
+      animation-range: entry 10% cover 35%;
+    }
+
+    .motif-cord-b {
+      animation-range: entry 20% cover 45%;
+    }
+  }
+}

@@ -156,7 +156,11 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           </div>
         </div>
       )}
-      <AboutTeaser heading={data.teaser.heading} body={data.teaser.body} />
+      <AboutTeaser
+        heading={data.teaser.heading}
+        body={data.teaser.body}
+        image={data.teaser.image}
+      />
       <TestimonialsSection
         heading={data.testimonialsHeading}
         items={data.testimonials}

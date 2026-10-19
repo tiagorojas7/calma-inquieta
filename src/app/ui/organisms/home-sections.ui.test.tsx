@@ -128,6 +128,69 @@ describe("home organisms", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("the teaser renders the image lazy with width, height and non-empty alt", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <AboutTeaser
+          heading="Quiénes somos"
+          body="Creamos juntas."
+          image={{
+            src: "/media/home/home-teaser-800.0a1b2c3d.webp",
+            alt: "Una cesta con flores silvestres",
+            width: 800,
+            height: 1000,
+            srcSet:
+              "/media/home/home-teaser-480.1b2c3d4e.webp 480w, /media/home/home-teaser-800.0a1b2c3d.webp 800w",
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const photo = screen.getByRole("img", {
+      name: "Una cesta con flores silvestres",
+    });
+    expect(photo).toHaveAttribute("loading", "lazy");
+    expect(photo).not.toHaveAttribute("fetchpriority", "high");
+    expect(photo).toHaveAttribute("width", "800");
+    expect(photo).toHaveAttribute("height", "1000");
+    expect(photo).toHaveAttribute(
+      "srcset",
+      expect.stringContaining("home-teaser-480"),
+    );
+    expect(photo).toHaveAttribute(
+      "sizes",
+      "(min-width: 64rem) 24rem, calc(100vw - 2.5rem)",
+    );
+    await expectNoAxeViolations(container);
+  });
+
+  it("from lg the teaser has two columns", () => {
+    const image = {
+      src: "/media/home/home-teaser-800.0a1b2c3d.webp",
+      alt: "Una cesta con flores silvestres",
+      width: 800,
+      height: 1000,
+    };
+    const { container, rerender } = render(
+      <MemoryRouter>
+        <AboutTeaser
+          heading="Quiénes somos"
+          body="Creamos juntas."
+          image={image}
+        />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector("section")).toHaveClass("lg:grid-cols-2");
+    rerender(
+      <MemoryRouter>
+        <AboutTeaser heading="Quiénes somos" body="Creamos juntas." />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector("section")).not.toHaveClass(
+      "lg:grid-cols-2",
+    );
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
   it("renders ContactBand content and WhatsApp link accessibly", async () => {
     const { container } = render(
       <MemoryRouter>

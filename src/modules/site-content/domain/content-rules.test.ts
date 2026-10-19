@@ -6,6 +6,7 @@ import {
   listUnapproved,
   publishableTestimonials,
   publishedImages,
+  summarizeLaunchGate,
   validateSiteContent,
 } from "./content-rules";
 import {
@@ -14,6 +15,7 @@ import {
   type MediaRegistry,
   type RightsEntry,
 } from "./media";
+import type { StandInAsset } from "./stand-in";
 import type {
   GalleryImage,
   ImageRef,
@@ -803,5 +805,58 @@ describe("validateSiteContent share image", () => {
 
   it("is not reported for the default content", () => {
     expect(validateSiteContent(validContent())).not.toContainEqual(issue);
+  });
+});
+
+describe("summarizeLaunchGate", () => {
+  const standIn = (id: string, kind: StandInAsset["kind"]): StandInAsset => ({
+    id,
+    path: `/stand-ins/${id}`,
+    kind,
+    source: "test",
+    licence: "test",
+    replaceWith: "test",
+  });
+
+  it("splits image stand-ins from font stand-ins and lists unpublished media ids", () => {
+    const published = imageAsset("hero-a");
+    const pending = imageAsset("gallery-pending");
+    const unrecorded = imageAsset("gallery-unrecorded");
+    const standIns = [
+      standIn("gallery-01", "image"),
+      standIn("favicon", "favicon"),
+      standIn("share-stand-in", "share-image"),
+      standIn("font-a", "font"),
+      standIn("font-b", "font"),
+    ];
+
+    const gate = summarizeLaunchGate(standIns, {
+      assets: [published, pending, unrecorded],
+      rights: [noPeople(published), facesPending(pending)],
+      excluded: [],
+    });
+
+    expect(gate.imageStandIns.map(({ id }) => id)).toEqual([
+      "gallery-01",
+      "favicon",
+      "share-stand-in",
+    ]);
+    expect(gate.fontStandIns.map(({ id }) => id)).toEqual(["font-a", "font-b"]);
+    expect(gate.unpublishedMedia).toEqual([
+      "gallery-pending",
+      "gallery-unrecorded",
+    ]);
+  });
+
+  it("reports nothing when there are no stand-ins and every asset is publishable", () => {
+    const published = imageAsset("hero-a");
+
+    expect(
+      summarizeLaunchGate([], {
+        assets: [published],
+        rights: [noPeople(published)],
+        excluded: [],
+      }),
+    ).toEqual({ imageStandIns: [], fontStandIns: [], unpublishedMedia: [] });
   });
 });

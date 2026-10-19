@@ -159,6 +159,7 @@ export function buildRawSiteContent(
       seo: seo("Contacto"),
       heading: "Contacto",
       intro: "Escribinos cuando quieras.",
+      photo: image("/media/stand-ins/gallery-01.jpg", "Frente del local"),
     },
     comingSoon: {
       talleres: {

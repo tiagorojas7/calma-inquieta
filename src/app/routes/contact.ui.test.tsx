@@ -93,3 +93,53 @@ describe("Contacto route", () => {
     expect(await screen.findByText("351 000 0000")).toBeVisible();
   });
 });
+
+describe("Contacto route photo", () => {
+  it("the photo is lazy with width, height and non-empty alt", async () => {
+    renderContact();
+    const photo = await screen.findByRole("img", { name: "Frente del local" });
+    expect(photo).toHaveAttribute("loading", "lazy");
+    expect(photo).not.toHaveAttribute("fetchpriority", "high");
+    expect(photo).toHaveAttribute("width", "100");
+    expect(photo).toHaveAttribute("height", "100");
+    expect(photo.getAttribute("alt")?.trim()).not.toBe("");
+  });
+
+  it("the page keeps its required items and has no form or embed with the photo", async () => {
+    const { container } = renderContact();
+    await screen.findByRole("img", { name: "Frente del local" });
+    expect(screen.getByRole("link", { name: /Cómo llegar/ })).toBeVisible();
+    expect(
+      screen.getByText("Calle Falsa 123, Argüello, Córdoba"),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "@calma.inquieta" })).toBeVisible();
+    expect(container.querySelector('a[href^="https://wa.me/"]')).not.toBeNull();
+    expect(container.querySelector("form")).toBeNull();
+    expect(container.querySelector("iframe")).toBeNull();
+    await expectNoAxeViolations(container, { page: true });
+  });
+
+  it("the photo box reserves its aspect ratio", async () => {
+    renderContact();
+    const photo = await screen.findByRole("img", { name: "Frente del local" });
+    expect(photo.style.aspectRatio).toBe("100 / 100");
+  });
+
+  it("a withheld photo leaves no image and the contact details render", async () => {
+    const raw = buildRawSiteContent();
+    const { seo, heading, intro } = raw.contact;
+    const { container } = renderContact(
+      createTestServices({
+        siteContent: createSiteContent(
+          createInMemorySiteContentSource({
+            ...raw,
+            contact: { seo, heading, intro },
+          }),
+        ),
+      }),
+    );
+    expect(await screen.findAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByRole("link", { name: /Cómo llegar/ })).toBeVisible();
+  });
+});

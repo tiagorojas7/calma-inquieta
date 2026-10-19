@@ -30,12 +30,12 @@ Licence rule: keep a licence text next to every font file, and the manifest `lic
 
 ## 3. Images
 
-| Step                                               | Where                                                                                                                                                                                                                                                           |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Put the optimized images in `public/media/<area>/` | Convention: `<name>-{480,960,1600}.webp`; originals are git-ignored. Every image needs meaningful alt text.                                                                                                                                                     |
-| Point the content at them                          | `src/modules/site-content/infrastructure/content/home.ts` (hero slots, teaser) and `about.ts` (gallery). The stand-ins are `hero-1`, `hero-2`, `hero-3`, `about-teaser` and `gallery-01` to `gallery-06` under `public/media/stand-ins/`.                       |
-| Retire the stand-in                                | In the same change, delete its file under `public/media/stand-ins/` and its row in `stand-in-assets.ts`. The registry test (`src/modules/site-content/infrastructure/stand-in-assets.test.ts`) fails when a file has no row or a row has no file, naming which. |
-| Client photos with `srcSet`                        | The `Image` atom accepts `srcSet` and `sizes`; revisit the eager hero slots then.                                                                                                                                                                               |
+| Step                                               | Where                                                                                                                                                                                                                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Put the optimized images in `public/media/<area>/` | Convention: `<name>-{480,960,1600}.webp`; originals are git-ignored. Every image needs meaningful alt text.                                                                                                                                                                        |
+| Point the content at them                          | `src/modules/site-content/infrastructure/content/home.ts` (hero slots, teaser) and `about.ts` (gallery). The curated photos come from the media registry (`media-assets.ts`); the only photo stand-in left is `gallery-01`, the catalog fallback, under `public/media/stand-ins/`. |
+| Retire the stand-in                                | In the same change, delete its file under `public/media/stand-ins/` and its row in `stand-in-assets.ts`. The registry test (`src/modules/site-content/infrastructure/stand-in-assets.test.ts`) fails when a file has no row or a row has no file, naming which.                    |
+| Client photos with `srcSet`                        | The `Image` atom accepts `srcSet` and `sizes`; revisit the eager hero slots then.                                                                                                                                                                                                  |
 
 Content and manifest edits are BACK work (`src/modules/**`).
 
@@ -55,9 +55,9 @@ pnpm media:optimize <inputDir> <outputDir>
 | Asset       | Current stand-in                                                                 | Where it is wired                                                              |
 | ----------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Favicon     | `public/media/stand-ins/favicon.png` (48 px, from the Instagram profile picture) | `<link rel="icon">` in `src/app/root.tsx` (asserted by `src/app/root.test.ts`) |
-| Share image | `public/media/stand-ins/share-default.jpg` (1200x630)                            | `SHARE_IMAGE_PATH` in `src/app/seo/meta.ts`                                    |
+| Share image | `public/media/share/share-default-1200.<hash>.jpg` (1200x630, registered)        | `DEFAULT_SHARE_IMAGE` in `src/modules/site-content/domain/media.ts`            |
 
-To swap: add the new files (the share image must be 1200x630 and a raster format; Open Graph does not accept SVG), update the manifest entries `favicon` and `share-default` (BACK), update the path in `root.tsx` or `meta.ts` if the file name changes, then delete the old stand-in file and its row. Run `corepack pnpm test src/app/root.test.ts src/app/seo`.
+To swap: add the new files (the share image must be 1200x630 and a raster format; Open Graph does not accept SVG), update the manifest entry `favicon` (BACK) and the path in `root.tsx` if the file name changes, then delete the old stand-in file and its row. For the share image, derive the new JPEG with `pnpm media:derive`, then update `DEFAULT_SHARE_IMAGE` and the `share-default` registry asset together. Run `corepack pnpm test src/app/root.test.ts src/app/seo`.
 
 ## 5. Logo
 

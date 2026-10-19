@@ -10,6 +10,7 @@ import {
 import { ActivityShowcase } from "./activity-showcase";
 import { AboutTeaser } from "./about-teaser";
 import { ContactBand } from "./contact-band";
+import { Icon } from "../atoms/icon";
 import { TrustRow } from "./trust-row";
 import { UpcomingList } from "./upcoming-list";
 
@@ -25,6 +26,40 @@ describe("home organisms", () => {
     expect(screen.getByText("Experiencias cuidadas")).toBeInTheDocument();
     expect(screen.getByText("Para crear en comunidad")).toBeInTheDocument();
     await expectNoAxeViolations(container);
+  });
+
+  it("each trust item shows the glyph of its own claim", () => {
+    const { container } = render(
+      <TrustRow
+        claims={[
+          { id: "a", label: "Uno", icon: "leaf" },
+          { id: "b", label: "Dos", icon: "hands" },
+        ]}
+      />,
+    );
+    const glyph = (name: "leaf" | "hands") =>
+      render(<Icon name={name} />).container.querySelector("svg")?.innerHTML;
+    const shown = [...container.querySelectorAll("svg")].map(
+      (s) => s.innerHTML,
+    );
+    expect(shown).toEqual([glyph("leaf"), glyph("hands")]);
+  });
+
+  it("no arrow glyph appears in the trust row", () => {
+    const { container } = render(<TrustRow claims={trustClaimFixtures} />);
+    const arrow = render(<Icon name="arrow" />).container.querySelector(
+      "svg",
+    )?.innerHTML;
+    expect(arrow).toBeTruthy();
+    for (const svg of container.querySelectorAll("svg")) {
+      expect(svg.innerHTML).not.toBe(arrow);
+    }
+  });
+
+  it("the row does not render without approved claims", () => {
+    const { container } = render(<TrustRow claims={[]} />);
+    expect(container.querySelector("section")).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renders ActivityShowcase empty state with its external action", async () => {

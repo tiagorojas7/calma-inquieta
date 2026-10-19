@@ -71,9 +71,28 @@ The deployed site still shows the baseline design and stand-in media. The approv
 - Owner decision 2026-10-19: the `share-image-missing` cases and rule move from 2.4/2.5 to the 2.8 data commit. With the empty registry 2.5 requires, the rule would fail three existing "valid content has no issues" tests. In 2.8 the fake defaults to one publishable share asset.
 - DA-2 gate strict TDD: RED had 11 new cases failing for the expected reasons and the 29 existing ones passing. GREEN added per-path precedence (excluded token, registered stand-in, publishable media, `rights-missing`, `unpublishable-media`, `unregistered-stand-in`, `unregistered-media`) over `src` and every `srcSet` path; registry issues are appended unchanged; duplicate asset ids are reported; `isPublishedPath`, `publishedImages` and the `getAboutPage` gallery gate are in place; the module API exports the media types and `DEFAULT_SHARE_IMAGE`; the repository and the fake both start with an empty registry. Checks: `site-content` + `src/testing` 285/285; typecheck, focused ESLint and Prettier, and `git diff --check` pass.
 - DA-2 gate work-unit commit: `1e359ee` (`feat(site-content): gate content images through the media registry`); production +101/−6, tests and fake +289. Production for DA-2 so far is about 488 lines (381 in `media.ts` plus 107), already past 400, so the 2.16 DA-2a/DA-2b split will apply once 2.8 lands. The independent verifier passed all 11 items and three scratch-worktree probes. Native assess returned medium/`under_budget`; it was escalated to item 2 (consent guard), and the owner granted review lineage `review-ef122f765db221fa` (risk and reliability lenses), which was approved and acknowledged (authority burned). Before review, a stop with `managed_assets_outdated` was cleared with `gentle-ai sync --agent claude-code`. Three informational warnings opened no correction: the read-time gate covers only the gallery, since required slots are CI-enforced by spec and the loop and contact photo arrive in DA-5/DA-4; a failing `src` repeated inside `srcSet` yields duplicate issues, a candidate for 2.10; and non-stand-in paths now report `unregistered-media`, which the new unregistered-path test pins.
+- Parallel route (owner request 2026-10-19, "puedes lanzar agentes en paralelo para que vayan aplicando todos los cambios"). Four writers run at once, one per worktree, with disjoint edit surfaces:
+  - da2: 2.6–2.9.
+  - da3 (`feat/design-adjustments-hero`, from `origin/main` d0f31d9): 3.1–3.3 (`Picture`, preload, `Image.intrinsicRatio`).
+  - da6 (`feat/design-adjustments-motifs`): 7.1–7.2 (motif atoms and CSS).
+  - da7 (`feat/design-adjustments-polish`): 8.1–8.2 (glyphs and TrustRow).
+
+  The hero swap (3.4–3.6), DA-4, DA-5, the DA-6 placements and the rest of DA-7 depend on the DA-2 data and on DA-3, so they wait. The da3, da6 and da7 branches get rebased onto their stack when those land.
+
+- Parallel units committed (each RED observed, GREEN focused + `src/app/ui` green, typecheck and lint clean):
+  - da3 `662d21b` (3.1–3.3): native assess medium, `under_budget`.
+  - da6 `6afc38c` (7.1–7.2): the axe case uses a static composition until the 7.3/7.4 placements; the closing cord arch is shortened because the design 5.2 span is not a whole number of half-periods.
+  - da7 `f4aea36` (8.1–8.2): `Claim.icon` became required; the glyphs need the 8.12/8.14 visual check.
+- DA-2 data unit (2.6–2.9) committed as `d973483` by a delegated writer (context backstop). Decisions:
+  - The parent fixed two writer blockers: the `media.test.ts` hash pin moved to `0bcfa824`, and the stand-in row `share-default` was renamed `share-stand-in` for the "No double bookkeeping" rule.
+  - One commit instead of a separate headers commit: the `_headers` assertions live in the parity test file.
+  - The independent verifier recomputed all 33 hashes and sizes and confirmed the ledger against the curation proposal; it caught a wrong hero alt ("colgada"), which was fixed.
+  - Full gate under the lock: 163 files and 1817 tests, lint, typecheck and format all green.
+  - Native assess was escalated to item 2 and the owner granted review, but the bound STATUS timed out pre_native twice. The owner chose "report and continue": occurrence comment on `Gentleman-Programming/gentle-ai#5422` (`6269434580`), candidate declined, STATUS re-entered (`fresh_target_ready`).
+  - Production is now over 400 lines, so the 2.16 split applies: DA-2a = 2.1–2.5 (`502bbbf`..`ebd5802`), DA-2b = 2.6–2.9 (`d973483` + docs). This deviates from the written split, which put 2.6 in DA-2a where its parity test would be red without the data.
 - Admin F0a and C4-B3 are tracked as separate project lanes and are not part of this feature's write scope.
 - Native SDD blocker occurrence: `Gentleman-Programming/gentle-ai#5219` comment `6228677584`.
 
 ## Next step
 
-Close the native review of `1e359ee`, then continue DA-2 with 2.6 (parity-test RED). Task 2.8 now also carries `share-image-missing`. PR #56 is CI-green and awaits owner merge.
+2.10 refactor (deduplicate a `src` repeated inside `srcSet`), 2.12 runtime harness, then the DA-2a/DA-2b PRs. In parallel: rebase da3 onto the registry branch and run the 3.4–3.7 hero swap. PR #56 (DA-1) awaits owner merge.

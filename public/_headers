@@ -1,5 +1,23 @@
 /fonts/*
   Cache-Control: public, max-age=86400
 
-/media/*
+/media/stand-ins/*
   Cache-Control: public, max-age=86400
+
+/media/home/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/about/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/contact/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/share/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/brand/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/video/*
+  Cache-Control: public, max-age=31536000, immutable

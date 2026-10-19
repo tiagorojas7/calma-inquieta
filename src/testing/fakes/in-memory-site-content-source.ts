@@ -1,4 +1,8 @@
 import type { SiteContentSource } from "~/modules/site-content/application/ports";
+import {
+  DEFAULT_SHARE_IMAGE,
+  type MediaRegistry,
+} from "~/modules/site-content/domain/media";
 import type {
   ImageRef,
   RawSiteContent,
@@ -20,6 +24,31 @@ const image = (src: string, alt: string): ImageRef => ({
   width: 100,
   height: 100,
 });
+
+/** One publishable share image built from the module default, so minimal content never reports share-image-missing. */
+const shareRegistry: MediaRegistry = {
+  assets: [
+    {
+      kind: "image",
+      id: "share-default",
+      sourceId: "test-share-source",
+      area: "share",
+      alt: DEFAULT_SHARE_IMAGE.alt,
+      format: "jpeg",
+      variants: [
+        {
+          width: DEFAULT_SHARE_IMAGE.width,
+          height: DEFAULT_SHARE_IMAGE.height,
+          path: DEFAULT_SHARE_IMAGE.path,
+        },
+      ],
+    },
+  ],
+  rights: [
+    { sourceId: "test-share-source", people: "none", consent: "not-required" },
+  ],
+  excluded: [],
+};
 
 const seo = (title: string) => ({
   title,
@@ -197,7 +226,7 @@ export function buildRawSiteContent(
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
       standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
     ],
-    media: { assets: [], rights: [], excluded: [] },
+    media: shareRegistry,
     ...overrides,
   };
 }

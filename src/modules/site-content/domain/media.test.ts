@@ -873,7 +873,7 @@ describe("media registry domain", () => {
       expect(DEFAULT_SHARE_IMAGE.width).toBe(1200);
       expect(DEFAULT_SHARE_IMAGE.height).toBe(630);
       expect(DEFAULT_SHARE_IMAGE.path).toBe(
-        "/media/share/share-default-1200.00000000.jpg",
+        "/media/share/share-default-1200.0bcfa824.jpg",
       );
       expect(DEFAULT_SHARE_IMAGE.alt).toBe(
         "Imagen predeterminada para compartir",

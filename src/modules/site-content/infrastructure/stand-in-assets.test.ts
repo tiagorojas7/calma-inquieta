@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { jpegSize, pngSize } from "~/testing/media/image-size";
 import { aboutContent } from "./content/about";
 import { catalogContent } from "./content/catalog";
 import { homeContent } from "./content/home";
@@ -12,30 +13,6 @@ const PROFILE_PICTURE = "docs/brand/instagram/ig-profile-picture.jpg";
 const mediaRows = STAND_IN_ASSETS.filter((asset) => asset.kind !== "font");
 const fontRows = STAND_IN_ASSETS.filter((asset) => asset.kind === "font");
 const files = readdirSync(STAND_IN_DIR);
-
-/** Width and height of a PNG, read from its IHDR chunk. */
-function pngSize(path: string) {
-  const bytes = readFileSync(path);
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
-}
-
-/** Width and height of a baseline or progressive JPEG, read from its SOF marker. */
-function jpegSize(path: string) {
-  const bytes = readFileSync(path);
-  let offset = 2;
-  while (offset < bytes.length) {
-    const marker = bytes.readUInt8(offset + 1);
-    const length = bytes.readUInt16BE(offset + 2);
-    if ([0xc0, 0xc1, 0xc2].includes(marker)) {
-      return {
-        height: bytes.readUInt16BE(offset + 5),
-        width: bytes.readUInt16BE(offset + 7),
-      };
-    }
-    offset += 2 + length;
-  }
-  return expect.unreachable("no SOF marker in the JPEG");
-}
 
 describe("the stand-in manifest and the files, both ways", () => {
   it("has a media row for every file in the stand-in folder", () => {

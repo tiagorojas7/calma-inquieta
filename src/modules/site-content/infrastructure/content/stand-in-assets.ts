@@ -89,7 +89,7 @@ export const STAND_IN_ASSETS = [
       "The client's logo files (vector or transparent PNG) to produce a proper favicon set",
   },
   {
-    id: "share-default",
+    id: "share-stand-in",
     path: "/media/stand-ins/share-default.jpg",
     kind: "share-image",
     source: `${PROFILE_PICTURE_SOURCE}; centered at native size on a #E6D7C4 canvas of 1200x630 with Python Pillow 11.3.0`,

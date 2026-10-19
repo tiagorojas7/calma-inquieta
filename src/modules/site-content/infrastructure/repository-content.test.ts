@@ -5,7 +5,13 @@ import { createSiteContent } from "../application/site-content";
 import { buildWhatsAppUrl } from "../domain/links";
 import { fillCopyTemplate } from "../domain/copy-template";
 import { findCopyViolations } from "../domain/copy-rules";
-import { validateSiteContent } from "../domain/content-rules";
+import { isPublishedPath, validateSiteContent } from "../domain/content-rules";
+import {
+  DEFAULT_SHARE_IMAGE,
+  exclusionToken,
+  isPublishable,
+} from "../domain/media";
+import { jpegSize } from "~/testing/media/image-size";
 import { createRepositoryContentSource } from "./repository-content-source";
 
 const source = createRepositoryContentSource();
@@ -360,5 +366,59 @@ describe("the catalog copy", () => {
 
   it("passes the content validation with the catalog included", async () => {
     expect(validateSiteContent(await source.load())).toEqual([]);
+  });
+});
+
+describe("media registry", () => {
+  it("the shipped content validates with no issues", async () => {
+    expect(validateSiteContent(await source.load())).toEqual([]);
+  });
+
+  it("the registry share image is a published 1200 by 630 jpg whose path equals DEFAULT_SHARE_IMAGE.path", async () => {
+    const raw = await source.load();
+    const shared = raw.media.assets.filter(({ area }) => area === "share");
+
+    expect(shared).toHaveLength(1);
+    const [asset] = shared;
+    expect(asset?.kind).toBe("image");
+    if (asset?.kind !== "image") {
+      return;
+    }
+    expect(isPublishable(asset, raw.media)).toBe(true);
+    expect(asset.format).toBe("jpeg");
+    expect(asset.variants).toHaveLength(1);
+    expect(asset.variants[0]).toEqual({
+      width: 1200,
+      height: 630,
+      path: DEFAULT_SHARE_IMAGE.path,
+    });
+    expect(isPublishedPath(DEFAULT_SHARE_IMAGE.path, raw)).toBe(true);
+    expect(DEFAULT_SHARE_IMAGE.path.endsWith(".jpg")).toBe(true);
+    expect(jpegSize(`public${DEFAULT_SHARE_IMAGE.path}`)).toEqual({
+      width: 1200,
+      height: 630,
+    });
+  });
+
+  it("private-event face sources are in the ledger and in no asset", async () => {
+    const raw = await source.load();
+    const registered = exclusionToken(JSON.stringify(raw.media.assets));
+
+    for (const sourceId of [
+      "img-20261015-wa0018",
+      "img-20260926-144641667-hdr",
+    ]) {
+      expect(
+        raw.media.rights.find((row) => row.sourceId === sourceId),
+        sourceId,
+      ).toMatchObject({ people: "faces", consent: "granted" });
+      expect(
+        raw.media.assets.some((asset) => asset.sourceId === sourceId),
+        `${sourceId} is the source of an asset`,
+      ).toBe(false);
+      expect(registered, `${sourceId} appears in an asset`).not.toContain(
+        exclusionToken(sourceId),
+      );
+    }
   });
 });

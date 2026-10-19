@@ -8,7 +8,12 @@ import {
   publishedImages,
   validateSiteContent,
 } from "./content-rules";
-import type { ImageAsset, MediaRegistry, RightsEntry } from "./media";
+import {
+  DEFAULT_SHARE_IMAGE,
+  type ImageAsset,
+  type MediaRegistry,
+  type RightsEntry,
+} from "./media";
 import type {
   GalleryImage,
   ImageRef,
@@ -411,12 +416,17 @@ const facesGranted = ({ sourceId }: ImageAsset): RightsEntry => ({
   consentSource: { by: "Studio owner", recordedOn: "2026-10-16" },
 });
 
+/** Adds to the registry the content already carries (its valid share image included). */
 const withMedia = (
   content: RawSiteContent,
   media: Partial<MediaRegistry>,
 ): RawSiteContent => ({
   ...content,
-  media: { assets: [], rights: [], excluded: [], ...media },
+  media: {
+    assets: [...content.media.assets, ...(media.assets ?? [])],
+    rights: [...content.media.rights, ...(media.rights ?? [])],
+    excluded: [...content.media.excluded, ...(media.excluded ?? [])],
+  },
 });
 
 const withHero = (
@@ -614,5 +624,130 @@ describe("publishedImages", () => {
         content,
       ),
     ).toEqual([kept]);
+  });
+});
+
+describe("validateSiteContent share image", () => {
+  const shareAsset = (overrides: Partial<ImageAsset> = {}): ImageAsset => ({
+    kind: "image",
+    id: "share-default",
+    sourceId: "share-source",
+    area: "share",
+    alt: "Una pieza tejida",
+    format: "jpeg",
+    variants: [
+      {
+        width: DEFAULT_SHARE_IMAGE.width,
+        height: DEFAULT_SHARE_IMAGE.height,
+        path: DEFAULT_SHARE_IMAGE.path,
+      },
+    ],
+    ...overrides,
+  });
+
+  /** Content whose registry holds exactly these share assets, each with a none and not-required row. */
+  const withShare = (
+    assets: readonly ImageAsset[],
+    media: Partial<MediaRegistry> = {},
+  ): RawSiteContent => ({
+    ...validContent(),
+    media: { assets, rights: assets.map(noPeople), excluded: [], ...media },
+  });
+
+  const issue = { id: "share", rule: "share-image-missing" };
+
+  it.each([
+    ["no share asset", () => withShare([])],
+    [
+      "two share assets",
+      () =>
+        withShare([
+          shareAsset(),
+          shareAsset({
+            id: "share-other",
+            sourceId: "share-source-2",
+            variants: [
+              {
+                width: 1200,
+                height: 630,
+                path: "/media/share/share-other-1200.0a1b2c3d.jpg",
+              },
+            ],
+          }),
+        ]),
+    ],
+    [
+      "a pending share asset",
+      () => withShare([shareAsset()], { rights: [facesPending(shareAsset())] }),
+    ],
+    [
+      "an excluded source",
+      () =>
+        withShare([shareAsset()], {
+          excluded: [
+            {
+              sourceId: "share-source",
+              reason: "minor",
+              decidedOn: "2026-10-16",
+            },
+          ],
+        }),
+    ],
+    ["a WebP share asset", () => withShare([shareAsset({ format: "webp" })])],
+    [
+      "a 1200x628 variant",
+      () =>
+        withShare([
+          shareAsset({
+            variants: [
+              { width: 1200, height: 628, path: DEFAULT_SHARE_IMAGE.path },
+            ],
+          }),
+        ]),
+    ],
+    [
+      "a path different from DEFAULT_SHARE_IMAGE",
+      () =>
+        withShare([
+          shareAsset({
+            variants: [
+              {
+                width: 1200,
+                height: 630,
+                path: "/media/share/share-default-1200.0a1b2c3d.jpg",
+              },
+            ],
+          }),
+        ]),
+    ],
+    [
+      "a second variant",
+      () =>
+        withShare([
+          shareAsset({
+            variants: [
+              {
+                width: 600,
+                height: 315,
+                path: "/media/share/share-default-600.0a1b2c3d.jpg",
+              },
+              { width: 1200, height: 630, path: DEFAULT_SHARE_IMAGE.path },
+            ],
+          }),
+        ]),
+    ],
+  ])("is reported for %s", (_name, build) => {
+    expect(validateSiteContent(build())).toContainEqual(issue);
+  });
+
+  it("is not reported for exactly one publishable 1200 by 630 JPEG at DEFAULT_SHARE_IMAGE.path", () => {
+    const issues = validateSiteContent(withShare([shareAsset()]));
+
+    expect(issues).not.toContainEqual(issue);
+    expect(issues).toEqual([]);
+  });
+
+  it("is not reported for the default content", () => {
+    expect(validateSiteContent(validContent())).not.toContainEqual(issue);
   });
 });

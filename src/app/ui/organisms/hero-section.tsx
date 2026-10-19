@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ButtonLink } from "../atoms/button";
 import { Eyebrow, Heading, Text } from "../atoms/heading";
 import { Picture } from "../atoms/picture";
+import { VideoLoop } from "../molecules/video-loop";
 
 type Img = {
   src: string;
@@ -16,6 +17,15 @@ type Props = {
   title: ReactNode;
   subtitle: string;
   image: { mobile: Img; desktop: Img };
+  /** The optional decorative loop: after the text on phones, a small tile from lg. */
+  loop?:
+    | {
+        poster: Img;
+        sources: readonly { src: string; type: string }[];
+        width: number;
+        height: number;
+      }
+    | undefined;
   bajada: string;
   /** Decorative slot anchored to the still photo's corner (the butterfly). */
   ornament?: ReactNode;
@@ -29,11 +39,16 @@ export const HERO_MOBILE_MEDIA = "not all and (min-width: 64rem)";
 export const HERO_STILL_SIZES =
   "(min-width: 30rem) 28rem, calc(100vw - 2.5rem)";
 
+/** Layout width of the loop tile: 12rem from xl, 10rem from lg, else the still's width. */
+const HERO_LOOP_SIZES =
+  "(min-width: 80rem) 12rem, (min-width: 64rem) 10rem, (min-width: 30rem) 28rem, calc(100vw - 2.5rem)";
+
 export function HeroSection({
   eyebrow,
   title,
   subtitle,
   image,
+  loop,
   bajada,
   ornament,
 }: Props) {
@@ -80,6 +95,16 @@ export function HeroSection({
           />
           {ornament}
         </div>
+        {loop && (
+          <VideoLoop
+            poster={loop.poster}
+            sizes={HERO_LOOP_SIZES}
+            sources={loop.sources}
+            width={loop.width}
+            height={loop.height}
+            className="order-last mx-auto w-full max-w-md lg:absolute lg:-bottom-8 lg:-left-8 lg:mx-0 lg:w-40 lg:ring-8 lg:ring-canvas xl:w-48"
+          />
+        )}
       </div>
     </section>
   );

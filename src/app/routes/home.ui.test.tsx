@@ -320,6 +320,104 @@ describe("Inicio route", () => {
       }
     });
   });
+
+  describe("loop", () => {
+    const loop = {
+      poster: {
+        src: "/media/video/home-loop-poster-720.0a1b2c3d.webp",
+        srcSet:
+          "/media/video/home-loop-poster-480.0a1b2c3d.webp 480w, /media/video/home-loop-poster-720.0a1b2c3d.webp 720w",
+        alt: "",
+        width: 720,
+        height: 900,
+      },
+      sources: [
+        {
+          src: "/media/video/home-loop-720.0a1b2c3d.webm",
+          type: "video/webm",
+        },
+        { src: "/media/video/home-loop-720.0a1b2c3d.mp4", type: "video/mp4" },
+      ],
+      width: 720,
+      height: 900,
+    };
+
+    async function renderWithLoop() {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => ({ ...fixture, hero: { ...fixture.hero, loop } }),
+        },
+      ]);
+      const view = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      return view;
+    }
+
+    it("Inicio contains exactly one loop element", async () => {
+      const { container } = await renderWithLoop();
+      expect(
+        container.querySelectorAll(`img[src="${loop.poster.src}"]`),
+      ).toHaveLength(1);
+      expect(container.querySelectorAll("video")).toHaveLength(0);
+    });
+
+    it("the only eager high-priority image is still the hero still", async () => {
+      const { container } = await renderWithLoop();
+      const high = container.querySelectorAll('img[fetchpriority="high"]');
+      expect(high).toHaveLength(1);
+      expect(high[0]?.closest("picture")).not.toBeNull();
+      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
+        1,
+      );
+      expect(
+        container.querySelector(`img[src="${loop.poster.src}"]`),
+      ).toHaveAttribute("loading", "lazy");
+    });
+
+    it("the loop is not preloaded", () => {
+      const preloads = (
+        meta({
+          loaderData: {
+            ...fixture,
+            hero: { ...fixture.hero, loop },
+            metaInput: {
+              title: "Inicio",
+              description: "Descripción de Inicio",
+              path: "/",
+              siteName: "Calma Inquieta",
+              baseUrl: "https://example.test",
+              indexingEnabled: false,
+            },
+          },
+        } as never) as readonly Record<string, unknown>[]
+      ).filter((entry) => entry.rel === "preload");
+      expect(preloads).toHaveLength(2);
+      expect(JSON.stringify(preloads)).not.toContain("home-loop");
+    });
+
+    it("renders no loop element when the hero has none", async () => {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => fixture,
+        },
+      ]);
+      const { container } = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      expect(container.querySelectorAll("img[src*=home-loop]")).toHaveLength(0);
+    });
+  });
 });
 
 describe("Inicio motifs", () => {

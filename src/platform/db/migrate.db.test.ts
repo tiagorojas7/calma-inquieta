@@ -75,6 +75,8 @@ describe("runMigrations", () => {
     expect(tables).toEqual([
       { table_name: "intensive_image" },
       { table_name: "intensive_workshop" },
+      { table_name: "material" },
+      { table_name: "material_variant" },
       { table_name: "media_asset" },
       { table_name: "monthly_workshop" },
       { table_name: "period_turno" },

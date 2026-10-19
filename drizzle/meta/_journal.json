@@ -64,6 +64,13 @@
       "when": 1792241314744,
       "tag": "0008_workshop_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792429757704,
+      "tag": "0009_materials",
+      "breakpoints": true
     }
   ]
 }

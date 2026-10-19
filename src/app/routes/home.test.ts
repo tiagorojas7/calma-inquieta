@@ -7,6 +7,11 @@ import {
   buildPublicTurno,
 } from "~/testing/fakes/public-catalog-builders";
 import { createLoaderArgs } from "~/testing/react-router";
+import {
+  HERO_DESKTOP_MEDIA,
+  HERO_MOBILE_MEDIA,
+  HERO_STILL_SIZES,
+} from "~/app/ui/organisms/hero-section";
 import { loader, meta } from "./home";
 
 describe("home loader", () => {
@@ -115,5 +120,58 @@ describe("home loader", () => {
     await expect(
       loader(createLoaderArgs(services, "/") as never),
     ).rejects.toThrow("content down");
+  });
+});
+
+describe("home meta image preloads", () => {
+  type Descriptor = Record<string, unknown>;
+  const preloads = (descriptors: readonly Descriptor[]) =>
+    descriptors.filter(
+      (descriptor) =>
+        descriptor.tagName === "link" && descriptor.rel === "preload",
+    );
+
+  async function homeMeta() {
+    const services = createTestServices();
+    const result = await loader(createLoaderArgs(services, "/") as never);
+    const descriptors = meta({
+      loaderData: result,
+    } as never) as readonly Descriptor[];
+    return { result, descriptors };
+  }
+
+  it("meta includes two image preloads whose srcset and sizes equal the picture", async () => {
+    const { result, descriptors } = await homeMeta();
+    const found = preloads(descriptors);
+    expect(found).toHaveLength(2);
+    const [mobile, desktop] = found;
+    expect(mobile).toMatchObject({
+      as: "image",
+      imageSrcSet: result.hero.image.mobile.srcSet,
+      imageSizes: HERO_STILL_SIZES,
+      media: HERO_MOBILE_MEDIA,
+    });
+    expect(desktop).toMatchObject({
+      as: "image",
+      imageSrcSet: result.hero.image.desktop.srcSet,
+      imageSizes: HERO_STILL_SIZES,
+      media: HERO_DESKTOP_MEDIA,
+    });
+    expect(descriptors[0]?.title).toContain("Inicio");
+  });
+
+  it("the preload media conditions are mutually exclusive", async () => {
+    const { descriptors } = await homeMeta();
+    const media = preloads(descriptors).map((entry) => entry.media);
+    expect(media).toEqual([HERO_MOBILE_MEDIA, HERO_DESKTOP_MEDIA]);
+    expect(HERO_MOBILE_MEDIA).toBe(`not all and ${HERO_DESKTOP_MEDIA}`);
+  });
+
+  it("the error branch meta has no image preload", () => {
+    const descriptors = meta({
+      loaderData: undefined,
+      error: new Error("boom"),
+    } as never) as readonly Descriptor[];
+    expect(preloads(descriptors)).toEqual([]);
   });
 });

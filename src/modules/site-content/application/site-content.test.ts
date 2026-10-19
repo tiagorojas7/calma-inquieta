@@ -57,6 +57,16 @@ describe("createSiteContent", () => {
     expect(home.testimonials.heading).toBe("Voces");
   });
 
+  it("getHomePage returns hero.image", async () => {
+    const base = buildRawSiteContent();
+    const home = await content(base).getHomePage();
+
+    expect(home.hero.image).toEqual(base.home.hero.image);
+    expect(home.hero.image.mobile.src).not.toBe("");
+    expect(home.hero.image.desktop.src).not.toBe("");
+    expect(home.hero).not.toHaveProperty("images");
+  });
+
   it("returns empty arrays, not null, for lists with no content", async () => {
     const base = buildRawSiteContent();
     const about = await content({

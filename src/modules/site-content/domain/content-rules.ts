@@ -152,11 +152,9 @@ function contentImages(content: RawSiteContent): readonly {
   readonly decorative: boolean;
 }[] {
   return [
-    ...content.home.hero.images.map((image) => ({
-      id: image.src,
-      image,
-      decorative: false,
-    })),
+    ...[content.home.hero.image.mobile, content.home.hero.image.desktop].map(
+      (image) => ({ id: image.src, image, decorative: false }),
+    ),
     {
       id: content.home.teaser.image.src,
       image: content.home.teaser.image,

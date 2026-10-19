@@ -1,4 +1,5 @@
 import type { HomePageContent } from "../../domain/page-content";
+import { artDirected } from "./media-refs";
 
 /**
  * Inicio. Drafted from docs/brand/dmr-calma-inquieta.md and the client
@@ -22,26 +23,7 @@ export const homeContent = {
       "Talleres de encordado y cestería, talleres intensivos y eventos privados. Un lugar para hacer con las manos y compartir.",
     primaryCtaLabel: "Ver talleres",
     secondaryCtaLabel: "Ver intensivos",
-    images: [
-      {
-        src: "/media/stand-ins/hero-1.jpg",
-        alt: "Estantería de cestería con cuerda de papel negra tejida sobre una estructura de hierro",
-        width: 480,
-        height: 640,
-      },
-      {
-        src: "/media/stand-ins/hero-2.jpg",
-        alt: "Grupo de mujeres sonrientes posando juntas en el patio del espacio durante un encuentro",
-        width: 640,
-        height: 480,
-      },
-      {
-        src: "/media/stand-ins/hero-3.jpg",
-        alt: "Tres mujeres con sombreros posan abrazadas frente a un ventanal, con árboles al fondo",
-        width: 640,
-        height: 640,
-      },
-    ],
+    image: artDirected("home-hero-mobile", "home-hero-desktop"),
   },
   trustClaims: [
     {

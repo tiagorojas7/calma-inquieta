@@ -26,6 +26,12 @@ export interface ImageRef {
   readonly srcSet?: string;
 }
 
+/** A phone crop and a desktop crop of one slot; both carry the same alt text. */
+export interface ArtDirectedImage {
+  readonly mobile: ImageRef;
+  readonly desktop: ImageRef;
+}
+
 export interface TrustClaim extends Approvable {
   readonly label: string;
   readonly icon: "hands" | "leaf" | "heart" | "group";
@@ -74,8 +80,8 @@ export interface HomePageContent {
     readonly subtitle: string;
     readonly primaryCtaLabel: string;
     readonly secondaryCtaLabel: string;
-    /** One to three slots, registered stand-ins. */
-    readonly images: readonly ImageRef[];
+    /** The hero still: a required slot from the media registry. */
+    readonly image: ArtDirectedImage;
   };
   /** The reader returns approved claims only. */
   readonly trustClaims: readonly TrustClaim[];

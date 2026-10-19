@@ -1,28 +1,45 @@
 import type { ReactNode } from "react";
 import { ButtonLink } from "../atoms/button";
 import { Eyebrow, Heading, Text } from "../atoms/heading";
-import { HeroCollage } from "./hero-collage";
-type Slot = { src: string; alt: string; width: number; height: number };
+import { Picture } from "../atoms/picture";
+
+type Img = {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  srcSet?: string;
+};
+
 type Props = {
   eyebrow: string;
   title: ReactNode;
   subtitle: string;
-  images: readonly Slot[];
+  image: { mobile: Img; desktop: Img };
   bajada: string;
 };
+
+/** The viewport from which the desktop still replaces the phone still. */
+export const HERO_DESKTOP_MEDIA = "(min-width: 64rem)";
+/** The exact complement of the desktop media; only the route preload needs it. */
+export const HERO_MOBILE_MEDIA = "not all and (min-width: 64rem)";
+/** Layout width of the still: 28rem (`max-w-md`) or the viewport minus the gutters. */
+export const HERO_STILL_SIZES =
+  "(min-width: 30rem) 28rem, calc(100vw - 2.5rem)";
+
 export function HeroSection({
   eyebrow,
   title,
   subtitle,
-  images,
+  image,
   bajada,
 }: Props) {
   return (
     <section
       aria-labelledby="hero-title"
-      className="grid items-center gap-10 py-section lg:grid-cols-2 lg:gap-16"
+      className="relative grid items-center gap-8 overflow-x-clip py-section lg:grid-cols-12 lg:gap-x-12"
     >
-      <div className="flex flex-col items-start gap-6">
+      <div className="flex flex-col items-start gap-6 lg:col-span-6 xl:col-span-5">
         <Eyebrow>{eyebrow}</Eyebrow>
         <Heading level={1} id="hero-title">
           {title}
@@ -41,7 +58,25 @@ export function HeroSection({
           {bajada}
         </Text>
       </div>
-      <HeroCollage images={images} />
+      <div className="contents lg:relative lg:col-span-6 lg:block lg:w-full lg:max-w-md lg:justify-self-end xl:col-span-7">
+        <div className="relative order-first mx-auto w-full max-w-md lg:order-none">
+          <Picture
+            {...image.mobile}
+            className="aspect-4/5 h-auto w-full rounded-sm object-cover lg:aspect-3/4"
+            aboveTheFold
+            fetchPriority="high"
+            sizes={HERO_STILL_SIZES}
+            sources={[
+              {
+                media: HERO_DESKTOP_MEDIA,
+                srcSet: image.desktop.srcSet ?? image.desktop.src,
+                width: image.desktop.width,
+                height: image.desktop.height,
+              },
+            ]}
+          />
+        </div>
+      </div>
     </section>
   );
 }

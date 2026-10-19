@@ -374,7 +374,7 @@ export function validateMediaRegistry(
 }
 
 export const DEFAULT_SHARE_IMAGE = {
-  path: "/media/share/share-default-1200.00000000.jpg",
+  path: "/media/share/share-default-1200.0bcfa824.jpg",
   width: 1200,
   height: 630,
   alt: "Imagen predeterminada para compartir",

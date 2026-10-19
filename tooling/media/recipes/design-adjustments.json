@@ -1,0 +1,112 @@
+[
+  {
+    "id": "home-hero-mobile",
+    "source": "IMG_20260819_174607732_HDR.jpg",
+    "area": "home",
+    "aspect": 0.8,
+    "focus": { "x": 0.5, "y": 0.45 },
+    "widths": [480, 720, 1080],
+    "format": "webp"
+  },
+  {
+    "id": "home-hero-desktop",
+    "source": "IMG_20260819_174607732_HDR.jpg",
+    "area": "home",
+    "widths": [480, 960, 1600],
+    "format": "webp"
+  },
+  {
+    "id": "share-default",
+    "source": "IMG_20260819_174607732_HDR.jpg",
+    "area": "share",
+    "aspect": 1.9047619047619047,
+    "focus": { "x": 0.5, "y": 0.45 },
+    "widths": [1200],
+    "format": "jpeg"
+  },
+  {
+    "id": "about-espacio",
+    "source": "IMG-20260530-WA0021.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-manos-aro",
+    "source": "IMG-20260411-WA0106.jpg",
+    "area": "about",
+    "widths": [480, 900],
+    "format": "webp"
+  },
+  {
+    "id": "about-espejo-flecos",
+    "source": "IMG-20260530-WA0026.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-mesa-taller",
+    "source": "IMG-20260419-WA0044.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-macrame",
+    "source": "IMG-20260530-WA0032.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-ceramica-manos",
+    "source": "IMG-20261015-WA0029.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-cuenco-tejido",
+    "source": "IMG-20260709-WA0009.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "about-acuarela",
+    "source": "IMG_20260912_131514909_HDR.jpg",
+    "area": "about",
+    "widths": [480, 960, 1600],
+    "format": "webp"
+  },
+  {
+    "id": "about-comunidad",
+    "source": "IMG-20261015-WA0030.jpg",
+    "area": "about",
+    "widths": [480, 960, 1600],
+    "format": "webp"
+  },
+  {
+    "id": "about-jarrones",
+    "source": "IMG-20260511-WA0019.jpg",
+    "area": "about",
+    "widths": [480, 960],
+    "format": "webp"
+  },
+  {
+    "id": "home-teaser",
+    "source": "IMG-20260411-WA0013.jpg",
+    "area": "home",
+    "aspect": 0.8,
+    "widths": [480, 800],
+    "format": "webp"
+  },
+  {
+    "id": "contact-fachada",
+    "source": "IMG-20260530-WA0019.jpg",
+    "area": "contact",
+    "widths": [480, 960],
+    "format": "webp"
+  }
+]

@@ -7,11 +7,14 @@ import type {
   TrustClaim,
 } from "./page-content";
 import {
+  DEFAULT_SHARE_IMAGE,
   isPublishable,
   mentionsExcludedSource,
   srcSetPaths,
   validateMediaRegistry,
+  type ImageAsset,
   type MediaAsset,
+  type MediaRegistry,
 } from "./media";
 
 /** A testimonial is listed only when written consent and its recording date are on file. */
@@ -114,6 +117,31 @@ export function publishedImages<T extends ImageRef>(
 ): readonly T[] {
   return images.filter((image) =>
     imagePaths(image).every((path) => isPublishedPath(path, content)),
+  );
+}
+
+/**
+ * True when the registry holds exactly one publishable share image and it is a
+ * single 1200 by 630 JPEG at the default path, so the share tags never point
+ * at a missing, pending, excluded or mismatched file.
+ */
+function hasShareImage(media: MediaRegistry): boolean {
+  const shared = media.assets.filter(
+    (asset): asset is ImageAsset =>
+      asset.kind === "image" &&
+      asset.area === "share" &&
+      isPublishable(asset, media),
+  );
+  const [asset, ...others] = shared;
+  if (!asset || others.length > 0 || asset.format !== "jpeg") {
+    return false;
+  }
+  const [variant, ...moreVariants] = asset.variants;
+  return (
+    moreVariants.length === 0 &&
+    variant.width === DEFAULT_SHARE_IMAGE.width &&
+    variant.height === DEFAULT_SHARE_IMAGE.height &&
+    variant.path === DEFAULT_SHARE_IMAGE.path
   );
 }
 
@@ -221,6 +249,9 @@ export function validateSiteContent(
     issues.push({ id, rule: "duplicate-id" });
   }
   issues.push(...validateMediaRegistry(content.media));
+  if (!hasShareImage(content.media)) {
+    issues.push({ id: "share", rule: "share-image-missing" });
+  }
   return issues;
 }
 

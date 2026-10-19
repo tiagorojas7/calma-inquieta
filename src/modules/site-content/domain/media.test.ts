@@ -886,3 +886,176 @@ describe("media registry domain", () => {
     });
   });
 });
+
+describe("media registry edge branches", () => {
+  const poster: ImageAsset = {
+    kind: "image",
+    id: "home-loop-poster",
+    sourceId: "vid-loop",
+    area: "home",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 720,
+        height: 900,
+        path: "/media/home/home-loop-poster-720.0a1b2c3d.webp",
+      },
+    ],
+  };
+  const loop: VideoAsset = {
+    kind: "video",
+    id: "home-loop",
+    sourceId: "vid-loop",
+    area: "video",
+    width: 720,
+    height: 900,
+    durationSeconds: 6,
+    audio: false,
+    sources: [
+      { path: "/media/video/home-loop-720.0a1b2c3d.webm", type: "video/webm" },
+      { path: "/media/video/home-loop-720.0a1b2c3d.mp4", type: "video/mp4" },
+    ],
+    posterId: "home-loop-poster",
+  };
+  const registry = (
+    assets: MediaRegistry["assets"],
+    excluded: readonly ExcludedSource[] = [],
+  ): MediaRegistry => ({
+    assets,
+    rights: [{ sourceId: "vid-loop", people: "none", consent: "not-required" }],
+    excluded,
+  });
+
+  it("publishedPaths lists the sources of a publishable video and skips unpublishable assets", () => {
+    const pending: ImageAsset = {
+      ...poster,
+      id: "other",
+      sourceId: "unrecorded",
+    };
+
+    expect([...publishedPaths(registry([loop, poster, pending]))]).toEqual([
+      "/media/video/home-loop-720.0a1b2c3d.webm",
+      "/media/video/home-loop-720.0a1b2c3d.mp4",
+      "/media/home/home-loop-poster-720.0a1b2c3d.webp",
+    ]);
+  });
+
+  it("largestVariant keeps the first variant when it is the widest", () => {
+    const asset: ImageAsset = {
+      ...poster,
+      variants: [
+        { width: 960, height: 1200, path: "/a-960.webp" },
+        { width: 480, height: 600, path: "/a-480.webp" },
+      ],
+    };
+
+    expect(largestVariant(asset).width).toBe(960);
+  });
+
+  it("a clean video with a registered poster yields no issue", () => {
+    expect(validateMediaRegistry(registry([loop, poster]))).toEqual([]);
+  });
+
+  it("a video source whose extension does not match its type is a media-path issue", () => {
+    const mismatched: VideoAsset = {
+      ...loop,
+      sources: [
+        { path: "/media/video/home-loop-720.0a1b2c3d.mp4", type: "video/webm" },
+      ],
+    };
+
+    expect(validateMediaRegistry(registry([mismatched, poster]))).toEqual([
+      {
+        id: "home-loop",
+        rule: "media-path",
+        path: "/media/video/home-loop-720.0a1b2c3d.mp4",
+      },
+    ]);
+  });
+
+  it("a video poster id that mentions an excluded source is an excluded-source issue", () => {
+    const excluded: ExcludedSource = {
+      sourceId: "VID_20260717_155248707",
+      reason: "minor",
+      decidedOn: "2026-10-16",
+    };
+    const leaking: VideoAsset = {
+      ...loop,
+      posterId: "vid-20260717-155248707-poster",
+    };
+
+    expect(
+      validateMediaRegistry(registry([leaking, poster], [excluded])),
+    ).toContainEqual({
+      id: "home-loop",
+      rule: "excluded-source",
+      path: "vid-20260717-155248707-poster",
+    });
+  });
+
+  it("an asset id that mentions an excluded source is an excluded-source issue without a path", () => {
+    const excluded: ExcludedSource = {
+      sourceId: "IMG_20260808_130700502_HDR_portrait",
+      reason: "not-the-owner",
+      decidedOn: "2026-10-16",
+    };
+    const named: ImageAsset = {
+      ...poster,
+      id: "img-20260808-130700502-hdr-portrait",
+    };
+
+    expect(validateMediaRegistry(registry([named], [excluded]))).toContainEqual(
+      { id: "img-20260808-130700502-hdr-portrait", rule: "excluded-source" },
+    );
+  });
+
+  it("a jpeg asset uses the .jpg extension", () => {
+    const share: ImageAsset = {
+      kind: "image",
+      sourceId: "vid-loop",
+      id: "share-default",
+      area: "share",
+      format: "jpeg",
+      alt: "Una pieza tejida",
+      variants: [
+        {
+          width: 1200,
+          height: 630,
+          path: "/media/share/share-default-1200.0a1b2c3d.jpg",
+        },
+      ],
+    };
+    const jpegPath = "/media/share/share-default-1200.0a1b2c3d.jpeg";
+
+    expect(validateMediaRegistry(registry([share]))).toEqual([]);
+    expect(
+      validateMediaRegistry(
+        registry([
+          {
+            ...share,
+            variants: [{ width: 1200, height: 630, path: jpegPath }],
+          },
+        ]),
+      ),
+    ).toEqual([{ id: "share-default", rule: "media-path", path: jpegPath }]);
+  });
+
+  it("only a brand ico asset may live at /favicon.ico", () => {
+    const icon: ImageAsset = {
+      kind: "image",
+      sourceId: "vid-loop",
+      id: "favicon",
+      area: "brand",
+      format: "ico",
+      alt: "Calma Inquieta",
+      variants: [{ width: 48, height: 48, path: "/favicon.ico" }],
+    };
+
+    expect(validateMediaRegistry(registry([icon]))).toEqual([]);
+    expect(
+      validateMediaRegistry(registry([{ ...icon, area: "home" }])),
+    ).toEqual([{ id: "favicon", rule: "media-path", path: "/favicon.ico" }]);
+  });
+});

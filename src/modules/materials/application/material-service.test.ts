@@ -6,7 +6,10 @@ import { InMemoryMaterialRepository } from "~/testing/fakes/in-memory-material-r
 import { InMemorySupplierRepository } from "~/testing/fakes/in-memory-supplier-repository";
 import type { MediaAsset, MediaLookup } from "~/modules/media";
 import type { MaterialDraft } from "./contracts";
-import { MaterialNameConflictError } from "./material-repository";
+import {
+  MaterialNameConflictError,
+  MaterialVariantLabelConflictError,
+} from "./material-repository";
 import {
   createMaterialLookup,
   createMaterialsService,
@@ -177,6 +180,16 @@ describe("material service", () => {
 
   it("requires an active supplier and a known image with nonblank alt", async () => {
     const { suppliers, service } = await setup();
+    expect(
+      await service.create(actor, draft({ supplierId: "missing-supplier" })),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "supplierId", code: "unknown-reference" }],
+      },
+    });
+
     await suppliers.update({ ...supplier, active: false });
     expect(await service.create(actor, draft())).toEqual({
       ok: false,
@@ -270,6 +283,14 @@ describe("material service", () => {
         error: { issues: [{ field: "name", code: "duplicate" }] },
       },
     );
+
+    const variantRace = await setup();
+    variantRace.repository.insert = () =>
+      Promise.reject(new MaterialVariantLabelConflictError());
+    expect(await variantRace.service.create(actor, draft())).toMatchObject({
+      ok: false,
+      error: { issues: [{ field: "variants", code: "duplicate" }] },
+    });
   });
 
   it("deactivates idempotently and reactivation rechecks active-name uniqueness", async () => {
@@ -290,6 +311,10 @@ describe("material service", () => {
       ...first,
       id: "material-other",
       active: true,
+      variants: first.variants.map((variant) => ({
+        ...variant,
+        id: "variant-other",
+      })),
     });
     expect(await service.reactivate(actor, first.id)).toMatchObject({
       ok: false,

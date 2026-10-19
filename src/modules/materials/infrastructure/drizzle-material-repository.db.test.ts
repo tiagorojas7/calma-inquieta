@@ -6,7 +6,6 @@ import {
   type MaterialRepository,
 } from "~/modules/materials";
 import { createDbSessionFactory } from "~/platform/db/session";
-import { mediaAsset } from "~/platform/db/schema/media";
 import { supplier } from "~/platform/db/schema/materials";
 import {
   buildStoredMaterial,
@@ -52,16 +51,13 @@ async function seedParents(
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       },
     ]);
-    await session.db.insert(mediaAsset).values({
-      id: MATERIAL_ASSET_ID,
-      storageKey: "material.jpg",
-      contentType: "image/jpeg",
-      byteSize: 100,
-      width: 10,
-      height: 10,
-      createdBy: "owner@example.com",
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
+    await session.db.execute(
+      sql`INSERT INTO media_asset
+            (id, storage_key, content_type, byte_size, width, height, created_by, created_at)
+          VALUES
+            (${MATERIAL_ASSET_ID}, 'material.jpg', 'image/jpeg', 100, 10, 10,
+             'owner@example.com', ${new Date("2026-01-01T00:00:00.000Z")})`,
+    );
   } finally {
     await session.close();
   }

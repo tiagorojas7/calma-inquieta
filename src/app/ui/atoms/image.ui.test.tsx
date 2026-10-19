@@ -46,4 +46,20 @@ describe("Image", () => {
     expect(screen.getByRole("img")).toHaveAttribute("srcset", "/x 1x");
     expect(screen.getByRole("img")).toHaveAttribute("sizes", "100vw");
   });
+  it("omits the inline aspect-ratio when intrinsicRatio is false and keeps it by default", () => {
+    const { rerender } = render(
+      <Image
+        src="/x"
+        alt="Imagen"
+        width={4}
+        height={5}
+        intrinsicRatio={false}
+      />,
+    );
+    expect(screen.getByRole("img").getAttribute("style") ?? "").not.toMatch(
+      /aspect-ratio/,
+    );
+    rerender(<Image src="/x" alt="Imagen" width={4} height={5} />);
+    expect(screen.getByRole("img")).toHaveStyle({ aspectRatio: "4 / 5" });
+  });
 });

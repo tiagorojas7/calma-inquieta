@@ -10,14 +10,29 @@ import {
   buildPublicIntensivo,
   buildPublicTaller,
 } from "~/testing/fakes/public-catalog-builders";
-import HomeRoute, { loader } from "./home";
+import HomeRoute, { loader, meta } from "./home";
 
 const fixture = {
   hero: {
     eyebrow: "Calma Inquieta",
     title: { lead: "Un espacio para ", accent: "crear", trail: "" },
     subtitle: "Una propuesta cálida.",
-    images: [{ src: "/hero.svg", alt: "Textura", width: 400, height: 300 }],
+    image: {
+      mobile: {
+        src: "/hero-m.webp",
+        srcSet: "/hero-m-480.webp 480w, /hero-m.webp 720w",
+        alt: "Textura",
+        width: 720,
+        height: 900,
+      },
+      desktop: {
+        src: "/hero-d.webp",
+        srcSet: "/hero-d-480.webp 480w, /hero-d.webp 960w",
+        alt: "Textura",
+        width: 960,
+        height: 1280,
+      },
+    },
     bajada: "Equilibrio entre serenidad y movimiento",
   },
   trustClaims: [],
@@ -219,5 +234,90 @@ describe("Inicio route", () => {
     expect(screen.getByText("Quiénes somos")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     vi.restoreAllMocks();
+  });
+
+  describe("images", () => {
+    async function renderFixture() {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => fixture,
+        },
+      ]);
+      const view = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      return view;
+    }
+
+    it("Inicio has exactly one img with fetchpriority high", async () => {
+      const { container } = await renderFixture();
+      const high = container.querySelectorAll('img[fetchpriority="high"]');
+      expect(high).toHaveLength(1);
+      expect(high[0]?.closest("picture")).not.toBeNull();
+      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
+        1,
+      );
+    });
+
+    it("every other img is loading lazy", async () => {
+      const { container } = await renderFixture();
+      const others = [...container.querySelectorAll("img")].filter(
+        (element) => element.getAttribute("fetchpriority") !== "high",
+      );
+      for (const element of others) {
+        expect(element, element.getAttribute("src") ?? "").toHaveAttribute(
+          "loading",
+          "lazy",
+        );
+      }
+    });
+
+    it("no image is hidden at a breakpoint while loading", async () => {
+      const { container } = await renderFixture();
+      for (const element of container.querySelectorAll("img")) {
+        let node: Element | null = element;
+        while (node) {
+          const hiding = [...node.classList].filter((name) =>
+            /(^|:)hidden$/.test(name),
+          );
+          expect(hiding, element.getAttribute("src") ?? "").toEqual([]);
+          node = node.parentElement;
+        }
+      }
+    });
+
+    it("the preload srcset and sizes equal the rendered picture", async () => {
+      const { container } = await renderFixture();
+      const preloads = (
+        meta({
+          loaderData: {
+            ...fixture,
+            metaInput: {
+              title: "Inicio",
+              description: "Descripción de Inicio",
+              path: "/",
+              siteName: "Calma Inquieta",
+              baseUrl: "https://example.test",
+              indexingEnabled: false,
+            },
+          },
+        } as never) as readonly Record<string, unknown>[]
+      ).filter((entry) => entry.rel === "preload");
+      const source = container.querySelector("picture > source");
+      const still = container.querySelector("picture > img");
+      expect(preloads).toHaveLength(2);
+      expect(preloads[0]?.imageSrcSet).toBe(still?.getAttribute("srcset"));
+      expect(preloads[1]?.imageSrcSet).toBe(source?.getAttribute("srcset"));
+      expect(preloads[1]?.media).toBe(source?.getAttribute("media"));
+      for (const entry of preloads) {
+        expect(entry.imageSizes).toBe(still?.getAttribute("sizes"));
+        expect(entry.imageSizes).toBe(source?.getAttribute("sizes"));
+      }
+    });
   });
 });

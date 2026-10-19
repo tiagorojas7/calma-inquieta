@@ -1,5 +1,5 @@
 import { toImageRef } from "../../domain/media";
-import type { ImageRef } from "../../domain/page-content";
+import type { ArtDirectedImage, ImageRef } from "../../domain/page-content";
 import { MEDIA_ASSETS } from "./media-assets";
 
 /** The ids of the registered image assets (video ids arrive with the loop). */
@@ -24,6 +24,6 @@ export function imageRef(id: ImageAssetId, preferredWidth?: number): ImageRef {
 export function artDirected(
   mobile: ImageAssetId,
   desktop: ImageAssetId,
-): { readonly mobile: ImageRef; readonly desktop: ImageRef } {
+): ArtDirectedImage {
   return { mobile: imageRef(mobile), desktop: imageRef(desktop) };
 }

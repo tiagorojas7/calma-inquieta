@@ -127,7 +127,10 @@ describe("validateSiteContent", () => {
         ...content.home,
         hero: {
           ...content.home.hero,
-          images: [image("/media/stand-ins/hero-1.jpg", "")],
+          image: {
+            ...content.home.hero.image,
+            mobile: image("/media/stand-ins/hero-1.jpg", ""),
+          },
         },
       },
     });
@@ -429,12 +432,17 @@ const withMedia = (
   },
 });
 
+/** Replaces the hero's phone image; the desktop image stays the content's own valid one. */
 const withHero = (
   content: RawSiteContent,
-  ...images: readonly ImageRef[]
+  mobile: ImageRef,
+  desktop: ImageRef = content.home.hero.image.desktop,
 ): RawSiteContent => ({
   ...content,
-  home: { ...content.home, hero: { ...content.home.hero, images } },
+  home: {
+    ...content.home,
+    hero: { ...content.home.hero, image: { mobile, desktop } },
+  },
 });
 
 describe("validateSiteContent media gate", () => {
@@ -496,6 +504,52 @@ describe("validateSiteContent media gate", () => {
     const unknown = mediaPath("hero-unknown", 960);
     const content = withMedia(
       withHero(validContent(), {
+        ...image(mediaPath("hero-a")),
+        srcSet: `${mediaPath("hero-a")} 480w, ${unknown} 960w`,
+      }),
+      { assets: [asset], rights: [noPeople(asset)] },
+    );
+
+    expect(validateSiteContent(content)).toEqual([
+      { id: unknown, rule: "unregistered-media" },
+    ]);
+  });
+
+  it("the hero desktop image goes through the same path check as the phone image", () => {
+    const pending = imageAsset("hero-pending");
+    const unknown = mediaPath("hero-unknown");
+    const content = withMedia(
+      withHero(
+        validContent(),
+        image(mediaPath("hero-pending")),
+        image(unknown),
+      ),
+      { assets: [pending], rights: [facesPending(pending)] },
+    );
+
+    expect(validateSiteContent(content)).toEqual([
+      { id: mediaPath("hero-pending"), rule: "unpublishable-media" },
+      { id: unknown, rule: "unregistered-media" },
+    ]);
+  });
+
+  it("flags a hero desktop image without alt, naming its path", () => {
+    const content = withHero(
+      validContent(),
+      image("/media/stand-ins/hero-1.jpg"),
+      image("/media/stand-ins/hero-1.jpg", " "),
+    );
+
+    expect(validateSiteContent(content)).toEqual([
+      { id: "/media/stand-ins/hero-1.jpg", rule: "alt-missing" },
+    ]);
+  });
+
+  it("checks the srcSet paths of the hero desktop image like src", () => {
+    const asset = imageAsset("hero-a");
+    const unknown = mediaPath("hero-unknown", 960);
+    const content = withMedia(
+      withHero(validContent(), image(mediaPath("hero-a")), {
         ...image(mediaPath("hero-a")),
         srcSet: `${mediaPath("hero-a")} 480w, ${unknown} 960w`,
       }),

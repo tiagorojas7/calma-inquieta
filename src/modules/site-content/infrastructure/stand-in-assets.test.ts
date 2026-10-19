@@ -111,10 +111,12 @@ describe("the studio photos", () => {
   const photoRows = STAND_IN_ASSETS.filter((asset) =>
     /\/(hero-\d|gallery-\d+)\.jpg$/.test(asset.path),
   );
-  const contentImages = [
-    ...homeContent.hero.images,
-    ...aboutContent.gallery,
-  ] as readonly { src: string; alt: string; width: number; height: number }[];
+  const contentImages = [...aboutContent.gallery] as readonly {
+    src: string;
+    alt: string;
+    width: number;
+    height: number;
+  }[];
 
   it("registers the three hero photos and two gallery photos as stand-ins", () => {
     expect(photoRows.map((asset) => asset.id)).toEqual([
@@ -129,7 +131,18 @@ describe("the studio photos", () => {
     }
   });
 
-  it("points every hero and gallery image at a registered JPEG of the declared size", () => {
+  it("the content walk no longer finds the hero among the stand-ins", () => {
+    const registered = new Set<string>(
+      STAND_IN_ASSETS.map((asset) => asset.path),
+    );
+    const { mobile, desktop } = homeContent.hero.image;
+
+    expect(registered.has(mobile.src)).toBe(false);
+    expect(registered.has(desktop.src)).toBe(false);
+    expect(contentImages.map((image) => image.src)).not.toContain(mobile.src);
+  });
+
+  it("points every gallery image at a registered JPEG of the declared size", () => {
     const registered = new Set<string>(
       STAND_IN_ASSETS.map((asset) => asset.path),
     );

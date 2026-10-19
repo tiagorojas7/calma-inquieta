@@ -34,6 +34,7 @@ export type {
   AboutPageContent,
   Approvable,
   ApprovableText,
+  ArtDirectedImage,
   CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,

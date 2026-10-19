@@ -47,7 +47,9 @@ describe("the repository content", () => {
     const raw = await source.load();
 
     expect(validateSiteContent(raw)).toEqual([]);
-    expect(raw.home.hero.images.length).toBeGreaterThan(0);
+    expect(raw.home.hero.image.mobile.src.startsWith("/media/home/")).toBe(
+      true,
+    );
   });
 
   it("contains no copy violation anywhere in its strings", async () => {
@@ -171,8 +173,43 @@ describe("the drafted page content", () => {
 
     expect(home.hero.primaryCtaLabel).toBe("Ver talleres");
     expect(home.hero.secondaryCtaLabel).toBe("Ver intensivos");
-    expect(home.hero.images).toHaveLength(3);
+    expect(home.hero.image.mobile.alt.trim()).not.toBe("");
     expect(home.testimonials.items).toEqual([]);
+  });
+
+  it("the hero image is art-directed from published registry assets", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const registered = (id: string) => {
+      const asset = raw.media.assets.find((candidate) => candidate.id === id);
+      if (asset?.kind !== "image") {
+        throw new Error(`${id} is not a registered image`);
+      }
+      return asset;
+    };
+    const pairs = [
+      ["home-hero-mobile", home.hero.image.mobile, 4 / 5],
+      ["home-hero-desktop", home.hero.image.desktop, 3 / 4],
+    ] as const;
+
+    for (const [id, image, ratio] of pairs) {
+      const asset = registered(id);
+      const paths = asset.variants.map((variant) => variant.path);
+      const candidates = (image.srcSet ?? "")
+        .split(",")
+        .map((entry) => entry.trim().split(" ")[0] ?? "");
+      expect(candidates, id).toEqual(paths);
+      expect(paths, id).toContain(image.src);
+      expect(image.alt, id).toBe(asset.alt);
+      expect(image.width / image.height, id).toBeCloseTo(ratio, 2);
+      for (const path of [image.src, ...candidates]) {
+        expect(isPublishedPath(path, raw), path).toBe(true);
+        expect(
+          raw.standIns.some((standIn) => standIn.path === path),
+          path,
+        ).toBe(false);
+      }
+    }
   });
 
   it("has an empty video list and five gallery images with alt text", async () => {

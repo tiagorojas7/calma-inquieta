@@ -25,6 +25,12 @@ const image = (src: string, alt: string): ImageRef => ({
   height: 100,
 });
 
+/** A registered stand-in with a one-candidate srcSet, so the hero exercises the responsive path. */
+const heroImage: ImageRef = {
+  ...image("/media/stand-ins/hero-1.jpg", "Composición abstracta"),
+  srcSet: "/media/stand-ins/hero-1.jpg 100w",
+};
+
 /** One publishable share image built from the module default, so minimal content never reports share-image-missing. */
 const shareRegistry: MediaRegistry = {
   assets: [
@@ -91,7 +97,10 @@ export function buildRawSiteContent(
         subtitle: "Talleres creativos en Argüello.",
         primaryCtaLabel: "Ver talleres",
         secondaryCtaLabel: "Ver intensivos",
-        images: [image("/media/stand-ins/hero-1.jpg", "Composición abstracta")],
+        image: {
+          mobile: heroImage,
+          desktop: heroImage,
+        },
       },
       trustClaims: [
         {

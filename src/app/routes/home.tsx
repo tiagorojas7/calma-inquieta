@@ -1,6 +1,7 @@
 import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { buildLocalBusinessJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
+import { artDirectedPreloads } from "~/app/media/preload";
 import { buildPageMeta } from "~/app/seo/meta";
 import { JsonLdScript } from "~/app/ui/json-ld-script";
 import { buildWhatsAppUrl } from "~/modules/site-content";
@@ -12,13 +13,24 @@ import {
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
-import { HeroSection } from "~/app/ui/organisms/hero-section";
+import {
+  HERO_DESKTOP_MEDIA,
+  HERO_MOBILE_MEDIA,
+  HERO_STILL_SIZES,
+  HeroSection,
+} from "~/app/ui/organisms/hero-section";
 import { TestimonialsSection } from "~/app/ui/organisms/testimonials-section";
 import { TrustRow } from "~/app/ui/organisms/trust-row";
 import { UpcomingList } from "~/app/ui/organisms/upcoming-list";
 import type { Route } from "./+types/home";
 
 const INICIO_ACTIVITY_LIMIT = 3;
+
+const HERO_PRELOAD = {
+  sizes: HERO_STILL_SIZES,
+  mobileMedia: HERO_MOBILE_MEDIA,
+  desktopMedia: HERO_DESKTOP_MEDIA,
+};
 
 /**
  * Inicio is the exception to "reader errors propagate": a failing catalog read
@@ -93,7 +105,10 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
       { title: "Página no encontrada" },
       { name: "robots", content: "noindex, nofollow" },
     ];
-  return buildPageMeta(loaderData.metaInput);
+  return [
+    ...buildPageMeta(loaderData.metaInput),
+    ...artDirectedPreloads(loaderData.hero.image, HERO_PRELOAD),
+  ];
 }
 
 function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
@@ -110,7 +125,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           </>
         }
         subtitle={data.hero.subtitle}
-        images={data.hero.images}
+        image={data.hero.image}
         bajada={data.hero.bajada}
       />
       <TrustRow claims={data.trustClaims} />

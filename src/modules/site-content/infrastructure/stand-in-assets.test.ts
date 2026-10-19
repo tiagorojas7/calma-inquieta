@@ -40,12 +40,15 @@ describe("the stand-in manifest and the files, both ways", () => {
     ]);
   });
 
-  it("shape-checks the four font rows, whose files arrive with the tokens", () => {
+  it("shape-checks the seven font rows, whose files arrive with the tokens", () => {
     expect(fontRows.map((asset) => asset.path)).toEqual([
       "/fonts/cormorant-garamond-latin-400-normal.woff2",
       "/fonts/cormorant-garamond-latin-400-italic.woff2",
       "/fonts/montserrat-latin-400-normal.woff2",
       "/fonts/montserrat-latin-600-normal.woff2",
+      "/fonts/cormorant-garamond-latin-500-normal.woff2",
+      "/fonts/cormorant-garamond-latin-600-normal.woff2",
+      "/fonts/caveat-latin-600-normal.woff2",
     ]);
     for (const asset of fontRows) {
       expect(asset.path.startsWith("/fonts/"), asset.id).toBe(true);

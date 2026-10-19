@@ -60,6 +60,14 @@ describe("SiteFooter", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("underlines every footer link with the animated underline", () => {
+    renderFooter();
+
+    for (const link of screen.getAllByRole("link")) {
+      expect(link, link.textContent).toHaveClass("link-underline");
+    }
+  });
+
   it("keeps a provisional WhatsApp number usable without printing its digits", () => {
     renderFooter();
     expect(screen.getByRole("link", { name: /whatsapp/i })).toHaveAttribute(

@@ -1,9 +1,32 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { Button, ButtonLink } from "./button";
+
+/** jsdom has no View Transitions API: a stub that applies the update at once. */
+function stubViewTransition() {
+  const start = vi.fn((update?: () => unknown) => {
+    void update?.();
+    return {
+      finished: Promise.resolve(),
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+      skipTransition: vi.fn(),
+    };
+  });
+  Object.defineProperty(document, "startViewTransition", {
+    value: start,
+    configurable: true,
+    writable: true,
+  });
+  return start;
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document, "startViewTransition");
+});
 
 describe("Button", () => {
   it("renders variants, disabled state and click behavior", async () => {
@@ -77,6 +100,49 @@ describe("Button", () => {
       "/talleres",
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it.each([["primary"], ["outline"]] as const)(
+    "%s eases color, lift and shadow and keeps the focus ring",
+    (variant) => {
+      render(<Button variant={variant}>Acción</Button>);
+
+      expect(screen.getByRole("button")).toHaveClass(
+        "transition-[color,background-color,border-color,box-shadow,transform]",
+        "duration-200",
+        "ease-calm",
+        "motion-safe:hover:-translate-y-0.5",
+        "focus-visible:outline-clay-800",
+      );
+    },
+  );
+
+  it("nudges the arrow link on hover instead of lifting it", () => {
+    render(<Button variant="text-arrow">Ver más</Button>);
+
+    expect(screen.getByRole("button")).toHaveClass(
+      "link-underline",
+      "motion-safe:hover:translate-x-0.5",
+      "focus-visible:outline-clay-800",
+    );
+  });
+
+  it("navigates internal links with a view transition", async () => {
+    const start = stubViewTransition();
+    const user = userEvent.setup();
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => <ButtonLink href="/contacto">Contacto</ButtonLink>,
+      },
+      { path: "/contacto", Component: () => <p>Página de contacto</p> },
+    ]);
+    render(<Stub initialEntries={["/"]} />);
+
+    await user.click(screen.getByRole("link", { name: "Contacto" }));
+
+    expect(await screen.findByText("Página de contacto")).toBeInTheDocument();
+    expect(start).toHaveBeenCalled();
   });
 
   it("uses native keyboard activation and suppresses disabled buttons", async () => {

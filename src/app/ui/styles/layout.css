@@ -1,0 +1,41 @@
+/*
+ * Layout primitives (design S7): the full-bleed band that escapes the
+ * max-w-page wrapper of the public page, the deep clay tone for descendants,
+ * and the optional paper grain. The grain is an inline SVG data URI (a
+ * fractal-noise tile, well under 2 KB) with no colour literal: its tint is
+ * a feColorMatrix of decimals.
+ */
+
+/* A bleed Section is a direct child of <main>. It is as wide as the viewport
+   and centred on its container; app.css clips the scrollbar overshoot. */
+.section-bleed {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
+/* Deep clay band: light text and a light accent for <em>. The descendant
+   rule beats single-class text utilities (Heading, Text, Eyebrow). */
+.tone-clay {
+  --em-color: var(--color-sand-200);
+}
+
+.tone-clay
+  :is(h1, h2, h3, h4, p, li, dt, dd, figcaption, blockquote, [data-eyebrow]) {
+  color: inherit;
+}
+
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .43 0 0 0 0 .31 0 0 0 0 .23 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}

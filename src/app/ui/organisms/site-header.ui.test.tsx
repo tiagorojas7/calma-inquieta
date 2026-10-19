@@ -1,9 +1,219 @@
-import { render, screen, within } from "@testing-library/react";
-import { createRoutesStub } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createRoutesStub, StaticRouter } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_PAGES } from "~/app/site-map";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { SiteHeader } from "./site-header";
+
+const whatsappHref = "https://wa.me/5493517395239";
+
+function setScrollY(value: number) {
+  Object.defineProperty(window, "scrollY", {
+    value,
+    configurable: true,
+    writable: true,
+  });
+}
+
+afterEach(() => {
+  setScrollY(0);
+  Reflect.deleteProperty(document, "startViewTransition");
+});
+
+describe("SiteHeader scroll state", () => {
+  function renderHeader(menuOpen = false) {
+    const Stub = createRoutesStub([
+      {
+        path: "*",
+        Component: () => (
+          <SiteHeader
+            pages={PUBLIC_PAGES}
+            profile={{ whatsappHref }}
+            menuOpen={menuOpen}
+            onMenuOpenChange={vi.fn()}
+          />
+        ),
+      },
+    ]);
+    return render(<Stub initialEntries={["/"]} />);
+  }
+
+  it("is solid in the server markup, so it reads without JavaScript", () => {
+    const html = renderToStaticMarkup(
+      <StaticRouter location="/">
+        <SiteHeader
+          pages={PUBLIC_PAGES}
+          profile={{ whatsappHref }}
+          menuOpen={false}
+          onMenuOpenChange={vi.fn()}
+        />
+      </StaticRouter>,
+    );
+
+    expect(html).toContain('data-solid="true"');
+    expect(html).toContain("bg-sand-200");
+    expect(html).not.toContain("bg-transparent");
+  });
+
+  it("is transparent over the page top after mount", () => {
+    renderHeader();
+
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-solid", "false");
+    expect(header).toHaveClass("bg-transparent");
+    expect(header).not.toHaveClass("shadow-header");
+  });
+
+  it("becomes solid sand with a soft shadow after scrolling past 24 px", () => {
+    renderHeader();
+    const header = screen.getByRole("banner");
+
+    setScrollY(24);
+    fireEvent.scroll(window);
+    expect(header).toHaveAttribute("data-solid", "false");
+
+    setScrollY(25);
+    fireEvent.scroll(window);
+    expect(header).toHaveAttribute("data-solid", "true");
+    expect(header).toHaveClass("bg-sand-200", "shadow-header");
+    expect(header).not.toHaveClass("bg-transparent");
+
+    setScrollY(0);
+    fireEvent.scroll(window);
+    expect(header).toHaveAttribute("data-solid", "false");
+  });
+
+  it("starts solid when the page is mounted already scrolled", () => {
+    setScrollY(400);
+    renderHeader();
+
+    expect(screen.getByRole("banner")).toHaveAttribute("data-solid", "true");
+  });
+
+  it("is solid while the menu is open, however far the page is scrolled", () => {
+    renderHeader(true);
+
+    expect(screen.getByRole("banner")).toHaveAttribute("data-solid", "true");
+  });
+
+  it("is sticky, eases its colour and shadow and removes its scroll listener on unmount", () => {
+    const remove = vi.spyOn(window, "removeEventListener");
+    const { unmount } = renderHeader();
+
+    expect(screen.getByRole("banner")).toHaveClass(
+      "sticky",
+      "top-0",
+      "z-30",
+      "site-header",
+      "transition-[background-color,box-shadow]",
+      "duration-300",
+    );
+    unmount();
+    expect(remove).toHaveBeenCalledWith("scroll", expect.any(Function));
+  });
+});
+
+describe("SiteHeader full-screen menu", () => {
+  function renderMenu(path = "/", menuOpen = true) {
+    const Stub = createRoutesStub([
+      {
+        path: "*",
+        Component: () => (
+          <SiteHeader
+            pages={PUBLIC_PAGES}
+            profile={{ whatsappHref }}
+            menuOpen={menuOpen}
+            onMenuOpenChange={vi.fn()}
+          />
+        ),
+      },
+    ]);
+    return render(<Stub initialEntries={[path]} />);
+  }
+
+  it("is a full-screen overlay with an entrance hook and a close button", () => {
+    renderMenu();
+
+    const close = screen.getByRole("button", { name: "Cerrar menú" });
+    const overlay = close.parentElement?.querySelector("#menu-principal");
+    expect(overlay).toHaveClass(
+      "menu-overlay",
+      "max-lg:fixed",
+      "max-lg:inset-0",
+    );
+    expect(close).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("sets large Cormorant links that stagger in by index", () => {
+    renderMenu();
+
+    const items = within(
+      screen.getByRole("navigation", { name: "Principal" }),
+    ).getAllByRole("listitem");
+    expect(items).toHaveLength(PUBLIC_PAGES.length);
+    items.forEach((item, index) => {
+      expect(item).toHaveClass("menu-item");
+      expect(item.style.getPropertyValue("--i")).toBe(String(index));
+      expect(within(item).getByRole("link")).toHaveClass(
+        "max-lg:font-display",
+        "max-lg:text-4xl",
+      );
+    });
+    const cta = screen.getByRole("link", { name: "Escribinos por WhatsApp" });
+    expect(cta).toHaveClass("menu-item");
+    expect(cta.style.getPropertyValue("--i")).toBe(String(PUBLIC_PAGES.length));
+  });
+
+  it("takes the logo out of the tab order while the overlay is open", () => {
+    renderMenu();
+
+    expect(
+      screen.getByRole("link", { name: "Calma Inquieta", hidden: true }),
+    ).toHaveAttribute("inert");
+  });
+
+  it("leaves the logo reachable while the menu is closed", () => {
+    renderMenu("/", false);
+
+    expect(
+      screen.getByRole("link", { name: "Calma Inquieta" }),
+    ).not.toHaveAttribute("inert");
+  });
+
+  it("navigates the logo and the nav links with a view transition", async () => {
+    const start = vi.fn((update?: () => unknown) => {
+      void update?.();
+      return {
+        finished: Promise.resolve(),
+        ready: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+        skipTransition: vi.fn(),
+      };
+    });
+    Object.defineProperty(document, "startViewTransition", {
+      value: start,
+      configurable: true,
+      writable: true,
+    });
+    const user = userEvent.setup();
+    renderMenu("/talleres", false);
+
+    await user.click(screen.getByRole("link", { name: "Calma Inquieta" }));
+    expect(start).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await user.click(
+        within(screen.getByRole("navigation", { name: "Principal" })).getByRole(
+          "link",
+          { name: "Talleres" },
+        ),
+      );
+    });
+    expect(start).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("SiteHeader", () => {
   function renderHeader(path = "/", menuOpen = false) {

@@ -23,11 +23,15 @@ const WEBFONT_FILES = [
   "cormorant-garamond-latin-400-italic.woff2",
   "montserrat-latin-400-normal.woff2",
   "montserrat-latin-600-normal.woff2",
+  "cormorant-garamond-latin-500-normal.woff2",
+  "cormorant-garamond-latin-600-normal.woff2",
+  "caveat-latin-600-normal.woff2",
 ] as const;
 
 const FONT_LICENCES = [
   { family: "Cormorant Garamond", file: "OFL-cormorant-garamond.txt" },
   { family: "Montserrat", file: "OFL-montserrat.txt" },
+  { family: "Caveat", file: "OFL-caveat.txt" },
 ] as const;
 
 // Design §3.3 static checks: no literal that bypasses the tokens.
@@ -80,7 +84,7 @@ describe("self-hosted fonts", () => {
     }
   });
 
-  it("the four font files and both OFL licences exist on disk", () => {
+  it("every font file and OFL licence exists on disk", () => {
     for (const file of WEBFONT_FILES) {
       expect(
         existsSync(join(fileURLToPath(FONTS_DIR), file)),
@@ -114,13 +118,46 @@ describe("self-hosted fonts", () => {
       face.body.includes("url("),
     );
 
-    expect(webfontFaces.length).toBe(4);
+    expect(webfontFaces.length).toBe(7);
     for (const face of webfontFaces) {
       expect(
         face.body,
         `${face.family} face is missing font-display: swap`,
       ).toMatch(/font-display:\s*swap/);
     }
+  });
+
+  it("declares Cormorant 500 and 600 and the Caveat 600 script face", () => {
+    const faces = fontFaces(readStyles("fonts.css"));
+    const has = (family: string, weight: string, file: string) =>
+      faces.some(
+        (face) =>
+          face.family === family &&
+          new RegExp(`font-weight:\\s*${weight}\\s*;`).test(face.body) &&
+          face.body.includes(`url("/fonts/${file}")`),
+      );
+
+    expect(
+      has(
+        "Cormorant Garamond",
+        "500",
+        "cormorant-garamond-latin-500-normal.woff2",
+      ),
+    ).toBe(true);
+    expect(
+      has(
+        "Cormorant Garamond",
+        "600",
+        "cormorant-garamond-latin-600-normal.woff2",
+      ),
+    ).toBe(true);
+    expect(has("Caveat", "600", "caveat-latin-600-normal.woff2")).toBe(true);
+  });
+
+  it("wires the --font-script family token", () => {
+    expect(readStyles("fonts.css")).toMatch(
+      /--font-script:\s*"Caveat",[^;]*cursive;/,
+    );
   });
 
   it("metric fallback faces carry all four override descriptors", () => {
@@ -153,6 +190,32 @@ describe("global base styles", () => {
 
     expect(match, "--text-base is not a fixed rem value").not.toBeNull();
     expect(parseFloat(match?.[1] ?? "0")).toBeGreaterThanOrEqual(1);
+  });
+
+  it("the H1 is fluid from 2.75rem on phones to 5rem on wide screens", () => {
+    const match = readStyles("tokens.css").match(
+      /--text-display:\s*clamp\(\s*([0-9.]+)rem\s*,[^,]+,\s*([0-9.]+)rem\s*\)/,
+    );
+
+    expect(match, "--text-display is not a clamp() in rem").not.toBeNull();
+    expect(parseFloat(match?.[1] ?? "0")).toBe(2.75);
+    expect(parseFloat(match?.[2] ?? "0")).toBe(5);
+  });
+
+  it("the script accent token is never smaller than 1.5rem (24 px)", () => {
+    const match = readStyles("tokens.css").match(
+      /--text-script:\s*clamp\(\s*([0-9.]+)rem/,
+    );
+
+    expect(match, "--text-script is not a clamp() in rem").not.toBeNull();
+    expect(parseFloat(match?.[1] ?? "0")).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it("renders <em> inside headings as Cormorant italic in the accent colour", () => {
+    const css = readStyles("app.css");
+
+    expect(css).toMatch(/h1 em[\s\S]*font-style:\s*italic/);
+    expect(css).toMatch(/--em-color/);
   });
 
   it("app.css ships the accessibility baseline rules", () => {
@@ -318,5 +381,134 @@ describe("decorative motifs stylesheet", () => {
 
   it("motifs.css holds no colour literal", () => {
     expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+});
+
+describe("motion stylesheet", () => {
+  const css = readStyles("motion.css");
+  const blocks = cssBlocks(css);
+  const inNoPreference = (block: CssBlock) =>
+    block.ancestors.some((a) =>
+      /@media\s*\(prefers-reduced-motion:\s*no-preference\)/.test(a),
+    );
+
+  it("every animation declaration in motion.css sits inside a prefers-reduced-motion: no-preference block", () => {
+    const declaring = blocks.filter(
+      (block) =>
+        !block.prelude.startsWith("@") &&
+        ANIMATION_DECLARATION.test(block.body),
+    );
+
+    expect(declaring.length).toBeGreaterThan(0);
+    for (const block of declaring) {
+      expect(
+        inNoPreference(block),
+        `${block.prelude} declares an animation outside no-preference`,
+      ).toBe(true);
+    }
+  });
+
+  it("every transition and view transition rule sits inside a no-preference block", () => {
+    const moving = blocks.filter(
+      (block) =>
+        !block.prelude.startsWith("@") &&
+        (/(^|[\s;])transition(-[a-z-]+)?\s*:/.test(block.body) ||
+          block.prelude.includes("::view-transition")),
+    );
+
+    expect(moving.length).toBeGreaterThan(0);
+    for (const block of moving) {
+      expect(
+        inNoPreference(block),
+        `${block.prelude} moves outside no-preference`,
+      ).toBe(true);
+    }
+  });
+
+  it("only transform and opacity are animated in keyframes", () => {
+    const allowed = new Set(["transform", "opacity"]);
+    const frames = blocks.filter((block) =>
+      block.ancestors.some((a) => a.startsWith("@keyframes")),
+    );
+
+    expect(frames.length).toBeGreaterThan(0);
+    for (const frame of frames) {
+      for (const declaration of frame.body.split(";")) {
+        const property = declaration.split(":")[0]?.trim();
+        if (property) {
+          expect(
+            allowed.has(property),
+            `${property} is animated in motion.css`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("the route cross-fade lasts between 250 and 300 ms", () => {
+    const match = css.match(
+      /::view-transition-(?:old|new)\(root\)[^{]*\{[^}]*animation-duration:\s*(\d+)ms/,
+    );
+
+    expect(match, "no root view-transition duration").not.toBeNull();
+    const ms = parseInt(match?.[1] ?? "0", 10);
+    expect(ms).toBeGreaterThanOrEqual(250);
+    expect(ms).toBeLessThanOrEqual(300);
+  });
+
+  it("hides revealable content only after mount, never in the stylesheet default", () => {
+    const hidden = blocks.find((block) =>
+      block.prelude.includes('[data-reveal="hidden"]'),
+    );
+
+    expect(hidden, "no [data-reveal=hidden] rule").toBeDefined();
+    expect(hidden ? inNoPreference(hidden) : false).toBe(true);
+    const rules = blocks.filter(
+      (b) =>
+        !b.prelude.startsWith("@") &&
+        !b.ancestors.some((a) => a.startsWith("@keyframes")),
+    );
+    for (const block of rules) {
+      if (!block.prelude.includes('[data-reveal="hidden"]')) {
+        expect(block.body, block.prelude).not.toMatch(/opacity:\s*0\s*;/);
+      }
+    }
+  });
+
+  it("app.css imports motion.css and layout.css", () => {
+    const app = readStyles("app.css");
+
+    expect(app).toMatch(/@import\s+"\.\/motion\.css";/);
+    expect(app).toMatch(/@import\s+"\.\/layout\.css";/);
+  });
+
+  it("motion.css holds no colour literal", () => {
+    expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+});
+
+describe("layout stylesheet", () => {
+  const css = readStyles("layout.css");
+
+  it("the bleed band is as wide as the viewport and centred on its container", () => {
+    expect(css).toMatch(/\.section-bleed\s*\{[^}]*width:\s*100vw/);
+    expect(css).toMatch(
+      /\.section-bleed\s*\{[^}]*margin-inline:\s*calc\(50% - 50vw\)/,
+    );
+  });
+
+  it("app.css clips the horizontal overshoot of full-bleed bands", () => {
+    expect(readStyles("app.css")).toMatch(/html\s*\{[^}]*overflow-x:\s*clip/);
+  });
+
+  it("the paper grain is an inline SVG data URI of at most 2 KB", () => {
+    const uri = css.match(
+      /\.paper-grain[^}]*url\("(data:image\/svg\+xml[^"]+)"\)/,
+    );
+
+    expect(uri, "no .paper-grain data URI").not.toBeNull();
+    expect(Buffer.byteLength(uri?.[1] ?? "", "utf-8")).toBeLessThanOrEqual(
+      2048,
+    );
   });
 });

@@ -286,6 +286,9 @@ describe("the drafted page content", () => {
       "font-cormorant-garamond-400-italic",
       "font-montserrat-400-normal",
       "font-montserrat-600-normal",
+      "font-cormorant-garamond-500-normal",
+      "font-cormorant-garamond-600-normal",
+      "font-caveat-600-normal",
     ]);
   });
 
@@ -669,14 +672,14 @@ describe("the curated contact photo", () => {
 });
 
 describe("the launch gate on the repository content", () => {
-  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are four and unpublishedMedia is empty", async () => {
+  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are seven and unpublishedMedia is empty", async () => {
     const gate = await content.getLaunchGate();
 
     expect(gate.imageStandIns.map(({ id }) => id)).toEqual([
       "gallery-01",
       "favicon",
     ]);
-    expect(gate.fontStandIns).toHaveLength(4);
+    expect(gate.fontStandIns).toHaveLength(7);
     expect(gate.unpublishedMedia).toEqual([]);
   });
 });

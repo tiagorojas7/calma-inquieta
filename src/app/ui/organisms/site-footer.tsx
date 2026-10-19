@@ -37,7 +37,7 @@ export function SiteFooter({ pages, profile, inert }: SiteFooterProps) {
         <div className="flex flex-col gap-2">
           <a
             href={profile.whatsappHref}
-            className="underline underline-offset-4"
+            className="link-underline link-underline-rest self-start"
             aria-label="Escribinos por WhatsApp"
           >
             Escribinos por WhatsApp
@@ -47,15 +47,25 @@ export function SiteFooter({ pages, profile, inert }: SiteFooterProps) {
             href={profile.instagramHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-4"
+            className="link-underline link-underline-rest self-start"
           >
             Instagram
           </a>
           {profile.email && (
-            <a href={`mailto:${profile.email}`}>{profile.email}</a>
+            <a
+              href={`mailto:${profile.email}`}
+              className="link-underline link-underline-rest self-start"
+            >
+              {profile.email}
+            </a>
           )}
           {profile.phone && (
-            <a href={`tel:${profile.phone}`}>{profile.phone}</a>
+            <a
+              href={`tel:${profile.phone}`}
+              className="link-underline link-underline-rest self-start"
+            >
+              {profile.phone}
+            </a>
           )}
           {profile.hours && <p>{profile.hours}</p>}
         </div>

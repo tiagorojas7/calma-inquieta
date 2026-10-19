@@ -26,6 +26,31 @@
 }
 
 @font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/cormorant-garamond-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/cormorant-garamond-latin-600-normal.woff2") format("woff2");
+}
+
+/* Handwritten accent (S3): one weight, notes and highlights only. */
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/caveat-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
   font-family: "Montserrat";
   font-style: normal;
   font-weight: 400;
@@ -49,7 +74,7 @@
 @font-face {
   font-family: "Cormorant Fallback";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   src: local("Georgia");
   size-adjust: 106.58%;
   ascent-override: 86.7%;
@@ -68,8 +93,16 @@
   line-gap-override: 0%;
 }
 
+/*
+ * Caveat has no metric fallback on purpose: no font installed by default
+ * resembles its narrow handwriting, so a size-adjusted local() face would
+ * only be a different mismatch. It only sets short accent notes (24 px or
+ * larger), so a generic cursive stack and font-display: swap are enough.
+ */
+
 /* Family tokens (§3.3): the one place a brand font swap touches. */
 @theme {
   --font-display: "Cormorant Garamond", "Cormorant Fallback", Georgia, serif;
+  --font-script: "Caveat", cursive;
   --font-body: "Montserrat", "Montserrat Fallback", Arial, sans-serif;
 }

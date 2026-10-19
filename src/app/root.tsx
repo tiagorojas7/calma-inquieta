@@ -23,6 +23,8 @@ const preloadFont = (file: string) => ({
 
 export const links: Route.LinksFunction = () => [
   preloadFont("cormorant-garamond-latin-400-normal.woff2"),
+  // The H1 and section headings render at weight 500.
+  preloadFont("cormorant-garamond-latin-500-normal.woff2"),
   preloadFont("montserrat-latin-400-normal.woff2"),
   { rel: "stylesheet", href: appCss },
   { rel: "icon", href: "/media/stand-ins/favicon.png" },

@@ -38,6 +38,26 @@ export function PublicPage({ pages, profile, children }: PublicPageProps) {
     document.documentElement.toggleAttribute("data-menu-open", menuOpen);
     if (!menuOpen) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        // Focus trap: everything outside the header is inert, and Tab wraps
+        // between the toggle (close button) and the last menu control.
+        const toggle = document.querySelector<HTMLElement>(
+          'button[aria-controls="menu-principal"]',
+        );
+        const menuLinks = document.querySelectorAll<HTMLElement>(
+          "#menu-principal a[href]",
+        );
+        const first = toggle;
+        const last = menuLinks[menuLinks.length - 1] ?? toggle;
+        if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        }
+        return;
+      }
       if (event.key === "Escape") {
         setMenuOpen(false);
         (

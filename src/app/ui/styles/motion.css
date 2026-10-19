@@ -1,0 +1,128 @@
+/*
+ * Motion (design S6): scroll reveals, card hover, animated link underline,
+ * the full-screen menu entrance and the route cross-fade. Every transition,
+ * animation and view-transition rule lives inside prefers-reduced-motion:
+ * no-preference; without it everything is static and fully visible. Only
+ * transform and opacity are animated, except the link underline, which
+ * grows by a background-size transition (paint only, no layout).
+ *
+ * Reveal (src/app/ui/organisms/reveal.tsx) hides its children only after
+ * mount, so server HTML is never opacity: 0.
+ */
+
+/* Static state: the frame that clips the card image zoom, and the link
+   underline at rest (hidden) and for the current page (drawn). */
+.card-hover-frame {
+  overflow: hidden;
+}
+
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 1px;
+  padding-bottom: 0.25rem;
+}
+
+.link-underline:hover,
+.link-underline:focus-visible,
+.link-underline[aria-current="page"] {
+  background-size: 100% 1px;
+}
+
+/* Links that must read as links at rest (inline text-arrow): the underline is
+   always drawn and thickens on hover. */
+.link-underline-rest {
+  background-size: 100% 1px;
+}
+
+.link-underline-rest:hover,
+.link-underline-rest:focus-visible {
+  background-size: 100% 2px;
+}
+
+@keyframes menu-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menu-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Scroll reveal: hidden state applies only after mount (data-reveal is set
+     by the component, never by the server). */
+  [data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+
+  [data-reveal="shown"] {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 650ms var(--ease-calm),
+      transform 650ms var(--ease-calm);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  /* Card hover: lift plus a gentle zoom of the image inside its frame. */
+  .card-hover {
+    transition:
+      transform 300ms var(--ease-calm),
+      box-shadow 300ms var(--ease-calm);
+  }
+
+  .card-hover:hover,
+  .card-hover:focus-within {
+    transform: translateY(-0.25rem);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .card-hover-frame img {
+    transition: transform 600ms var(--ease-calm);
+  }
+
+  .card-hover:hover .card-hover-frame img,
+  .card-hover:focus-within .card-hover-frame img {
+    transform: scale(1.03);
+  }
+
+  .link-underline {
+    transition: background-size 250ms var(--ease-calm);
+  }
+
+  /* Full-screen mobile menu: fade in, links stagger in (--i is the index). */
+  .menu-overlay[data-state="open"] {
+    animation: menu-fade 250ms var(--ease-calm) both;
+  }
+
+  .menu-overlay[data-state="open"] .menu-item {
+    animation: menu-item-in 550ms var(--ease-calm) both;
+    animation-delay: calc(120ms + var(--i, 0) * 70ms);
+  }
+
+  /* Route transitions: a 280 ms cross-fade of the page; the header keeps
+     its own layer so it does not fade with the content. */
+  .site-header {
+    view-transition-name: site-header;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 280ms;
+    animation-timing-function: var(--ease-calm);
+  }
+}

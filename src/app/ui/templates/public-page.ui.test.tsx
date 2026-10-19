@@ -76,6 +76,61 @@ describe("PublicPage", () => {
     expect(document.documentElement).not.toHaveAttribute("data-menu-open");
   });
 
+  it("lets the page render full-bleed bands: main is a plain container with no horizontal clipping of its own", () => {
+    renderPage();
+
+    expect(screen.getByRole("main")).not.toHaveClass("overflow-hidden");
+    expect(screen.getByRole("main")).not.toHaveClass("overflow-x-hidden");
+    expect(screen.getByRole("main")).toHaveClass("w-full");
+  });
+
+  it("traps Tab inside the open menu, wrapping from the last control to the toggle and back", () => {
+    renderPage();
+    const toggle = screen.getByRole("button", { name: "Abrir menú" });
+    fireEvent.click(toggle);
+    const menu = document.getElementById("menu-principal");
+    const controls = [
+      toggle,
+      ...Array.from(menu?.querySelectorAll<HTMLElement>("a[href]") ?? []),
+    ];
+    const last = controls[controls.length - 1];
+
+    last?.focus();
+    const forward = fireEvent.keyDown(document, { key: "Tab" });
+    expect(forward).toBe(false);
+    expect(toggle).toHaveFocus();
+
+    const backward = fireEvent.keyDown(document, {
+      key: "Tab",
+      shiftKey: true,
+    });
+    expect(backward).toBe(false);
+    expect(last).toHaveFocus();
+  });
+
+  it("leaves Tab alone between the menu controls and while the menu is closed", () => {
+    renderPage();
+    const toggle = screen.getByRole("button", { name: "Abrir menú" });
+
+    toggle.focus();
+    expect(fireEvent.keyDown(document, { key: "Tab" })).toBe(true);
+
+    fireEvent.click(toggle);
+    toggle.focus();
+    expect(fireEvent.keyDown(document, { key: "Tab" })).toBe(true);
+    expect(toggle).toHaveFocus();
+  });
+
+  it("locks the page scroll while the menu is open and releases it on close", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    expect(document.documentElement).toHaveAttribute("data-menu-open");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar menú" }));
+    expect(document.documentElement).not.toHaveAttribute("data-menu-open");
+  });
+
   it("closes from navigation, pathname and desktop media changes", async () => {
     const mediaListeners: Array<(event: MediaQueryListEvent) => void> = [];
     vi.spyOn(window, "matchMedia").mockReturnValue({

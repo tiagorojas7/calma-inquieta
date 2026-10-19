@@ -93,8 +93,18 @@ export interface HomePageContent {
     readonly subtitle: string;
     readonly primaryCtaLabel: string;
     readonly secondaryCtaLabel: string;
-    /** The hero still: a required slot from the media registry. */
-    readonly image: ArtDirectedImage;
+    /** Phones: the full-bleed 9:16 photo behind the text (the LCP below lg). */
+    readonly backdrop: ImageRef;
+    /**
+     * From lg: the collage photos, in slot order. The first is the large
+     * lead (the LCP from lg), the second sits in a white frame, the third
+     * has a torn-paper edge.
+     */
+    readonly collage: readonly ImageRef[];
+    /** The handwritten kraft note laid over the collage (es-AR voseo). */
+    readonly note: string;
+    /** The small tracked word list at the foot of the collage. */
+    readonly keywords: readonly string[];
     /** Optional: the reader drops it unless every path is published. */
     readonly loop?: AmbientLoop;
   };
@@ -109,6 +119,10 @@ export interface HomePageContent {
     readonly heading: string;
     readonly body: ApprovableText;
     readonly image: ImageRef;
+    /** The second, overlapping photo of the pair (another ratio). */
+    readonly accentImage: ImageRef;
+    /** The handwritten pull phrase beside the text. */
+    readonly pull: string;
     readonly linkLabel: string;
   };
   /** The reader returns consented testimonials only. */

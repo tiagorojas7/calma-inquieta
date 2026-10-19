@@ -139,10 +139,10 @@ export function buildRawSiteContent(
         subtitle: "Talleres creativos en Argüello.",
         primaryCtaLabel: "Ver talleres",
         secondaryCtaLabel: "Ver intensivos",
-        image: {
-          mobile: heroImage,
-          desktop: heroImage,
-        },
+        backdrop: heroImage,
+        collage: [heroImage, heroImage, heroImage],
+        note: "Crear también es una forma de volver a vos.",
+        keywords: ["Arte", "Manos", "Encuentro", "Bienestar"],
         loop: heroLoop,
       },
       trustClaims: [
@@ -160,6 +160,8 @@ export function buildRawSiteContent(
         heading: "Quiénes somos",
         body: { id: "teaser-body", approved: true, text: "Somos un equipo." },
         image: image("/media/stand-ins/about-teaser.svg", "Composición"),
+        accentImage: image("/media/stand-ins/hero-1.jpg", "Detalle"),
+        pull: "Hecho con las manos, compartido entre todas.",
         linkLabel: "Conocenos",
       },
       testimonials: { heading: "Lo que cuentan", items: [] },

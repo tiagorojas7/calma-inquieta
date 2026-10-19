@@ -126,11 +126,13 @@ describe("the studio photos", () => {
     const registered = new Set<string>(
       STAND_IN_ASSETS.map((asset) => asset.path),
     );
-    const { mobile, desktop } = homeContent.hero.image;
+    const { backdrop, collage } = homeContent.hero;
 
-    expect(registered.has(mobile.src)).toBe(false);
-    expect(registered.has(desktop.src)).toBe(false);
-    expect(contentImages.map((image) => image.src)).not.toContain(mobile.src);
+    expect(registered.has(backdrop.src)).toBe(false);
+    for (const photo of collage) {
+      expect(registered.has(photo.src)).toBe(false);
+    }
+    expect(contentImages.map((image) => image.src)).not.toContain(backdrop.src);
   });
 
   it("no gallery image is a stand-in any more", () => {

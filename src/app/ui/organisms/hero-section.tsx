@@ -2,67 +2,93 @@ import type { ReactNode } from "react";
 import { ButtonLink } from "../atoms/button";
 import { Eyebrow, Heading, Text } from "../atoms/heading";
 import { Picture } from "../atoms/picture";
-import { VideoLoop } from "../molecules/video-loop";
+import {
+  HERO_DESKTOP_MEDIA,
+  HERO_LEAD_SIZES,
+  HERO_MOBILE_MEDIA,
+  HeroCollage,
+  type CollageImg,
+  type CollageLoop,
+} from "./hero-collage";
+import { Section } from "./section";
 
-type Img = {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  srcSet?: string;
-};
+export { HERO_DESKTOP_MEDIA, HERO_LEAD_SIZES, HERO_MOBILE_MEDIA };
+
+/** The phone backdrop spans the viewport. */
+export const HERO_BACKDROP_SIZES = "100vw";
+
+/** 1 by 1 transparent WebP: the backdrop swaps to it from lg, where it is hidden. */
+const BLANK_PIXEL =
+  "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
 
 type Props = {
   eyebrow: string;
   title: ReactNode;
   subtitle: string;
-  image: { mobile: Img; desktop: Img };
-  /** The optional decorative loop: after the text on phones, a small tile from lg. */
-  loop?:
-    | {
-        poster: Img;
-        sources: readonly { src: string; type: string }[];
-        width: number;
-        height: number;
-      }
-    | undefined;
+  /** Phones: a 9:16 photo behind the text, the LCP below lg. */
+  backdrop: CollageImg;
+  /** From lg: the collage photos in slot order (lead, framed, torn). */
+  collage: readonly CollageImg[];
+  note: string;
+  keywords: readonly string[];
+  /** The optional decorative loop: a collage tile from lg. */
+  loop?: CollageLoop | undefined;
   bajada: string;
-  /** Decorative slot anchored to the still photo's corner (the butterfly). */
-  ornament?: ReactNode;
 };
 
-/** The viewport from which the desktop still replaces the phone still. */
-export const HERO_DESKTOP_MEDIA = "(min-width: 64rem)";
-/** The exact complement of the desktop media; only the route preload needs it. */
-export const HERO_MOBILE_MEDIA = "not all and (min-width: 64rem)";
-/** Layout width of the still: 28rem (`max-w-md`) or the viewport minus the gutters. */
-export const HERO_STILL_SIZES =
-  "(min-width: 30rem) 28rem, calc(100vw - 2.5rem)";
-
-/** Layout width of the loop tile: 12rem from xl, 10rem from lg, else the still's width. */
-const HERO_LOOP_SIZES =
-  "(min-width: 80rem) 12rem, (min-width: 64rem) 10rem, (min-width: 30rem) 28rem, calc(100vw - 2.5rem)";
-
+/**
+ * Inicio hero (S2). Phones: the backdrop photo fills the first viewport
+ * under the transparent header, with the eyebrow, h1 and CTAs over its calm
+ * upper half on a cream scrim and the subtitle on a card at the bottom. From
+ * lg: the text on the left and the image5 collage on the right. Exactly one
+ * eager, high priority image downloads per breakpoint.
+ */
 export function HeroSection({
   eyebrow,
   title,
   subtitle,
-  image,
+  backdrop,
+  collage,
+  note,
+  keywords,
   loop,
   bajada,
-  ornament,
 }: Props) {
   return (
-    <section
+    <Section
+      bleed
+      spacing="none"
+      tone="canvas"
       aria-labelledby="hero-title"
-      className="relative grid items-center gap-8 overflow-x-clip py-section lg:grid-cols-12 lg:gap-x-12"
+      className="hero-stage"
     >
-      <div className="flex flex-col items-start gap-6 lg:col-span-6 xl:col-span-5">
+      <div className="hero-backdrop lg:hidden">
+        <Picture
+          {...backdrop}
+          className="size-full object-cover"
+          pictureClassName="contents"
+          aboveTheFold
+          fetchPriority="high"
+          sizes={HERO_BACKDROP_SIZES}
+          sources={[
+            {
+              media: HERO_DESKTOP_MEDIA,
+              srcSet: BLANK_PIXEL,
+              width: backdrop.width,
+              height: backdrop.height,
+            },
+          ]}
+        />
+        <div aria-hidden="true" className="hero-scrim" />
+      </div>
+      <div className="hero-copy">
         <Eyebrow>{eyebrow}</Eyebrow>
         <Heading level={1} id="hero-title">
           {title}
         </Heading>
-        <Text className="max-w-prose text-lead">{subtitle}</Text>
+        <Text className="max-w-prose text-lead max-lg:order-last max-lg:mt-auto max-lg:rounded-md max-lg:bg-canvas/90 max-lg:p-4">
+          {subtitle}
+        </Text>
         <div className="flex flex-wrap gap-4">
           <ButtonLink href="/talleres">Ver talleres</ButtonLink>
           <ButtonLink href="/intensivos" variant="outline">
@@ -71,41 +97,17 @@ export function HeroSection({
         </div>
         <Text
           tone="muted"
-          className="mt-4 w-full max-w-prose border-t border-tan-400 pt-6"
+          className="mt-4 w-full max-w-prose border-t border-tan-400 pt-6 max-lg:sr-only"
         >
           {bajada}
         </Text>
       </div>
-      <div className="contents lg:relative lg:col-span-6 lg:block lg:w-full lg:max-w-md lg:justify-self-end xl:col-span-7">
-        <div className="relative order-first mx-auto w-full max-w-md lg:order-none">
-          <Picture
-            {...image.mobile}
-            className="aspect-4/5 h-auto w-full rounded-sm object-cover lg:aspect-3/4"
-            aboveTheFold
-            fetchPriority="high"
-            sizes={HERO_STILL_SIZES}
-            sources={[
-              {
-                media: HERO_DESKTOP_MEDIA,
-                srcSet: image.desktop.srcSet ?? image.desktop.src,
-                width: image.desktop.width,
-                height: image.desktop.height,
-              },
-            ]}
-          />
-          {ornament}
-        </div>
-        {loop && (
-          <VideoLoop
-            poster={loop.poster}
-            sizes={HERO_LOOP_SIZES}
-            sources={loop.sources}
-            width={loop.width}
-            height={loop.height}
-            className="order-last mx-auto w-full max-w-md lg:absolute lg:-bottom-8 lg:-left-8 lg:mx-0 lg:w-40 lg:ring-8 lg:ring-canvas xl:w-48"
-          />
-        )}
-      </div>
-    </section>
+      <HeroCollage
+        photos={collage}
+        note={note}
+        keywords={keywords}
+        loop={loop}
+      />
+    </Section>
   );
 }

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { artDirectedPreloads } from "./preload";
 
 const options = {
-  sizes: "(min-width: 64rem) 28rem, 100vw",
+  mobileSizes: "100vw",
+  desktopSizes: "(min-width: 80rem) 28rem, 36vw",
   mobileMedia: "(max-width: 63.999rem)",
   desktopMedia: "(min-width: 64rem)",
 };
@@ -12,14 +13,14 @@ const image = {
 };
 
 describe("artDirectedPreloads", () => {
-  it("returns two descriptors with the picture srcsets and the shared sizes", () => {
+  it("returns two descriptors with the picture srcsets and each side's own sizes", () => {
     expect(artDirectedPreloads(image, options)).toEqual([
       {
         tagName: "link",
         rel: "preload",
         as: "image",
         imageSrcSet: image.mobile.srcSet,
-        imageSizes: options.sizes,
+        imageSizes: options.mobileSizes,
         media: options.mobileMedia,
         fetchPriority: "high",
       },
@@ -28,7 +29,7 @@ describe("artDirectedPreloads", () => {
         rel: "preload",
         as: "image",
         imageSrcSet: image.desktop.srcSet,
-        imageSizes: options.sizes,
+        imageSizes: options.desktopSizes,
         media: options.desktopMedia,
         fetchPriority: "high",
       },

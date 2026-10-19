@@ -131,10 +131,7 @@ describe("validateSiteContent", () => {
         ...content.home,
         hero: {
           ...content.home.hero,
-          image: {
-            ...content.home.hero.image,
-            mobile: image("/media/stand-ins/hero-1.jpg", ""),
-          },
+          backdrop: image("/media/stand-ins/hero-1.jpg", ""),
         },
       },
     });
@@ -436,16 +433,20 @@ const withMedia = (
   },
 });
 
-/** Replaces the hero's phone image; the desktop image stays the content's own valid one. */
+/** Replaces the hero backdrop (phones) and the collage lead; the other collage photos stay valid. */
 const withHero = (
   content: RawSiteContent,
-  mobile: ImageRef,
-  desktop: ImageRef = content.home.hero.image.desktop,
+  backdrop: ImageRef,
+  lead: ImageRef = content.home.hero.collage[0] ?? backdrop,
 ): RawSiteContent => ({
   ...content,
   home: {
     ...content.home,
-    hero: { ...content.home.hero, image: { mobile, desktop } },
+    hero: {
+      ...content.home.hero,
+      backdrop,
+      collage: [lead, ...content.home.hero.collage.slice(1)],
+    },
   },
 });
 
@@ -519,7 +520,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("the hero desktop image goes through the same path check as the phone image", () => {
+  it("the collage lead goes through the same path check as the backdrop", () => {
     const pending = imageAsset("hero-pending");
     const unknown = mediaPath("hero-unknown");
     const content = withMedia(
@@ -537,7 +538,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("flags a hero desktop image without alt, naming its path", () => {
+  it("flags a collage lead without alt, naming its path", () => {
     const content = withHero(
       validContent(),
       image("/media/stand-ins/hero-1.jpg"),
@@ -549,7 +550,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("checks the srcSet paths of the hero desktop image like src", () => {
+  it("checks the srcSet paths of the collage lead like src", () => {
     const asset = imageAsset("hero-a");
     const unknown = mediaPath("hero-unknown", 960);
     const content = withMedia(
@@ -561,6 +562,45 @@ describe("validateSiteContent media gate", () => {
     );
 
     expect(validateSiteContent(content)).toEqual([
+      { id: unknown, rule: "unregistered-media" },
+    ]);
+  });
+
+  it.each([1, 2])(
+    "every collage photo goes through the path and alt gate (index %i)",
+    (index) => {
+      const content = validContent();
+      const unknown = mediaPath("collage-unknown");
+      const collage = content.home.hero.collage.map((photo, at) =>
+        at === index ? image(unknown, " ") : photo,
+      );
+
+      expect(
+        validateSiteContent({
+          ...content,
+          home: { ...content.home, hero: { ...content.home.hero, collage } },
+        }),
+      ).toEqual([
+        { id: unknown, rule: "alt-missing" },
+        { id: unknown, rule: "unregistered-media" },
+      ]);
+    },
+  );
+
+  it("the teaser accent image goes through the path and alt gate", () => {
+    const content = validContent();
+    const unknown = mediaPath("teaser-unknown");
+
+    expect(
+      validateSiteContent({
+        ...content,
+        home: {
+          ...content.home,
+          teaser: { ...content.home.teaser, accentImage: image(unknown, "") },
+        },
+      }),
+    ).toEqual([
+      { id: unknown, rule: "alt-missing" },
       { id: unknown, rule: "unregistered-media" },
     ]);
   });

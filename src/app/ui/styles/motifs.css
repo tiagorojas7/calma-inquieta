@@ -106,3 +106,273 @@
     }
   }
 }
+
+/*
+ * Torn paper edges (S2, S7): a ragged clip-path, no image. `.photo-torn`
+ * clips a photo on its top and left edges; `.paper-torn` clips a note on all
+ * four. A clip-path also clips box-shadow, so the owner of the shadow is the
+ * wrapper (a drop-shadow filter on the parent).
+ */
+.photo-torn {
+  clip-path: polygon(
+    2% 1%,
+    6% 0%,
+    11% 1.5%,
+    17% 0%,
+    24% 1%,
+    33% 0%,
+    42% 1.5%,
+    51% 0%,
+    60% 1%,
+    70% 0%,
+    79% 1.5%,
+    88% 0%,
+    100% 1%,
+    100% 100%,
+    1.5% 100%,
+    0% 94%,
+    1.5% 88%,
+    0% 80%,
+    1.8% 72%,
+    0% 63%,
+    1.5% 54%,
+    0% 45%,
+    1.8% 36%,
+    0% 27%,
+    1.5% 18%,
+    0% 9%
+  );
+}
+
+.paper-torn {
+  clip-path: polygon(
+    0% 2%,
+    8% 0%,
+    17% 2.5%,
+    27% 0%,
+    38% 2%,
+    49% 0%,
+    60% 2.5%,
+    71% 0%,
+    83% 2%,
+    93% 0%,
+    100% 2%,
+    99% 14%,
+    100% 28%,
+    98.5% 42%,
+    100% 57%,
+    99% 71%,
+    100% 85%,
+    99% 100%,
+    90% 98%,
+    79% 100%,
+    67% 97.5%,
+    55% 100%,
+    43% 98%,
+    31% 100%,
+    19% 97.5%,
+    9% 100%,
+    0% 98%,
+    1% 84%,
+    0% 70%,
+    1.5% 56%,
+    0% 41%,
+    1% 27%,
+    0% 13%
+  );
+}
+
+/*
+ * Inicio hero (S2). Phones: the band is one viewport tall and slides under
+ * the sticky header (--hero-header is its height); the backdrop photo fills
+ * it, a cream scrim keeps the text AA, and only the note, a sprig and the
+ * butterfly stay of the collage. From lg: text left, collage right. The
+ * collage board is a box that starts at 47 % of the band and runs to the
+ * viewport edge; every tile is sized in percent of that board so the
+ * composition scales as one piece, and each tile reserves its aspect ratio.
+ */
+:root {
+  --hero-header: 4.75rem;
+}
+
+.hero-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - 0.5rem);
+  margin-top: calc(var(--hero-header) * -1);
+  padding-top: var(--hero-header);
+  overflow: clip;
+}
+
+.hero-stage > div {
+  /* The Section content wrapper grows so the copy can use the full height. */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-canvas) 96%, transparent) 0%,
+    color-mix(in srgb, var(--color-canvas) 90%, transparent) 42%,
+    color-mix(in srgb, var(--color-canvas) 0%, transparent) 70%
+  );
+}
+
+.hero-backdrop img {
+  object-position: 50% 35%;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding-block: 1.5rem 2rem;
+}
+
+.hero-note {
+  position: absolute;
+  z-index: 12;
+  left: 1rem;
+  bottom: 12.5rem;
+  width: 11rem;
+}
+
+.hero-sprig {
+  position: absolute;
+  z-index: 11;
+}
+
+.hero-sprig-a,
+.hero-sprig-b {
+  display: none;
+}
+
+.hero-butterfly {
+  right: 1rem;
+  bottom: 13rem;
+}
+
+@media (min-width: 64rem) {
+  .hero-stage {
+    min-height: 40rem;
+    margin-top: 0;
+    padding-top: 0;
+    justify-content: center;
+  }
+
+  .hero-stage > div {
+    flex: none;
+    width: 100%;
+  }
+
+  .hero-copy {
+    flex: none;
+    max-width: min(40vw, 36rem);
+    padding-block: 4rem;
+  }
+
+  .hero-collage {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 47% 0;
+  }
+
+  .collage-lead {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: -6%;
+    width: 56%;
+  }
+
+  .collage-torn {
+    position: absolute;
+    z-index: 1;
+    top: 9%;
+    left: 0;
+    width: 40%;
+    filter: drop-shadow(
+      0 6px 10px color-mix(in srgb, var(--color-ink-900) 18%, transparent)
+    );
+  }
+
+  .collage-framed {
+    position: absolute;
+    z-index: 3;
+    left: 27%;
+    bottom: 5%;
+    width: 42%;
+  }
+
+  .collage-loop {
+    position: absolute;
+    z-index: 3;
+    right: 4%;
+    bottom: 3%;
+    width: 23%;
+    box-shadow: var(--shadow-lift);
+    border: 0.5rem solid var(--color-surface);
+    border-radius: var(--radius-sm);
+  }
+
+  .hero-note {
+    z-index: 4;
+    bottom: auto;
+    left: 34%;
+    top: 36%;
+    width: 31%;
+  }
+
+  .hero-sprig-a {
+    display: block;
+    left: 32%;
+    top: 5%;
+    bottom: auto;
+    rotate: 24deg;
+  }
+
+  .hero-sprig-b {
+    display: block;
+    z-index: 5;
+    left: 15%;
+    bottom: 38%;
+    rotate: -16deg;
+  }
+
+  .hero-butterfly {
+    z-index: 6;
+    right: 12%;
+    bottom: auto;
+    top: 7%;
+  }
+
+  .hero-keywords {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    bottom: 8%;
+    display: grid;
+    gap: 0.35rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--color-tan-400);
+    font-size: var(--text-eyebrow);
+    font-weight: 600;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--color-ink-600);
+  }
+}

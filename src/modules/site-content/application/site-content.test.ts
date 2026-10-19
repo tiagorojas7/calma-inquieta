@@ -58,14 +58,17 @@ describe("createSiteContent", () => {
     expect(home.testimonials.heading).toBe("Voces");
   });
 
-  it("getHomePage returns hero.image", async () => {
+  it("getHomePage returns the hero backdrop, collage, note and keywords", async () => {
     const base = buildRawSiteContent();
     const home = await content(base).getHomePage();
 
-    expect(home.hero.image).toEqual(base.home.hero.image);
-    expect(home.hero.image.mobile.src).not.toBe("");
-    expect(home.hero.image.desktop.src).not.toBe("");
-    expect(home.hero).not.toHaveProperty("images");
+    expect(home.hero.backdrop).toEqual(base.home.hero.backdrop);
+    expect(home.hero.collage).toEqual(base.home.hero.collage);
+    expect(home.hero.note).toBe(base.home.hero.note);
+    expect(home.hero.keywords).toEqual(base.home.hero.keywords);
+    expect(home.hero.backdrop.src).not.toBe("");
+    expect(home.hero.collage.length).toBeGreaterThanOrEqual(3);
+    expect(home.hero).not.toHaveProperty("image");
   });
 
   it("returns empty arrays, not null, for lists with no content", async () => {
@@ -365,7 +368,8 @@ describe("createSiteContent ambient loop", () => {
     const home = await content(raw).getHomePage();
 
     expect(home.hero).not.toHaveProperty("loop");
-    expect(home.hero.image).toEqual(raw.home.hero.image);
+    expect(home.hero.backdrop).toEqual(raw.home.hero.backdrop);
+    expect(home.hero.collage).toEqual(raw.home.hero.collage);
     expect(home.hero.eyebrow).toBe(raw.home.hero.eyebrow);
     expect(home.hero.title).toEqual(raw.home.hero.title);
   });

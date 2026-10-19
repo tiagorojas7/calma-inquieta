@@ -1,31 +1,29 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import {
+  HERO_BACKDROP_SIZES,
   HERO_DESKTOP_MEDIA,
+  HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
-  HERO_STILL_SIZES,
   HeroSection,
 } from "./hero-section";
 
-const image = {
-  mobile: {
-    src: "/media/home/m-720.webp",
-    srcSet: "/media/home/m-480.webp 480w, /media/home/m-720.webp 720w",
-    alt: "Pieza circular de papel kraft",
-    width: 720,
-    height: 900,
-  },
-  desktop: {
-    src: "/media/home/d-960.webp",
-    srcSet: "/media/home/d-480.webp 480w, /media/home/d-960.webp 960w",
-    alt: "Pieza circular de papel kraft",
-    width: 960,
-    height: 1280,
-  },
-};
+const photo = (name: string, width: number, height: number) => ({
+  src: `/media/home/${name}-960.webp`,
+  srcSet: `/media/home/${name}-480.webp 480w, /media/home/${name}-960.webp 960w`,
+  alt: `Foto ${name}`,
+  width,
+  height,
+});
+
+const backdrop = photo("backdrop", 720, 1280);
+const collage = [
+  photo("lead", 960, 1280),
+  photo("wide", 960, 720),
+  photo("square", 960, 960),
+];
 
 const loop = {
   poster: {
@@ -45,9 +43,9 @@ const loop = {
 };
 
 function renderHero({
-  ornament,
   withLoop,
-}: { ornament?: ReactNode; withLoop?: typeof loop } = {}) {
+  photos = collage,
+}: { withLoop?: typeof loop; photos?: typeof collage } = {}) {
   return render(
     <MemoryRouter>
       <HeroSection
@@ -58,74 +56,39 @@ function renderHero({
           </>
         }
         subtitle="Un espacio para encontrarnos."
-        image={image}
+        backdrop={backdrop}
+        collage={photos}
+        note="Crear también es una forma de volver a vos"
+        keywords={["Arte", "Manos", "Encuentro", "Bienestar"]}
         loop={withLoop}
         bajada="Equilibrio entre serenidad y movimiento"
-        ornament={ornament}
       />
     </MemoryRouter>,
   );
 }
 
-describe("HeroSection", () => {
-  it("renders exactly one img inside a picture", () => {
+const imgByAlt = (alt: string) => screen.getByAltText(alt);
+
+describe("HeroSection structure", () => {
+  it("is a full-bleed tone band labelled by the h1", () => {
     const { container } = renderHero();
-    expect(screen.getAllByRole("img")).toHaveLength(1);
-    expect(container.querySelectorAll("img")).toHaveLength(1);
-    expect(container.querySelectorAll("picture")).toHaveLength(1);
-    expect(container.querySelector("picture > img")).toBe(
-      screen.getByRole("img"),
-    );
-    expect(screen.getByRole("img")).toHaveAttribute("alt", image.mobile.alt);
-  });
+    const band = container.querySelector("section");
 
-  it("the img is eager and fetchpriority high", () => {
-    renderHero();
-    const still = screen.getByRole("img");
-    expect(still).toHaveAttribute("loading", "eager");
-    expect(still).toHaveAttribute("fetchpriority", "high");
-  });
-
-  it("the img has aspect-4/5 and lg:aspect-3/4", () => {
-    renderHero();
-    const still = screen.getByRole("img");
-    expect(still).toHaveClass("aspect-4/5", "lg:aspect-3/4");
-    expect(still.style.aspectRatio).toBe("");
-  });
-
-  it("the desktop source declares 3:4 and the img 4:5 dimensions", () => {
-    const { container } = renderHero();
-    const sources = container.querySelectorAll("picture > source");
-    expect(sources).toHaveLength(1);
-    expect(sources[0]).toHaveAttribute("media", HERO_DESKTOP_MEDIA);
-    expect(sources[0]).toHaveAttribute("srcset", image.desktop.srcSet);
-    expect(sources[0]).toHaveAttribute("sizes", HERO_STILL_SIZES);
-    expect(sources[0]).toHaveAttribute("width", "960");
-    expect(sources[0]).toHaveAttribute("height", "1280");
-    const still = screen.getByRole("img");
-    expect(still).toHaveAttribute("src", image.mobile.src);
-    expect(still).toHaveAttribute("srcset", image.mobile.srcSet);
-    expect(still).toHaveAttribute("sizes", HERO_STILL_SIZES);
-    expect(still).toHaveAttribute("width", "720");
-    expect(still).toHaveAttribute("height", "900");
-  });
-
-  it("no element carries max-md:hidden", () => {
-    const { container } = renderHero();
-    for (const element of container.querySelectorAll("*")) {
-      const hiding = [...element.classList].filter((name) =>
-        /(^|:)hidden$/.test(name),
-      );
-      expect(hiding, element.outerHTML.slice(0, 80)).toEqual([]);
-    }
-  });
-
-  it("renders one h1 with an emphasized word", () => {
-    renderHero();
+    expect(band).toHaveAttribute("data-bleed", "true");
+    expect(band).toHaveAttribute("aria-labelledby", "hero-title");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute(
+      "id",
+      "hero-title",
+    );
     expect(
       screen.getByRole("heading", { level: 1 }).querySelector("em"),
     ).toBeTruthy();
+  });
+
+  it("keeps eyebrow, subtitle, bajada and the two CTAs", () => {
+    renderHero();
+
     expect(screen.getByText("Calma Inquieta")).toBeInTheDocument();
     expect(
       screen.getByText("Un espacio para encontrarnos."),
@@ -133,10 +96,6 @@ describe("HeroSection", () => {
     expect(
       screen.getByText("Equilibrio entre serenidad y movimiento"),
     ).toBeInTheDocument();
-  });
-
-  it("the CTAs link to /talleres and /intensivos", () => {
-    renderHero();
     expect(screen.getByRole("link", { name: "Ver talleres" })).toHaveAttribute(
       "href",
       "/talleres",
@@ -146,109 +105,180 @@ describe("HeroSection", () => {
     ).toHaveAttribute("href", "/intensivos");
   });
 
-  it("the image is visually first on phones while the h1 stays first in DOM order", () => {
-    const { container } = renderHero();
-    const heading = screen.getByRole("heading", { level: 1 });
-    const picture = container.querySelector("picture");
-    expect(picture).not.toBeNull();
-    expect(
-      heading.compareDocumentPosition(picture as Element) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    const ordered = picture?.closest(".order-first");
-    expect(ordered).not.toBeNull();
-    expect(ordered).toHaveClass("lg:order-none");
-  });
-
-  it("exports HERO_DESKTOP_MEDIA, HERO_MOBILE_MEDIA and HERO_STILL_SIZES", () => {
+  it("exports the shared media and sizes", () => {
     expect(HERO_DESKTOP_MEDIA).toBe("(min-width: 64rem)");
     expect(HERO_MOBILE_MEDIA).toBe("not all and (min-width: 64rem)");
-    expect(HERO_STILL_SIZES).toBe(
-      "(min-width: 30rem) 28rem, calc(100vw - 2.5rem)",
+    expect(HERO_BACKDROP_SIZES).toBe("100vw");
+    expect(HERO_LEAD_SIZES).toMatch(/vw$/);
+  });
+});
+
+describe("HeroSection collage (from lg)", () => {
+  it("shows three photos of different ratios, each with its ratio reserved by CSS", () => {
+    renderHero();
+    const lead = imgByAlt("Foto lead");
+    const wide = imgByAlt("Foto wide");
+    const square = imgByAlt("Foto square");
+
+    expect(lead).toHaveClass("aspect-3/4");
+    expect(wide).toHaveClass("aspect-4/3");
+    expect(square).toHaveClass("aspect-square");
+    for (const img of [lead, wide, square]) {
+      expect(img).toHaveAttribute("width");
+      expect(img).toHaveAttribute("height");
+    }
+  });
+
+  it("puts the second photo in a white frame and gives the third a torn edge", () => {
+    renderHero();
+    const framed = imgByAlt("Foto wide").closest(".bg-surface");
+    const torn = imgByAlt("Foto square").closest(".photo-torn");
+
+    expect(framed).not.toBeNull();
+    expect(framed).toHaveClass("shadow-lift");
+    expect(torn).not.toBeNull();
+    expect(imgByAlt("Foto lead").closest(".bg-surface")).toBeNull();
+  });
+
+  it("adds the kraft note in the script face and the four tracked keywords", () => {
+    const { container } = renderHero();
+    const note = screen.getByText("Crear también es una forma de volver a vos");
+
+    expect(note).toHaveAttribute("data-script", "true");
+    expect(note.closest(".paper-torn")).not.toBeNull();
+    const words = [...container.querySelectorAll("ul li")].map(
+      (item) => item.textContent,
+    );
+    expect(words).toEqual(["Arte", "Manos", "Encuentro", "Bienestar"]);
+  });
+
+  it("layers decorative motifs: a big butterfly and at least two sprigs", () => {
+    const { container } = renderHero();
+    const butterfly = container.querySelector('[data-size="lg"].motif-flight');
+    const sprigs = container.querySelectorAll("[data-variant]");
+
+    expect(butterfly).not.toBeNull();
+    expect(butterfly).toHaveAttribute("aria-hidden", "true");
+    expect(sprigs.length).toBeGreaterThanOrEqual(2);
+    for (const sprig of sprigs) {
+      expect(sprig).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  it("copes with a missing second or third photo", () => {
+    renderHero({ photos: collage.slice(0, 1) });
+
+    expect(screen.getByAltText("Foto lead")).toBeInTheDocument();
+    expect(screen.queryByAltText("Foto wide")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("Foto square")).not.toBeInTheDocument();
+  });
+});
+
+describe("HeroSection phone backdrop and loading", () => {
+  it("renders the backdrop as a full-bleed photo that fills the band, hidden from lg", () => {
+    const { container } = renderHero();
+    const img = imgByAlt("Foto backdrop");
+    const holder = img.closest(".hero-backdrop");
+
+    expect(holder).not.toBeNull();
+    expect(holder).toHaveClass("lg:hidden");
+    expect(img).toHaveClass("object-cover");
+    expect(img).toHaveAttribute("sizes", HERO_BACKDROP_SIZES);
+    expect(container.querySelector(".hero-scrim")).toHaveAttribute(
+      "aria-hidden",
+      "true",
     );
   });
 
-  it("the ornament slot renders inside the still photo wrapper", () => {
-    const { container } = renderHero({
-      ornament: <span data-testid="ornament" />,
-    });
-    const wrapper = container.querySelector("picture")?.parentElement;
-    expect(wrapper).not.toBeNull();
-    expect(wrapper).toHaveClass("order-first", "relative");
-    expect(wrapper).toContainElement(screen.getByTestId("ornament"));
-  });
-
-  it("renders no ornament by default", () => {
+  it("the backdrop is the eager high priority image below lg and a blank pixel from lg", () => {
     const { container } = renderHero();
-    expect(container.querySelector("[data-testid]")).toBeNull();
+    const img = imgByAlt("Foto backdrop");
+    const sources = img.parentElement?.querySelectorAll("source") ?? [];
+
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img.parentElement?.tagName).toBe("PICTURE");
+    expect(sources).toHaveLength(1);
+    expect(sources[0]).toHaveAttribute("media", HERO_DESKTOP_MEDIA);
+    expect(sources[0]?.getAttribute("srcset")).toMatch(/^data:image\/webp/);
+    expect(container.querySelectorAll("picture")).toHaveLength(2);
   });
 
+  it("the collage lead is the eager high priority image from lg and a blank pixel below", () => {
+    renderHero();
+    const img = imgByAlt("Foto lead");
+    const sources = img.parentElement?.querySelectorAll("source") ?? [];
+
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img).toHaveAttribute("sizes", HERO_LEAD_SIZES);
+    expect(sources).toHaveLength(1);
+    expect(sources[0]).toHaveAttribute("media", HERO_MOBILE_MEDIA);
+    expect(sources[0]?.getAttribute("srcset")).toMatch(/^data:image\/webp/);
+  });
+
+  it("every other image is lazy with no priority hint", () => {
+    const { container } = renderHero({ withLoop: loop });
+    const eager = [...container.querySelectorAll("img")].filter(
+      (img) => img.getAttribute("loading") === "eager",
+    );
+
+    expect(eager.map((img) => img.getAttribute("alt"))).toEqual([
+      "Foto backdrop",
+      "Foto lead",
+    ]);
+    for (const img of container.querySelectorAll("img")) {
+      if (!eager.includes(img)) {
+        expect(img, img.outerHTML.slice(0, 60)).toHaveAttribute(
+          "loading",
+          "lazy",
+        );
+        expect(img).not.toHaveAttribute("fetchpriority");
+      }
+    }
+  });
+});
+
+describe("HeroSection loop tile", () => {
+  const tile = (container: HTMLElement) =>
+    container.querySelector(`img[src="${loop.poster.src}"]`)?.parentElement;
+
+  it("is one collage tile that follows the text in DOM order", () => {
+    const { container } = renderHero({ withLoop: loop });
+    const element = tile(container);
+
+    expect(
+      container.querySelectorAll(`img[src="${loop.poster.src}"]`),
+    ).toHaveLength(1);
+    expect(element).toHaveStyle({ aspectRatio: "720 / 900" });
+    expect(element?.closest(".collage-loop")).not.toBeNull();
+    for (const text of [
+      screen.getByRole("heading", { level: 1 }),
+      screen.getByRole("link", { name: "Ver intensivos" }),
+    ]) {
+      expect(
+        text.compareDocumentPosition(element as Element) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    expect(container.querySelectorAll("video")).toHaveLength(0);
+  });
+
+  it("renders no tile without a loop", () => {
+    const { container } = renderHero();
+
+    expect(tile(container)).toBeUndefined();
+  });
+});
+
+describe("HeroSection accessibility", () => {
   it("has no axe violations", async () => {
     const { container } = renderHero();
     await expectNoAxeViolations(container);
   });
 
-  describe("loop slot", () => {
-    const loopTile = (container: HTMLElement) =>
-      container.querySelector(`img[src="${loop.poster.src}"]`)?.parentElement;
-
-    it("the loop tile exists once and follows the text in DOM order", () => {
-      const { container } = renderHero({ withLoop: loop });
-      const tiles = container.querySelectorAll(`img[src="${loop.poster.src}"]`);
-      expect(tiles).toHaveLength(1);
-      const tile = loopTile(container);
-      expect(tile).not.toBeNull();
-      for (const text of [
-        screen.getByRole("heading", { level: 1 }),
-        screen.getByText("Equilibrio entre serenidad y movimiento"),
-        screen.getByRole("link", { name: "Ver intensivos" }),
-      ]) {
-        expect(
-          text.compareDocumentPosition(tile as Element) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-      }
-      expect(container.querySelectorAll("video")).toHaveLength(0);
-    });
-
-    it("no loop tile renders when the loop is absent", () => {
-      const { container } = renderHero();
-      expect(loopTile(container)).toBeUndefined();
-      expect(container.querySelectorAll("img")).toHaveLength(1);
-    });
-
-    it("the loop tile is 4:5 on phones and a small tile from lg", () => {
-      const { container } = renderHero({ withLoop: loop });
-      const tile = loopTile(container);
-      expect(tile).toHaveStyle({ aspectRatio: "720 / 900" });
-      expect(tile).toHaveClass(
-        "order-last",
-        "w-full",
-        "max-w-md",
-        "lg:absolute",
-        "lg:w-40",
-        "xl:w-48",
-      );
-      const poster = container.querySelector(`img[src="${loop.poster.src}"]`);
-      expect(poster).toHaveAttribute(
-        "sizes",
-        "(min-width: 80rem) 12rem, (min-width: 64rem) 10rem, (min-width: 30rem) 28rem, calc(100vw - 2.5rem)",
-      );
-      expect(poster).toHaveAttribute("loading", "lazy");
-      expect(poster).not.toHaveAttribute("fetchpriority");
-    });
-
-    it("keeps the still as the only eager high-priority image", () => {
-      const { container } = renderHero({ withLoop: loop });
-      expect(container.querySelectorAll("img[fetchpriority]")).toHaveLength(1);
-      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
-        1,
-      );
-    });
-
-    it("has no axe violations with the loop", async () => {
-      const { container } = renderHero({ withLoop: loop });
-      await expectNoAxeViolations(container);
-    });
+  it("has no axe violations with the loop", async () => {
+    const { container } = renderHero({ withLoop: loop });
+    await expectNoAxeViolations(container);
   });
 });

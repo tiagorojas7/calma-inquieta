@@ -9,9 +9,10 @@ import {
 } from "~/testing/fakes/public-catalog-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import {
+  HERO_BACKDROP_SIZES,
   HERO_DESKTOP_MEDIA,
+  HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
-  HERO_STILL_SIZES,
 } from "~/app/ui/organisms/hero-section";
 import { loader, meta } from "./home";
 
@@ -160,21 +161,21 @@ describe("home meta image preloads", () => {
     return { result, descriptors };
   }
 
-  it("meta includes two image preloads whose srcset and sizes equal the picture", async () => {
+  it("meta preloads the phone backdrop and the collage lead, each with its own sizes", async () => {
     const { result, descriptors } = await homeMeta();
     const found = preloads(descriptors);
     expect(found).toHaveLength(2);
     const [mobile, desktop] = found;
     expect(mobile).toMatchObject({
       as: "image",
-      imageSrcSet: result.hero.image.mobile.srcSet,
-      imageSizes: HERO_STILL_SIZES,
+      imageSrcSet: result.hero.backdrop.srcSet,
+      imageSizes: HERO_BACKDROP_SIZES,
       media: HERO_MOBILE_MEDIA,
     });
     expect(desktop).toMatchObject({
       as: "image",
-      imageSrcSet: result.hero.image.desktop.srcSet,
-      imageSizes: HERO_STILL_SIZES,
+      imageSrcSet: result.hero.collage[0]?.srcSet,
+      imageSizes: HERO_LEAD_SIZES,
       media: HERO_DESKTOP_MEDIA,
     });
     expect(descriptors[0]?.title).toContain("Inicio");
@@ -185,6 +186,16 @@ describe("home meta image preloads", () => {
     const media = preloads(descriptors).map((entry) => entry.media);
     expect(media).toEqual([HERO_MOBILE_MEDIA, HERO_DESKTOP_MEDIA]);
     expect(HERO_MOBILE_MEDIA).toBe(`not all and ${HERO_DESKTOP_MEDIA}`);
+  });
+
+  it("carries the whole Inicio hero and teaser content to the page", async () => {
+    const { result } = await homeMeta();
+
+    expect(result.hero.collage.length).toBeGreaterThanOrEqual(3);
+    expect(result.hero.note).not.toBe("");
+    expect(result.hero.keywords).toHaveLength(4);
+    expect(result.teaser.accentImage.src).not.toBe("");
+    expect(result.teaser.pull).not.toBe("");
   });
 
   it("the error branch meta has no image preload", () => {

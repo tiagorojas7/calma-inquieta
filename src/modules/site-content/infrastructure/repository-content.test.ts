@@ -56,9 +56,7 @@ describe("the repository content", () => {
     const raw = await source.load();
 
     expect(validateSiteContent(raw)).toEqual([]);
-    expect(raw.home.hero.image.mobile.src.startsWith("/media/home/")).toBe(
-      true,
-    );
+    expect(raw.home.hero.backdrop.src.startsWith("/media/home/")).toBe(true);
   });
 
   it("contains no copy violation anywhere in its strings", async () => {
@@ -182,11 +180,11 @@ describe("the drafted page content", () => {
 
     expect(home.hero.primaryCtaLabel).toBe("Ver talleres");
     expect(home.hero.secondaryCtaLabel).toBe("Ver intensivos");
-    expect(home.hero.image.mobile.alt.trim()).not.toBe("");
+    expect(home.hero.backdrop.alt.trim()).not.toBe("");
     expect(home.testimonials.items).toEqual([]);
   });
 
-  it("the hero image is art-directed from published registry assets", async () => {
+  it("the hero backdrop and collage are published registry assets of the expected ratios", async () => {
     const raw = await source.load();
     const home = await content.getHomePage();
     const registered = (id: string) => {
@@ -197,11 +195,15 @@ describe("the drafted page content", () => {
       return asset;
     };
     const pairs = [
-      ["home-hero-mobile", home.hero.image.mobile, 4 / 5],
-      ["home-hero-desktop", home.hero.image.desktop, 3 / 4],
+      ["home-hero-backdrop", home.hero.backdrop, 9 / 16],
+      ["home-hero-desktop", home.hero.collage[0], 3 / 4],
+      ["home-collage-wide", home.hero.collage[1], 4 / 3],
+      ["home-collage-square", home.hero.collage[2], 1],
     ] as const;
 
+    expect(home.hero.collage).toHaveLength(3);
     for (const [id, image, ratio] of pairs) {
+      if (!image) throw new Error("missing hero image " + id);
       const asset = registered(id);
       const paths = asset.variants.map((variant) => variant.path);
       const candidates = (image.srcSet ?? "")
@@ -298,9 +300,10 @@ describe("the drafted page content", () => {
     const about = await content.getAboutPage();
     const contact = await content.getContactPage();
     const images = [
-      home.hero.image.mobile,
-      home.hero.image.desktop,
+      home.hero.backdrop,
+      ...home.hero.collage,
       home.teaser.image,
+      home.teaser.accentImage,
       ...about.gallery,
       ...(contact.photo ? [contact.photo] : []),
     ];
@@ -590,9 +593,10 @@ describe("the curated gallery", () => {
     const home = await content.getHomePage();
     const about = await content.getAboutPage();
     const images = [
-      home.hero.image.mobile,
-      home.hero.image.desktop,
+      home.hero.backdrop,
+      ...home.hero.collage,
       home.teaser.image,
+      home.teaser.accentImage,
       ...about.gallery,
     ];
 
@@ -609,6 +613,38 @@ describe("the curated gallery", () => {
       }
     }
     expect(owned).toBeGreaterThan(30);
+  });
+});
+
+describe("the Inicio copy and motifs", () => {
+  it("has a handwritten note, four keywords and a teaser pull phrase, all in voseo", async () => {
+    const home = await content.getHomePage();
+
+    expect(home.hero.note).toMatch(/vos/u);
+    expect(home.hero.keywords).toHaveLength(4);
+    expect(home.teaser.pull.trim()).not.toBe("");
+    expect(
+      findCopyViolations([
+        home.hero.note,
+        ...home.hero.keywords,
+        home.teaser.pull,
+      ]),
+    ).toEqual([]);
+  });
+
+  it("the teaser pairs two published home photos of different ratios", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const { image, accentImage } = home.teaser;
+
+    expect(image.src).not.toBe(accentImage.src);
+    expect(image.width / image.height).not.toBeCloseTo(
+      accentImage.width / accentImage.height,
+      1,
+    );
+    for (const path of [...pathsOf(image), ...pathsOf(accentImage)]) {
+      expect(isPublishedPath(path, raw), path).toBe(true);
+    }
   });
 });
 

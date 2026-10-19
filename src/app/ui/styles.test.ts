@@ -512,3 +512,75 @@ describe("layout stylesheet", () => {
     );
   });
 });
+
+describe("hero collage stylesheet", () => {
+  const css = readStyles("motifs.css");
+  const blocks = cssBlocks(css);
+  const rule = (selector: string, ancestor?: RegExp) =>
+    blocks.find(
+      (block) =>
+        block.prelude
+          .split(",")
+          .map((part) => part.trim())
+          .includes(selector) &&
+        (ancestor
+          ? block.ancestors.some((a) => ancestor.test(a))
+          : block.ancestors.length === 0),
+    );
+  const fromLg = /@media\s*\(min-width:\s*64rem\)/;
+
+  it("tears paper and photo edges with a clip-path polygon", () => {
+    for (const selector of [".photo-torn", ".paper-torn"]) {
+      expect(rule(selector)?.body, selector).toMatch(
+        /clip-path:\s*polygon\([^)]{80,}\)/,
+      );
+    }
+  });
+
+  it("the phone band slides under the sticky header and fills the first viewport", () => {
+    const stage = rule(".hero-stage")?.body ?? "";
+
+    expect(css).toMatch(/--hero-header:\s*[0-9.]+rem/);
+    expect(stage).toMatch(/margin-top:\s*calc\(var\(--hero-header\) \* -1\)/);
+    expect(stage).toMatch(/padding-top:\s*var\(--hero-header\)/);
+    expect(stage).toMatch(/min-height:\s*calc\(100svh/);
+  });
+
+  it("the scrim is cream from the tokens, at least 88 % opaque over the text", () => {
+    const body = rule(".hero-scrim")?.body ?? "";
+    const opacities = [
+      ...body.matchAll(/var\(--color-canvas\)\s*(\d+)%,\s*transparent\)/g),
+    ].map((match) => Number(match[1]));
+
+    expect(body).toMatch(/linear-gradient\(\s*to bottom/);
+    expect(opacities.length).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...opacities)).toBeGreaterThanOrEqual(90);
+    expect(opacities.slice(0, 2).every((value) => value >= 88)).toBe(true);
+    expect(opacities.at(-1)).toBe(0);
+  });
+
+  it("the collage board and its tiles exist only from lg", () => {
+    for (const selector of [
+      ".hero-collage",
+      ".collage-lead",
+      ".collage-torn",
+      ".collage-framed",
+      ".collage-loop",
+      ".hero-keywords",
+    ]) {
+      expect(rule(selector), selector).toBeUndefined();
+      expect(rule(selector, fromLg)?.body, selector).toMatch(
+        /position:\s*absolute/,
+      );
+    }
+  });
+
+  it("the lead bleeds past the right edge of the board", () => {
+    expect(rule(".collage-lead", fromLg)?.body).toMatch(/right:\s*-\d+%/);
+  });
+
+  it("the torn photo keeps its shadow on the wrapper, not on the clipped element", () => {
+    expect(rule(".collage-torn", fromLg)?.body).toMatch(/drop-shadow\(/);
+    expect(rule(".photo-torn")?.body).not.toMatch(/shadow/);
+  });
+});

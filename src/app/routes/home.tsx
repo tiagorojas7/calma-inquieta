@@ -10,17 +10,19 @@ import {
   intensivoToUpcomingItem,
   tallerToActivityCard,
 } from "~/app/catalog/mappers";
-import { Butterfly } from "~/app/ui/atoms/butterfly";
-import { CordDivider } from "~/app/ui/atoms/cord-divider";
+import { BotanicalSprig } from "~/app/ui/atoms/botanical-sprig";
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
 import {
+  HERO_BACKDROP_SIZES,
   HERO_DESKTOP_MEDIA,
+  HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
-  HERO_STILL_SIZES,
   HeroSection,
 } from "~/app/ui/organisms/hero-section";
+import { Reveal } from "~/app/ui/organisms/reveal";
+import { Section } from "~/app/ui/organisms/section";
 import { TestimonialsSection } from "~/app/ui/organisms/testimonials-section";
 import { TrustRow } from "~/app/ui/organisms/trust-row";
 import { UpcomingList } from "~/app/ui/organisms/upcoming-list";
@@ -28,8 +30,13 @@ import type { Route } from "./+types/home";
 
 const INICIO_ACTIVITY_LIMIT = 3;
 
+/**
+ * Phones preload the backdrop and desktops the collage lead, on exactly
+ * complementary media, so each viewport fetches one hero image only.
+ */
 const HERO_PRELOAD = {
-  sizes: HERO_STILL_SIZES,
+  mobileSizes: HERO_BACKDROP_SIZES,
+  desktopSizes: HERO_LEAD_SIZES,
   mobileMedia: HERO_MOBILE_MEDIA,
   desktopMedia: HERO_DESKTOP_MEDIA,
 };
@@ -107,9 +114,13 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
       { title: "Página no encontrada" },
       { name: "robots", content: "noindex, nofollow" },
     ];
+  const { backdrop, collage } = loaderData.hero;
+  const [lead] = collage;
   return [
     ...buildPageMeta(loaderData.metaInput),
-    ...artDirectedPreloads(loaderData.hero.image, HERO_PRELOAD),
+    ...(lead
+      ? artDirectedPreloads({ mobile: backdrop, desktop: lead }, HERO_PRELOAD)
+      : []),
   ];
 }
 
@@ -127,51 +138,64 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           </>
         }
         subtitle={data.hero.subtitle}
-        image={data.hero.image}
+        backdrop={data.hero.backdrop}
+        collage={data.hero.collage}
+        note={data.hero.note}
+        keywords={data.hero.keywords}
         loop={data.hero.loop}
         bajada={data.hero.bajada}
-        ornament={<Butterfly />}
       />
       <TrustRow claims={data.trustClaims} />
-      <CordDivider />
       {data.catalogFailed ? null : (
-        <div className="grid gap-x-12 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ActivityShowcase
-              title={data.monthlyHeading}
-              items={data.monthly}
-              emptyMessage={data.monthlyMessage}
-              emptyAction={{
-                href: data.whatsappHref ?? data.instagramHref,
-                label: data.whatsappHref
-                  ? "Escribinos por WhatsApp"
-                  : "Seguinos en Instagram",
-              }}
-            />
+        <Section bleed tone="canvas" spacing="md" className="overflow-x-clip">
+          <BotanicalSprig
+            size="md"
+            variant="wheat"
+            className="absolute -top-14 right-6 rotate-12 lg:right-24"
+          />
+          <div className="grid gap-x-12 lg:grid-cols-3">
+            <Reveal className="lg:col-span-2">
+              <ActivityShowcase
+                title={data.monthlyHeading}
+                items={data.monthly}
+                emptyMessage={data.monthlyMessage}
+                emptyAction={{
+                  href: data.whatsappHref ?? data.instagramHref,
+                  label: data.whatsappHref
+                    ? "Escribinos por WhatsApp"
+                    : "Seguinos en Instagram",
+                }}
+              />
+            </Reveal>
+            <Reveal
+              index={1}
+              className="lg:border-l lg:border-tan-400 lg:pl-12"
+            >
+              <UpcomingList
+                title={data.intensivosHeading}
+                items={data.intensivos}
+                emptyAction={{
+                  href: data.instagramHref,
+                  label: "Seguinos en Instagram",
+                }}
+              />
+            </Reveal>
           </div>
-          <div className="lg:border-l lg:border-tan-400 lg:pl-12">
-            <UpcomingList
-              title={data.intensivosHeading}
-              items={data.intensivos}
-              emptyAction={{
-                href: data.instagramHref,
-                label: "Seguinos en Instagram",
-              }}
-            />
-          </div>
-        </div>
+        </Section>
       )}
-      {data.catalogFailed ? null : <CordDivider />}
       <AboutTeaser
         heading={data.teaser.heading}
         body={data.teaser.body}
         image={data.teaser.image}
+        accentImage={data.teaser.accentImage}
+        pull={data.teaser.pull}
       />
-      <TestimonialsSection
-        heading={data.testimonialsHeading}
-        items={data.testimonials}
-      />
-      <CordDivider />
+      <Reveal>
+        <TestimonialsSection
+          heading={data.testimonialsHeading}
+          items={data.testimonials}
+        />
+      </Reveal>
       <ContactBand
         heading={data.contactBand.heading}
         body={data.contactBand.body}

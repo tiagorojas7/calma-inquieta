@@ -10,6 +10,10 @@ import {
   buildPublicIntensivo,
   buildPublicTaller,
 } from "~/testing/fakes/public-catalog-builders";
+import {
+  HERO_DESKTOP_MEDIA,
+  HERO_MOBILE_MEDIA,
+} from "~/app/ui/organisms/hero-section";
 import HomeRoute, { loader, meta } from "./home";
 
 const fixture = {
@@ -17,22 +21,26 @@ const fixture = {
     eyebrow: "Calma Inquieta",
     title: { lead: "Un espacio para ", accent: "crear", trail: "" },
     subtitle: "Una propuesta cálida.",
-    image: {
-      mobile: {
-        src: "/hero-m.webp",
-        srcSet: "/hero-m-480.webp 480w, /hero-m.webp 720w",
-        alt: "Textura",
-        width: 720,
-        height: 900,
-      },
-      desktop: {
+    backdrop: {
+      src: "/hero-b.webp",
+      srcSet: "/hero-b-480.webp 480w, /hero-b.webp 720w",
+      alt: "Un banco de madera",
+      width: 720,
+      height: 1280,
+    },
+    collage: [
+      {
         src: "/hero-d.webp",
         srcSet: "/hero-d-480.webp 480w, /hero-d.webp 960w",
-        alt: "Textura",
+        alt: "Pieza circular",
         width: 960,
         height: 1280,
       },
-    },
+      { src: "/hero-w.webp", alt: "Lámpara", width: 960, height: 720 },
+      { src: "/hero-s.webp", alt: "Cuenco", width: 960, height: 960 },
+    ],
+    note: "Crear también es una forma de volver a vos",
+    keywords: ["Arte", "Manos", "Encuentro", "Bienestar"],
     bajada: "Equilibrio entre serenidad y movimiento",
   },
   trustClaims: [],
@@ -42,7 +50,14 @@ const fixture = {
   teaser: {
     heading: "Quiénes somos",
     body: "Conocenos",
-    image: { src: "/about.svg", alt: "", width: 400, height: 300 },
+    image: { src: "/about.svg", alt: "Cesta", width: 800, height: 1000 },
+    accentImage: {
+      src: "/about-2.svg",
+      alt: "Jarrones",
+      width: 960,
+      height: 779,
+    },
+    pull: "Hecho a mano, compartido entre todas",
     linkLabel: "Conocenos",
   },
   testimonials: [],
@@ -254,44 +269,67 @@ describe("Inicio route", () => {
       return view;
     }
 
-    it("Inicio has exactly one img with fetchpriority high", async () => {
+    const eagerImages = (container: HTMLElement) => [
+      ...container.querySelectorAll('img[loading="eager"]'),
+    ];
+
+    it("Inicio has exactly two eager high-priority images, the phone backdrop and the collage lead", async () => {
       const { container } = await renderFixture();
-      const high = container.querySelectorAll('img[fetchpriority="high"]');
-      expect(high).toHaveLength(1);
-      expect(high[0]?.closest("picture")).not.toBeNull();
-      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
-        1,
-      );
+      const high = [...container.querySelectorAll('img[fetchpriority="high"]')];
+
+      expect(high.map((img) => img.getAttribute("alt"))).toEqual([
+        "Un banco de madera",
+        "Pieza circular",
+      ]);
+      expect(eagerImages(container)).toEqual(high);
+      for (const img of high) {
+        expect(img.closest("picture")).not.toBeNull();
+      }
     });
 
     it("every other img is loading lazy", async () => {
       const { container } = await renderFixture();
-      const others = [...container.querySelectorAll("img")].filter(
-        (element) => element.getAttribute("fetchpriority") !== "high",
-      );
-      for (const element of others) {
-        expect(element, element.getAttribute("src") ?? "").toHaveAttribute(
-          "loading",
-          "lazy",
-        );
-      }
-    });
-
-    it("no image is hidden at a breakpoint while loading", async () => {
-      const { container } = await renderFixture();
+      const eager = eagerImages(container);
       for (const element of container.querySelectorAll("img")) {
-        let node: Element | null = element;
-        while (node) {
-          const hiding = [...node.classList].filter((name) =>
-            /(^|:)hidden$/.test(name),
+        if (!eager.includes(element)) {
+          expect(element, element.getAttribute("src") ?? "").toHaveAttribute(
+            "loading",
+            "lazy",
           );
-          expect(hiding, element.getAttribute("src") ?? "").toEqual([]);
-          node = node.parentElement;
         }
       }
     });
 
-    it("the preload srcset and sizes equal the rendered picture", async () => {
+    it("no eager image downloads where it is hidden: each swaps to a blank pixel there", async () => {
+      const { container } = await renderFixture();
+      const hiddenAt = (img: Element) => {
+        for (let node: Element | null = img; node; node = node.parentElement) {
+          if (node.classList.contains("lg:hidden")) return "from-lg";
+          if (node.classList.contains("max-lg:hidden")) return "below-lg";
+        }
+        return "never";
+      };
+      const blank = (img: Element) =>
+        img.parentElement?.querySelector("source");
+
+      const [backdrop, lead] = eagerImages(container);
+      expect(hiddenAt(backdrop as Element)).toBe("from-lg");
+      expect(blank(backdrop as Element)?.getAttribute("media")).toBe(
+        HERO_DESKTOP_MEDIA,
+      );
+      expect(hiddenAt(lead as Element)).toBe("below-lg");
+      expect(blank(lead as Element)?.getAttribute("media")).toBe(
+        HERO_MOBILE_MEDIA,
+      );
+      for (const source of [
+        blank(backdrop as Element),
+        blank(lead as Element),
+      ]) {
+        expect(source?.getAttribute("srcset")).toMatch(/^data:image[/]webp/);
+      }
+    });
+
+    it("the preloads are the two eager images with their own srcset, sizes and complementary media", async () => {
       const { container } = await renderFixture();
       const preloads = (
         meta({
@@ -308,16 +346,20 @@ describe("Inicio route", () => {
           },
         } as never) as readonly Record<string, unknown>[]
       ).filter((entry) => entry.rel === "preload");
-      const source = container.querySelector("picture > source");
-      const still = container.querySelector("picture > img");
+      const [backdrop, lead] = eagerImages(container);
+
       expect(preloads).toHaveLength(2);
-      expect(preloads[0]?.imageSrcSet).toBe(still?.getAttribute("srcset"));
-      expect(preloads[1]?.imageSrcSet).toBe(source?.getAttribute("srcset"));
-      expect(preloads[1]?.media).toBe(source?.getAttribute("media"));
-      for (const entry of preloads) {
-        expect(entry.imageSizes).toBe(still?.getAttribute("sizes"));
-        expect(entry.imageSizes).toBe(source?.getAttribute("sizes"));
-      }
+      expect(preloads[0]?.imageSrcSet).toBe(backdrop?.getAttribute("srcset"));
+      expect(preloads[0]?.imageSizes).toBe(backdrop?.getAttribute("sizes"));
+      expect(preloads[1]?.imageSrcSet).toBe(lead?.getAttribute("srcset"));
+      expect(preloads[1]?.imageSizes).toBe(lead?.getAttribute("sizes"));
+      // Each preload's media is the media at which the other picture is blank.
+      expect(preloads[0]?.media).toBe(
+        lead?.parentElement?.querySelector("source")?.getAttribute("media"),
+      );
+      expect(preloads[1]?.media).toBe(
+        backdrop?.parentElement?.querySelector("source")?.getAttribute("media"),
+      );
     });
   });
 
@@ -367,13 +409,18 @@ describe("Inicio route", () => {
       expect(container.querySelectorAll("video")).toHaveLength(0);
     });
 
-    it("the only eager high-priority image is still the hero still", async () => {
+    it("only the two hero pictures are eager and high priority, one per breakpoint", async () => {
       const { container } = await renderWithLoop();
       const high = container.querySelectorAll('img[fetchpriority="high"]');
-      expect(high).toHaveLength(1);
-      expect(high[0]?.closest("picture")).not.toBeNull();
+      expect([...high].map((img) => img.getAttribute("alt"))).toEqual([
+        "Un banco de madera",
+        "Pieza circular",
+      ]);
+      for (const img of high) {
+        expect(img.closest("picture")).not.toBeNull();
+      }
       expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
-        1,
+        2,
       );
       expect(
         container.querySelector(`img[src="${loop.poster.src}"]`),
@@ -420,7 +467,7 @@ describe("Inicio route", () => {
   });
 });
 
-describe("Inicio motifs", () => {
+describe("Inicio bands and motifs", () => {
   const claims = [{ id: "c1", label: "Materiales incluidos" }];
   const testimonials = [{ id: "t1", quote: "Muy lindo", author: "Ana" }];
 
@@ -441,94 +488,93 @@ describe("Inicio motifs", () => {
     return view;
   }
 
-  const cordsIn = (container: HTMLElement) =>
-    [...container.querySelectorAll(".motif-cord-a")].map(
-      (path) => path.closest("[aria-hidden]") as Element,
-    );
-  const follows = (a: Element, b: Element) =>
-    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-
-  const rows = [
-    { name: "catalog read, claims", failed: false, claims, count: 3 },
-    { name: "catalog read, no claims", failed: false, claims: [], count: 3 },
-    { name: "catalog failed, claims", failed: true, claims, count: 2 },
-    { name: "catalog failed, no claims", failed: true, claims: [], count: 2 },
+  const bands = (container: HTMLElement) => [
+    ...container.querySelectorAll("main > section[data-bleed='true']"),
   ];
 
-  it.each(rows)("places the cords for $name", async (row) => {
-    const { container } = await renderInicio({
-      catalogFailed: row.failed,
-      trustClaims: row.claims,
-    });
-    expect(cordsIn(container)).toHaveLength(row.count);
-  });
-
-  it("the first cord follows the trust row when it renders", async () => {
-    const { container } = await renderInicio({ trustClaims: claims });
-    const trust = screen.getByRole("region", { name: "Confianza" });
-    expect(follows(trust, cordsIn(container)[0] as Element)).toBe(true);
-    expect(container.querySelector(".motif-cord-a")).not.toBeNull();
-  });
-
-  it("with no claims the first cord follows the hero section", async () => {
-    const { container } = await renderInicio({ trustClaims: [] });
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
-    const first = cordsIn(container)[0] as Element;
-    expect(follows(hero as Element, first)).toBe(true);
-    expect(first.previousElementSibling).toBe(hero);
-  });
-
-  it("no cord sits between the h1 section and the trust row", async () => {
-    const { container } = await renderInicio({ trustClaims: claims });
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
-    const trust = screen.getByRole("region", { name: "Confianza" });
-    expect(hero?.nextElementSibling).toBe(trust);
-    expect(container.querySelectorAll(".motif-cord-a")).not.toHaveLength(0);
-  });
-
-  it.each(rows)("no two cords are adjacent for $name", async (row) => {
-    const { container } = await renderInicio({
-      catalogFailed: row.failed,
-      trustClaims: row.claims,
-      testimonials,
-    });
-    expect(cordsIn(container)).toHaveLength(row.count);
-    for (const cord of cordsIn(container)) {
-      expect(cordsIn(container)).not.toContain(cord.previousElementSibling);
-      expect(cordsIn(container)).not.toContain(cord.nextElementSibling);
-    }
-  });
-
-  it("no cord sits after the contact band", async () => {
+  it("lays the page out as full-bleed tone bands that are direct children of main", async () => {
     const { container } = await renderInicio({});
-    const band = screen
+    const tones = bands(container).map((band) =>
+      band.getAttribute("data-tone"),
+    );
+
+    expect(tones).toEqual(["canvas", "canvas", "sand", "clay"]);
+    expect(container.querySelectorAll("[data-bleed='true']")).toHaveLength(4);
+  });
+
+  it("drops the catalog band when the catalog read fails", async () => {
+    const { container } = await renderInicio({ catalogFailed: true });
+
+    expect(
+      bands(container).map((band) => band.getAttribute("data-tone")),
+    ).toEqual(["canvas", "sand", "clay"]);
+  });
+
+  it("no longer uses the 24 px woven cord as a divider", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+
+    expect(container.querySelectorAll(".motif-cord-a")).toHaveLength(0);
+    expect(container.querySelectorAll("svg.h-6")).toHaveLength(0);
+  });
+
+  it("the hero band is followed by the trust row when there are claims", async () => {
+    await renderInicio({ trustClaims: claims });
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const trust = screen.getByRole("region", { name: "Confianza" });
+
+    expect(hero?.nextElementSibling).toBe(trust);
+  });
+
+  it("shows a big butterfly in the hero and a bigger one in the contact band", async () => {
+    const { container } = await renderInicio({});
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const contact = screen
       .getByRole("heading", { name: "Hablemos" })
       .closest("section");
-    for (const cord of cordsIn(container)) {
-      expect(follows(band as Element, cord)).toBe(false);
-    }
-    expect(cordsIn(container)).toHaveLength(3);
+
+    expect(container.querySelectorAll(".motif-flight")).toHaveLength(2);
+    expect(hero?.querySelector('[data-size="lg"].motif-flight')).not.toBeNull();
+    expect(
+      contact?.querySelector('[data-size="xl"].motif-flight'),
+    ).not.toBeNull();
   });
 
-  it("exactly one butterfly exists and it is inside the hero area", async () => {
+  it("scatters sprigs over the hero, the catalog edge, the teaser and the contact band", async () => {
     const { container } = await renderInicio({});
-    const butterflies = container.querySelectorAll(".motif-flight");
-    expect(butterflies).toHaveLength(1);
+
+    expect(
+      container.querySelectorAll("[data-variant]").length,
+    ).toBeGreaterThanOrEqual(5);
+    for (const sprig of container.querySelectorAll("[data-variant]")) {
+      expect(sprig).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  it("reveals the below-the-fold blocks and never the hero", async () => {
+    const { container } = await renderInicio({});
     const hero = screen.getByRole("heading", { level: 1 }).closest("section");
-    expect(hero).toContainElement(butterflies[0] as HTMLElement);
+
+    expect(hero?.querySelector("[data-reveal]")).toBeNull();
+    expect(
+      container.querySelectorAll("[data-reveal]").length,
+    ).toBeGreaterThanOrEqual(5);
   });
 
   it("the text and links of Inicio are equal with and without motifs", async () => {
-    const { container } = await renderInicio({ trustClaims: claims });
+    const { container } = await renderInicio({
+      trustClaims: claims,
+      testimonials,
+    });
     const snapshot = (root: Element) => ({
       text: root.textContent,
       links: [...root.querySelectorAll("a")].map((a) => a.outerHTML),
     });
     const withMotifs = snapshot(container);
     const bare = container.cloneNode(true) as HTMLElement;
-    for (const motif of bare.querySelectorAll(".motif-flight")) motif.remove();
-    for (const cord of cordsIn(bare)) cord.remove();
-    expect(bare.querySelectorAll("svg.h-6")).toHaveLength(0);
+    for (const motif of bare.querySelectorAll("[aria-hidden='true']")) {
+      motif.remove();
+    }
+
     expect(snapshot(bare)).toEqual(withMotifs);
   });
 

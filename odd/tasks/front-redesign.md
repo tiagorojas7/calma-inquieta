@@ -33,13 +33,13 @@
 
 ## Tasks
 
-| ID  | Specs          | Work unit                                                                                                                                                                                                             | Route                                      | Status      | Commit |
-| --- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ----------- | ------ |
-| T1  | S3, S6, S7, S8 | Foundations: fonts and tokens, fluid type, `Section` tone bands with full bleed, `Reveal` motion primitive, button and card transitions, route view transitions, header transparent to solid, full-screen mobile menu | delegated (parallel with T2)               | in progress |        |
-| T2  | S2, S5, S8     | Media: warm grade in `media:derive`, re-derived curated images, new mobile hero backdrop from Drive, registry and ledger updates                                                                                      | delegated (parallel with T1)               | in progress |        |
-| T3  | S2, S4, S6, S7 | Hero and motifs: desktop collage with `Frame`, `PaperNote`, sprigs and big butterfly; mobile backdrop hero; dividers; preload for the new LCP                                                                         | delegated (after T1, T2)                   | pending     |        |
-| T4  | S4, S6, S7     | Pages: Quiénes somos collage intro, bento gallery, pull-quote, value discs; overlapping home teaser; Contacto sand band with bleeding photo                                                                           | delegated (after T1, T2; parallel with T3) | pending     |        |
-| T5  | S6, S7, S8     | Catalog cards (date tile, pill, hover)                                                                                                                                                                                | pending an owner check of the AD14 files   | pending     |        |
+| ID  | Specs          | Work unit                                                                                                                                                                                                             | Route                                      | Status  | Commit               |
+| --- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------- | -------------------- |
+| T1  | S3, S6, S7, S8 | Foundations: fonts and tokens, fluid type, `Section` tone bands with full bleed, `Reveal` motion primitive, button and card transitions, route view transitions, header transparent to solid, full-screen mobile menu | delegated (parallel with T2)               | done    | `c67089c`            |
+| T2  | S2, S5, S8     | Media: warm grade in `media:derive`, re-derived curated images, new mobile hero backdrop from Drive, registry and ledger updates                                                                                      | delegated (parallel with T1)               | done    | `54c0e0c`, `fc780cf` |
+| T3  | S2, S4, S6, S7 | Hero and motifs: desktop collage with `Frame`, `PaperNote`, sprigs and big butterfly; mobile backdrop hero; dividers; preload for the new LCP                                                                         | delegated (after T1, T2)                   | done    | `d09b484`            |
+| T4  | S4, S6, S7     | Pages: Quiénes somos collage intro, bento gallery, pull-quote, value discs; overlapping home teaser; Contacto sand band with bleeding photo                                                                           | delegated (after T1, T2; parallel with T3) | done    | `e9607ee`            |
+| T5  | S6, S7, S8     | Catalog cards (date tile, pill, hover)                                                                                                                                                                                | pending an owner check of the AD14 files   | pending |                      |
 
 ## Log
 
@@ -55,3 +55,9 @@
   - no transitions anywhere;
   - everything inside `max-w-page` (`public-page.tsx`).
 - L4 (2026-10-19). Route: T1 and T2 run as parallel writers with disjoint surfaces in worktrees `CalmaInquieta-fr1` and `CalmaInquieta-fr2`. T3 and T4 follow on top of both.
+- L5 (2026-10-19). T1 and T2 verified and committed. A full `media:derive` recipe run still stops at `home-loop-poster` (its PNG source is missing); this predates the redesign.
+- L6 (2026-10-19). T3 and T4 delivered by parallel writers in `CalmaInquieta-fr3` and `CalmaInquieta-fr4`, each with RED observed before GREEN (the CSS-structure assertions in `styles.test.ts` were written after the visual loop set the numbers).
+  - Merge: T4 rebased onto T3. The Inicio `BotanicalSprig` (named sizes sm/md/lg, variants olive/sage/wheat) is the one kept; T4 call sites now use it, its duplicate atom and test were dropped, and the Contacto butterfly uses `Butterfly size="lg"` instead of a scale wrapper.
+  - Checks on the stack head: `corepack pnpm test src/app src/modules/site-content src/testing` 110 files / 1002 tests pass; typecheck and lint exit 0; format clean. The full gate is left to CI verify (owner decision, low memory).
+  - Native review: the T3 assessment returned `medium`, `review_due: false` (`under_budget`).
+  - Open for the owner: the about pull-quote reuses the brand caption (R14 forbids a new tagline) and stays unapproved; three intro photos also appear in the gallery; `home-hero-mobile` is registered but unused; the mobile header looked solid at the top in some screenshots; at 1024 px the collage leaves a gap at the lower left.

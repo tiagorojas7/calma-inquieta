@@ -16,6 +16,7 @@ const rawSiteContent = {
   comingSoon: comingSoonContent,
   catalog: catalogContent,
   standIns: STAND_IN_ASSETS,
+  media: { assets: [], rights: [], excluded: [] },
 } as const satisfies RawSiteContent;
 
 /** Serves the typed content that lives in this repository (static data, no I/O). */

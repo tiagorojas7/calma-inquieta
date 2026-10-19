@@ -22,6 +22,14 @@ export {
   toWhatsAppDigits,
 } from "./domain/links";
 export type { WhatsAppError } from "./domain/links";
+export { DEFAULT_SHARE_IMAGE } from "./domain/media";
+export type {
+  ImageAsset,
+  MediaAsset,
+  MediaRegistry,
+  RightsEntry,
+  VideoAsset,
+} from "./domain/media";
 export type {
   AboutPageContent,
   Approvable,

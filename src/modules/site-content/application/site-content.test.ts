@@ -71,6 +71,50 @@ describe("createSiteContent", () => {
     expect(about.history.length).toBeGreaterThan(0);
   });
 
+  it("getAboutPage drops a gallery entry whose asset is pending", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/about/about-pending-480.0a1b2c3d.webp";
+    const about = await content({
+      ...base,
+      about: {
+        ...base.about,
+        gallery: [
+          ...base.about.gallery,
+          {
+            id: "gallery-pending",
+            src: path,
+            alt: "Una ronda",
+            width: 480,
+            height: 600,
+          },
+        ],
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "about-pending",
+            sourceId: "about-pending-source",
+            area: "about",
+            alt: "Una ronda",
+            format: "webp",
+            variants: [{ width: 480, height: 600, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "about-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    }).getAboutPage();
+
+    expect(about.gallery).toEqual(base.about.gallery);
+  });
+
   it("returns the contact page and the coming-soon page of the requested slug", async () => {
     const reader = content();
 

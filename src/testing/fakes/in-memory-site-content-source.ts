@@ -197,6 +197,7 @@ export function buildRawSiteContent(
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
       standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
     ],
+    media: { assets: [], rights: [], excluded: [] },
     ...overrides,
   };
 }

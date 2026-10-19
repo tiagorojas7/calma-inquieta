@@ -212,3 +212,111 @@ describe("token literal scan", () => {
     expect(violations, "token bypasses in src/app/ui components").toEqual([]);
   });
 });
+
+interface CssBlock {
+  readonly prelude: string;
+  readonly body: string;
+  readonly ancestors: readonly string[];
+}
+
+/** Every `{}` block of a stylesheet with the preludes of its enclosing blocks. */
+function cssBlocks(css: string): CssBlock[] {
+  const blocks: CssBlock[] = [];
+  const walk = (text: string, ancestors: string[]) => {
+    let depth = 0;
+    let start = 0;
+    let prelude = "";
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === "{") {
+        if (depth === 0) {
+          prelude = text.slice(start, i).trim();
+          start = i + 1;
+        }
+        depth++;
+      } else if (text[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          const body = text.slice(start, i);
+          blocks.push({ prelude, body, ancestors });
+          walk(body, [...ancestors, prelude]);
+          start = i + 1;
+        }
+      }
+    }
+  };
+  walk(css.replace(/\/\*[\s\S]*?\*\//g, ""), []);
+  return blocks;
+}
+
+const ANIMATION_DECLARATION = /(^|[\s;])animation(-[a-z-]+)?\s*:/;
+
+describe("decorative motifs stylesheet", () => {
+  const css = readStyles("motifs.css");
+  const blocks = cssBlocks(css);
+
+  it("every animation declaration in motifs.css sits inside a prefers-reduced-motion: no-preference block", () => {
+    const declaring = blocks.filter(
+      (block) =>
+        !block.prelude.startsWith("@") &&
+        ANIMATION_DECLARATION.test(block.body),
+    );
+
+    expect(declaring.length).toBeGreaterThan(0);
+    for (const block of declaring) {
+      expect(
+        block.ancestors.some((a) =>
+          /@media\s*\(prefers-reduced-motion:\s*no-preference\)/.test(a),
+        ),
+        `${block.prelude} declares an animation outside no-preference`,
+      ).toBe(true);
+    }
+  });
+
+  it("the cord draw-in is also inside @supports animation-timeline", () => {
+    const timelines = blocks.filter(
+      (block) =>
+        !block.prelude.startsWith("@") &&
+        /animation-timelines*:/.test(block.body),
+    );
+
+    expect(timelines.length).toBeGreaterThan(0);
+    for (const block of timelines) {
+      expect(
+        block.ancestors.some((a) =>
+          /@supports\s*\(animation-timeline:\s*view\(\)\)/.test(a),
+        ),
+        `${block.prelude} uses animation-timeline outside @supports`,
+      ).toBe(true);
+    }
+  });
+
+  it("only transform and opacity are animated", () => {
+    // Stroke-dash is the third property design AD11 and the spec allow, for
+    // the cord draw-in; no layout property is ever allowed.
+    const allowed = new Set(["transform", "opacity", "stroke-dashoffset"]);
+    const frames = blocks.filter((block) =>
+      block.ancestors.some((a) => a.startsWith("@keyframes")),
+    );
+
+    expect(frames.length).toBeGreaterThan(0);
+    for (const frame of frames) {
+      for (const declaration of frame.body.split(";")) {
+        const property = declaration.split(":")[0]?.trim();
+        if (property) {
+          expect(
+            allowed.has(property),
+            `${property} is animated in motifs.css`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("app.css imports motifs.css", () => {
+    expect(readStyles("app.css")).toMatch(/@import\s+"\.\/motifs\.css";/);
+  });
+
+  it("motifs.css holds no colour literal", () => {
+    expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+});

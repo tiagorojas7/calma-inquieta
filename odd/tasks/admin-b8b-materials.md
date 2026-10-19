@@ -24,7 +24,7 @@
 - [x] B8b-T5. RED Drizzle/shared-contract coverage for FKs/checks, active-name and per-material-label races, compound rollback, replacement semantics, missing media hydration, deterministic ordering and lifecycle persistence.
 - [x] B8b-T6. GREEN/REFACTOR additive material/variant schema, generated `0009_materials`, Drizzle adapter and migration expectations without B9 tables.
 - [x] B8b-T7. Apply the workload rule honestly: keep the two cohesive commits, or defer only the later used-variant seam to B8c if it becomes necessary.
-- [ ] B8b-T8. Run focused and full locked gates, assess/review as configured, commit persistence/evidence, and prepare the B8b PR.
+- [x] B8b-T8. Run focused and full locked gates, assess/review as configured, commit persistence/evidence, and prepare the B8b PR.
 
 ## Acceptance criteria
 
@@ -58,7 +58,10 @@
 - B8b-T5 RED was observed with the fake shared contract still green (8/8) and the Drizzle suite failing exclusively because `drizzle-material-repository` did not exist. The shared rollback case now uses a real duplicate child identifier so both fake and PostgreSQL prove atomic replacement without a test-only production hook.
 - B8b-T6 adds the transactional Drizzle adapter, additive `material`/`material_variant` schema, and generator-produced `0009_materials`. The shared fake+DB contract passed 23/23, the migration/catalog canary passed 34/34, and migration generation reports no schema drift. Typecheck, lint, format and diff checks pass. A later identical DB retry hit a Windows Vitest worker crash/timeout without an assertion; the earlier post-change 23/23 result remains the current behavioral evidence pending the locked final gate.
 - B8b-T7 keeps the two honest cohesive work units. The future `used` reference seam remains deferred to B9/change 5 as designed; no behavior or tests were compressed to fit a line budget.
+- Native persistence review lineage `review-5571acd4c02cd003` approved the 15-file persistence candidate and its exact acknowledgement burned revision `sha256:f0d1d85d00f74afdd8fa3771cb9e3d42aac3e1b3aba63d1dff3d4f5a7824c1b3`. Persistence work-unit commit: `77c4867` (`feat(materials): persist materials and variants`).
+- The locked final gate first caught two test-fixture defects: a forbidden materials-test import of the media schema and a cloned globally duplicate variant id. Commit `880f238` (`test(materials): align persistence gate fixtures`) fixes both, adds missing supplier/variant-race branch evidence, and passed an independent OpenAI fallback review after the native lifecycle could not create a second lineage for the test-only delta.
+- Final exclusive gate evidence: migration drift clean; format, lint, typecheck, build and diff checks pass. The monolithic coverage runner stalled before test discovery and was replaced without reducing scope by `unit+ui` coverage plus the complete `db` project: 159 files / 1691 tests with 94.19% statements, 90.08% branches, 96.60% functions and 96.42% lines; DB 17 files / 212 tests. Combined result: 176 files / 1903 tests, all passing. `C:/Temp/calma-gate.lock` was released.
 
 ## Next step
 
-Run persistence review, commit the second work unit, then execute the final locked full gate and prepare the PR.
+Push `feat/admin-catalog-b8b-materials`, open the B8b PR against `main`, and hand merge control to the owner.

@@ -106,6 +106,44 @@ describe("validateSiteContent", () => {
     expect(issues).toEqual([{ id: "gallery-1", rule: "alt-missing" }]);
   });
 
+  it("flags an about intro image that is not a registered path", () => {
+    const content = validContent();
+    const stray = image("/media/about/not-registered-480.0a1b2c3d.webp");
+
+    const issues = validateSiteContent({
+      ...content,
+      about: { ...content.about, introImages: [stray] },
+    });
+
+    expect(issues).toEqual([{ id: stray.src, rule: "unregistered-media" }]);
+  });
+
+  it("flags an about intro image with an empty alt, naming its path", () => {
+    const content = validContent();
+    const blank = image("/media/stand-ins/gallery-01.jpg", " ");
+
+    const issues = validateSiteContent({
+      ...content,
+      about: { ...content.about, introImages: [blank] },
+    });
+
+    expect(issues).toEqual([{ id: blank.src, rule: "alt-missing" }]);
+  });
+
+  it("flags a pull-quote id that repeats another content id", () => {
+    const content = validContent();
+
+    const issues = validateSiteContent({
+      ...content,
+      about: {
+        ...content.about,
+        pullQuote: { ...content.about.pullQuote, id: "history-1" },
+      },
+    });
+
+    expect(issues).toEqual([{ id: "history-1", rule: "duplicate-id" }]);
+  });
+
   it("accepts an empty alt on a decorative gallery image", () => {
     const content = validContent();
     const decorative: GalleryImage = {
@@ -342,6 +380,7 @@ describe("listUnapproved", () => {
           approved: false,
           text: "v",
         },
+        pullQuote: { id: "pull-quote", approved: false, text: "p" },
         values: [{ id: "value-1", approved: false, title: "t", text: "t" }],
         faq: [{ id: "faq-1", approved: false, question: "q", answer: "a" }],
       },
@@ -352,6 +391,7 @@ describe("listUnapproved", () => {
       { id: "teaser-body", area: "home:teaser" },
       { id: "history-1", area: "about:history" },
       { id: "value-proposition", area: "about:value-proposition" },
+      { id: "pull-quote", area: "about:pull-quote" },
       { id: "value-1", area: "about:values" },
       { id: "faq-1", area: "about:faq" },
     ]);

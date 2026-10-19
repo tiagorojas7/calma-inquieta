@@ -119,6 +119,16 @@ describe("Contacto route photo", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("the page is a full-bleed sand band whose photo is warmed and bleeds", async () => {
+    const { container } = renderContact();
+    await screen.findByRole("img", { name: "Frente del local" });
+    const band = container.querySelector("main > section");
+    expect(band).toHaveAttribute("data-tone", "sand");
+    expect(band).toHaveAttribute("data-bleed", "true");
+    expect(container.querySelector("[data-photo-bleed]")).not.toBeNull();
+    expect(container.querySelector("[data-warm-overlay]")).not.toBeNull();
+  });
+
   it("the photo box reserves its aspect ratio", async () => {
     renderContact();
     const photo = await screen.findByRole("img", { name: "Frente del local" });

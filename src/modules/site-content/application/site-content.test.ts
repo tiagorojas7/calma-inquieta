@@ -129,6 +129,44 @@ describe("createSiteContent", () => {
     expect(about.gallery).toEqual(base.about.gallery);
   });
 
+  it("getAboutPage drops an intro image whose asset is pending", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/about/about-intro-pending-480.0a1b2c3d.webp";
+    const about = await content({
+      ...base,
+      about: {
+        ...base.about,
+        introImages: [
+          ...base.about.introImages,
+          { src: path, alt: "Una mesa", width: 480, height: 640 },
+        ],
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "about-intro-pending",
+            sourceId: "about-intro-pending-source",
+            area: "about",
+            alt: "Una mesa",
+            format: "webp",
+            variants: [{ width: 480, height: 640, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "about-intro-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    }).getAboutPage();
+
+    expect(about.introImages).toEqual(base.about.introImages);
+  });
+
   it("getContactPage drops an unpublishable photo", async () => {
     const base = buildRawSiteContent();
     const path = "/media/contact/contact-pending-480.0a1b2c3d.webp";

@@ -17,6 +17,8 @@ const base = {
     { id: "h2", text: "Segundo párrafo de la historia." },
   ],
   valueProposition: "Te ofrecemos un lugar para crear sin apuro.",
+  pullQuote: "Calma, creatividad y un poquito de inquietud.",
+  introImages: [],
   values: [],
   gallery: [],
   videos: [],
@@ -102,5 +104,37 @@ describe("Quiénes somos route", () => {
     await screen.findByRole("heading", { level: 1 });
     expect(screen.queryByText("Un vistazo")).not.toBeInTheDocument();
     expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("sets the pull-quote in script and collages the intro photos", async () => {
+    const { container } = renderAbout({
+      ...base,
+      introImages: galleryImageFixtures,
+    });
+    const quote = await screen.findByText(
+      "Calma, creatividad y un poquito de inquietud.",
+    );
+    expect(quote).toHaveAttribute("data-script", "true");
+    expect(container.querySelectorAll("figure")).toHaveLength(
+      galleryImageFixtures.length,
+    );
+    await expectNoAxeViolations(container, { page: true });
+  });
+
+  it("alternates full-bleed tone bands down the page", async () => {
+    const { container } = renderAbout({
+      ...base,
+      values: valueItemFixtures,
+      gallery: galleryImageFixtures,
+      faq: faqEntryFixtures,
+    });
+    await screen.findAllByRole("heading", { level: 1 });
+    const bands = [...container.querySelectorAll("main > section")].map(
+      (band) => band.getAttribute("data-tone"),
+    );
+    expect(bands).toEqual(["canvas", "sand", "canvas", "white"]);
+    for (const band of container.querySelectorAll("main > section")) {
+      expect(band).toHaveAttribute("data-bleed", "true");
+    }
   });
 });

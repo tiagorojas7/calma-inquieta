@@ -240,6 +240,7 @@ describe("the drafted page content", () => {
       1 +
       raw.about.history.length +
       1 +
+      1 + // the pull-quote
       raw.about.values.length +
       raw.about.faq.length +
       2; // the two catalog listing intros
@@ -571,6 +572,34 @@ describe("the curated gallery", () => {
         ).toBe(false);
       }
     }
+  });
+
+  it("the intro collage has three published about photos of different ratios", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+
+    expect(about.introImages).toHaveLength(3);
+    const ratios = about.introImages.map((image) => image.width / image.height);
+    expect(new Set(ratios.map((ratio) => ratio.toFixed(2))).size).toBe(3);
+    for (const image of about.introImages) {
+      expect(image.alt.trim(), image.src).not.toBe("");
+      expect(image.srcSet, image.src).toBeDefined();
+      for (const path of pathsOf(image)) {
+        expect(path.startsWith("/media/about/"), path).toBe(true);
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+
+  it("the pull-quote is an unapproved draft in the launch checklist", async () => {
+    const about = await content.getAboutPage();
+    const unapproved = await content.listUnapprovedContent();
+
+    expect(about.pullQuote.text.trim()).not.toBe("");
+    expect(unapproved).toContainEqual({
+      id: about.pullQuote.id,
+      area: "about:pull-quote",
+    });
   });
 
   it("the curation reserves are not registered", async () => {

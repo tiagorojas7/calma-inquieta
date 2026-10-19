@@ -13,6 +13,9 @@ describe("about loader", () => {
     expect(result.heading).toBe("Quiénes somos");
     expect(result.history.length).toBeGreaterThan(0);
     expect(result.valueProposition).toEqual(expect.any(String));
+    expect(result.pullQuote).toEqual(expect.any(String));
+    expect(result.introImages.length).toBeGreaterThan(0);
+    expect(result.introImages[0]?.alt.length).toBeGreaterThan(0);
     expect(result.values.length).toBeGreaterThan(0);
     expect(result.gallery).toBeDefined();
     expect(result.videos).toEqual([]);

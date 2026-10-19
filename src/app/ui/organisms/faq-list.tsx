@@ -1,5 +1,7 @@
 import { Heading } from "../atoms/heading";
 import { FaqItem } from "../molecules/faq-item";
+import { Reveal } from "./reveal";
+import { Section } from "./section";
 
 interface FaqEntry {
   readonly id: string;
@@ -16,11 +18,19 @@ export function FaqList({
 }) {
   if (!items.length) return null;
   return (
-    <section className="flex max-w-prose flex-col gap-2 py-section">
-      <Heading level={2}>{heading}</Heading>
-      {items.map(({ id, question, answer }) => (
-        <FaqItem key={id} question={question} answer={answer} />
-      ))}
-    </section>
+    <Section bleed tone="white" spacing="lg">
+      <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
+        <Reveal>
+          <Heading level={2}>{heading}</Heading>
+        </Reveal>
+        <div className="flex flex-col">
+          {items.map(({ id, question, answer }, at) => (
+            <Reveal key={id} index={at}>
+              <FaqItem question={question} answer={answer} />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }

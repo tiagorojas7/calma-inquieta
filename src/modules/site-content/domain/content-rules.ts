@@ -175,6 +175,11 @@ function contentImages(content: RawSiteContent): readonly {
       content.home.teaser.image,
       content.home.teaser.accentImage,
     ].map((image) => ({ id: image.src, image, decorative: false })),
+    ...content.about.introImages.map((image) => ({
+      id: image.src,
+      image,
+      decorative: false,
+    })),
     ...content.about.gallery.map((image) => ({
       id: image.id,
       image,
@@ -209,6 +214,7 @@ function contentIds(content: RawSiteContent): readonly string[] {
     ...content.home.testimonials.items.map((item) => item.id),
     ...content.about.history.map((entry) => entry.id),
     content.about.valueProposition.id,
+    content.about.pullQuote.id,
     content.catalog.talleres.intro.id,
     content.catalog.intensivos.intro.id,
     ...content.about.values.map((value) => value.id),
@@ -325,6 +331,7 @@ export function listUnapproved(
       area: "about:value-proposition",
       items: [content.about.valueProposition],
     },
+    { area: "about:pull-quote", items: [content.about.pullQuote] },
     { area: "about:values", items: content.about.values },
     { area: "about:faq", items: content.about.faq },
     {

@@ -179,6 +179,10 @@ export function buildRawSiteContent(
       values: [
         { id: "value-1", approved: true, title: "Calma", text: "Sin apuro." },
       ],
+      pullQuote: { id: "pull-quote", approved: true, text: "Crear sin apuro." },
+      introImages: [
+        image("/media/stand-ins/gallery-01.jpg", "Composición del espacio"),
+      ],
       gallery: [
         {
           id: "gallery-1",

@@ -142,6 +142,10 @@ export interface AboutPageContent {
   readonly heading: string;
   readonly history: readonly ApprovableText[];
   readonly valueProposition: ApprovableText;
+  /** A short handwritten line beside the intro; drafted copy awaiting approval. */
+  readonly pullQuote: ApprovableText;
+  /** Two or three photos of different ratios for the intro collage; unpublished ones are dropped on read. */
+  readonly introImages: readonly ImageRef[];
   readonly values: readonly ValueItem[];
   readonly gallery: readonly GalleryImage[];
   readonly videos: readonly VideoEntry[];

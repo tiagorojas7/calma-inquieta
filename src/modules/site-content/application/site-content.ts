@@ -65,7 +65,11 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
     },
     async getAboutPage() {
       const raw = await source.load();
-      return { ...raw.about, gallery: publishedImages(raw.about.gallery, raw) };
+      return {
+        ...raw.about,
+        introImages: publishedImages(raw.about.introImages, raw),
+        gallery: publishedImages(raw.about.gallery, raw),
+      };
     },
     async getContactPage() {
       const raw = await source.load();

@@ -8,6 +8,39 @@ import { FaqList } from "./faq-list";
 import { ValuesRow } from "./values-row";
 
 describe("about organisms", () => {
+  it("renders the values as coloured icon discs in a full-bleed sand band", () => {
+    const { container } = render(
+      <ValuesRow
+        heading="Valores"
+        items={[
+          ...valueItemFixtures,
+          { id: "value-3", title: "Sin experiencia", text: "Paso a paso." },
+        ]}
+      />,
+    );
+    const band = container.querySelector("section");
+    expect(band).toHaveAttribute("data-tone", "sand");
+    expect(band).toHaveAttribute("data-bleed", "true");
+    const discs = [...container.querySelectorAll("[data-disc]")];
+    expect(discs.map((disc) => disc.getAttribute("data-disc"))).toEqual([
+      "sand",
+      "clay",
+      "olive",
+    ]);
+    for (const disc of discs) {
+      expect(disc).toHaveClass("rounded-full");
+      expect(disc.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  it("renders the FAQ in a full-bleed white band", () => {
+    const { container } = render(
+      <FaqList heading="Preguntas" items={faqEntryFixtures} />,
+    );
+    const band = container.querySelector("section");
+    expect(band).toHaveAttribute("data-tone", "white");
+    expect(band).toHaveAttribute("data-bleed", "true");
+  });
   it("renders ValuesRow null for an empty list", async () => {
     const { container } = render(<ValuesRow heading="Valores" items={[]} />);
     expect(container).toBeEmptyDOMElement();

@@ -36,6 +36,18 @@ export const aboutContent = {
     approved: false,
     text: "Te ofrecemos un lugar para aprender una técnica manual sin apuro, acompañada por instructoras, y llevarte una pieza hecha por vos.",
   },
+  /** The brand caption already in circulation (DMR rule R14: no invented tagline). */
+  pullQuote: {
+    id: "about-pull-quote",
+    approved: false,
+    text: "Calma, creatividad y un poquito de inquietud.",
+  },
+  /** The intro collage: a portrait, a wide group shot and a near-square detail. */
+  introImages: [
+    imageRef("about-espacio"),
+    imageRef("about-comunidad"),
+    imageRef("about-jarrones"),
+  ],
   values: [
     {
       id: "about-value-calm",

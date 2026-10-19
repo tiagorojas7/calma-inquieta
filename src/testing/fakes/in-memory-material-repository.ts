@@ -40,11 +40,6 @@ function cloneMaterial(material: Material): Material {
 /** Materials in memory, enforcing the same aggregate constraints as PostgreSQL. */
 export class InMemoryMaterialRepository implements MaterialRepository {
   readonly materials = new Map<string, Material>();
-  #failNextWrite = false;
-
-  failNextWrite(): void {
-    this.#failNextWrite = true;
-  }
 
   private assertConstraints(material: Material): void {
     if (
@@ -59,7 +54,15 @@ export class InMemoryMaterialRepository implements MaterialRepository {
       throw new MaterialNameConflictError();
 
     const labels = new Set<string>();
+    const ids = new Set(
+      [...this.materials.values()]
+        .filter((stored) => stored.id !== material.id)
+        .flatMap((stored) => stored.variants.map((variant) => variant.id)),
+    );
     for (const variant of material.variants) {
+      if (ids.has(variant.id))
+        throw new Error("material variant already exists");
+      ids.add(variant.id);
       const key = variantLabelKey(variant.label);
       if (labels.has(key)) throw new MaterialVariantLabelConflictError();
       labels.add(key);
@@ -68,14 +71,7 @@ export class InMemoryMaterialRepository implements MaterialRepository {
 
   private write(material: Material): void {
     this.assertConstraints(material);
-    const before = new Map(this.materials);
     this.materials.set(material.id, cloneMaterial(material));
-    if (this.#failNextWrite) {
-      this.#failNextWrite = false;
-      this.materials.clear();
-      for (const [id, stored] of before) this.materials.set(id, stored);
-      throw new Error("configured material write failure");
-    }
   }
 
   insert(material: Material): Promise<void> {

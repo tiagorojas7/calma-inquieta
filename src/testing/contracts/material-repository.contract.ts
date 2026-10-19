@@ -13,6 +13,8 @@ export const MATERIAL_A = "00000000-0000-4000-8000-000000000101";
 export const MATERIAL_B = "00000000-0000-4000-8000-000000000102";
 export const MATERIAL_C = "00000000-0000-4000-8000-000000000103";
 export const MATERIAL_UNKNOWN = "00000000-0000-4000-8000-000000000199";
+export const MATERIAL_SUPPLIER_ID = "00000000-0000-4000-8000-000000000301";
+export const MATERIAL_ASSET_ID = "00000000-0000-4000-8000-000000000401";
 
 function money(pesos: number): Money {
   const value = Money.fromCentavos(pesos * 100);
@@ -38,20 +40,21 @@ export function buildStoredVariant(
 export function buildStoredMaterial(
   overrides: Partial<Material> = {},
 ): Material {
+  const id = overrides.id ?? MATERIAL_A;
   return {
-    id: MATERIAL_A,
+    id,
     name: "Ámbar",
     description: "Material de prueba",
     category: "Arcillas",
-    supplier: buildSupplier(),
+    supplier: buildSupplier({ id: MATERIAL_SUPPLIER_ID }),
     available: true,
     active: true,
     image: {
-      assetId: "asset-1",
+      assetId: MATERIAL_ASSET_ID,
       alt: "Arcilla ámbar",
       asset: null,
     },
-    variants: [buildStoredVariant()],
+    variants: [buildStoredVariant({ id })],
     audit: {
       updatedBy: "owner@example.com",
       updatedAt: new Date("2026-10-20T12:00:00.000Z"),
@@ -62,7 +65,6 @@ export function buildStoredMaterial(
 
 export interface MaterialRepositoryContractHarness {
   readonly repository: MaterialRepository;
-  readonly failNextWrite: () => void;
 }
 
 export function runMaterialRepositoryContract(
@@ -116,7 +118,10 @@ export function runMaterialRepositoryContract(
 
     it("filters with AND semantics and orders by normalized name then id", async () => {
       const { repository } = await create();
-      const supplierB = buildSupplier({ id: "supplier-2", name: "Other" });
+      const supplierB = buildSupplier({
+        id: "00000000-0000-4000-8000-000000000302",
+        name: "Other",
+      });
       await repository.insert(
         buildStoredMaterial({
           id: MATERIAL_A,
@@ -252,20 +257,30 @@ export function runMaterialRepositoryContract(
       ).toBe(false);
     });
 
-    it("rolls back root and variants when a compound write fails", async () => {
-      const { repository, failNextWrite } = await create();
+    it("rolls back root and variants when a child constraint fails", async () => {
+      const { repository } = await create();
       const original = buildStoredMaterial();
       await repository.insert(original);
-      failNextWrite();
+      const duplicateVariantId = "00000000-0000-4000-8000-000000000299";
 
       await expect(
         repository.update(
           buildStoredMaterial({
             description: "Must roll back",
-            variants: [buildStoredVariant({ label: "Replacement" })],
+            variants: [
+              buildStoredVariant({
+                id: duplicateVariantId,
+                label: "First",
+              }),
+              buildStoredVariant({
+                id: duplicateVariantId,
+                label: "Second",
+                position: 1,
+              }),
+            ],
           }),
         ),
-      ).rejects.toThrow("configured material write failure");
+      ).rejects.toThrow();
       expect(await repository.findById(MATERIAL_A)).toEqual(original);
     });
   });

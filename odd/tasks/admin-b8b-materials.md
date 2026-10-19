@@ -21,9 +21,9 @@
 - [x] B8b-T2. RED behavior matrix for actor-first denial, normalization/validation, supplier/media references, explicit `Única` default, duplicate labels/names, positive ARS prices, swatches, ordering, lifecycle, category suggestions, selectable filtering and audit.
 - [x] B8b-T3. GREEN/REFACTOR material core, repository port, service, lookup adapter, in-memory fake, additive module exports and shared repository contract against the fake.
 - [x] B8b-T4. Independently verify, assess/review as configured, and commit the behavior/fake work unit.
-- [ ] B8b-T5. RED Drizzle/shared-contract coverage for FKs/checks, active-name and per-material-label races, compound rollback, replacement semantics, missing media hydration, deterministic ordering and lifecycle persistence.
-- [ ] B8b-T6. GREEN/REFACTOR additive material/variant schema, generated `0009_materials`, Drizzle adapter and migration expectations without B9 tables.
-- [ ] B8b-T7. Apply the workload rule honestly: keep the two cohesive commits, or defer only the later used-variant seam to B8c if it becomes necessary.
+- [x] B8b-T5. RED Drizzle/shared-contract coverage for FKs/checks, active-name and per-material-label races, compound rollback, replacement semantics, missing media hydration, deterministic ordering and lifecycle persistence.
+- [x] B8b-T6. GREEN/REFACTOR additive material/variant schema, generated `0009_materials`, Drizzle adapter and migration expectations without B9 tables.
+- [x] B8b-T7. Apply the workload rule honestly: keep the two cohesive commits, or defer only the later used-variant seam to B8c if it becomes necessary.
 - [ ] B8b-T8. Run focused and full locked gates, assess/review as configured, commit persistence/evidence, and prepare the B8b PR.
 
 ## Acceptance criteria
@@ -55,7 +55,10 @@
 - B8b-T3 passes the whole materials/fake slice (7 files / 72 tests), format, lint, typecheck and `git diff --check`. Refactoring moved material draft types into the domain so the production boundary rule remains intact; the module API re-exports them without breaking the B0b contract.
 - Native review could not create a lineage because candidate preparation failed before START, even after the provider-required managed-assets sync. `ASSESS` therefore returned `unassessable` with mandatory writer self-verification plus an independent verifier. The independent OpenAI verifier found no blocking issue after the authoritative `Única` decision ruled out its initial over-broad interpretation.
 - Behavior/fake work-unit commit: `717d438` (`feat(materials): add material catalog behavior`). It contains the tests, implementation and shared fake contract without persistence or delivery changes.
+- B8b-T5 RED was observed with the fake shared contract still green (8/8) and the Drizzle suite failing exclusively because `drizzle-material-repository` did not exist. The shared rollback case now uses a real duplicate child identifier so both fake and PostgreSQL prove atomic replacement without a test-only production hook.
+- B8b-T6 adds the transactional Drizzle adapter, additive `material`/`material_variant` schema, and generator-produced `0009_materials`. The shared fake+DB contract passed 23/23, the migration/catalog canary passed 34/34, and migration generation reports no schema drift. Typecheck, lint, format and diff checks pass. A later identical DB retry hit a Windows Vitest worker crash/timeout without an assertion; the earlier post-change 23/23 result remains the current behavioral evidence pending the locked final gate.
+- B8b-T7 keeps the two honest cohesive work units. The future `used` reference seam remains deferred to B9/change 5 as designed; no behavior or tests were compressed to fit a line budget.
 
 ## Next step
 
-Write and observe the B8b-T5 Drizzle/schema/migration RED matrix against commit `717d438`.
+Run persistence review, commit the second work unit, then execute the final locked full gate and prepare the PR.

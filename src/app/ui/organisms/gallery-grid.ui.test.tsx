@@ -132,3 +132,54 @@ describe("GalleryGrid", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("GalleryGrid responsive images", () => {
+  const THUMBNAIL_SIZES =
+    "(min-width: 90rem) 28rem, (min-width: 48rem) 31vw, 46vw";
+  const LIGHTBOX_SIZES = "(min-width: 48rem) 46rem, 100vw";
+  const responsive = [
+    {
+      ...first,
+      srcSet:
+        "/media/about/a-480.0a1b2c3d.webp 480w, /media/about/a-960.1b2c3d4e.webp 960w",
+    },
+    { ...second, srcSet: "/media/about/b-480.2c3d4e5f.webp 480w" },
+  ] as const;
+
+  it("thumbnails carry srcset and the thumbnail sizes", () => {
+    render(<GalleryGrid images={responsive} />);
+    for (const image of responsive) {
+      const thumbnail = within(
+        screen.getByRole("button", { name: image.alt }),
+      ).getByRole("img");
+      expect(thumbnail).toHaveAttribute("srcset", image.srcSet);
+      expect(thumbnail).toHaveAttribute("sizes", THUMBNAIL_SIZES);
+    }
+  });
+
+  it("the lightbox uses the largest variant with the lightbox sizes", async () => {
+    render(<GalleryGrid images={responsive} />);
+    await userEvent.click(screen.getByRole("button", { name: first.alt }));
+    const shown = within(screen.getByRole("dialog")).getByRole("img", {
+      name: first.alt,
+    });
+    expect(shown).toHaveAttribute("srcset", responsive[0].srcSet);
+    expect(shown).toHaveAttribute("sizes", LIGHTBOX_SIZES);
+    expect(shown).toHaveAttribute("src", first.src);
+  });
+
+  it("entries without srcSet keep rendering", async () => {
+    render(<GalleryGrid images={galleryImageFixtures} />);
+    const thumbnail = within(
+      screen.getByRole("button", { name: first.alt }),
+    ).getByRole("img");
+    expect(thumbnail).toHaveAttribute("src", first.src);
+    expect(thumbnail).not.toHaveAttribute("srcset");
+    await userEvent.click(screen.getByRole("button", { name: first.alt }));
+    const shown = within(screen.getByRole("dialog")).getByRole("img", {
+      name: first.alt,
+    });
+    expect(shown).toHaveAttribute("src", first.src);
+    expect(shown).not.toHaveAttribute("srcset");
+  });
+});

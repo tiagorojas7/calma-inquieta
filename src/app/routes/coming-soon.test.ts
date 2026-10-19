@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_SHARE_IMAGE } from "~/modules/site-content";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import { loader, meta } from "./coming-soon";
@@ -42,7 +43,7 @@ describe("coming soon loader", () => {
         { property: "og:url", content: "https://calma.example/talleres" },
         {
           property: "og:image",
-          content: "https://calma.example/media/stand-ins/share-default.jpg",
+          content: `https://calma.example${DEFAULT_SHARE_IMAGE.path}`,
         },
         { name: "robots", content: "noindex, nofollow" },
       ]),

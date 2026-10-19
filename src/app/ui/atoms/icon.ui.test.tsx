@@ -68,4 +68,19 @@ describe("Icon", () => {
       "true",
     );
   });
+
+  it("hands, leaf, heart and group render an aria-hidden 24x24 svg in the existing stroke style", () => {
+    for (const name of ["hands", "leaf", "heart", "group"] as const) {
+      const { container, unmount } = render(<Icon name={name} />);
+      const svg = container.querySelector("svg");
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+      expect(svg).toHaveAttribute("viewBox", "0 0 24 24");
+      expect(svg).toHaveAttribute("stroke-width", "1.75");
+      expect(svg).toHaveAttribute("stroke-linecap", "round");
+      expect(svg).toHaveAttribute("stroke-linejoin", "round");
+      expect(svg).toHaveClass("size-6", "fill-none", "stroke-current");
+      expect(svg?.querySelector("path, circle")).not.toBeNull();
+      unmount();
+    }
+  });
 });

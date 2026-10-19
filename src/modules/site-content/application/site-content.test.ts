@@ -3,7 +3,8 @@ import {
   buildRawSiteContent,
   createInMemorySiteContentSource,
 } from "~/testing/fakes/in-memory-site-content-source";
-import type { RawSiteContent } from "../domain/page-content";
+import type { MediaRegistry, RightsEntry } from "../domain/media";
+import type { AmbientLoop, RawSiteContent } from "../domain/page-content";
 import { createSiteContent } from "./site-content";
 
 const content = (raw: RawSiteContent = buildRawSiteContent()) =>
@@ -57,6 +58,16 @@ describe("createSiteContent", () => {
     expect(home.testimonials.heading).toBe("Voces");
   });
 
+  it("getHomePage returns hero.image", async () => {
+    const base = buildRawSiteContent();
+    const home = await content(base).getHomePage();
+
+    expect(home.hero.image).toEqual(base.home.hero.image);
+    expect(home.hero.image.mobile.src).not.toBe("");
+    expect(home.hero.image.desktop.src).not.toBe("");
+    expect(home.hero).not.toHaveProperty("images");
+  });
+
   it("returns empty arrays, not null, for lists with no content", async () => {
     const base = buildRawSiteContent();
     const about = await content({
@@ -69,6 +80,107 @@ describe("createSiteContent", () => {
     expect(about.videos).toEqual([]);
     expect(about.faq).toEqual([]);
     expect(about.history.length).toBeGreaterThan(0);
+  });
+
+  it("getAboutPage drops a gallery entry whose asset is pending", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/about/about-pending-480.0a1b2c3d.webp";
+    const about = await content({
+      ...base,
+      about: {
+        ...base.about,
+        gallery: [
+          ...base.about.gallery,
+          {
+            id: "gallery-pending",
+            src: path,
+            alt: "Una ronda",
+            width: 480,
+            height: 600,
+          },
+        ],
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "about-pending",
+            sourceId: "about-pending-source",
+            area: "about",
+            alt: "Una ronda",
+            format: "webp",
+            variants: [{ width: 480, height: 600, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "about-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    }).getAboutPage();
+
+    expect(about.gallery).toEqual(base.about.gallery);
+  });
+
+  it("getContactPage drops an unpublishable photo", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/contact/contact-pending-480.0a1b2c3d.webp";
+    const pending = {
+      ...base,
+      contact: {
+        ...base.contact,
+        photo: {
+          src: path,
+          alt: "El frente del local",
+          width: 480,
+          height: 640,
+        },
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "contact-pending",
+            sourceId: "contact-pending-source",
+            area: "contact",
+            alt: "El frente del local",
+            format: "webp",
+            variants: [{ width: 480, height: 640, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "contact-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    } satisfies RawSiteContent;
+
+    const withheld = await content(pending).getContactPage();
+    expect(withheld).not.toHaveProperty("photo");
+    expect(withheld.heading).toBe("Contacto");
+
+    const granted = await content({
+      ...pending,
+      media: {
+        ...pending.media,
+        rights: [
+          {
+            sourceId: "contact-pending-source",
+            people: "none",
+            consent: "not-required",
+          },
+        ],
+      },
+    }).getContactPage();
+    expect(granted.photo?.src).toBe(path);
   });
 
   it("returns the contact page and the coming-soon page of the requested slug", async () => {
@@ -95,6 +207,27 @@ describe("createSiteContent", () => {
     expect(await content().listUnapprovedContent()).toEqual([]);
   });
 
+  it("getLaunchGate splits kinds", async () => {
+    const base = buildRawSiteContent();
+    const font = {
+      id: "font-a",
+      path: "/fonts/a.woff2",
+      kind: "font",
+      source: "test",
+      licence: "test",
+      replaceWith: "test",
+    } as const;
+
+    const gate = await content({
+      ...base,
+      standIns: [...base.standIns, font],
+    }).getLaunchGate();
+
+    expect(gate.fontStandIns).toEqual([font]);
+    expect(gate.imageStandIns).toEqual(base.standIns);
+    expect(gate.unpublishedMedia).toEqual([]);
+  });
+
   it("lists the stand-in manifest, whose length is the launch gate", async () => {
     const base = buildRawSiteContent();
 
@@ -112,6 +245,7 @@ describe("createSiteContent", () => {
       reader.getHomePage(),
       reader.getAboutPage(),
       reader.getContactPage(),
+      reader.getLaunchGate(),
       reader.getComingSoonPage("talleres"),
       reader.listUnapprovedContent(),
       reader.listStandInAssets(),
@@ -145,5 +279,126 @@ describe("createSiteContent", () => {
     await reader.getHomePage();
 
     expect(loads).toBe(2);
+  });
+});
+
+describe("createSiteContent ambient loop", () => {
+  const webm = "/media/video/home-loop-720.0a1b2c3d.webm";
+  const mp4 = "/media/video/home-loop-720.0a1b2c3d.mp4";
+  const poster = "/media/video/home-loop-poster-720.0a1b2c3d.webp";
+  const loop: AmbientLoop = {
+    poster: { src: poster, alt: "", width: 720, height: 900 },
+    sources: [
+      { src: webm, type: "video/webm" },
+      { src: mp4, type: "video/mp4" },
+    ],
+    width: 720,
+    height: 900,
+  };
+  const registry = (consent: RightsEntry): MediaRegistry => {
+    const share = buildRawSiteContent().media;
+    return {
+      assets: [
+        ...share.assets.filter(({ area }) => area === "share"),
+        {
+          kind: "image",
+          id: "home-loop-poster",
+          sourceId: "loop-source",
+          area: "video",
+          alt: "",
+          decorative: true,
+          format: "webp",
+          variants: [{ width: 720, height: 900, path: poster }],
+        },
+        {
+          kind: "video",
+          id: "home-loop",
+          sourceId: "loop-source",
+          area: "video",
+          width: 720,
+          height: 900,
+          durationSeconds: 6,
+          audio: false,
+          sources: [
+            { path: webm, type: "video/webm" },
+            { path: mp4, type: "video/mp4" },
+          ],
+          posterId: "home-loop-poster",
+        },
+      ],
+      rights: [
+        ...share.rights.filter(
+          ({ sourceId }) => sourceId === "test-share-source",
+        ),
+        consent,
+      ],
+      excluded: [],
+    };
+  };
+  const withLoop = (consent: RightsEntry): RawSiteContent => {
+    const base = buildRawSiteContent();
+    return {
+      ...base,
+      home: { ...base.home, hero: { ...base.home.hero, loop } },
+      media: registry(consent),
+    };
+  };
+
+  it("getHomePage keeps a published loop", async () => {
+    const home = await content(
+      withLoop({
+        sourceId: "loop-source",
+        people: "none",
+        consent: "not-required",
+      }),
+    ).getHomePage();
+
+    expect(home.hero.loop).toEqual(loop);
+  });
+
+  it("getHomePage drops the loop when an asset is unpublishable and still returns the hero", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "faces",
+      consent: "pending",
+    });
+    const home = await content(raw).getHomePage();
+
+    expect(home.hero).not.toHaveProperty("loop");
+    expect(home.hero.image).toEqual(raw.home.hero.image);
+    expect(home.hero.eyebrow).toBe(raw.home.hero.eyebrow);
+    expect(home.hero.title).toEqual(raw.home.hero.title);
+  });
+
+  it("getHomePage drops a loop with a single unpublishable source", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "none",
+      consent: "not-required",
+    });
+    const home = await content({
+      ...raw,
+      home: {
+        ...raw.home,
+        hero: {
+          ...raw.home.hero,
+          loop: {
+            ...loop,
+            sources: [
+              ...loop.sources,
+              { src: "/media/video/other-720.0a1b2c3d.mp4", type: "video/mp4" },
+            ],
+          },
+        },
+      },
+    }).getHomePage();
+
+    expect(home.hero).not.toHaveProperty("loop");
+  });
+
+  it("getHomePage returns a hero without a loop untouched", async () => {
+    const raw = buildRawSiteContent();
+
+    expect((await content(raw).getHomePage()).hero).toEqual(raw.home.hero);
   });
 });

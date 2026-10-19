@@ -9,8 +9,10 @@ type Base = Omit<
   height: number;
   srcSet?: string;
   sizes?: string;
+  /** Inline aspect-ratio from width/height; set false when CSS owns the ratio. */
+  intrinsicRatio?: boolean;
 };
-type Props = Base &
+export type ImageProps = Base &
   (
     | { aboveTheFold?: false; fetchPriority?: "auto" | "low" }
     | { aboveTheFold: true; fetchPriority?: "high" | "auto" }
@@ -22,9 +24,10 @@ export function Image({
   height,
   aboveTheFold,
   fetchPriority,
+  intrinsicRatio = true,
   style,
   ...props
-}: Props) {
+}: ImageProps) {
   return (
     <img
       {...props}
@@ -35,7 +38,11 @@ export function Image({
       loading={aboveTheFold ? "eager" : "lazy"}
       decoding="async"
       fetchPriority={fetchPriority}
-      style={{ ...style, aspectRatio: `${String(width)} / ${String(height)}` }}
+      style={
+        intrinsicRatio
+          ? { ...style, aspectRatio: `${String(width)} / ${String(height)}` }
+          : style
+      }
     />
   );
 }

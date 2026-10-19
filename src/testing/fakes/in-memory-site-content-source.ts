@@ -1,5 +1,10 @@
 import type { SiteContentSource } from "~/modules/site-content/application/ports";
+import {
+  DEFAULT_SHARE_IMAGE,
+  type MediaRegistry,
+} from "~/modules/site-content/domain/media";
 import type {
+  AmbientLoop,
   ImageRef,
   RawSiteContent,
 } from "~/modules/site-content/domain/page-content";
@@ -20,6 +25,78 @@ const image = (src: string, alt: string): ImageRef => ({
   width: 100,
   height: 100,
 });
+
+/** A registered stand-in with a one-candidate srcSet, so the hero exercises the responsive path. */
+const heroImage: ImageRef = {
+  ...image("/media/stand-ins/hero-1.jpg", "Composición abstracta"),
+  srcSet: "/media/stand-ins/hero-1.jpg 100w",
+};
+
+const loopPoster = "/media/video/home-loop-poster-720.00000000.webp";
+const loopWebm = "/media/video/home-loop-720.00000000.webm";
+const loopMp4 = "/media/video/home-loop-720.00000000.mp4";
+
+/** A decorative loop whose poster and two sources are registered and publishable below. */
+const heroLoop: AmbientLoop = {
+  poster: { src: loopPoster, alt: "", width: 720, height: 900 },
+  sources: [
+    { src: loopWebm, type: "video/webm" },
+    { src: loopMp4, type: "video/mp4" },
+  ],
+  width: 720,
+  height: 900,
+};
+
+/** One publishable share image built from the module default, so minimal content never reports share-image-missing, plus the publishable loop. */
+const shareRegistry: MediaRegistry = {
+  assets: [
+    {
+      kind: "image",
+      id: "share-default",
+      sourceId: "test-share-source",
+      area: "share",
+      alt: DEFAULT_SHARE_IMAGE.alt,
+      format: "jpeg",
+      variants: [
+        {
+          width: DEFAULT_SHARE_IMAGE.width,
+          height: DEFAULT_SHARE_IMAGE.height,
+          path: DEFAULT_SHARE_IMAGE.path,
+        },
+      ],
+    },
+    {
+      kind: "image",
+      id: "home-loop-poster",
+      sourceId: "test-loop-source",
+      area: "video",
+      alt: "",
+      decorative: true,
+      format: "webp",
+      variants: [{ width: 720, height: 900, path: loopPoster }],
+    },
+    {
+      kind: "video",
+      id: "home-loop",
+      sourceId: "test-loop-source",
+      area: "video",
+      width: 720,
+      height: 900,
+      durationSeconds: 6,
+      audio: false,
+      sources: [
+        { path: loopWebm, type: "video/webm" },
+        { path: loopMp4, type: "video/mp4" },
+      ],
+      posterId: "home-loop-poster",
+    },
+  ],
+  rights: [
+    { sourceId: "test-share-source", people: "none", consent: "not-required" },
+    { sourceId: "test-loop-source", people: "hands", consent: "not-required" },
+  ],
+  excluded: [],
+};
 
 const seo = (title: string) => ({
   title,
@@ -62,7 +139,11 @@ export function buildRawSiteContent(
         subtitle: "Talleres creativos en Argüello.",
         primaryCtaLabel: "Ver talleres",
         secondaryCtaLabel: "Ver intensivos",
-        images: [image("/media/stand-ins/hero-1.jpg", "Composición abstracta")],
+        image: {
+          mobile: heroImage,
+          desktop: heroImage,
+        },
+        loop: heroLoop,
       },
       trustClaims: [
         {
@@ -121,6 +202,7 @@ export function buildRawSiteContent(
       seo: seo("Contacto"),
       heading: "Contacto",
       intro: "Escribinos cuando quieras.",
+      photo: image("/media/stand-ins/gallery-01.jpg", "Frente del local"),
     },
     comingSoon: {
       talleres: {
@@ -197,6 +279,7 @@ export function buildRawSiteContent(
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
       standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
     ],
+    media: shareRegistry,
     ...overrides,
   };
 }

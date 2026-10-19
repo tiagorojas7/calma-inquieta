@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildDirectionsUrl } from "~/modules/site-content";
+import {
+  buildDirectionsUrl,
+  DEFAULT_SHARE_IMAGE,
+} from "~/modules/site-content";
 import { createTestServices } from "~/testing/fakes/app-services";
 import {
   buildRawSiteContent,
@@ -10,6 +13,46 @@ import { createLoaderArgs } from "~/testing/react-router";
 import { loader, meta } from "./contact";
 
 const FAKE_DIGITS = "3510000000";
+
+/** Services whose contact photo points at an asset with pending face consent. */
+function pendingPhotoServices() {
+  const raw = buildRawSiteContent();
+  const path = "/media/contact/contact-pending-480.0a1b2c3d.webp";
+  return createTestServices({
+    siteContent: createSiteContent(
+      createInMemorySiteContentSource({
+        ...raw,
+        contact: {
+          ...raw.contact,
+          photo: { src: path, alt: "El frente", width: 480, height: 640 },
+        },
+        media: {
+          ...raw.media,
+          assets: [
+            ...raw.media.assets,
+            {
+              kind: "image",
+              id: "contact-pending",
+              sourceId: "contact-pending-source",
+              area: "contact",
+              alt: "El frente",
+              format: "webp",
+              variants: [{ width: 480, height: 640, path }],
+            },
+          ],
+          rights: [
+            ...raw.media.rights,
+            {
+              sourceId: "contact-pending-source",
+              people: "faces",
+              consent: "pending",
+            },
+          ],
+        },
+      }),
+    ),
+  });
+}
 
 async function run(services = createTestServices()) {
   return loader(createLoaderArgs(services, "/contacto") as never);
@@ -36,6 +79,22 @@ describe("contact loader", () => {
     expect(descriptors[0]?.title).toBe("Contacto | Calma Inquieta");
     const ld = JSON.parse(result.jsonLd) as Record<string, unknown>;
     expect(ld["@type"]).toBe("LocalBusiness");
+  });
+
+  it("meta contains og:image and the two size tags", async () => {
+    const services = createTestServices();
+    const result = await run(services);
+
+    expect(meta({ loaderData: result } as never)).toEqual(
+      expect.arrayContaining([
+        {
+          property: "og:image",
+          content: `${services.site.baseUrl}${DEFAULT_SHARE_IMAGE.path}`,
+        },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+      ]),
+    );
   });
 
   it("lists the address as text, the WhatsApp link and Instagram only", async () => {
@@ -125,5 +184,25 @@ describe("contact loader", () => {
       icon: "clock",
       value: "Lun, Mié 09:00-18:00",
     });
+  });
+});
+
+describe("contact loader photo", () => {
+  it("the loader returns the facade photo", async () => {
+    const base = buildRawSiteContent();
+    const result = await run();
+    expect(result.photo).toEqual(base.contact.photo);
+    expect(result.photo).toMatchObject({ alt: "Frente del local" });
+  });
+
+  it("a pending photo is withheld and the page still renders", async () => {
+    const result = await run(pendingPhotoServices());
+    expect(result.photo).toBeUndefined();
+    expect(result.heading).toBe("Contacto");
+    expect(result.items.map((item) => item.id)).toEqual([
+      "address",
+      "whatsapp",
+      "instagram",
+    ]);
   });
 });

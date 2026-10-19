@@ -26,6 +26,29 @@ const paths = {
     </>
   ),
   mail: <path d="M4 6h16v12H4zM4 7l8 6 8-6" />,
+  hands: (
+    <>
+      <path d="M3 12l4-4 4 2 3-2 4 3 3-1" />
+      <path d="M7 16l3 3a1.5 1.5 0 0 0 2 0l6-5.5" />
+      <path d="M3 12l4 5" />
+    </>
+  ),
+  leaf: (
+    <>
+      <path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z" />
+      <path d="M5 19 13 11" />
+    </>
+  ),
+  heart: (
+    <path d="M12 20s-8-4.7-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.3 12 20 12 20Z" />
+  ),
+  group: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M3 19c0-3.3 2.7-5.5 6-5.500s6 2.2 6 5.500M16 14c2.8 0 5 1.800 5 4.500" />
+    </>
+  ),
 } as const;
 export function Icon({
   name,

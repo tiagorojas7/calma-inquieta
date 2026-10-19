@@ -10,7 +10,13 @@ interface GalleryEntry {
   readonly alt: string;
   readonly width: number;
   readonly height: number;
+  /** Responsive candidates; the lightbox offers the browser all of them. */
+  readonly srcSet?: string;
 }
+
+const THUMBNAIL_SIZES =
+  "(min-width: 90rem) 28rem, (min-width: 48rem) 31vw, 46vw";
+const LIGHTBOX_SIZES = "(min-width: 48rem) 46rem, 100vw";
 
 export function GalleryGrid({
   heading,
@@ -55,7 +61,11 @@ export function GalleryGrid({
                 open(at, event.currentTarget);
               }}
             >
-              <Image {...image} className="h-full w-full object-cover" />
+              <Image
+                {...image}
+                sizes={THUMBNAIL_SIZES}
+                className="h-full w-full object-cover"
+              />
             </button>
           </li>
         ))}
@@ -94,6 +104,8 @@ export function GalleryGrid({
               alt={current.alt}
               width={current.width}
               height={current.height}
+              {...(current.srcSet ? { srcSet: current.srcSet } : {})}
+              sizes={LIGHTBOX_SIZES}
               className="max-h-screen w-full basis-full object-contain"
             />
             <figcaption id={captionId} className="basis-full text-ink-700">

@@ -6,10 +6,6 @@ import type { StandInAsset } from "../../domain/stand-in";
  * its row and its file in one change.
  */
 
-const SVG_SOURCE =
-  "Abstract composition authored for this project in the brand palette (generated with a Python script)";
-const SVG_LICENCE = "Original work for this project; no third-party material";
-
 const PHOTO_LICENCE =
   "Client brand asset (a photograph from the studio's own published Instagram account); image permission still to be confirmed";
 const photo = (file: string) =>
@@ -28,54 +24,10 @@ const FONT_REPLACE_WITH =
 
 export const STAND_IN_ASSETS = [
   {
-    id: "hero-1",
-    path: "/media/stand-ins/hero-1.jpg",
-    kind: "image",
-    source: photo("ig-post-05-2026-09-29.jpg"),
-    licence: PHOTO_LICENCE,
-    replaceWith:
-      "A client photograph of a workshop or of finished pieces, at least 2000 px, with image permission",
-  },
-  {
-    id: "hero-2",
-    path: "/media/stand-ins/hero-2.jpg",
-    kind: "image",
-    source: photo("ig-post-07-2026-09-26.jpg"),
-    licence: PHOTO_LICENCE,
-    replaceWith:
-      "A client photograph of the space or of a class, at least 2000 px, with image permission",
-  },
-  {
-    id: "hero-3",
-    path: "/media/stand-ins/hero-3.jpg",
-    kind: "image",
-    source: photo("ig-post-01-2026-10-04.jpg"),
-    licence: PHOTO_LICENCE,
-    replaceWith:
-      "A client photograph of the team or of the space, at least 2000 px, with image permission",
-  },
-  {
-    id: "about-teaser",
-    path: "/media/stand-ins/about-teaser.svg",
-    kind: "image",
-    source: SVG_SOURCE,
-    licence: SVG_LICENCE,
-    replaceWith:
-      "A client photograph of the team or the studio for the Quiénes somos teaser",
-  },
-  {
     id: "gallery-01",
     path: "/media/stand-ins/gallery-01.jpg",
     kind: "image",
     source: photo("ig-post-11-2026-09-21.jpg"),
-    licence: PHOTO_LICENCE,
-    replaceWith: "A client gallery photograph with image permission",
-  },
-  {
-    id: "gallery-02",
-    path: "/media/stand-ins/gallery-02.jpg",
-    kind: "image",
-    source: photo("ig-post-12-2026-09-18-collab.jpg"),
     licence: PHOTO_LICENCE,
     replaceWith: "A client gallery photograph with image permission",
   },
@@ -87,15 +39,6 @@ export const STAND_IN_ASSETS = [
     licence: PROFILE_PICTURE_LICENCE,
     replaceWith:
       "The client's logo files (vector or transparent PNG) to produce a proper favicon set",
-  },
-  {
-    id: "share-default",
-    path: "/media/stand-ins/share-default.jpg",
-    kind: "share-image",
-    source: `${PROFILE_PICTURE_SOURCE}; centered at native size on a #E6D7C4 canvas of 1200x630 with Python Pillow 11.3.0`,
-    licence: PROFILE_PICTURE_LICENCE,
-    replaceWith:
-      "A designed 1200x630 share image from the client's logo files or a brand photograph",
   },
   {
     id: "font-cormorant-garamond-400-normal",

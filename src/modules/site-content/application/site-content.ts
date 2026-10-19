@@ -6,6 +6,10 @@ import {
   approvedTrustClaims,
   listUnapproved,
   publishableTestimonials,
+  publishedImages,
+  publishedLoop,
+  summarizeLaunchGate,
+  type LaunchGate,
 } from "../domain/content-rules";
 import type {
   AboutPageContent,
@@ -20,10 +24,11 @@ import type { SiteContentSource } from "./ports";
 
 export interface SiteContent {
   getBusinessProfile(): Promise<BusinessProfile>;
-  /** Trust claims approved only; testimonials consented only. */
+  /** Trust claims approved only; testimonials consented only; the hero loop only when published. */
   getHomePage(): Promise<HomePageContent>;
-  /** Values, gallery, videos and FAQ are `[]` when empty. */
+  /** Values, gallery, videos and FAQ are `[]` when empty; the gallery keeps published images only. */
   getAboutPage(): Promise<AboutPageContent>;
+  /** The photo is returned only when its asset is publishable. */
   getContactPage(): Promise<ContactPageContent>;
   getComingSoonPage(slug: ComingSoonSlug): Promise<ComingSoonContent>;
   /** Labels, listing copy and WhatsApp templates of the public catalog. */
@@ -33,6 +38,8 @@ export interface SiteContent {
   >;
   /** The length is the number of stand-ins remaining (the launch gate). */
   listStandInAssets(): Promise<readonly StandInAsset[]>;
+  /** Image stand-ins, font stand-ins and unpublished media, for the launch checklist. */
+  getLaunchGate(): Promise<LaunchGate>;
 }
 
 /** Applies the domain rules to whatever the source loads; it caches nothing. */
@@ -42,9 +49,13 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       return publishProfile((await source.load()).profile);
     },
     async getHomePage() {
-      const { home } = await source.load();
+      const raw = await source.load();
+      const { home } = raw;
+      const { loop, ...hero } = home.hero;
+      const published = publishedLoop(loop, raw);
       return {
         ...home,
+        hero: published ? { ...hero, loop: published } : hero,
         trustClaims: approvedTrustClaims(home.trustClaims),
         testimonials: {
           ...home.testimonials,
@@ -53,10 +64,15 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       };
     },
     async getAboutPage() {
-      return (await source.load()).about;
+      const raw = await source.load();
+      return { ...raw.about, gallery: publishedImages(raw.about.gallery, raw) };
     },
     async getContactPage() {
-      return (await source.load()).contact;
+      const raw = await source.load();
+      const { photo, ...contact } = raw.contact;
+      return photo && publishedImages([photo], raw).length > 0
+        ? { ...contact, photo }
+        : contact;
     },
     async getComingSoonPage(slug) {
       return (await source.load()).comingSoon[slug];
@@ -69,6 +85,10 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
     },
     async listStandInAssets() {
       return (await source.load()).standIns;
+    },
+    async getLaunchGate() {
+      const raw = await source.load();
+      return summarizeLaunchGate(raw.standIns, raw.media);
     },
   };
 }

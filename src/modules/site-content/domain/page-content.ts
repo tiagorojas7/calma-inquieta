@@ -1,4 +1,5 @@
 import type { RawBusinessProfile, WhatsAppTopic } from "./business-profile";
+import type { MediaRegistry, MediaRule } from "./media";
 import type { StandInAsset } from "./stand-in";
 
 export interface SeoCopy {
@@ -19,6 +20,27 @@ export interface ApprovableText extends Approvable {
 export interface ImageRef {
   readonly src: string;
   readonly alt: string;
+  readonly width: number;
+  readonly height: number;
+  /** Responsive candidates ("path 480w, path 960w"); every path is gated like `src`. */
+  readonly srcSet?: string;
+}
+
+/** A phone crop and a desktop crop of one slot; both carry the same alt text. */
+export interface ArtDirectedImage {
+  readonly mobile: ImageRef;
+  readonly desktop: ImageRef;
+}
+
+/** A short decorative loop: two encodes of one clip and the poster shown before it plays. */
+export interface AmbientLoop {
+  /** Decorative: its alt is empty. */
+  readonly poster: ImageRef;
+  /** In order of preference: WebM first, MP4 as the fallback. */
+  readonly sources: readonly {
+    readonly src: string;
+    readonly type: "video/webm" | "video/mp4";
+  }[];
   readonly width: number;
   readonly height: number;
 }
@@ -71,8 +93,10 @@ export interface HomePageContent {
     readonly subtitle: string;
     readonly primaryCtaLabel: string;
     readonly secondaryCtaLabel: string;
-    /** One to three slots, registered stand-ins. */
-    readonly images: readonly ImageRef[];
+    /** The hero still: a required slot from the media registry. */
+    readonly image: ArtDirectedImage;
+    /** Optional: the reader drops it unless every path is published. */
+    readonly loop?: AmbientLoop;
   };
   /** The reader returns approved claims only. */
   readonly trustClaims: readonly TrustClaim[];
@@ -119,6 +143,8 @@ export interface ContactPageContent {
   readonly seo: SeoCopy;
   readonly heading: string;
   readonly intro: string;
+  /** A photo of the space; the reader withholds it unless its asset is publishable. */
+  readonly photo?: ImageRef;
 }
 
 export type ComingSoonSlug = "talleres" | "intensivos" | "eventos-privados";
@@ -198,6 +224,7 @@ export interface RawSiteContent {
   readonly comingSoon: Readonly<Record<ComingSoonSlug, ComingSoonContent>>;
   readonly catalog: CatalogContent;
   readonly standIns: readonly StandInAsset[];
+  readonly media: MediaRegistry;
 }
 
 export interface ContentIssue {
@@ -208,5 +235,10 @@ export interface ContentIssue {
     | "video-id"
     | "empty-seo"
     | "duplicate-id"
-    | "unregistered-stand-in";
+    | "unregistered-stand-in"
+    | MediaRule;
+  /** Registry issues only: the offending variant or source path. */
+  readonly path?: string;
+  /** Registry issues only: the offending source id. */
+  readonly sourceId?: string;
 }

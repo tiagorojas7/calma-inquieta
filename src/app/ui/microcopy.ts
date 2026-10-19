@@ -7,6 +7,8 @@ export const microcopy = {
   skipToContent: "Saltar al contenido",
   opensInNewTab: "(se abre en una pestaña nueva)",
   playVideo: (title: string) => `Reproducir video: ${title}`,
+  pauseAnimation: "Pausar animación",
+  playAnimation: "Reproducir animación",
   directions: "Cómo llegar",
   writeUs: "Escribinos",
   whatsappSuffix: " por WhatsApp",

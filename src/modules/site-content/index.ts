@@ -14,6 +14,7 @@ export type {
 } from "./domain/business-profile";
 export { fillCopyTemplate } from "./domain/copy-template";
 export { findCopyViolations } from "./domain/copy-rules";
+export type { LaunchGate } from "./domain/content-rules";
 export type { CopyViolation } from "./domain/copy-rules";
 export {
   buildDirectionsUrl,
@@ -22,10 +23,20 @@ export {
   toWhatsAppDigits,
 } from "./domain/links";
 export type { WhatsAppError } from "./domain/links";
+export { DEFAULT_SHARE_IMAGE } from "./domain/media";
+export type {
+  ImageAsset,
+  MediaAsset,
+  MediaRegistry,
+  RightsEntry,
+  VideoAsset,
+} from "./domain/media";
 export type {
   AboutPageContent,
+  AmbientLoop,
   Approvable,
   ApprovableText,
+  ArtDirectedImage,
   CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,

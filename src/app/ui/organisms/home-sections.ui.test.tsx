@@ -10,6 +10,7 @@ import {
 import { ActivityShowcase } from "./activity-showcase";
 import { AboutTeaser } from "./about-teaser";
 import { ContactBand } from "./contact-band";
+import { Icon } from "../atoms/icon";
 import { TrustRow } from "./trust-row";
 import { UpcomingList } from "./upcoming-list";
 
@@ -25,6 +26,40 @@ describe("home organisms", () => {
     expect(screen.getByText("Experiencias cuidadas")).toBeInTheDocument();
     expect(screen.getByText("Para crear en comunidad")).toBeInTheDocument();
     await expectNoAxeViolations(container);
+  });
+
+  it("each trust item shows the glyph of its own claim", () => {
+    const { container } = render(
+      <TrustRow
+        claims={[
+          { id: "a", label: "Uno", icon: "leaf" },
+          { id: "b", label: "Dos", icon: "hands" },
+        ]}
+      />,
+    );
+    const glyph = (name: "leaf" | "hands") =>
+      render(<Icon name={name} />).container.querySelector("svg")?.innerHTML;
+    const shown = [...container.querySelectorAll("svg")].map(
+      (s) => s.innerHTML,
+    );
+    expect(shown).toEqual([glyph("leaf"), glyph("hands")]);
+  });
+
+  it("no arrow glyph appears in the trust row", () => {
+    const { container } = render(<TrustRow claims={trustClaimFixtures} />);
+    const arrow = render(<Icon name="arrow" />).container.querySelector(
+      "svg",
+    )?.innerHTML;
+    expect(arrow).toBeTruthy();
+    for (const svg of container.querySelectorAll("svg")) {
+      expect(svg.innerHTML).not.toBe(arrow);
+    }
+  });
+
+  it("the row does not render without approved claims", () => {
+    const { container } = render(<TrustRow claims={[]} />);
+    expect(container.querySelector("section")).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renders ActivityShowcase empty state with its external action", async () => {
@@ -126,6 +161,69 @@ describe("home organisms", () => {
       screen.getByRole("link", { name: "Conocé quiénes somos" }),
     ).toHaveAttribute("href", "/quienes-somos");
     await expectNoAxeViolations(container);
+  });
+
+  it("the teaser renders the image lazy with width, height and non-empty alt", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <AboutTeaser
+          heading="Quiénes somos"
+          body="Creamos juntas."
+          image={{
+            src: "/media/home/home-teaser-800.0a1b2c3d.webp",
+            alt: "Una cesta con flores silvestres",
+            width: 800,
+            height: 1000,
+            srcSet:
+              "/media/home/home-teaser-480.1b2c3d4e.webp 480w, /media/home/home-teaser-800.0a1b2c3d.webp 800w",
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const photo = screen.getByRole("img", {
+      name: "Una cesta con flores silvestres",
+    });
+    expect(photo).toHaveAttribute("loading", "lazy");
+    expect(photo).not.toHaveAttribute("fetchpriority", "high");
+    expect(photo).toHaveAttribute("width", "800");
+    expect(photo).toHaveAttribute("height", "1000");
+    expect(photo).toHaveAttribute(
+      "srcset",
+      expect.stringContaining("home-teaser-480"),
+    );
+    expect(photo).toHaveAttribute(
+      "sizes",
+      "(min-width: 64rem) 24rem, calc(100vw - 2.5rem)",
+    );
+    await expectNoAxeViolations(container);
+  });
+
+  it("from lg the teaser has two columns", () => {
+    const image = {
+      src: "/media/home/home-teaser-800.0a1b2c3d.webp",
+      alt: "Una cesta con flores silvestres",
+      width: 800,
+      height: 1000,
+    };
+    const { container, rerender } = render(
+      <MemoryRouter>
+        <AboutTeaser
+          heading="Quiénes somos"
+          body="Creamos juntas."
+          image={image}
+        />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector("section")).toHaveClass("lg:grid-cols-2");
+    rerender(
+      <MemoryRouter>
+        <AboutTeaser heading="Quiénes somos" body="Creamos juntas." />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector("section")).not.toHaveClass(
+      "lg:grid-cols-2",
+    );
+    expect(screen.queryByRole("img")).toBeNull();
   });
 
   it("renders ContactBand content and WhatsApp link accessibly", async () => {

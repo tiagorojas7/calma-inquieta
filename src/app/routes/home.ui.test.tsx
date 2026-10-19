@@ -10,14 +10,29 @@ import {
   buildPublicIntensivo,
   buildPublicTaller,
 } from "~/testing/fakes/public-catalog-builders";
-import HomeRoute, { loader } from "./home";
+import HomeRoute, { loader, meta } from "./home";
 
 const fixture = {
   hero: {
     eyebrow: "Calma Inquieta",
     title: { lead: "Un espacio para ", accent: "crear", trail: "" },
     subtitle: "Una propuesta cálida.",
-    images: [{ src: "/hero.svg", alt: "Textura", width: 400, height: 300 }],
+    image: {
+      mobile: {
+        src: "/hero-m.webp",
+        srcSet: "/hero-m-480.webp 480w, /hero-m.webp 720w",
+        alt: "Textura",
+        width: 720,
+        height: 900,
+      },
+      desktop: {
+        src: "/hero-d.webp",
+        srcSet: "/hero-d-480.webp 480w, /hero-d.webp 960w",
+        alt: "Textura",
+        width: 960,
+        height: 1280,
+      },
+    },
     bajada: "Equilibrio entre serenidad y movimiento",
   },
   trustClaims: [],
@@ -219,5 +234,306 @@ describe("Inicio route", () => {
     expect(screen.getByText("Quiénes somos")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     vi.restoreAllMocks();
+  });
+
+  describe("images", () => {
+    async function renderFixture() {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => fixture,
+        },
+      ]);
+      const view = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      return view;
+    }
+
+    it("Inicio has exactly one img with fetchpriority high", async () => {
+      const { container } = await renderFixture();
+      const high = container.querySelectorAll('img[fetchpriority="high"]');
+      expect(high).toHaveLength(1);
+      expect(high[0]?.closest("picture")).not.toBeNull();
+      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
+        1,
+      );
+    });
+
+    it("every other img is loading lazy", async () => {
+      const { container } = await renderFixture();
+      const others = [...container.querySelectorAll("img")].filter(
+        (element) => element.getAttribute("fetchpriority") !== "high",
+      );
+      for (const element of others) {
+        expect(element, element.getAttribute("src") ?? "").toHaveAttribute(
+          "loading",
+          "lazy",
+        );
+      }
+    });
+
+    it("no image is hidden at a breakpoint while loading", async () => {
+      const { container } = await renderFixture();
+      for (const element of container.querySelectorAll("img")) {
+        let node: Element | null = element;
+        while (node) {
+          const hiding = [...node.classList].filter((name) =>
+            /(^|:)hidden$/.test(name),
+          );
+          expect(hiding, element.getAttribute("src") ?? "").toEqual([]);
+          node = node.parentElement;
+        }
+      }
+    });
+
+    it("the preload srcset and sizes equal the rendered picture", async () => {
+      const { container } = await renderFixture();
+      const preloads = (
+        meta({
+          loaderData: {
+            ...fixture,
+            metaInput: {
+              title: "Inicio",
+              description: "Descripción de Inicio",
+              path: "/",
+              siteName: "Calma Inquieta",
+              baseUrl: "https://example.test",
+              indexingEnabled: false,
+            },
+          },
+        } as never) as readonly Record<string, unknown>[]
+      ).filter((entry) => entry.rel === "preload");
+      const source = container.querySelector("picture > source");
+      const still = container.querySelector("picture > img");
+      expect(preloads).toHaveLength(2);
+      expect(preloads[0]?.imageSrcSet).toBe(still?.getAttribute("srcset"));
+      expect(preloads[1]?.imageSrcSet).toBe(source?.getAttribute("srcset"));
+      expect(preloads[1]?.media).toBe(source?.getAttribute("media"));
+      for (const entry of preloads) {
+        expect(entry.imageSizes).toBe(still?.getAttribute("sizes"));
+        expect(entry.imageSizes).toBe(source?.getAttribute("sizes"));
+      }
+    });
+  });
+
+  describe("loop", () => {
+    const loop = {
+      poster: {
+        src: "/media/video/home-loop-poster-720.0a1b2c3d.webp",
+        srcSet:
+          "/media/video/home-loop-poster-480.0a1b2c3d.webp 480w, /media/video/home-loop-poster-720.0a1b2c3d.webp 720w",
+        alt: "",
+        width: 720,
+        height: 900,
+      },
+      sources: [
+        {
+          src: "/media/video/home-loop-720.0a1b2c3d.webm",
+          type: "video/webm",
+        },
+        { src: "/media/video/home-loop-720.0a1b2c3d.mp4", type: "video/mp4" },
+      ],
+      width: 720,
+      height: 900,
+    };
+
+    async function renderWithLoop() {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => ({ ...fixture, hero: { ...fixture.hero, loop } }),
+        },
+      ]);
+      const view = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      return view;
+    }
+
+    it("Inicio contains exactly one loop element", async () => {
+      const { container } = await renderWithLoop();
+      expect(
+        container.querySelectorAll(`img[src="${loop.poster.src}"]`),
+      ).toHaveLength(1);
+      expect(container.querySelectorAll("video")).toHaveLength(0);
+    });
+
+    it("the only eager high-priority image is still the hero still", async () => {
+      const { container } = await renderWithLoop();
+      const high = container.querySelectorAll('img[fetchpriority="high"]');
+      expect(high).toHaveLength(1);
+      expect(high[0]?.closest("picture")).not.toBeNull();
+      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
+        1,
+      );
+      expect(
+        container.querySelector(`img[src="${loop.poster.src}"]`),
+      ).toHaveAttribute("loading", "lazy");
+    });
+
+    it("the loop is not preloaded", () => {
+      const preloads = (
+        meta({
+          loaderData: {
+            ...fixture,
+            hero: { ...fixture.hero, loop },
+            metaInput: {
+              title: "Inicio",
+              description: "Descripción de Inicio",
+              path: "/",
+              siteName: "Calma Inquieta",
+              baseUrl: "https://example.test",
+              indexingEnabled: false,
+            },
+          },
+        } as never) as readonly Record<string, unknown>[]
+      ).filter((entry) => entry.rel === "preload");
+      expect(preloads).toHaveLength(2);
+      expect(JSON.stringify(preloads)).not.toContain("home-loop");
+    });
+
+    it("renders no loop element when the hero has none", async () => {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => (
+            <main>
+              <HomeRoute />
+            </main>
+          ),
+          loader: () => fixture,
+        },
+      ]);
+      const { container } = render(<Stub initialEntries={["/"]} />);
+      await screen.findByRole("heading", { level: 1 });
+      expect(container.querySelectorAll("img[src*=home-loop]")).toHaveLength(0);
+    });
+  });
+});
+
+describe("Inicio motifs", () => {
+  const claims = [{ id: "c1", label: "Materiales incluidos" }];
+  const testimonials = [{ id: "t1", quote: "Muy lindo", author: "Ana" }];
+
+  async function renderInicio(overrides: Record<string, unknown>) {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => ({ ...fixture, ...overrides }),
+      },
+    ]);
+    const view = render(<Stub initialEntries={["/"]} />);
+    await screen.findByRole("heading", { level: 1 });
+    return view;
+  }
+
+  const cordsIn = (container: HTMLElement) =>
+    [...container.querySelectorAll(".motif-cord-a")].map(
+      (path) => path.closest("[aria-hidden]") as Element,
+    );
+  const follows = (a: Element, b: Element) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  const rows = [
+    { name: "catalog read, claims", failed: false, claims, count: 3 },
+    { name: "catalog read, no claims", failed: false, claims: [], count: 3 },
+    { name: "catalog failed, claims", failed: true, claims, count: 2 },
+    { name: "catalog failed, no claims", failed: true, claims: [], count: 2 },
+  ];
+
+  it.each(rows)("places the cords for $name", async (row) => {
+    const { container } = await renderInicio({
+      catalogFailed: row.failed,
+      trustClaims: row.claims,
+    });
+    expect(cordsIn(container)).toHaveLength(row.count);
+  });
+
+  it("the first cord follows the trust row when it renders", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const trust = screen.getByRole("region", { name: "Confianza" });
+    expect(follows(trust, cordsIn(container)[0] as Element)).toBe(true);
+    expect(container.querySelector(".motif-cord-a")).not.toBeNull();
+  });
+
+  it("with no claims the first cord follows the hero section", async () => {
+    const { container } = await renderInicio({ trustClaims: [] });
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const first = cordsIn(container)[0] as Element;
+    expect(follows(hero as Element, first)).toBe(true);
+    expect(first.previousElementSibling).toBe(hero);
+  });
+
+  it("no cord sits between the h1 section and the trust row", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const trust = screen.getByRole("region", { name: "Confianza" });
+    expect(hero?.nextElementSibling).toBe(trust);
+    expect(container.querySelectorAll(".motif-cord-a")).not.toHaveLength(0);
+  });
+
+  it.each(rows)("no two cords are adjacent for $name", async (row) => {
+    const { container } = await renderInicio({
+      catalogFailed: row.failed,
+      trustClaims: row.claims,
+      testimonials,
+    });
+    expect(cordsIn(container)).toHaveLength(row.count);
+    for (const cord of cordsIn(container)) {
+      expect(cordsIn(container)).not.toContain(cord.previousElementSibling);
+      expect(cordsIn(container)).not.toContain(cord.nextElementSibling);
+    }
+  });
+
+  it("no cord sits after the contact band", async () => {
+    const { container } = await renderInicio({});
+    const band = screen
+      .getByRole("heading", { name: "Hablemos" })
+      .closest("section");
+    for (const cord of cordsIn(container)) {
+      expect(follows(band as Element, cord)).toBe(false);
+    }
+    expect(cordsIn(container)).toHaveLength(3);
+  });
+
+  it("exactly one butterfly exists and it is inside the hero area", async () => {
+    const { container } = await renderInicio({});
+    const butterflies = container.querySelectorAll(".motif-flight");
+    expect(butterflies).toHaveLength(1);
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(hero).toContainElement(butterflies[0] as HTMLElement);
+  });
+
+  it("the text and links of Inicio are equal with and without motifs", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    const snapshot = (root: Element) => ({
+      text: root.textContent,
+      links: [...root.querySelectorAll("a")].map((a) => a.outerHTML),
+    });
+    const withMotifs = snapshot(container);
+    const bare = container.cloneNode(true) as HTMLElement;
+    for (const motif of bare.querySelectorAll(".motif-flight")) motif.remove();
+    for (const cord of cordsIn(bare)) cord.remove();
+    expect(bare.querySelectorAll("svg.h-6")).toHaveLength(0);
+    expect(snapshot(bare)).toEqual(withMotifs);
+  });
+
+  it("Inicio with the motifs has no axe violations", async () => {
+    const { container } = await renderInicio({ trustClaims: claims });
+    await expectNoAxeViolations(container, { page: true });
   });
 });

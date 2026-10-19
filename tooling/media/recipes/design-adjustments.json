@@ -4,23 +4,44 @@
     "source": "IMG_20260819_174607732_HDR.jpg",
     "area": "home",
     "aspect": 0.8,
-    "focus": { "x": 0.5, "y": 0.45 },
+    "focus": {
+      "x": 0.5,
+      "y": 0.45
+    },
     "widths": [480, 720, 1080],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "home-hero-desktop",
     "source": "IMG_20260819_174607732_HDR.jpg",
     "area": "home",
     "widths": [480, 960, 1600],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
+  },
+  {
+    "id": "home-hero-backdrop",
+    "source": "IMG-20260530-WA0030.jpg",
+    "area": "home",
+    "aspect": 0.5625,
+    "focus": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "widths": [480, 720, 900],
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "share-default",
     "source": "IMG_20260819_174607732_HDR.jpg",
     "area": "share",
     "aspect": 1.9047619047619047,
-    "focus": { "x": 0.5, "y": 0.45 },
+    "focus": {
+      "x": 0.5,
+      "y": 0.45
+    },
     "widths": [1200],
     "format": "jpeg"
   },
@@ -29,70 +50,80 @@
     "source": "IMG-20260530-WA0021.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-manos-aro",
     "source": "IMG-20260411-WA0106.jpg",
     "area": "about",
     "widths": [480, 900],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-espejo-flecos",
     "source": "IMG-20260530-WA0026.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-mesa-taller",
     "source": "IMG-20260419-WA0044.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-macrame",
     "source": "IMG-20260530-WA0032.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-ceramica-manos",
     "source": "IMG-20261015-WA0029.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-cuenco-tejido",
     "source": "IMG-20260709-WA0009.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-acuarela",
     "source": "IMG_20260912_131514909_HDR.jpg",
     "area": "about",
     "widths": [480, 960, 1600],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-comunidad",
     "source": "IMG-20261015-WA0030.jpg",
     "area": "about",
     "widths": [480, 960, 1600],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "about-jarrones",
     "source": "IMG-20260511-WA0019.jpg",
     "area": "about",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "home-teaser",
@@ -100,14 +131,42 @@
     "area": "home",
     "aspect": 0.8,
     "widths": [480, 800],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
+  },
+  {
+    "id": "home-collage-square",
+    "source": "IMG-20260709-WA0009.jpg",
+    "area": "home",
+    "aspect": 1,
+    "focus": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "widths": [480, 960],
+    "format": "webp",
+    "grade": "warm"
+  },
+  {
+    "id": "home-collage-wide",
+    "source": "IMG-20260530-WA0021.jpg",
+    "area": "home",
+    "aspect": 1.3333333333333333,
+    "focus": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "widths": [480, 960],
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "contact-fachada",
     "source": "IMG-20260530-WA0019.jpg",
     "area": "contact",
     "widths": [480, 960],
-    "format": "webp"
+    "format": "webp",
+    "grade": "warm"
   },
   {
     "id": "home-loop-poster",

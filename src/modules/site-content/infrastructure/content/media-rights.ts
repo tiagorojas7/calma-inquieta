@@ -56,6 +56,7 @@ export const MEDIA_RIGHTS: readonly RightsEntry[] = [
   noPeople("img-20260511-wa0019"),
   noPeople("img-20260411-wa0013"),
   noPeople("img-20260530-wa0019"),
+  noPeople("img-20260530-wa0030"),
 ];
 
 /** Sources that may never be registered, whatever the ledger says (owner decisions OD-5 and OD-7). */

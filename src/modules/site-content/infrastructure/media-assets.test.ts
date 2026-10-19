@@ -196,6 +196,62 @@ describe("the curated media files and the registry, both ways", () => {
   });
 });
 
+describe("the warm-graded home media", () => {
+  const imageAsset = (id: string) => {
+    const asset = assets.find((candidate) => candidate.id === id);
+    if (asset?.kind !== "image") {
+      throw new Error(`${id} is not a registered image`);
+    }
+    return asset;
+  };
+  const ratio = ({ width, height }: { width: number; height: number }) =>
+    width / height;
+
+  it("the mobile hero backdrop is a portrait 9:16 image of 480, 720 and 900 px from a source with no people", () => {
+    const backdrop = imageAsset("home-hero-backdrop");
+
+    expect(backdrop).toMatchObject({ area: "home", format: "webp" });
+    expect(backdrop.variants.map(({ width }) => width)).toEqual([
+      480, 720, 900,
+    ]);
+    for (const variant of backdrop.variants) {
+      expect(ratio(variant)).toBeCloseTo(9 / 16, 2);
+    }
+    expect(
+      MEDIA_RIGHTS.find(({ sourceId }) => sourceId === backdrop.sourceId),
+    ).toEqual({
+      sourceId: "img-20260530-wa0030",
+      people: "none",
+      consent: "not-required",
+    });
+    expect(mentionsExcludedSource(backdrop.sourceId, EXCLUDED_SOURCES)).toBe(
+      false,
+    );
+    expect(findCopyViolations([backdrop.alt])).toEqual([]);
+    for (const variant of backdrop.variants) {
+      expect(publishedPaths(registry).has(variant.path), variant.path).toBe(
+        true,
+      );
+    }
+  });
+
+  it("the curated photos give the desktop collage tall, square and wide ratios", () => {
+    const first = (id: string) => ratio(imageAsset(id).variants[0]);
+
+    expect(first("home-hero-desktop")).toBeCloseTo(3 / 4, 2);
+    expect(first("home-collage-square")).toBeCloseTo(1, 2);
+    expect(first("home-collage-wide")).toBeCloseTo(4 / 3, 2);
+    expect(first("home-teaser")).toBeCloseTo(4 / 5, 2);
+    expect(first("about-comunidad")).toBeCloseTo(4 / 3, 2);
+  });
+
+  it("the share image is never regraded and keeps its pinned path", () => {
+    expect(imageAsset("share-default").variants[0].path).toBe(
+      DEFAULT_SHARE_IMAGE.path,
+    );
+  });
+});
+
 describe("the exclusions", () => {
   it("no file name under public/media (stand-ins included) and no recipe source mentions an excluded source", () => {
     expect(allMediaFiles.length).toBeGreaterThan(0);
@@ -363,13 +419,16 @@ describe("public/_headers", () => {
 
 describe("the media refs", () => {
   it("builds an image reference with its srcSet, preferring the widest variant at or below 960", () => {
+    const hero = MEDIA_ASSETS[0];
+    const [small, medium, large] = hero.variants;
+
+    expect(hero.id).toBe("home-hero-mobile");
     expect(imageRef("home-hero-mobile")).toEqual({
-      src: "/media/home/home-hero-mobile-720.58b52aa5.webp",
-      alt: MEDIA_ASSETS[0].alt,
+      src: medium.path,
+      alt: hero.alt,
       width: 720,
       height: 900,
-      srcSet:
-        "/media/home/home-hero-mobile-480.13e77fb5.webp 480w, /media/home/home-hero-mobile-720.58b52aa5.webp 720w, /media/home/home-hero-mobile-1080.a90a6d0e.webp 1080w",
+      srcSet: `${small.path} 480w, ${medium.path} 720w, ${large.path} 1080w`,
     });
   });
 

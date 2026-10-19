@@ -1,7 +1,7 @@
 # Admin B6: workshop periods
 
 - Work unit: item 10 of `openspec/changes/admin-catalog/tasks.md` (B6). ODD, BACK.
-- Branch/worktree: `feat/admin-catalog-b6-workshop-periods`, stacked on completed B5 commit `4799693`, in `../CalmaInquieta-b1b`.
+- Branch/worktree: `feat/admin-catalog-b6-workshop-periods`, rebased B6-only onto merged B5 at `origin/main` `d0f31d9`, in `../CalmaInquieta-b1b`.
 - Objective: deliver workshop periods and “Abrir mes” with Córdoba month semantics, deterministic prefill, per-turno capacities, assignment-isolated teacher/id/name/modality and initial-percentage snapshots, editable non-closed period percentage, effective closure, transactional fake/Drizzle parity, and ordered generated migrations `0007_workshop_turno_composite_unique` + `0008_workshop_periods`.
 - Why: B6 makes monthly workshop configuration historical and is the dependency for B9 offers and later enrollment/renewal flows.
 - Requirements: item 10 of `openspec/changes/admin-catalog/tasks.md`, period requirements in `openspec/changes/admin-catalog/specs/workshop-periods/spec.md`, relevant design sections, and existing `WorkshopPeriodsService` contracts/builders.
@@ -75,4 +75,7 @@
 
 ## Next step
 
-B6 is complete on `feat/admin-catalog-b6-workshop-periods`; hand off commits `830e9c5`, `23cb55d`, `af0b9a3`, and this final evidence commit to the owner for merge sequencing.
+B6 is complete on `feat/admin-catalog-b6-workshop-periods`; publish the rebased B6-only branch as the final PR in the B4 → B5 → B6 integration chain.
+
+- Integration readiness: only the four B6 commits were replayed onto merged B5. Current commits are `a25653a` (behavior/fake), `4ca7774` (persistence/migrations), `7c46a2d` (teacher-name snapshot correction), and `26b9fb8` (delivery evidence). The ordered generator-produced migrations remain `0007_workshop_turno_composite_unique` then `0008_workshop_periods`; drift check reports no schema changes. Focused integration suite passes 4 files / 42 tests; lint, format, typecheck, build, and diff check pass.
+- Final integration coverage ran under `C:/Temp/calma-gate.lock` after the host became quiet: 172 files / 1859 tests PASS; statements 94.47%, branches 90.60%, functions 96.91%, lines 96.71%; worktree clean. A first verifier relay stalled before running any tool while a DA-2 Vitest process was still active; no result was inferred, and the quiet rerun is authoritative. The lock was released.

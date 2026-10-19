@@ -4,6 +4,7 @@ import {
   type MediaRegistry,
 } from "~/modules/site-content/domain/media";
 import type {
+  AmbientLoop,
   ImageRef,
   RawSiteContent,
 } from "~/modules/site-content/domain/page-content";
@@ -31,7 +32,22 @@ const heroImage: ImageRef = {
   srcSet: "/media/stand-ins/hero-1.jpg 100w",
 };
 
-/** One publishable share image built from the module default, so minimal content never reports share-image-missing. */
+const loopPoster = "/media/video/home-loop-poster-720.00000000.webp";
+const loopWebm = "/media/video/home-loop-720.00000000.webm";
+const loopMp4 = "/media/video/home-loop-720.00000000.mp4";
+
+/** A decorative loop whose poster and two sources are registered and publishable below. */
+const heroLoop: AmbientLoop = {
+  poster: { src: loopPoster, alt: "", width: 720, height: 900 },
+  sources: [
+    { src: loopWebm, type: "video/webm" },
+    { src: loopMp4, type: "video/mp4" },
+  ],
+  width: 720,
+  height: 900,
+};
+
+/** One publishable share image built from the module default, so minimal content never reports share-image-missing, plus the publishable loop. */
 const shareRegistry: MediaRegistry = {
   assets: [
     {
@@ -49,9 +65,35 @@ const shareRegistry: MediaRegistry = {
         },
       ],
     },
+    {
+      kind: "image",
+      id: "home-loop-poster",
+      sourceId: "test-loop-source",
+      area: "video",
+      alt: "",
+      decorative: true,
+      format: "webp",
+      variants: [{ width: 720, height: 900, path: loopPoster }],
+    },
+    {
+      kind: "video",
+      id: "home-loop",
+      sourceId: "test-loop-source",
+      area: "video",
+      width: 720,
+      height: 900,
+      durationSeconds: 6,
+      audio: false,
+      sources: [
+        { path: loopWebm, type: "video/webm" },
+        { path: loopMp4, type: "video/mp4" },
+      ],
+      posterId: "home-loop-poster",
+    },
   ],
   rights: [
     { sourceId: "test-share-source", people: "none", consent: "not-required" },
+    { sourceId: "test-loop-source", people: "hands", consent: "not-required" },
   ],
   excluded: [],
 };
@@ -101,6 +143,7 @@ export function buildRawSiteContent(
           mobile: heroImage,
           desktop: heroImage,
         },
+        loop: heroLoop,
       },
       trustClaims: [
         {

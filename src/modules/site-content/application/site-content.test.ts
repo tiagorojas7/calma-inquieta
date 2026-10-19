@@ -3,7 +3,8 @@ import {
   buildRawSiteContent,
   createInMemorySiteContentSource,
 } from "~/testing/fakes/in-memory-site-content-source";
-import type { RawSiteContent } from "../domain/page-content";
+import type { MediaRegistry, RightsEntry } from "../domain/media";
+import type { AmbientLoop, RawSiteContent } from "../domain/page-content";
 import { createSiteContent } from "./site-content";
 
 const content = (raw: RawSiteContent = buildRawSiteContent()) =>
@@ -278,5 +279,126 @@ describe("createSiteContent", () => {
     await reader.getHomePage();
 
     expect(loads).toBe(2);
+  });
+});
+
+describe("createSiteContent ambient loop", () => {
+  const webm = "/media/video/home-loop-720.0a1b2c3d.webm";
+  const mp4 = "/media/video/home-loop-720.0a1b2c3d.mp4";
+  const poster = "/media/video/home-loop-poster-720.0a1b2c3d.webp";
+  const loop: AmbientLoop = {
+    poster: { src: poster, alt: "", width: 720, height: 900 },
+    sources: [
+      { src: webm, type: "video/webm" },
+      { src: mp4, type: "video/mp4" },
+    ],
+    width: 720,
+    height: 900,
+  };
+  const registry = (consent: RightsEntry): MediaRegistry => {
+    const share = buildRawSiteContent().media;
+    return {
+      assets: [
+        ...share.assets.filter(({ area }) => area === "share"),
+        {
+          kind: "image",
+          id: "home-loop-poster",
+          sourceId: "loop-source",
+          area: "video",
+          alt: "",
+          decorative: true,
+          format: "webp",
+          variants: [{ width: 720, height: 900, path: poster }],
+        },
+        {
+          kind: "video",
+          id: "home-loop",
+          sourceId: "loop-source",
+          area: "video",
+          width: 720,
+          height: 900,
+          durationSeconds: 6,
+          audio: false,
+          sources: [
+            { path: webm, type: "video/webm" },
+            { path: mp4, type: "video/mp4" },
+          ],
+          posterId: "home-loop-poster",
+        },
+      ],
+      rights: [
+        ...share.rights.filter(
+          ({ sourceId }) => sourceId === "test-share-source",
+        ),
+        consent,
+      ],
+      excluded: [],
+    };
+  };
+  const withLoop = (consent: RightsEntry): RawSiteContent => {
+    const base = buildRawSiteContent();
+    return {
+      ...base,
+      home: { ...base.home, hero: { ...base.home.hero, loop } },
+      media: registry(consent),
+    };
+  };
+
+  it("getHomePage keeps a published loop", async () => {
+    const home = await content(
+      withLoop({
+        sourceId: "loop-source",
+        people: "none",
+        consent: "not-required",
+      }),
+    ).getHomePage();
+
+    expect(home.hero.loop).toEqual(loop);
+  });
+
+  it("getHomePage drops the loop when an asset is unpublishable and still returns the hero", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "faces",
+      consent: "pending",
+    });
+    const home = await content(raw).getHomePage();
+
+    expect(home.hero).not.toHaveProperty("loop");
+    expect(home.hero.image).toEqual(raw.home.hero.image);
+    expect(home.hero.eyebrow).toBe(raw.home.hero.eyebrow);
+    expect(home.hero.title).toEqual(raw.home.hero.title);
+  });
+
+  it("getHomePage drops a loop with a single unpublishable source", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "none",
+      consent: "not-required",
+    });
+    const home = await content({
+      ...raw,
+      home: {
+        ...raw.home,
+        hero: {
+          ...raw.home.hero,
+          loop: {
+            ...loop,
+            sources: [
+              ...loop.sources,
+              { src: "/media/video/other-720.0a1b2c3d.mp4", type: "video/mp4" },
+            ],
+          },
+        },
+      },
+    }).getHomePage();
+
+    expect(home.hero).not.toHaveProperty("loop");
+  });
+
+  it("getHomePage returns a hero without a loop untouched", async () => {
+    const raw = buildRawSiteContent();
+
+    expect((await content(raw).getHomePage()).hero).toEqual(raw.home.hero);
   });
 });

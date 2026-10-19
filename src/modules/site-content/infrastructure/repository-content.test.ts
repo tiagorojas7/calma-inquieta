@@ -680,3 +680,37 @@ describe("the launch gate on the repository content", () => {
     expect(gate.unpublishedMedia).toEqual([]);
   });
 });
+
+describe("the hero loop", () => {
+  it("the hero has a loop with a poster of alt empty and WebM then MP4 sources", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const { loop } = home.hero;
+
+    expect(loop).toBeDefined();
+    if (!loop) {
+      return;
+    }
+    expect(loop.poster.alt).toBe("");
+    expect(loop.poster.width / loop.poster.height).toBeCloseTo(4 / 5, 2);
+    expect(loop.width).toBe(720);
+    expect(loop.height).toBe(900);
+    expect(loop.sources.map(({ type }) => type)).toEqual([
+      "video/webm",
+      "video/mp4",
+    ]);
+    for (const { src } of loop.sources) {
+      expect(src).toMatch(
+        /^\/media\/video\/home-loop-720\.[0-9a-f]{8}\.(webm|mp4)$/,
+      );
+      expect(isPublishedPath(src, raw), src).toBe(true);
+    }
+    expect(isPublishedPath(loop.poster.src, raw)).toBe(true);
+    for (const path of (loop.poster.srcSet ?? "")
+      .split(",")
+      .map((entry) => entry.trim().split(" ")[0] ?? "")) {
+      expect(isPublishedPath(path, raw), path).toBe(true);
+    }
+    expect(loop.poster.src.startsWith("/media/video/")).toBe(true);
+  });
+});

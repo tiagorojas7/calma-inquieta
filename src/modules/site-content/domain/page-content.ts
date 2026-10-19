@@ -32,6 +32,19 @@ export interface ArtDirectedImage {
   readonly desktop: ImageRef;
 }
 
+/** A short decorative loop: two encodes of one clip and the poster shown before it plays. */
+export interface AmbientLoop {
+  /** Decorative: its alt is empty. */
+  readonly poster: ImageRef;
+  /** In order of preference: WebM first, MP4 as the fallback. */
+  readonly sources: readonly {
+    readonly src: string;
+    readonly type: "video/webm" | "video/mp4";
+  }[];
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface TrustClaim extends Approvable {
   readonly label: string;
   readonly icon: "hands" | "leaf" | "heart" | "group";
@@ -82,6 +95,8 @@ export interface HomePageContent {
     readonly secondaryCtaLabel: string;
     /** The hero still: a required slot from the media registry. */
     readonly image: ArtDirectedImage;
+    /** Optional: the reader drops it unless every path is published. */
+    readonly loop?: AmbientLoop;
   };
   /** The reader returns approved claims only. */
   readonly trustClaims: readonly TrustClaim[];

@@ -7,6 +7,7 @@ import {
   listUnapproved,
   publishableTestimonials,
   publishedImages,
+  publishedLoop,
   summarizeLaunchGate,
   type LaunchGate,
 } from "../domain/content-rules";
@@ -23,7 +24,7 @@ import type { SiteContentSource } from "./ports";
 
 export interface SiteContent {
   getBusinessProfile(): Promise<BusinessProfile>;
-  /** Trust claims approved only; testimonials consented only. */
+  /** Trust claims approved only; testimonials consented only; the hero loop only when published. */
   getHomePage(): Promise<HomePageContent>;
   /** Values, gallery, videos and FAQ are `[]` when empty; the gallery keeps published images only. */
   getAboutPage(): Promise<AboutPageContent>;
@@ -48,9 +49,13 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       return publishProfile((await source.load()).profile);
     },
     async getHomePage() {
-      const { home } = await source.load();
+      const raw = await source.load();
+      const { home } = raw;
+      const { loop, ...hero } = home.hero;
+      const published = publishedLoop(loop, raw);
       return {
         ...home,
+        hero: published ? { ...hero, loop: published } : hero,
         trustClaims: approvedTrustClaims(home.trustClaims),
         testimonials: {
           ...home.testimonials,

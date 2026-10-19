@@ -27,7 +27,27 @@ const image = {
   },
 };
 
-function renderHero(ornament?: ReactNode) {
+const loop = {
+  poster: {
+    src: "/media/video/home-loop-poster-720.0a1b2c3d.webp",
+    srcSet:
+      "/media/video/home-loop-poster-480.0a1b2c3d.webp 480w, /media/video/home-loop-poster-720.0a1b2c3d.webp 720w",
+    alt: "",
+    width: 720,
+    height: 900,
+  },
+  sources: [
+    { src: "/media/video/home-loop-720.0a1b2c3d.webm", type: "video/webm" },
+    { src: "/media/video/home-loop-720.0a1b2c3d.mp4", type: "video/mp4" },
+  ],
+  width: 720,
+  height: 900,
+};
+
+function renderHero({
+  ornament,
+  withLoop,
+}: { ornament?: ReactNode; withLoop?: typeof loop } = {}) {
   return render(
     <MemoryRouter>
       <HeroSection
@@ -39,6 +59,7 @@ function renderHero(ornament?: ReactNode) {
         }
         subtitle="Un espacio para encontrarnos."
         image={image}
+        loop={withLoop}
         bajada="Equilibrio entre serenidad y movimiento"
         ornament={ornament}
       />
@@ -148,7 +169,9 @@ describe("HeroSection", () => {
   });
 
   it("the ornament slot renders inside the still photo wrapper", () => {
-    const { container } = renderHero(<span data-testid="ornament" />);
+    const { container } = renderHero({
+      ornament: <span data-testid="ornament" />,
+    });
     const wrapper = container.querySelector("picture")?.parentElement;
     expect(wrapper).not.toBeNull();
     expect(wrapper).toHaveClass("order-first", "relative");
@@ -163,5 +186,69 @@ describe("HeroSection", () => {
   it("has no axe violations", async () => {
     const { container } = renderHero();
     await expectNoAxeViolations(container);
+  });
+
+  describe("loop slot", () => {
+    const loopTile = (container: HTMLElement) =>
+      container.querySelector(`img[src="${loop.poster.src}"]`)?.parentElement;
+
+    it("the loop tile exists once and follows the text in DOM order", () => {
+      const { container } = renderHero({ withLoop: loop });
+      const tiles = container.querySelectorAll(`img[src="${loop.poster.src}"]`);
+      expect(tiles).toHaveLength(1);
+      const tile = loopTile(container);
+      expect(tile).not.toBeNull();
+      for (const text of [
+        screen.getByRole("heading", { level: 1 }),
+        screen.getByText("Equilibrio entre serenidad y movimiento"),
+        screen.getByRole("link", { name: "Ver intensivos" }),
+      ]) {
+        expect(
+          text.compareDocumentPosition(tile as Element) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+      expect(container.querySelectorAll("video")).toHaveLength(0);
+    });
+
+    it("no loop tile renders when the loop is absent", () => {
+      const { container } = renderHero();
+      expect(loopTile(container)).toBeUndefined();
+      expect(container.querySelectorAll("img")).toHaveLength(1);
+    });
+
+    it("the loop tile is 4:5 on phones and a small tile from lg", () => {
+      const { container } = renderHero({ withLoop: loop });
+      const tile = loopTile(container);
+      expect(tile).toHaveStyle({ aspectRatio: "720 / 900" });
+      expect(tile).toHaveClass(
+        "order-last",
+        "w-full",
+        "max-w-md",
+        "lg:absolute",
+        "lg:w-40",
+        "xl:w-48",
+      );
+      const poster = container.querySelector(`img[src="${loop.poster.src}"]`);
+      expect(poster).toHaveAttribute(
+        "sizes",
+        "(min-width: 80rem) 12rem, (min-width: 64rem) 10rem, (min-width: 30rem) 28rem, calc(100vw - 2.5rem)",
+      );
+      expect(poster).toHaveAttribute("loading", "lazy");
+      expect(poster).not.toHaveAttribute("fetchpriority");
+    });
+
+    it("keeps the still as the only eager high-priority image", () => {
+      const { container } = renderHero({ withLoop: loop });
+      expect(container.querySelectorAll("img[fetchpriority]")).toHaveLength(1);
+      expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
+        1,
+      );
+    });
+
+    it("has no axe violations with the loop", async () => {
+      const { container } = renderHero({ withLoop: loop });
+      await expectNoAxeViolations(container);
+    });
   });
 });

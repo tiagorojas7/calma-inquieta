@@ -128,6 +128,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         }
         subtitle={data.hero.subtitle}
         image={data.hero.image}
+        loop={data.hero.loop}
         bajada={data.hero.bajada}
         ornament={<Butterfly />}
       />

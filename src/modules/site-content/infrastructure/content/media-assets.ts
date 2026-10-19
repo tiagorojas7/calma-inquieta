@@ -322,6 +322,42 @@ export const MEDIA_ASSETS = [
       },
     ],
   },
+  {
+    kind: "image",
+    id: "home-loop-poster",
+    sourceId: "vid-20261014-185300580",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 600,
+        path: "/media/video/home-loop-poster-480.c9da0871.webp",
+      },
+      {
+        width: 720,
+        height: 900,
+        path: "/media/video/home-loop-poster-720.39ea6615.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "home-loop",
+    sourceId: "vid-20261014-185300580",
+    area: "video",
+    width: 720,
+    height: 900,
+    durationSeconds: 6,
+    audio: false,
+    sources: [
+      { path: "/media/video/home-loop-720.307f7e0a.webm", type: "video/webm" },
+      { path: "/media/video/home-loop-720.451c3923.mp4", type: "video/mp4" },
+    ],
+    posterId: "home-loop-poster",
+  },
 ] as const satisfies readonly MediaAsset[];
 
 export type MediaAssetId = (typeof MEDIA_ASSETS)[number]["id"];

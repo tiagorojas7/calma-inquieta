@@ -3,8 +3,8 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import {
-  HERO_BACKDROP_SIZES,
   HERO_DESKTOP_MEDIA,
+  HERO_LEAD_MOBILE_SIZES,
   HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
   HeroSection,
@@ -18,7 +18,6 @@ const photo = (name: string, width: number, height: number) => ({
   height,
 });
 
-const backdrop = photo("backdrop", 720, 1280);
 const collage = [
   photo("lead", 960, 1280),
   photo("wide", 960, 720),
@@ -56,7 +55,6 @@ function renderHero({
           </>
         }
         subtitle="Un espacio para encontrarnos."
-        backdrop={backdrop}
         collage={photos}
         note="Crear también es una forma de volver a vos"
         keywords={["Arte", "Manos", "Encuentro", "Bienestar"]}
@@ -108,7 +106,7 @@ describe("HeroSection structure", () => {
   it("exports the shared media and sizes", () => {
     expect(HERO_DESKTOP_MEDIA).toBe("(min-width: 64rem)");
     expect(HERO_MOBILE_MEDIA).toBe("not all and (min-width: 64rem)");
-    expect(HERO_BACKDROP_SIZES).toBe("100vw");
+    expect(HERO_LEAD_MOBILE_SIZES).toMatch(/vw$/);
     expect(HERO_LEAD_SIZES).toMatch(/vw$/);
   });
 });
@@ -174,95 +172,49 @@ describe("HeroSection collage (from lg)", () => {
   });
 });
 
-describe("HeroSection phone backdrop and loading", () => {
-  it("renders the backdrop as a full-bleed photo that fills the band, hidden from lg", () => {
+describe("HeroSection loading (same collage on every width)", () => {
+  it("renders no phone backdrop: the collage shows on every width", () => {
     const { container } = renderHero();
-    const img = imgByAlt("Foto backdrop");
-    const holder = img.closest(".hero-backdrop");
 
-    expect(holder).not.toBeNull();
-    expect(holder).toHaveClass("lg:hidden");
-    expect(img).toHaveClass("object-cover");
-    expect(img).toHaveAttribute("sizes", HERO_BACKDROP_SIZES);
-    expect(container.querySelector(".hero-scrim")).toHaveAttribute(
-      "aria-hidden",
-      "true",
+    expect(container.querySelector(".hero-backdrop")).toBeNull();
+    expect(container.querySelector(".hero-scrim")).toBeNull();
+    expect(container.querySelector(".hero-collage")).not.toHaveClass(
+      "max-lg:contents",
     );
+    for (const tile of container.querySelectorAll(
+      ".collage-lead, .collage-torn, .collage-framed",
+    )) {
+      expect(tile).not.toHaveClass("max-lg:hidden");
+    }
   });
 
-  it("the backdrop is the eager high priority image below lg and a blank pixel from lg", () => {
-    const { container } = renderHero();
-    const img = imgByAlt("Foto backdrop");
-    const sources = img.parentElement?.querySelectorAll("source") ?? [];
-
-    expect(img).toHaveAttribute("loading", "eager");
-    expect(img).toHaveAttribute("fetchpriority", "high");
-    expect(img.parentElement?.tagName).toBe("PICTURE");
-    expect(sources).toHaveLength(1);
-    expect(sources[0]).toHaveAttribute("media", HERO_DESKTOP_MEDIA);
-    expect(sources[0]?.getAttribute("srcset")).toMatch(/^data:image\/webp/);
-    expect(container.querySelectorAll("picture")).toHaveLength(2);
-  });
-
-  it("the collage lead is the eager high priority image from lg and a blank pixel below", () => {
-    renderHero();
+  it("the collage lead is the only eager high priority image, sized per breakpoint", () => {
+    const { container } = renderHero({ withLoop: loop });
     const img = imgByAlt("Foto lead");
-    const sources = img.parentElement?.querySelectorAll("source") ?? [];
+    const eager = [...container.querySelectorAll("img")].filter(
+      (el) => el.getAttribute("loading") === "eager",
+    );
 
-    expect(img).toHaveAttribute("loading", "eager");
     expect(img).toHaveAttribute("fetchpriority", "high");
-    expect(img).toHaveAttribute("sizes", HERO_LEAD_SIZES);
-    expect(sources).toHaveLength(1);
-    expect(sources[0]).toHaveAttribute("media", HERO_MOBILE_MEDIA);
-    expect(sources[0]?.getAttribute("srcset")).toMatch(/^data:image\/webp/);
+    expect(img).toHaveAttribute(
+      "sizes",
+      `${HERO_DESKTOP_MEDIA} ${HERO_LEAD_SIZES}, ${HERO_LEAD_MOBILE_SIZES}`,
+    );
+    expect(img.parentElement?.querySelectorAll("source")).toHaveLength(0);
+    expect(eager).toEqual([img]);
   });
 
   it("every other image is lazy with no priority hint", () => {
     const { container } = renderHero({ withLoop: loop });
-    const eager = [...container.querySelectorAll("img")].filter(
-      (img) => img.getAttribute("loading") === "eager",
-    );
 
-    expect(eager.map((img) => img.getAttribute("alt"))).toEqual([
-      "Foto backdrop",
-      "Foto lead",
-    ]);
     for (const img of container.querySelectorAll("img")) {
-      if (!eager.includes(img)) {
-        expect(img, img.outerHTML.slice(0, 60)).toHaveAttribute(
-          "loading",
-          "lazy",
-        );
-        expect(img).not.toHaveAttribute("fetchpriority");
-      }
+      if (img.getAttribute("alt") === "Foto lead") continue;
+      expect(img, img.outerHTML.slice(0, 60)).toHaveAttribute(
+        "loading",
+        "lazy",
+      );
+      expect(img).not.toHaveAttribute("fetchpriority");
     }
-  });
-});
-
-describe("HeroSection dark phone treatment", () => {
-  it("restyles both calls to action and the subtitle card for the dark backdrop", () => {
-    renderHero();
-
-    expect(screen.getByRole("link", { name: "Ver talleres" })).toHaveClass(
-      "hero-cta",
-      "hero-cta-primary",
-    );
-    expect(screen.getByRole("link", { name: "Ver intensivos" })).toHaveClass(
-      "hero-cta",
-      "hero-cta-outline",
-    );
-    expect(screen.getByText("Un espacio para encontrarnos.")).toHaveClass(
-      "hero-subtitle",
-    );
-  });
-
-  it("keeps the phone backdrop as one of the two eager pictures, one per breakpoint", () => {
-    const { container } = renderHero();
-
-    expect(imgByAlt("Foto backdrop").closest(".hero-backdrop")).toHaveClass(
-      "lg:hidden",
-    );
-    expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(2);
   });
 });
 

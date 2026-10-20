@@ -21,23 +21,18 @@ export type CollageLoop = {
   height: number;
 };
 
-/** The viewport from which the collage replaces the phone backdrop. */
+/** The desktop viewport, where the collage sits beside the copy. */
 export const HERO_DESKTOP_MEDIA = "(min-width: 64rem)";
 /** The exact complement of the desktop media; the route preload needs it too. */
 export const HERO_MOBILE_MEDIA = "not all and (min-width: 64rem)";
 /** Layout width of the collage lead: about 26 % of the viewport (motifs.css `.collage-lead`). */
 export const HERO_LEAD_SIZES = "30vw";
+/** Layout width of the collage lead on phones, where the board spans the page. */
+export const HERO_LEAD_MOBILE_SIZES = "60vw";
+/** The lead `sizes` attribute; the route preload uses the same string. */
+export const HERO_LEAD_RESPONSIVE_SIZES = `${HERO_DESKTOP_MEDIA} ${HERO_LEAD_SIZES}, ${HERO_LEAD_MOBILE_SIZES}`;
 /** Layout width of a secondary collage photo: about 22 % of the viewport. */
 const COLLAGE_TILE_SIZES = "22vw";
-
-/**
- * A 1 by 1 transparent WebP. The two LCP pictures swap to it on the
- * breakpoint where they are hidden, so an eager, high priority image never
- * downloads where the other one is shown (the preload links use the same
- * complementary media).
- */
-const BLANK_PIXEL =
-  "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
 
 type Props = {
   /** Slot order: the large lead, the framed photo, the torn photo. */
@@ -53,34 +48,26 @@ type Props = {
  * lead bleeds past the page edge, the second photo sits in a white frame,
  * the third has a torn-paper edge, the ambient loop is one more tile, and a
  * kraft note, sprigs, a big butterfly and a tracked word list are laid on
- * top. Below lg the board dissolves: only the note, a sprig and the
- * butterfly stay, over the phone backdrop.
+ * top. On phones the same board follows the copy, scaled to the page width.
  */
 export function HeroCollage({ photos, note, keywords, loop }: Props) {
   const [lead, framed, torn] = photos;
   return (
-    <div className="hero-collage max-lg:contents">
+    <div className="hero-collage">
       {lead ? (
-        <div className="collage-lead max-lg:hidden">
+        <div className="collage-lead">
           <Picture
             {...lead}
             className="aspect-3/4 h-auto w-full object-cover"
             aboveTheFold
             fetchPriority="high"
-            sizes={HERO_LEAD_SIZES}
-            sources={[
-              {
-                media: HERO_MOBILE_MEDIA,
-                srcSet: BLANK_PIXEL,
-                width: lead.width,
-                height: lead.height,
-              },
-            ]}
+            sizes={HERO_LEAD_RESPONSIVE_SIZES}
+            sources={[]}
           />
         </div>
       ) : null}
       {torn ? (
-        <div className="collage-torn max-lg:hidden">
+        <div className="collage-torn">
           <div className="photo-torn">
             <Image
               {...torn}
@@ -92,7 +79,7 @@ export function HeroCollage({ photos, note, keywords, loop }: Props) {
         </div>
       ) : null}
       {framed ? (
-        <Frame tilt="left" className="collage-framed max-lg:hidden">
+        <Frame tilt="left" className="collage-framed">
           <Image
             {...framed}
             intrinsicRatio={false}
@@ -102,7 +89,7 @@ export function HeroCollage({ photos, note, keywords, loop }: Props) {
         </Frame>
       ) : null}
       {loop ? (
-        <div className="collage-loop max-lg:hidden">
+        <div className="collage-loop">
           <VideoLoop
             poster={loop.poster}
             sizes={COLLAGE_TILE_SIZES}

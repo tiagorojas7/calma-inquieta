@@ -10,10 +10,6 @@ import {
   buildPublicIntensivo,
   buildPublicTaller,
 } from "~/testing/fakes/public-catalog-builders";
-import {
-  HERO_DESKTOP_MEDIA,
-  HERO_MOBILE_MEDIA,
-} from "~/app/ui/organisms/hero-section";
 import HomeRoute, { loader, meta } from "./home";
 
 // Each test renders the whole route through a router stub; a cold first render
@@ -25,13 +21,6 @@ const fixture = {
     eyebrow: "Calma Inquieta",
     title: { lead: "Un espacio para ", accent: "crear", trail: "" },
     subtitle: "Una propuesta cálida.",
-    backdrop: {
-      src: "/hero-b.webp",
-      srcSet: "/hero-b-480.webp 480w, /hero-b.webp 720w",
-      alt: "Un banco de madera",
-      width: 720,
-      height: 1280,
-    },
     collage: [
       {
         src: "/hero-d.webp",
@@ -305,18 +294,14 @@ describe("Inicio route", () => {
       ...container.querySelectorAll('img[loading="eager"]'),
     ];
 
-    it("Inicio has exactly two eager high-priority images, the phone backdrop and the collage lead", async () => {
+    it("Inicio has exactly one eager high-priority image, the collage lead", async () => {
       const { container } = await renderFixture();
       const high = [...container.querySelectorAll('img[fetchpriority="high"]')];
 
       expect(high.map((img) => img.getAttribute("alt"))).toEqual([
-        "Un banco de madera",
         "Pieza circular",
       ]);
       expect(eagerImages(container)).toEqual(high);
-      for (const img of high) {
-        expect(img.closest("picture")).not.toBeNull();
-      }
     });
 
     it("every other img is loading lazy", async () => {
@@ -383,36 +368,7 @@ describe("Inicio route", () => {
       ).not.toBeNull();
     });
 
-    it("no eager image downloads where it is hidden: each swaps to a blank pixel there", async () => {
-      const { container } = await renderFixture();
-      const hiddenAt = (img: Element) => {
-        for (let node: Element | null = img; node; node = node.parentElement) {
-          if (node.classList.contains("lg:hidden")) return "from-lg";
-          if (node.classList.contains("max-lg:hidden")) return "below-lg";
-        }
-        return "never";
-      };
-      const blank = (img: Element) =>
-        img.parentElement?.querySelector("source");
-
-      const [backdrop, lead] = eagerImages(container);
-      expect(hiddenAt(backdrop as Element)).toBe("from-lg");
-      expect(blank(backdrop as Element)?.getAttribute("media")).toBe(
-        HERO_DESKTOP_MEDIA,
-      );
-      expect(hiddenAt(lead as Element)).toBe("below-lg");
-      expect(blank(lead as Element)?.getAttribute("media")).toBe(
-        HERO_MOBILE_MEDIA,
-      );
-      for (const source of [
-        blank(backdrop as Element),
-        blank(lead as Element),
-      ]) {
-        expect(source?.getAttribute("srcset")).toMatch(/^data:image[/]webp/);
-      }
-    });
-
-    it("the preloads are the two eager images with their own srcset, sizes and complementary media", async () => {
+    it("the one preload matches the eager lead's srcset and sizes", async () => {
       const { container } = await renderFixture();
       const preloads = (
         meta({
@@ -429,20 +385,11 @@ describe("Inicio route", () => {
           },
         } as never) as readonly Record<string, unknown>[]
       ).filter((entry) => entry.rel === "preload");
-      const [backdrop, lead] = eagerImages(container);
+      const [lead] = eagerImages(container);
 
-      expect(preloads).toHaveLength(2);
-      expect(preloads[0]?.imageSrcSet).toBe(backdrop?.getAttribute("srcset"));
-      expect(preloads[0]?.imageSizes).toBe(backdrop?.getAttribute("sizes"));
-      expect(preloads[1]?.imageSrcSet).toBe(lead?.getAttribute("srcset"));
-      expect(preloads[1]?.imageSizes).toBe(lead?.getAttribute("sizes"));
-      // Each preload's media is the media at which the other picture is blank.
-      expect(preloads[0]?.media).toBe(
-        lead?.parentElement?.querySelector("source")?.getAttribute("media"),
-      );
-      expect(preloads[1]?.media).toBe(
-        backdrop?.parentElement?.querySelector("source")?.getAttribute("media"),
-      );
+      expect(preloads).toHaveLength(1);
+      expect(preloads[0]?.imageSrcSet).toBe(lead?.getAttribute("srcset"));
+      expect(preloads[0]?.imageSizes).toBe(lead?.getAttribute("sizes"));
     });
   });
 
@@ -492,18 +439,17 @@ describe("Inicio route", () => {
       expect(container.querySelectorAll("video")).toHaveLength(0);
     });
 
-    it("only the two hero pictures are eager and high priority, one per breakpoint", async () => {
+    it("only the collage lead is eager and high priority", async () => {
       const { container } = await renderWithLoop();
       const high = container.querySelectorAll('img[fetchpriority="high"]');
       expect([...high].map((img) => img.getAttribute("alt"))).toEqual([
-        "Un banco de madera",
         "Pieza circular",
       ]);
       for (const img of high) {
         expect(img.closest("picture")).not.toBeNull();
       }
       expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(
-        2,
+        1,
       );
       expect(
         container.querySelector(`img[src="${loop.poster.src}"]`),
@@ -527,7 +473,7 @@ describe("Inicio route", () => {
           },
         } as never) as readonly Record<string, unknown>[]
       ).filter((entry) => entry.rel === "preload");
-      expect(preloads).toHaveLength(2);
+      expect(preloads).toHaveLength(1);
       expect(JSON.stringify(preloads)).not.toContain("home-loop");
     });
 

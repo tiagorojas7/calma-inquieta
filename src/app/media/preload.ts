@@ -9,7 +9,7 @@ export interface PreloadDescriptor {
   as: "image";
   imageSrcSet: string;
   imageSizes: string;
-  media: string;
+  media?: string;
   fetchPriority: "high";
 }
 
@@ -49,4 +49,19 @@ export function artDirectedPreloads(
     descriptor(image.mobile, mobileSizes, mobileMedia),
     descriptor(image.desktop, desktopSizes, desktopMedia),
   ];
+}
+
+/** One preload with no media, for a hero image that shows on every width. */
+export function imagePreload(
+  image: PreloadImage,
+  sizes: string,
+): PreloadDescriptor {
+  return {
+    tagName: "link",
+    rel: "preload",
+    as: "image",
+    imageSrcSet: image.srcSet ?? image.src,
+    imageSizes: sizes,
+    fetchPriority: "high",
+  };
 }

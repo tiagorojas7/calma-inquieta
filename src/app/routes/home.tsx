@@ -1,7 +1,7 @@
 import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { buildLocalBusinessJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
-import { artDirectedPreloads } from "~/app/media/preload";
+import { imagePreload } from "~/app/media/preload";
 import { buildPageMeta } from "~/app/seo/meta";
 import { JsonLdScript } from "~/app/ui/json-ld-script";
 import { buildWhatsAppUrl } from "~/modules/site-content";
@@ -15,10 +15,7 @@ import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
 import {
-  HERO_BACKDROP_SIZES,
-  HERO_DESKTOP_MEDIA,
-  HERO_LEAD_SIZES,
-  HERO_MOBILE_MEDIA,
+  HERO_LEAD_RESPONSIVE_SIZES,
   HeroSection,
 } from "~/app/ui/organisms/hero-section";
 import { HomeCatalogLead } from "~/app/ui/organisms/home-catalog-lead";
@@ -30,24 +27,6 @@ import { UpcomingList } from "~/app/ui/organisms/upcoming-list";
 import type { Route } from "./+types/home";
 
 const INICIO_ACTIVITY_LIMIT = 3;
-
-/**
- * The shell reads this: below lg the Inicio hero is a dark photo (a lamp under
- * a concrete ceiling), so the header switches to the light logo and light ink
- * until the visitor scrolls past it.
- */
-export const handle = { heroBackdrop: "dark-below-lg" } as const;
-
-/**
- * Phones preload the backdrop and desktops the collage lead, on exactly
- * complementary media, so each viewport fetches one hero image only.
- */
-const HERO_PRELOAD = {
-  mobileSizes: HERO_BACKDROP_SIZES,
-  desktopSizes: HERO_LEAD_SIZES,
-  mobileMedia: HERO_MOBILE_MEDIA,
-  desktopMedia: HERO_DESKTOP_MEDIA,
-};
 
 /**
  * Inicio is the exception to "reader errors propagate": a failing catalog read
@@ -123,13 +102,11 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
       { title: "Página no encontrada" },
       { name: "robots", content: "noindex, nofollow" },
     ];
-  const { backdrop, collage } = loaderData.hero;
+  const { collage } = loaderData.hero;
   const [lead] = collage;
   return [
     ...buildPageMeta(loaderData.metaInput),
-    ...(lead
-      ? artDirectedPreloads({ mobile: backdrop, desktop: lead }, HERO_PRELOAD)
-      : []),
+    ...(lead ? [imagePreload(lead, HERO_LEAD_RESPONSIVE_SIZES)] : []),
   ];
 }
 
@@ -147,7 +124,6 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           </>
         }
         subtitle={data.hero.subtitle}
-        backdrop={data.hero.backdrop}
         collage={data.hero.collage}
         note={data.hero.note}
         keywords={data.hero.keywords}

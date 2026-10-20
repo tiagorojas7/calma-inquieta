@@ -8,13 +8,10 @@ import {
   buildPublicTurno,
 } from "~/testing/fakes/public-catalog-builders";
 import { createLoaderArgs } from "~/testing/react-router";
-import {
-  HERO_BACKDROP_SIZES,
-  HERO_DESKTOP_MEDIA,
-  HERO_LEAD_SIZES,
-  HERO_MOBILE_MEDIA,
-} from "~/app/ui/organisms/hero-section";
-import { handle, loader, meta } from "./home";
+import { HERO_LEAD_RESPONSIVE_SIZES } from "~/app/ui/organisms/hero-section";
+import * as homeRoute from "./home";
+
+const { loader, meta } = homeRoute;
 
 describe("home loader", () => {
   it("maps approved content, empty catalog lists, contact data and site meta", async () => {
@@ -126,8 +123,8 @@ describe("home loader", () => {
 });
 
 describe("home route handle", () => {
-  it("tells the shell that the hero backdrop is dark below lg", () => {
-    expect(handle).toEqual({ heroBackdrop: "dark-below-lg" });
+  it("exports no header handle: the hero is light on every width", () => {
+    expect("handle" in homeRoute).toBe(false);
   });
 });
 
@@ -185,31 +182,18 @@ describe("home meta image preloads", () => {
     return { result, descriptors };
   }
 
-  it("meta preloads the phone backdrop and the collage lead, each with its own sizes", async () => {
+  it("meta preloads only the collage lead, with the sizes its img carries", async () => {
     const { result, descriptors } = await homeMeta();
     const found = preloads(descriptors);
-    expect(found).toHaveLength(2);
-    const [mobile, desktop] = found;
-    expect(mobile).toMatchObject({
-      as: "image",
-      imageSrcSet: result.hero.backdrop.srcSet,
-      imageSizes: HERO_BACKDROP_SIZES,
-      media: HERO_MOBILE_MEDIA,
-    });
-    expect(desktop).toMatchObject({
+
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
       as: "image",
       imageSrcSet: result.hero.collage[0]?.srcSet,
-      imageSizes: HERO_LEAD_SIZES,
-      media: HERO_DESKTOP_MEDIA,
+      imageSizes: HERO_LEAD_RESPONSIVE_SIZES,
     });
+    expect(found[0]).not.toHaveProperty("media");
     expect(descriptors[0]?.title).toContain("Inicio");
-  });
-
-  it("the preload media conditions are mutually exclusive", async () => {
-    const { descriptors } = await homeMeta();
-    const media = preloads(descriptors).map((entry) => entry.media);
-    expect(media).toEqual([HERO_MOBILE_MEDIA, HERO_DESKTOP_MEDIA]);
-    expect(HERO_MOBILE_MEDIA).toBe(`not all and ${HERO_DESKTOP_MEDIA}`);
   });
 
   it("carries the whole Inicio hero and teaser content to the page", async () => {

@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { ButtonLink } from "../atoms/button";
 import { Eyebrow, Heading, Text } from "../atoms/heading";
-import { Picture } from "../atoms/picture";
 import {
   HERO_DESKTOP_MEDIA,
+  HERO_LEAD_MOBILE_SIZES,
+  HERO_LEAD_RESPONSIVE_SIZES,
   HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
   HeroCollage,
@@ -12,22 +13,19 @@ import {
 } from "./hero-collage";
 import { Section } from "./section";
 
-export { HERO_DESKTOP_MEDIA, HERO_LEAD_SIZES, HERO_MOBILE_MEDIA };
-
-/** The phone backdrop spans the viewport. */
-export const HERO_BACKDROP_SIZES = "100vw";
-
-/** 1 by 1 transparent WebP: the backdrop swaps to it from lg, where it is hidden. */
-const BLANK_PIXEL =
-  "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
+export {
+  HERO_DESKTOP_MEDIA,
+  HERO_LEAD_MOBILE_SIZES,
+  HERO_LEAD_RESPONSIVE_SIZES,
+  HERO_LEAD_SIZES,
+  HERO_MOBILE_MEDIA,
+};
 
 type Props = {
   eyebrow: string;
   title: ReactNode;
   subtitle: string;
-  /** Phones: a 9:16 photo behind the text, the LCP below lg. */
-  backdrop: CollageImg;
-  /** From lg: the collage photos in slot order (lead, framed, torn). */
+  /** The collage photos in slot order (lead, framed, torn). */
   collage: readonly CollageImg[];
   note: string;
   keywords: readonly string[];
@@ -37,20 +35,15 @@ type Props = {
 };
 
 /**
- * Inicio hero (S2, S9, S16). Both breakpoints fill the viewport (100svh,
- * header included). Phones: the dark backdrop photo (a lamp under a concrete
- * ceiling) sits under the transparent header, with the eyebrow, h1 and CTAs
- * in cream over its dark upper half on a warm scrim and the subtitle on a
- * dark glass card at the bottom (motifs.css restyles the CTAs through
- * `hero-cta-*`). From lg: the text on the left on the light canvas and the
- * image5 collage on the right. Exactly one eager, high priority image
- * downloads per breakpoint.
+ * Inicio hero (S2, S16). It fills the viewport (100svh, header included) and
+ * looks the same on every width: the copy on the light canvas and the image5
+ * collage. From lg they sit side by side; on phones the collage follows the
+ * copy as one scaled board (owner decision 2026-10-20).
  */
 export function HeroSection({
   eyebrow,
   title,
   subtitle,
-  backdrop,
   collage,
   note,
   keywords,
@@ -65,42 +58,17 @@ export function HeroSection({
       aria-labelledby="hero-title"
       className="hero-stage"
     >
-      <div className="hero-backdrop lg:hidden">
-        <Picture
-          {...backdrop}
-          className="size-full object-cover"
-          pictureClassName="contents"
-          aboveTheFold
-          fetchPriority="high"
-          sizes={HERO_BACKDROP_SIZES}
-          sources={[
-            {
-              media: HERO_DESKTOP_MEDIA,
-              srcSet: BLANK_PIXEL,
-              width: backdrop.width,
-              height: backdrop.height,
-            },
-          ]}
-        />
-        <div aria-hidden="true" className="hero-scrim" />
-      </div>
       <div className="hero-copy">
         <Eyebrow>{eyebrow}</Eyebrow>
         <Heading level={1} id="hero-title">
           {title}
         </Heading>
-        <Text className="hero-subtitle max-w-prose text-lead max-lg:order-last max-lg:mt-auto">
-          {subtitle}
-        </Text>
+        <Text className="hero-subtitle max-w-prose text-lead">{subtitle}</Text>
         <div className="flex flex-wrap gap-4">
-          <ButtonLink href="/talleres" className="hero-cta hero-cta-primary">
+          <ButtonLink href="/talleres" className="hero-cta">
             Ver talleres
           </ButtonLink>
-          <ButtonLink
-            href="/intensivos"
-            variant="outline"
-            className="hero-cta hero-cta-outline"
-          >
+          <ButtonLink href="/intensivos" variant="outline" className="hero-cta">
             Ver intensivos
           </ButtonLink>
         </div>

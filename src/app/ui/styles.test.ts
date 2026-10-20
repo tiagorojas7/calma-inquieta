@@ -575,74 +575,38 @@ describe("hero collage stylesheet", () => {
     expect(desktop).not.toMatch(/padding-top:/);
   });
 
-  it("the scrim is a dark warm gradient from the tokens, at least 80 % opaque over the text", () => {
-    const body = rule(".hero-scrim")?.body ?? "";
-    const opacities = [
-      ...body.matchAll(/var\(--color-ink-900\)\s*(\d+)%,[^)]*\)\s*(\d+)%/g),
-    ].map((match) => Number(match[1]));
-
-    expect(body).toMatch(/linear-gradient\(\s*to bottom/);
-    expect(body).toMatch(/color-mix\(/);
-    expect(body).not.toMatch(/var\(--color-canvas\)\s*\d+%,\s*transparent/);
-    expect(opacities.length).toBeGreaterThanOrEqual(3);
-    expect(opacities[0]).toBeGreaterThanOrEqual(80);
-  });
-
-  const phoneOnly = /@media\s*\(max-width:\s*63\.99rem\)/;
-
-  it("below lg the copy is cream on the scrim with a light terracotta accent", () => {
-    const copy = rule(".hero-copy", phoneOnly)?.body ?? "";
-    const text =
-      blocks.find(
-        (block) =>
-          block.prelude.includes(".hero-copy") &&
-          block.prelude.includes("h1") &&
-          block.ancestors.some((a) => phoneOnly.test(a)),
-      )?.body ?? "";
-
-    expect(copy).toMatch(/--em-color:\s*color-mix\(/);
-    expect(copy).toMatch(/--em-color:[^;]*var\(--color-terracotta-700\)/);
-    expect(text).toMatch(/color:\s*var\(--color-canvas\)/);
-  });
-
-  it("below lg the calls to action and the subtitle are restyled for the dark ground", () => {
+  it("has no phone backdrop, scrim or dark-ground restyle any more", () => {
     for (const selector of [
+      ".hero-backdrop",
+      ".hero-scrim",
       ".hero-copy .hero-cta-primary",
-      ".hero-copy .hero-cta-outline",
-      ".hero-copy .hero-subtitle",
     ]) {
-      expect(rule(selector, phoneOnly)?.body, selector).toBeTruthy();
+      expect(css, selector).not.toContain(selector);
     }
-    expect(rule(".hero-copy .hero-cta-primary", phoneOnly)?.body).toMatch(
-      /background-color:\s*var\(--color-canvas\)/,
-    );
-    expect(rule(".hero-copy .hero-subtitle", phoneOnly)?.body).toMatch(
-      /backdrop-filter:\s*blur\(/,
-    );
   });
 
-  it("the collage board and its tiles exist only from lg", () => {
+  it("the collage board lays out its tiles on every width and moves beside the copy from lg", () => {
+    expect(rule(".hero-collage")?.body).toMatch(/position:\s*relative/);
+    expect(rule(".hero-collage")?.body).toMatch(/aspect-ratio:/);
+    expect(rule(".hero-collage", fromLg)?.body).toMatch(/position:\s*absolute/);
     for (const selector of [
-      ".hero-collage",
       ".collage-lead",
       ".collage-torn",
       ".collage-framed",
       ".collage-loop",
-      ".hero-keywords",
     ]) {
-      expect(rule(selector), selector).toBeUndefined();
-      expect(rule(selector, fromLg)?.body, selector).toMatch(
-        /position:\s*absolute/,
-      );
+      expect(rule(selector)?.body, selector).toMatch(/position:\s*absolute/);
     }
+    expect(rule(".hero-keywords")?.body).toMatch(/display:\s*none/);
+    expect(rule(".hero-keywords", fromLg)?.body).toMatch(/display:\s*grid/);
   });
 
   it("the lead bleeds past the right edge of the board", () => {
-    expect(rule(".collage-lead", fromLg)?.body).toMatch(/right:\s*-\d+%/);
+    expect(rule(".collage-lead")?.body).toMatch(/right:\s*-\d+%/);
   });
 
   it("the torn photo keeps its shadow on the wrapper, not on the clipped element", () => {
-    expect(rule(".collage-torn", fromLg)?.body).toMatch(/drop-shadow\(/);
+    expect(rule(".collage-torn")?.body).toMatch(/drop-shadow\(/);
     expect(rule(".photo-torn")?.body).not.toMatch(/shadow/);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artDirectedPreloads } from "./preload";
+import { artDirectedPreloads, imagePreload } from "./preload";
 
 const options = {
   mobileSizes: "100vw",
@@ -55,5 +55,20 @@ describe("artDirectedPreloads", () => {
   it("both descriptors carry fetchPriority high", () => {
     const all = artDirectedPreloads(image, options);
     expect(all.map((d) => d.fetchPriority)).toEqual(["high", "high"]);
+  });
+});
+
+describe("imagePreload", () => {
+  it("returns one high priority descriptor with no media, for an image shown on every width", () => {
+    expect(
+      imagePreload({ src: "/l.webp", srcSet: "/l-1.webp 480w" }, "60vw"),
+    ).toEqual({
+      tagName: "link",
+      rel: "preload",
+      as: "image",
+      imageSrcSet: "/l-1.webp 480w",
+      imageSizes: "60vw",
+      fetchPriority: "high",
+    });
   });
 });

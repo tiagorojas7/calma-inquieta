@@ -14,7 +14,8 @@ export default [
     route("quienes-somos", "routes/about.tsx"),
     route("contacto", "routes/contact.tsx"),
     route("*", "routes/not-found.tsx", { id: "routes/not-found-splat" }),
-    route("talleres", "routes/coming-soon.tsx", { id: "coming-soon/talleres" }),
+    route("talleres", "routes/talleres.tsx"),
+    route("talleres/:slug", "routes/taller.tsx"),
     route("intensivos", "routes/intensivos.tsx"),
     route("intensivos/:slug", "routes/intensivo.tsx"),
     route("eventos-privados", "routes/coming-soon.tsx", {

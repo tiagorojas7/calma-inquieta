@@ -54,6 +54,46 @@ export const adminMicrocopy = {
       failed: "No se pudo subir la imagen. Probá de nuevo.",
     },
   },
+  teachers: {
+    title: "Profesores",
+    newTitle: "Nuevo profesor",
+    editTitle: "Editar profesor",
+    newAction: "Nuevo profesor",
+    back: "Volver a profesores",
+    filterLabel: "Mostrar profesores",
+    filters: {
+      activos: "Activos",
+      archivados: "Archivados",
+      todos: "Todos",
+    },
+    columns: { name: "Nombre", modality: "Modalidad", state: "Estado" },
+    modality: { own: "Propia", third_party: "De terceros" },
+    empty: {
+      title: "Todavía no hay profesores",
+      message: "Cargá el primero para poder asignarlo a una actividad.",
+    },
+    form: {
+      name: "Nombre",
+      bioLine: "Presentación breve",
+      bioLineHint: "Se muestra en el sitio público.",
+      phone: "Teléfono",
+      email: "Correo electrónico",
+      modality: "Modalidad",
+      modalityPlaceholder: "Elegí una modalidad",
+      save: "Guardar",
+      cancel: "Cancelar",
+      saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    state: {
+      archive: "Archivar",
+      reactivate: "Reactivar",
+      archivedNotice: "Este profesor está archivado.",
+      archivedHint:
+        "No se puede elegir para actividades nuevas. Podés reactivarlo cuando quieras.",
+      assignedWarning: (names: string) =>
+        `Sigue asignado a: ${names}. Las asignaciones y los períodos existentes lo conservan.`,
+    },
+  },
   errors: {
     generic: {
       title: "Algo salió mal",

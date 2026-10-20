@@ -20,7 +20,11 @@ import { createDrizzleMediaAssetRepository } from "~/modules/media/infrastructur
 import { createR2ImageStorage } from "~/modules/media/infrastructure/r2-image-storage";
 import { createUnavailableImageStorage } from "~/modules/media/infrastructure/unavailable-image-storage";
 import type { R2BucketLike } from "~/platform/r2";
-import { createTeacherLookup, type TeachersService } from "~/modules/teachers";
+import {
+  createTeacherLookup,
+  createTeachersService,
+  type TeachersService,
+} from "~/modules/teachers";
 import { createDrizzleTeacherRepository } from "~/modules/teachers/infrastructure/drizzle-teacher-repository";
 import {
   createPublicIntensivosReader,
@@ -128,7 +132,10 @@ export function createRequestServices(
       repository: createDrizzleMediaAssetRepository(openSession),
       clock: systemClock,
     }),
-    teachers: createUnavailableService<TeachersService>(),
+    teachers: createTeachersService({
+      repository: createDrizzleTeacherRepository(openSession),
+      clock: systemClock,
+    }),
     monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),
     workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
     intensives: createUnavailableService<IntensivesService>(),

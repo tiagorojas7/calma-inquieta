@@ -1,5 +1,5 @@
-import { ButtonLink } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
+import { AdminButtonLink } from "./admin-button-link";
 
 /** Empty list: says what is missing and links to create the first record. */
 export function AdminEmptyState({
@@ -17,7 +17,7 @@ export function AdminEmptyState({
         {title}
       </Heading>
       <Text>{message}</Text>
-      <ButtonLink href={action.href}>{action.label}</ButtonLink>
+      <AdminButtonLink href={action.href}>{action.label}</AdminButtonLink>
     </section>
   );
 }

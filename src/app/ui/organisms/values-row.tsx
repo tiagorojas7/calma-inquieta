@@ -33,28 +33,25 @@ export function ValuesRow({
         <Reveal>
           <Heading level={2}>{heading}</Heading>
         </Reveal>
-        <ul className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {items.map((item, at) => {
             const disc = DISCS[at % DISCS.length] ?? DISCS[0];
             return (
-              <Reveal
-                as="li"
-                key={item.id}
-                index={at}
-                className="flex gap-5 sm:flex-col sm:gap-4"
-              >
-                <span
-                  data-disc={disc.tone}
-                  className={`flex size-16 shrink-0 items-center justify-center rounded-full ${disc.classes}`}
-                >
-                  <Icon
-                    name={ICONS[at % ICONS.length] ?? "leaf"}
-                    className="size-8"
-                  />
-                </span>
-                <div className="flex flex-col gap-2">
-                  <Heading level={3}>{item.title}</Heading>
-                  <Text>{item.text}</Text>
+              <Reveal as="li" key={item.id} index={at} className="h-full">
+                <div className="card-hover flex h-full gap-5 rounded-md bg-white p-6 shadow-card sm:flex-col sm:gap-4">
+                  <span
+                    data-disc={disc.tone}
+                    className={`flex size-16 shrink-0 items-center justify-center rounded-full ring-8 ring-sand-100 ${disc.classes}`}
+                  >
+                    <Icon
+                      name={ICONS[at % ICONS.length] ?? "leaf"}
+                      className="size-8"
+                    />
+                  </span>
+                  <div className="flex flex-col gap-2">
+                    <Heading level={3}>{item.title}</Heading>
+                    <Text>{item.text}</Text>
+                  </div>
                 </div>
               </Reveal>
             );

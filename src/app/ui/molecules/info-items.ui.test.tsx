@@ -48,6 +48,17 @@ describe("info molecules", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("sets a contact item on a lifting white card", () => {
+    const { container } = render(
+      <ContactItem icon="pin" label="Dirección" value="Córdoba" />,
+    );
+    expect(container.firstElementChild).toHaveClass(
+      "card-hover",
+      "bg-white",
+      "shadow-card",
+    );
+  });
+
   it("renders the preformatted parts verbatim without formatting the date", () => {
     const localeSpy = vi.spyOn(Date.prototype, "toLocaleDateString");
     const { container } = render(

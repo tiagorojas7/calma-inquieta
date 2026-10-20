@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { ContactSection } from "./contact-section";
@@ -12,24 +13,31 @@ const photo = {
 
 function setup(withPhoto = true) {
   return render(
-    <main>
-      <ContactSection
-        heading="Contacto"
-        intro="Escribinos."
-        photo={withPhoto ? photo : undefined}
-        directionsHref="https://example.test/ruta"
-        items={[
-          { id: "address", icon: "pin", label: "Dirección", value: "Calle 1" },
-          {
-            id: "ig",
-            icon: "instagram",
-            label: "Instagram",
-            value: "@ci",
-            href: "https://instagram.test/ci",
-          },
-        ]}
-      />
-    </main>,
+    <MemoryRouter>
+      <main>
+        <ContactSection
+          heading="Contacto"
+          intro="Escribinos."
+          photo={withPhoto ? photo : undefined}
+          directionsHref="https://example.test/ruta"
+          items={[
+            {
+              id: "address",
+              icon: "pin",
+              label: "Dirección",
+              value: "Calle 1",
+            },
+            {
+              id: "ig",
+              icon: "instagram",
+              label: "Instagram",
+              value: "@ci",
+              href: "https://instagram.test/ci",
+            },
+          ]}
+        />
+      </main>
+    </MemoryRouter>,
   );
 }
 
@@ -75,6 +83,26 @@ describe("ContactSection", () => {
     expect(
       heading.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("leads to booking: Ver talleres is the primary action, before the directions", () => {
+    setup();
+    const talleres = screen.getByRole("link", { name: "Ver talleres" });
+    expect(talleres).toHaveAttribute("href", "/talleres");
+    const directions = screen.getByRole("link", { name: /Cómo llegar/ });
+    expect(
+      talleres.compareDocumentPosition(directions) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("frames the photo in a white paper border with a lifted shadow", () => {
+    const { container } = setup();
+    const frame = container.querySelector("[data-photo-frame]");
+    expect(frame).toHaveClass("border-white", "shadow-lift");
+    expect(frame?.contains(screen.getByRole("img", { name: photo.alt }))).toBe(
+      true,
+    );
   });
 
   it("renders the details and the directions link without a photo", () => {

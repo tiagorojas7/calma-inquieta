@@ -8,6 +8,7 @@ import {
   publishableTestimonials,
   publishedImages,
   publishedLoop,
+  publishedLoops,
   summarizeLaunchGate,
   type LaunchGate,
 } from "../domain/content-rules";
@@ -71,6 +72,7 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       return {
         ...raw.about,
         introImages: publishedImages(raw.about.introImages, raw),
+        introLoops: publishedLoops(raw.about.introLoops, raw),
         gallery: publishedImages(raw.about.gallery, raw),
       };
     },

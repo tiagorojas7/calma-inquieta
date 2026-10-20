@@ -1,4 +1,10 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { Image } from "../atoms/image";
@@ -6,7 +12,7 @@ import { microcopy } from "../microcopy";
 import { Reveal } from "./reveal";
 import { Section } from "./section";
 
-interface GalleryEntry {
+export interface GalleryEntry {
   readonly id: string;
   readonly src: string;
   readonly alt: string;
@@ -30,18 +36,19 @@ function shapeOf(ratio: number): TileShape {
   return ratio < 1.1 ? "square" : "wide";
 }
 
-export function GalleryGrid({
-  heading,
-  images,
-}: {
-  heading?: string;
-  images: readonly GalleryEntry[];
-}) {
+/**
+ * The shared lightbox: `open(at, button)` shows image `at` in a modal dialog
+ * (arrow keys, Previous/Next, Close) and returns focus to `button` on close.
+ * Render the returned `lightbox` node once, next to the thumbnails.
+ */
+export function useGalleryLightbox(images: readonly GalleryEntry[]): {
+  open: (at: number, button: HTMLButtonElement) => void;
+  lightbox: ReactNode;
+} {
   const [index, setIndex] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   const captionId = useId();
-  if (!images.length) return null;
 
   const current = index === null ? undefined : images[index];
   const step = (delta: number) => {
@@ -59,6 +66,74 @@ export function GalleryGrid({
     if (event.key === "ArrowRight") step(1);
     if (event.key === "ArrowLeft") step(-1);
   };
+
+  const lightbox = (
+    <dialog
+      className="m-auto w-full max-w-3xl rounded-md bg-canvas p-4 backdrop:bg-ink-900/60"
+      ref={dialogRef}
+      aria-labelledby={captionId}
+      onKeyDown={onKeyDown}
+      onCancel={(event) => {
+        event.preventDefault();
+        dialogRef.current?.close();
+      }}
+      onClose={() => {
+        setIndex(null);
+        opener.current?.focus();
+      }}
+    >
+      {current && (
+        <figure className="flex flex-wrap items-center justify-between gap-4">
+          <button type="button" onClick={() => dialogRef.current?.close()}>
+            <Icon name="close" />
+            {microcopy.close}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              step(-1);
+            }}
+          >
+            <Icon name="chevron-left" />
+            {microcopy.previous}
+          </button>
+          <Image
+            src={current.src}
+            alt={current.alt}
+            width={current.width}
+            height={current.height}
+            {...(current.srcSet ? { srcSet: current.srcSet } : {})}
+            sizes={LIGHTBOX_SIZES}
+            className="max-h-screen w-full basis-full object-contain"
+          />
+          <figcaption id={captionId} className="basis-full text-ink-700">
+            {current.alt}
+          </figcaption>
+          <button
+            type="button"
+            onClick={() => {
+              step(1);
+            }}
+          >
+            <Icon name="chevron-right" />
+            {microcopy.next}
+          </button>
+        </figure>
+      )}
+    </dialog>
+  );
+  return { open, lightbox };
+}
+
+export function GalleryGrid({
+  heading,
+  images,
+}: {
+  heading?: string;
+  images: readonly GalleryEntry[];
+}) {
+  const { open, lightbox } = useGalleryLightbox(images);
+  if (!images.length) return null;
 
   const body = (
     <>
@@ -99,59 +174,7 @@ export function GalleryGrid({
           );
         })}
       </ul>
-      <dialog
-        className="m-auto w-full max-w-3xl rounded-md bg-canvas p-4 backdrop:bg-ink-900/60"
-        ref={dialogRef}
-        aria-labelledby={captionId}
-        onKeyDown={onKeyDown}
-        onCancel={(event) => {
-          event.preventDefault();
-          dialogRef.current?.close();
-        }}
-        onClose={() => {
-          setIndex(null);
-          opener.current?.focus();
-        }}
-      >
-        {current && (
-          <figure className="flex flex-wrap items-center justify-between gap-4">
-            <button type="button" onClick={() => dialogRef.current?.close()}>
-              <Icon name="close" />
-              {microcopy.close}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                step(-1);
-              }}
-            >
-              <Icon name="chevron-left" />
-              {microcopy.previous}
-            </button>
-            <Image
-              src={current.src}
-              alt={current.alt}
-              width={current.width}
-              height={current.height}
-              {...(current.srcSet ? { srcSet: current.srcSet } : {})}
-              sizes={LIGHTBOX_SIZES}
-              className="max-h-screen w-full basis-full object-contain"
-            />
-            <figcaption id={captionId} className="basis-full text-ink-700">
-              {current.alt}
-            </figcaption>
-            <button
-              type="button"
-              onClick={() => {
-                step(1);
-              }}
-            >
-              <Icon name="chevron-right" />
-              {microcopy.next}
-            </button>
-          </figure>
-        )}
-      </dialog>
+      {lightbox}
     </>
   );
   // Without a heading the grid sits inside a parent section.

@@ -296,3 +296,39 @@ describe("VideoLoop", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("VideoLoop with an external control", () => {
+  it("renders no button of its own and follows the paused prop", () => {
+    const { container, rerender } = render(<VideoLoop {...props} paused />);
+    observer.trigger(true);
+    expect(videoOf(container)).not.toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(playback.play).not.toHaveBeenCalled();
+    rerender(<VideoLoop {...props} paused={false} />);
+    expect(playback.play).toHaveBeenCalledTimes(1);
+    rerender(<VideoLoop {...props} paused />);
+    expect(playback.pause).toHaveBeenCalled();
+  });
+
+  it("reports whether a video is mounted, so the owner shows its control only then", () => {
+    const seen: boolean[] = [];
+    const { rerender } = render(
+      <VideoLoop
+        {...props}
+        paused={false}
+        onActiveChange={(active) => seen.push(active)}
+      />,
+    );
+    expect(seen.at(-1)).toBe(false);
+    observer.trigger(true);
+    expect(seen.at(-1)).toBe(true);
+    media.setReduce(true);
+    expect(seen.at(-1)).toBe(false);
+    rerender(<VideoLoop {...props} paused={false} />);
+  });
+
+  it("without the new props it keeps its own button", () => {
+    renderPlaying();
+    expect(screen.getByRole("button", { name: PAUSE })).toBeInTheDocument();
+  });
+});

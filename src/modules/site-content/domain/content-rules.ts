@@ -162,6 +162,14 @@ export function publishedLoop(
     : undefined;
 }
 
+/** The loops whose every path is published, in order. */
+export function publishedLoops(
+  loops: readonly AmbientLoop[],
+  content: RawSiteContent,
+): readonly AmbientLoop[] {
+  return loops.filter((loop) => publishedLoop(loop, content) !== undefined);
+}
+
 /** Every image the content shows, with the identifier a failure should name. */
 function contentImages(content: RawSiteContent): readonly {
   readonly id: string;
@@ -263,6 +271,12 @@ export function validateSiteContent(
   }
   const { loop } = content.home.hero;
   for (const path of loop ? loopPaths(loop) : []) {
+    const rule = pathRule(path, content);
+    if (rule) {
+      issues.push({ id: path, rule });
+    }
+  }
+  for (const path of content.about.introLoops.flatMap(loopPaths)) {
     const rule = pathRule(path, content);
     if (rule) {
       issues.push({ id: path, rule });

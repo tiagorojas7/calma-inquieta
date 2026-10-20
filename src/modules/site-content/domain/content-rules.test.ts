@@ -1144,6 +1144,29 @@ describe("validateSiteContent ambient loop", () => {
     expect(issues).toContainEqual({ id: leaked, rule: "excluded-source" });
   });
 
+  it("intro loops are walked like the hero loop", () => {
+    const base = withLoop({
+      assets: [poster, video],
+      rights: [row("none", "not-required")],
+    });
+    const aboutWith = (ambient: AmbientLoop): RawSiteContent => ({
+      ...base,
+      about: { ...base.about, introLoops: [ambient] },
+    });
+
+    expect(validateSiteContent(aboutWith(loop))).toEqual([]);
+
+    const leaked = "/media/video/about-loop-stray-360.0a1b2c3d.mp4";
+    expect(
+      validateSiteContent(
+        aboutWith({
+          ...loop,
+          sources: [...loop.sources, { src: leaked, type: "video/mp4" }],
+        }),
+      ),
+    ).toEqual([{ id: leaked, rule: "unregistered-media" }]);
+  });
+
   it("content without a loop reports nothing for it", () => {
     expect(validateSiteContent(validContent())).toEqual([]);
   });

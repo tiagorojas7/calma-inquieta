@@ -138,3 +138,19 @@
     transform: rotate(-5deg) scale(1.06);
   }
 }
+
+/* T8 about */
+
+/* The intro loop frames rise a little on hover, like the cards; the tilt is
+   the independent `rotate` property, so only the lift is transformed. */
+@media (prefers-reduced-motion: no-preference) {
+  .frame-float {
+    transition:
+      transform 400ms var(--ease-calm),
+      box-shadow 400ms var(--ease-calm);
+  }
+
+  .frame-float:hover {
+    transform: translateY(-0.375rem);
+  }
+}

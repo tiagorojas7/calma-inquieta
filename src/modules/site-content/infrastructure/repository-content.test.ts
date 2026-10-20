@@ -590,6 +590,28 @@ describe("the curated gallery", () => {
     }
   });
 
+  it("the intro collage has three published 9:16 muted loops with posters", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+
+    expect(about.introLoops).toHaveLength(3);
+    for (const loop of about.introLoops) {
+      expect(loop.width / loop.height).toBeCloseTo(9 / 16, 2);
+      expect(loop.poster.alt).toBe("");
+      expect(loop.sources.map(({ type }) => type)).toEqual([
+        "video/webm",
+        "video/mp4",
+      ]);
+      for (const path of [
+        ...pathsOf(loop.poster),
+        ...loop.sources.map(({ src }) => src),
+      ]) {
+        expect(path.startsWith("/media/video/about-loop-"), path).toBe(true);
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+
   it("the pull-quote is an unapproved draft in the launch checklist", async () => {
     const about = await content.getAboutPage();
     const unapproved = await content.listUnapprovedContent();

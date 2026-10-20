@@ -197,6 +197,7 @@ export function buildRawSiteContent(
       introImages: [
         image("/media/stand-ins/gallery-01.jpg", "Composición del espacio"),
       ],
+      introLoops: [],
       gallery: [
         {
           id: "gallery-1",

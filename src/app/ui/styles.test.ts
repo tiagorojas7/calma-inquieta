@@ -425,6 +425,21 @@ describe("motion stylesheet", () => {
     }
   });
 
+  it("the T8 about section lifts the loop frames only when motion is allowed", () => {
+    expect(css).toContain("/* T8 about */");
+    const frame = blocks.filter((block) =>
+      block.prelude.includes(".frame-float"),
+    );
+
+    expect(frame.length).toBeGreaterThan(0);
+    for (const block of frame) {
+      expect(
+        inNoPreference(block),
+        `${block.prelude} sits outside no-preference`,
+      ).toBe(true);
+    }
+  });
+
   it("only transform and opacity are animated in keyframes", () => {
     const allowed = new Set(["transform", "opacity"]);
     const frames = blocks.filter((block) =>

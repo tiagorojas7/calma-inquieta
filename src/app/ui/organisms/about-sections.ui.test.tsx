@@ -33,6 +33,27 @@ describe("about organisms", () => {
     }
   });
 
+  it("lifts each value on a white card with a soft shadow", () => {
+    render(<ValuesRow heading="Valores" items={valueItemFixtures} />);
+    for (const item of screen.getAllByRole("listitem")) {
+      const card = item.firstElementChild as HTMLElement;
+      expect(card).toHaveClass("card-hover", "bg-white", "shadow-card");
+      expect(card.querySelector("[data-disc]")).not.toBeNull();
+    }
+  });
+
+  it("sets each FAQ question on a rounded card that deepens when open", () => {
+    const { container } = render(
+      <FaqItem question="¿Cómo?" answer="Así se hace." />,
+    );
+    const details = container.querySelector("details");
+    expect(details).toHaveClass(
+      "rounded-md",
+      "shadow-card",
+      "open:shadow-lift",
+    );
+  });
+
   it("renders the FAQ in a full-bleed white band", () => {
     const { container } = render(
       <FaqList heading="Preguntas" items={faqEntryFixtures} />,

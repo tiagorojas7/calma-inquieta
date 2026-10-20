@@ -59,16 +59,22 @@ export function ContactSection({
               <ContactItem key={id} {...item} />
             ))}
           </div>
-          <ButtonLink href={directionsHref} variant="outline">
-            {microcopy.directions}
-          </ButtonLink>
+          <div className="flex flex-wrap items-center gap-4">
+            <ButtonLink href="/talleres">Ver talleres</ButtonLink>
+            <ButtonLink href={directionsHref} variant="outline">
+              {microcopy.directions}
+            </ButtonLink>
+          </div>
         </Reveal>
         {photo ? (
           <div
             data-photo-bleed="true"
             className="relative lg:absolute lg:inset-y-0 lg:right-0 lg:w-5/12"
           >
-            <div className="relative aspect-[4/3] overflow-hidden rounded-md lg:aspect-auto lg:h-full lg:rounded-l-md lg:rounded-r-none">
+            <div
+              data-photo-frame="true"
+              className="relative aspect-[4/3] overflow-hidden rounded-md border-6 border-white shadow-lift lg:aspect-auto lg:h-full lg:rounded-l-md lg:rounded-r-none lg:border-r-0"
+            >
               <Image
                 {...photo}
                 sizes={PHOTO_SIZES}

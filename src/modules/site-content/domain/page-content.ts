@@ -157,6 +157,11 @@ export interface AboutPageContent {
   readonly pullQuote: ApprovableText;
   /** Two or three photos of different ratios for the intro collage; unpublished ones are dropped on read. */
   readonly introImages: readonly ImageRef[];
+  /**
+   * Muted 9:16 loops for the intro collage. When at least one is published
+   * the collage shows them; otherwise it falls back to `introImages`.
+   */
+  readonly introLoops: readonly AmbientLoop[];
   readonly values: readonly ValueItem[];
   readonly gallery: readonly GalleryImage[];
   readonly videos: readonly VideoEntry[];

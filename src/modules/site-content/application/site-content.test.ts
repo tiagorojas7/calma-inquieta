@@ -446,6 +446,41 @@ describe("createSiteContent ambient loop", () => {
     expect(home.hero.title).toEqual(raw.home.hero.title);
   });
 
+  it("getAboutPage keeps the published intro loops and drops an unpublished one", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "none",
+      consent: "not-required",
+    });
+    const stray: AmbientLoop = {
+      ...loop,
+      sources: [
+        { src: "/media/video/stray-360.0a1b2c3d.mp4", type: "video/mp4" },
+      ],
+    };
+    const about = await content({
+      ...raw,
+      about: { ...raw.about, introLoops: [loop, stray] },
+    }).getAboutPage();
+
+    expect(about.introLoops).toEqual([loop]);
+  });
+
+  it("getAboutPage returns no intro loops when none is published, keeping the photos", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "faces",
+      consent: "pending",
+    });
+    const about = await content({
+      ...raw,
+      about: { ...raw.about, introLoops: [loop] },
+    }).getAboutPage();
+
+    expect(about.introLoops).toEqual([]);
+    expect(about.introImages).toEqual(raw.about.introImages);
+  });
+
   it("getHomePage drops a loop with a single unpublishable source", async () => {
     const raw = withLoop({
       sourceId: "loop-source",

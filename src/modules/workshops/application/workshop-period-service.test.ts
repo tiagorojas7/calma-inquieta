@@ -65,13 +65,15 @@ async function setup(now = "2026-10-15T12:00:00Z") {
   ]);
   const materialLookupCalls: string[][] = [];
   const materialLookup: MaterialLookup = {
-    async findByIds(ids) {
+    findByIds(ids) {
       materialLookupCalls.push([...ids]);
-      return new Map(
-        ids.flatMap((id) => {
-          const material = materials.get(id);
-          return material ? [[id, material] as const] : [];
-        }),
+      return Promise.resolve(
+        new Map(
+          ids.flatMap((id) => {
+            const material = materials.get(id);
+            return material ? [[id, material] as const] : [];
+          }),
+        ),
       );
     },
   };

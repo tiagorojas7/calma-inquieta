@@ -19,7 +19,7 @@ import {
   type PeriodKey as CorePeriodKey,
 } from "../domain/period-core";
 import type { TeacherLookup } from "~/modules/teachers";
-import type { MaterialLookup } from "~/modules/materials";
+import type { Material, MaterialLookup } from "~/modules/materials";
 import type { MonthlyWorkshopRepository } from "./monthly-workshop-repository";
 import type { TurnoRepository } from "./turno-repository";
 import type { WorkshopPeriodRepository } from "./workshop-period-repository";
@@ -204,9 +204,10 @@ export function createWorkshopPeriodsService(
       const sourceMaterialIds = source?.materials.map(
         (material) => material.id,
       );
-      const currentMaterials = sourceMaterialIds?.length
-        ? await deps.materials.findByIds(sourceMaterialIds)
-        : new Map();
+      const currentMaterials: ReadonlyMap<string, Material> =
+        sourceMaterialIds?.length
+          ? await deps.materials.findByIds(sourceMaterialIds)
+          : new Map<string, Material>();
       const materials: EnabledMaterial[] = (sourceMaterialIds ?? []).flatMap(
         (id) => {
           const material = currentMaterials.get(id);
@@ -330,9 +331,10 @@ export function createWorkshopPeriodsService(
           field: "snapshotPercentage",
           code: "percentage-not-applicable",
         });
-      const selectedMaterials = draft.materialIds.length
+      const selectedMaterials: ReadonlyMap<string, Material> = draft.materialIds
+        .length
         ? await deps.materials.findByIds(draft.materialIds)
-        : new Map();
+        : new Map<string, Material>();
       const materials: EnabledMaterial[] = [];
       for (const id of draft.materialIds) {
         const material = selectedMaterials.get(id);

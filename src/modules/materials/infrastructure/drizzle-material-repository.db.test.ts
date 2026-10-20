@@ -199,16 +199,16 @@ describe("createDrizzleMaterialRepository", () => {
     });
   });
 
-  it("does not introduce the B9 material-offer table", async () => {
+  it("runs against the migration chain that includes B9 period offers", async () => {
     const { openSession } = await freshRepository();
     const session = await openSession();
     try {
       const { rows } = await session.db.execute<{ table_name: string }>(
         sql`SELECT table_name FROM information_schema.tables
             WHERE table_schema = 'public'
-              AND table_name LIKE '%material_offer%'`,
+              AND table_name = 'period_material_offer'`,
       );
-      expect(rows).toEqual([]);
+      expect(rows).toEqual([{ table_name: "period_material_offer" }]);
     } finally {
       await session.close();
     }

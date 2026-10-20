@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessProfile } from "~/modules/site-content";
-import { buildLocalBusinessJsonLd, serializeJsonLd } from "./json-ld";
+import { DEFAULT_SHARE_IMAGE } from "~/modules/site-content";
+import { canonicalUrl } from "./canonical";
+import {
+  buildEventJsonLd,
+  buildLocalBusinessJsonLd,
+  serializeJsonLd,
+  type EventInput,
+} from "./json-ld";
 
 const PROVISIONAL_DIGITS = "3517395239";
 
@@ -107,5 +114,113 @@ describe("serializeJsonLd", () => {
   it("round-trips to the original value", () => {
     const value = { v: "a <b> & c\u2028d" };
     expect(JSON.parse(serializeJsonLd(value))).toEqual(value);
+  });
+});
+
+const eventInput: EventInput = {
+  name: "Intensivo de torno",
+  summary: "Un sábado de torno.",
+  path: "/intensivos/torno",
+  date: "2026-11-14",
+  startsAt: "10:00",
+  endsAt: "18:00",
+  pricePesos: 45000,
+  status: "open",
+  teacherName: "Docente Demo",
+  images: ["/imagenes/a.jpg", "https://cdn.example.test/b.jpg"],
+};
+
+function eventJson(overrides: Partial<EventInput> = {}) {
+  return buildEventJsonLd({ ...eventInput, ...overrides }, minimal, BASE);
+}
+
+describe("buildEventJsonLd", () => {
+  it("builds one Event with the Cordoba offset on start and end", () => {
+    const event = eventJson();
+    expect(event["@context"]).toBe("https://schema.org");
+    expect(event["@type"]).toBe("Event");
+    expect(event.name).toBe("Intensivo de torno");
+    expect(event.description).toBe("Un sábado de torno.");
+    expect(event.startDate).toBe("2026-11-14T10:00:00-03:00");
+    expect(event.endDate).toBe("2026-11-14T18:00:00-03:00");
+  });
+
+  it("takes the location from the profile and sets mode and status", () => {
+    const event = eventJson();
+    expect(event.location).toEqual({
+      "@type": "Place",
+      name: "Calma Inquieta",
+      address: buildLocalBusinessJsonLd(minimal, BASE).address,
+    });
+    expect(event.organizer).toEqual({
+      "@type": "Organization",
+      name: "Calma Inquieta",
+      url: "https://example.test/",
+    });
+    expect(event.eventStatus).toBe("https://schema.org/EventScheduled");
+    expect(event.eventAttendanceMode).toBe(
+      "https://schema.org/OfflineEventAttendanceMode",
+    );
+  });
+
+  it("adds a performer only with a teacher", () => {
+    expect(eventJson().performer).toEqual({
+      "@type": "Person",
+      name: "Docente Demo",
+    });
+    expect(eventJson({ teacherName: undefined })).not.toHaveProperty(
+      "performer",
+    );
+  });
+
+  it("lists absolute image URLs in position order", () => {
+    expect(eventJson().image).toEqual([
+      "https://example.test/imagenes/a.jpg",
+      "https://cdn.example.test/b.jpg",
+    ]);
+  });
+
+  it("falls back to exactly the share image with no images", () => {
+    expect(eventJson({ images: [] }).image).toEqual([
+      canonicalUrl(BASE, DEFAULT_SHARE_IMAGE.path),
+    ]);
+  });
+
+  it("maps open to LimitedAvailability and paused to OutOfStock", () => {
+    const open = eventJson().offers;
+    expect(open).toEqual({
+      "@type": "Offer",
+      price: "45000",
+      priceCurrency: "ARS",
+      url: "https://example.test/intensivos/torno",
+      availability: "https://schema.org/LimitedAvailability",
+    });
+    const paused = eventJson({ status: "paused" });
+    expect(paused.offers.availability).toBe("https://schema.org/OutOfStock");
+    expect(paused.eventStatus).toBe("https://schema.org/EventScheduled");
+  });
+
+  it("never says SoldOut and never carries capacity keys", () => {
+    for (const status of ["open", "paused"] as const) {
+      const text = JSON.stringify(eventJson({ status }));
+      expect(text).not.toContain("SoldOut");
+      expect(text).not.toContain("remainingAttendeeCapacity");
+      expect(text).not.toContain("maximumAttendeeCapacity");
+    }
+  });
+
+  it("uses the price as a plain decimal string, whole or with centavos", () => {
+    expect(eventJson({ pricePesos: 45000 }).offers.price).toBe("45000");
+    expect(eventJson({ pricePesos: 45000.5 }).offers.price).toBe("45000.50");
+  });
+
+  it("carries no private sentinel and keeps a script-breaking name inert", () => {
+    const sentinel = "SNAPSHOT-SENTINEL";
+    const text = serializeJsonLd(
+      eventJson({ name: "</script><script>x", summary: "ok" }),
+    );
+    expect(text).not.toContain("<");
+    expect(text).not.toContain(sentinel);
+    expect(JSON.parse(text).name).toBe("</script><script>x");
   });
 });

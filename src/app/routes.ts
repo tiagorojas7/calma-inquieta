@@ -6,6 +6,8 @@ import {
 } from "@react-router/dev/routes";
 
 export default [
+  route("sin-acceso", "routes/admin-denied.tsx"),
+  route("admin", "routes/admin/layout.tsx", [index("routes/admin/home.tsx")]),
   route("status", "routes/status.tsx"),
   route("robots.txt", "routes/robots.ts"),
   route("sitemap.xml", "routes/sitemap.ts"),

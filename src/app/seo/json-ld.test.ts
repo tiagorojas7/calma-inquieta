@@ -221,6 +221,6 @@ describe("buildEventJsonLd", () => {
     );
     expect(text).not.toContain("<");
     expect(text).not.toContain(sentinel);
-    expect(JSON.parse(text).name).toBe("</script><script>x");
+    expect(JSON.parse(text)).toMatchObject({ name: "</script><script>x" });
   });
 });

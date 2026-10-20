@@ -18,6 +18,10 @@ import PublicLayout, {
   loader as layoutLoader,
 } from "./public-layout";
 
+function parseJson(text: string): unknown {
+  return JSON.parse(text);
+}
+
 function pesos(value: number): Money {
   const money = Money.fromCentavos(value * 100);
   if (!money.ok) throw new Error("invalid test money");
@@ -220,18 +224,18 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
       const { container } = await renderDetail([full]);
       const found = scripts(container);
       expect(found).toHaveLength(1);
-      const event = JSON.parse(found[0]?.textContent ?? "");
-      expect(event["@type"]).toBe("Event");
-      expect(event.name).toBe("Intensivo Demo");
-      expect(event.startDate).toBe("2026-11-14T10:00:00-03:00");
-      expect(event.endDate).toBe("2026-11-14T12:00:00-03:00");
-      expect(event.offers.price).toBe("58000");
-      expect(event.offers.availability).toBe(
-        "https://schema.org/LimitedAvailability",
-      );
-      expect(event.performer.name).toBe("Docente Demo");
-      expect(event.image[0]).toMatch(/imagenes.a.jpg$/u);
-      expect(event.image[0]).toContain("http");
+      expect(parseJson(found[0]?.textContent ?? "")).toMatchObject({
+        "@type": "Event",
+        name: "Intensivo Demo",
+        startDate: "2026-11-14T10:00:00-03:00",
+        endDate: "2026-11-14T12:00:00-03:00",
+        offers: {
+          price: "58000",
+          availability: "https://schema.org/LimitedAvailability",
+        },
+        performer: { name: "Docente Demo" },
+        image: [expect.stringMatching(/imagenes.a.jpg$/u), expect.any(String)],
+      });
     });
 
     it("keeps the deposit and private fields out of the script", async () => {
@@ -252,8 +256,11 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
       const { container } = await renderDetail([
         buildPublicIntensivo({ ...full, status: "paused" }),
       ]);
-      const event = JSON.parse(scripts(container)[0]?.textContent ?? "");
-      expect(event.offers.availability).toBe("https://schema.org/OutOfStock");
+      expect(parseJson(scripts(container)[0]?.textContent ?? "")).toMatchObject(
+        {
+          offers: { availability: "https://schema.org/OutOfStock" },
+        },
+      );
     });
 
     it("escapes a script-breaking name so it cannot close the script", async () => {

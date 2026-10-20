@@ -1,4 +1,7 @@
-import { DEFAULT_SHARE_IMAGE, type BusinessProfile } from "~/modules/site-content";
+import {
+  DEFAULT_SHARE_IMAGE,
+  type BusinessProfile,
+} from "~/modules/site-content";
 import { CORDOBA_UTC_OFFSET } from "~/modules/workshops";
 import { canonicalUrl } from "./canonical";
 

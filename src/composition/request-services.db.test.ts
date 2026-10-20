@@ -8,6 +8,9 @@ import {
   buildSeed,
   fullyPopulatedSeed,
   seedIntensivo,
+  seedPeriod,
+  seedTaller,
+  seedTurno,
 } from "~/testing/fakes/catalog-seed";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { createIsolateState, createRequestServices } from "./request-services";
@@ -142,18 +145,17 @@ describe("createRequestServices", () => {
     expect(profile.instagram.handle).toBe("calma.inquieta");
   });
 
-  it("keeps the talleres placeholder off the database", async () => {
+  it("does not hide an unreachable database behind an empty talleres list", async () => {
     const services = createRequestServices(
       { databaseUrl: UNREACHABLE_URL, buildCommit: "abc", ...SITE },
       {},
       createIsolateState(),
     );
 
-    const { talleres } = services.publicCatalog;
-
-    expect(await talleres.list()).toEqual([]);
-    expect(await talleres.findBySlug("ceramica")).toBeNull();
-    expect(await talleres.listSlugs()).toEqual([]);
+    await expect(services.publicCatalog.talleres.list()).rejects.toThrow();
+    await expect(
+      services.publicCatalog.talleres.findBySlug("ceramica"),
+    ).rejects.toThrow();
   });
 
   it("does not hide an unreachable database behind an empty intensivos list", async () => {
@@ -222,6 +224,56 @@ describe("createRequestServices", () => {
     ).toBe("intensivo-demo");
     expect(await services.publicCatalog.intensivos.listSlugs()).toEqual([
       "intensivo-demo",
+    ]);
+  });
+
+  it("returns a seeded visible taller through the wired reader", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          ...fullyPopulatedSeed().talleres.filter(
+            (row) => row.status === "draft",
+          ),
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                projectTitle: "Taza",
+                capacities: [{ turnoId: turno.id, capacity: 8 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    const listed = await services.publicCatalog.talleres.list();
+
+    expect(listed.map((item) => item.slug)).toEqual(["ceramica"]);
+    expect(listed[0]?.teacher?.name).toBe("Lucía Demo");
+    expect(listed[0]?.offering?.period).toBe("2099-01");
+    expect(listed[0]?.turnos.map((t) => t.seats.capacity)).toEqual([8]);
+    expect(listed[0]?.project?.title).toBe("Taza");
+    expect(
+      (await services.publicCatalog.talleres.findBySlug("ceramica"))?.slug,
+    ).toBe("ceramica");
+    expect(
+      await services.publicCatalog.talleres.findBySlug("borrador"),
+    ).toBeNull();
+    expect(await services.publicCatalog.talleres.listSlugs()).toEqual([
+      "ceramica",
     ]);
   });
 

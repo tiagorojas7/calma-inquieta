@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import routes from "./routes";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
-import { buildPublicIntensivo } from "~/testing/fakes/public-catalog-builders";
+import {
+  buildPublicIntensivo,
+  buildPublicTaller,
+} from "~/testing/fakes/public-catalog-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import { loader as intensivoLoader } from "./routes/intensivo";
+import { loader as tallerLoader } from "./routes/taller";
 import { buildSitemapXml } from "./seo/sitemap";
 import { PUBLIC_PAGES } from "./site-map";
 
@@ -41,7 +45,7 @@ describe("public site map", () => {
         id: "talleres",
         path: "/talleres",
         label: "Talleres",
-        indexable: false,
+        indexable: true,
       },
       {
         id: "intensivos",
@@ -69,7 +73,7 @@ describe("public site map", () => {
       },
     ]);
     const pages = PUBLIC_PAGES as readonly { indexable: boolean }[];
-    expect(pages.filter((page) => page.indexable)).toHaveLength(4);
+    expect(pages.filter((page) => page.indexable)).toHaveLength(5);
   });
 
   it("leaves no public page unrouted", () => {
@@ -78,6 +82,16 @@ describe("public site map", () => {
     expect(PUBLIC_PAGES.filter((page) => !routed.includes(page.path))).toEqual(
       [],
     );
+  });
+
+  it("maps /talleres and /talleres/:slug to the catalog modules", () => {
+    const entries = flatten(routes);
+    expect(entries.find((entry) => entry.path === "/talleres")?.file).toBe(
+      "routes/talleres.tsx",
+    );
+    expect(
+      entries.find((entry) => entry.path === "/talleres/:slug")?.file,
+    ).toBe("routes/taller.tsx");
   });
 
   it("maps /intensivos and /intensivos/:slug to the catalog modules", () => {
@@ -102,9 +116,21 @@ describe("public site map", () => {
     ).toBe("routes/about.tsx");
   });
 
-  it("keeps titles and descriptions unique across the pages and two intensivo details", async () => {
+  it("keeps titles and descriptions unique across the pages and two details of each catalog", async () => {
     const services = createTestServices({
       publicCatalog: createFakePublicCatalog({
+        talleres: [
+          buildPublicTaller({
+            slug: "uno",
+            name: "Taller Uno",
+            summary: "Primer resumen de taller.",
+          }),
+          buildPublicTaller({
+            slug: "dos",
+            name: "Taller Dos",
+            summary: "Segundo resumen de taller.",
+          }),
+        ],
         intensivos: [
           buildPublicIntensivo({
             slug: "uno",
@@ -120,47 +146,52 @@ describe("public site map", () => {
       }),
     });
     const { siteContent } = services;
-    const [home, about, contact, talleres, eventos, catalog] =
-      await Promise.all([
-        siteContent.getHomePage(),
-        siteContent.getAboutPage(),
-        siteContent.getContactPage(),
-        siteContent.getComingSoonPage("talleres"),
-        siteContent.getComingSoonPage("eventos-privados"),
-        siteContent.getCatalogContent(),
-      ]);
+    const [home, about, contact, eventos, catalog] = await Promise.all([
+      siteContent.getHomePage(),
+      siteContent.getAboutPage(),
+      siteContent.getContactPage(),
+      siteContent.getComingSoonPage("eventos-privados"),
+      siteContent.getCatalogContent(),
+    ]);
     const seo = [
       home,
       about,
       contact,
-      talleres,
       eventos,
+      catalog.talleres,
       catalog.intensivos,
     ].map((page) => page.seo);
+    const loaders = [
+      { base: "intensivos", load: intensivoLoader },
+      { base: "talleres", load: tallerLoader },
+    ];
     const details = await Promise.all(
-      ["uno", "dos"].map(async (slug) => {
-        const result = await intensivoLoader({
-          ...createLoaderArgs(services, `/intensivos/${slug}`),
-          params: { slug },
-        } as never);
-        return {
-          title: result.metaInput.title,
-          description: result.metaInput.description,
-        };
-      }),
+      loaders.flatMap(({ base, load }) =>
+        ["uno", "dos"].map(async (slug) => {
+          const result = await load({
+            ...createLoaderArgs(services, `/${base}/${slug}`),
+            params: { slug },
+          } as never);
+          return {
+            title: result.metaInput.title,
+            description: result.metaInput.description,
+          };
+        }),
+      ),
     );
     const all = [...seo, ...details];
-    expect(new Set(all.map((entry) => entry.title)).size).toBe(8);
-    expect(new Set(all.map((entry) => entry.description)).size).toBe(8);
+    expect(new Set(all.map((entry) => entry.title)).size).toBe(10);
+    expect(new Set(all.map((entry) => entry.description)).size).toBe(10);
   });
 
-  it("lists exactly the four indexable pages in the sitemap", () => {
+  it("lists exactly the five indexable pages in the sitemap", () => {
     const xml = buildSitemapXml(
       "https://example.test",
       PUBLIC_PAGES.filter((page) => page.indexable).map((page) => page.path),
     );
     expect(xml.match(/<loc>[^<]+<\/loc>/g)).toEqual([
       "<loc>https://example.test/</loc>",
+      "<loc>https://example.test/talleres</loc>",
       "<loc>https://example.test/intensivos</loc>",
       "<loc>https://example.test/quienes-somos</loc>",
       "<loc>https://example.test/contacto</loc>",

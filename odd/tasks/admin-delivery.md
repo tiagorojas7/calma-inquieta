@@ -1,0 +1,34 @@
+# Admin delivery slices (change 3 admin-catalog, FRONT)
+
+- Objective: deliver the FRONT slices F0a, F1, F2, F3, F4, F6, F8, F7, F5 of change 3 `admin-catalog` (F0b merged).
+- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f0a-shell`.
+- TDD strict (`AGENTS.md`); runner `corepack pnpm test <path>`.
+
+## Specs
+
+- S-F0a (admin-shell, "Navigation entries"): "The sidebar MUST list exactly these entries, in this order, with these labels and URLs: Talleres (`/admin/talleres`), Intensivos (`/admin/intensivos`), Profesores (`/admin/profesores`), Materiales (`/admin/materiales`)." The menu "MUST live in one place and feed both the desktop sidebar and the mobile navigation."
+- S-F0a (admin-shell, "Top bar"): "The top bar MUST show the signed-in admin's email and a 'Salir' control"; admin-access: "Salir" links to `/cdn-cgi/access/logout`.
+- S-F0a (admin-shell, "Landing"): "`/admin` MUST render a landing with a greeting that includes the signed-in email and shortcuts to the four areas. It MUST NOT show metrics or a dashboard."
+- S-F0a (admin-shell, "Access-denied page"): "A denial MUST render 'No tenés acceso al panel' with status 403 inside a minimal layout that has no navigation to admin areas and no data."
+- S-F0a (admin-shell, "Own layout and error boundary"): "Admin routes MUST sit outside the public layout, with their own layout route and error boundary. An unexpected error in an admin route MUST render an admin error state in Spanish without stack traces or internals."
+- S-F0a (admin-access, "Layered enforcement"): "the admin layout middleware that runs before every admin loader and action" (design AC4 layer 2: `requireAdmin` throws `data(null, { status: 403 })` unless `adminAccess.kind === "admin"`, re-checks `isSameOriginMutation`).
+- S-F0a (admin-shell, "Response headers"): admin pages "MUST include a `noindex` robots meta. Admin paths MUST NOT appear in the sitemap." (header part is Worker-owned, B1b).
+- S-F0a (admin-shell, "Copy rules"): all admin copy es-AR voseo; `findCopyViolations` also scans admin microcopy.
+- S-F1.. S-F5: see `openspec/changes/admin-catalog/specs/**` and design section 11; quoted when each slice starts.
+
+## Tasks
+
+- F0a: S-F0a | inline (one writer, sequential) | done locally, PR pending | commit: see PR
+- F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
+- F2, F3, F4, F6, F8, F7, F5: pending.
+
+## Log
+
+- F0a: the Worker gate (B1b) already existed in `src/composition/admin-gate.ts` and `workers/app.ts`; F0a adds layer 2 only (route middleware) plus screens. No Worker, Cloudflare or secret change needed.
+- F0a: RR 8.4.0 middleware experiment (`layout.routing.test.ts`, static handler with `generateMiddlewareResponse`): an error thrown by a route's middleware lands on that same route's `ErrorBoundary`; without a boundary on the route it falls to the root. Middleware is not run unless the handler is created with `generateMiddlewareResponse`, which `createRequestHandler` does. Design checklist item "thrown data(..., 403) renders the layout boundary": verified at router level; rendering of the boundary verified in `layout.ui.test.tsx`.
+- F0a: deviations from design AC4/section 11, no product decision involved: (1) the denial body for a middleware 403 is the bare denial page without email; (2) issue messages (`src/app/admin/issue-messages.ts`) are left to the first slice that has `IssueCode`s to map (F2); (3) deviation-register entry ("drawers to pages", "admin voseo") lives in `docs/design/deviation-register.md`, outside this slice's allowed surfaces; owner or next slice with docs access must add it.
+- F0a: robots `noindex, nofollow` meta is rendered by the shell, denial page, and (through the shell) the error state, not by route `meta` exports, because a child route `meta` would replace a parent's.
+- F1: `MEDIA` R2 binding is already declared in `wrangler.jsonc` on origin/main and wired in `request-services.ts`, so F1 was built; no binding, secret or Cloudflare change.
+- F1: `GET /imagenes/:file` (`routes/media-file.ts`, outside `/admin`) and `POST /admin/imagenes` (`routes/admin/image-upload.ts`, under the F0a layout, so layers 2 and 3 apply). 411 without Content-Length, 413 over `MAX_UPLOAD_REQUEST_BYTES`, before parsing. Client: `src/app/admin/image-resize.ts` (2400 px, WebP then JPEG 0.85), `upload-image.ts`, `upload-chosen-image.ts`, and the presentational `ui/admin/image-field.tsx`.
+- F1 deviations: (1) upload uses plain `fetch`, not a React Router fetcher, to avoid layout revalidation on each upload; (2) the "media object missing" log line is not emitted because `media.serve` collapses unknown id and missing object into `not-found` and `src/modules/**` is outside this lane; (3) the HEIC-on-iOS check and the browser canvas path are not unit-testable in jsdom: owner or QA must try a phone photo on a real device; (4) `ImageField` is not yet mounted in any form (F2 and later wire it with `uploadChosenImage`).
+- F1: layer 1 (`admin-gate.ts`) denies every `/admin/**.data` request, so admin screens must use document navigation (`<a>`, native `<form method="post">` or `<Form reloadDocument>`). F1 only uses a plain `fetch` POST to `/admin/imagenes` (a document-route action, not `.data`), pinned in `upload-image.test.ts`; `ImageField` renders no form. Later slices must keep this rule.

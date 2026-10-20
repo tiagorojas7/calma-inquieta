@@ -36,3 +36,45 @@ export function compareIntensivos(
   if (a.slug === b.slug) return 0;
   return a.slug < b.slug ? -1 : 1;
 }
+
+/**
+ * The monthly offering: the current Córdoba month when open, else the earliest
+ * later open month, else none. Past months are never selected; `YYYY-MM` keys
+ * sort chronologically as strings.
+ */
+export function selectOffering<T extends { readonly period: string }>(
+  openPeriods: readonly T[],
+  currentPeriod: string,
+): T | null {
+  let best: T | null = null;
+  for (const candidate of openPeriods) {
+    if (candidate.period < currentPeriod) continue;
+    if (best === null || candidate.period < best.period) best = candidate;
+  }
+  return best;
+}
+
+export interface TurnoOrderKey {
+  readonly weekday: number;
+  readonly startsAt: string;
+}
+
+/** Weekday (Monday 1 to Sunday 7), then start time. */
+export function compareTurnos(a: TurnoOrderKey, b: TurnoOrderKey): number {
+  if (a.weekday !== b.weekday) return a.weekday - b.weekday;
+  if (a.startsAt === b.startsAt) return 0;
+  return a.startsAt < b.startsAt ? -1 : 1;
+}
+
+export interface TallerOrderKey {
+  readonly name: string;
+  readonly slug: string;
+}
+
+/** Name (Spanish-aware), then slug: a total order. */
+export function compareTalleres(a: TallerOrderKey, b: TallerOrderKey): number {
+  const byName = NAME_COLLATOR.compare(a.name, b.name);
+  if (byName !== 0) return byName;
+  if (a.slug === b.slug) return 0;
+  return a.slug < b.slug ? -1 : 1;
+}

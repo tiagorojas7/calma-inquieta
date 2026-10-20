@@ -24,17 +24,16 @@ import { createTeacherLookup, type TeachersService } from "~/modules/teachers";
 import { createDrizzleTeacherRepository } from "~/modules/teachers/infrastructure/drizzle-teacher-repository";
 import {
   createPublicIntensivosReader,
+  createPublicTalleresReader,
   type MonthlyWorkshopsService,
   type WorkshopPeriodsService,
   type IntensivesService,
   type PublicCatalogService,
 } from "~/modules/workshops";
 import type { SuppliersService, MaterialsService } from "~/modules/materials";
-import {
-  EMPTY_MEDIA_LOOKUP,
-  EMPTY_PUBLIC_TALLERES,
-} from "./empty-public-catalog";
+import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
+import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
 import { createUnavailableService } from "./unavailable-service";
 
 /** How long `/status` reuses the last database probe (design D12). */
@@ -107,6 +106,9 @@ export function createRequestServices(
       cell: isolate.statusProbeMemo,
     },
   );
+  const teachers = createTeacherLookup(
+    createDrizzleTeacherRepository(openSession),
+  );
   return {
     getSystemStatus: createGetSystemStatus({
       probe,
@@ -132,15 +134,17 @@ export function createRequestServices(
     intensives: createUnavailableService<IntensivesService>(),
     suppliers: createUnavailableService<SuppliersService>(),
     materials: createUnavailableService<MaterialsService>(),
-    // Talleres stay fail-soft until C4-B3 (design PC3): empty, never a 5xx.
-    // A real intensivos failure is not caught: it reaches the error boundary.
+    // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {
-      talleres: EMPTY_PUBLIC_TALLERES,
+      talleres: createPublicTalleresReader({
+        records: createDrizzlePublicTallerRecords(openSession),
+        teachers,
+        media: EMPTY_MEDIA_LOOKUP, // the real lookup lands in C4-B5
+        clock: systemClock,
+      }),
       intensivos: createPublicIntensivosReader({
         records: createDrizzlePublicIntensivoRecords(openSession),
-        teachers: createTeacherLookup(
-          createDrizzleTeacherRepository(openSession),
-        ),
+        teachers,
         media: EMPTY_MEDIA_LOOKUP, // the real lookup lands in C4-B5
         clock: systemClock,
       }),

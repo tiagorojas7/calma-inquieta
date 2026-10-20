@@ -10,8 +10,8 @@ describe("coming soon loader", () => {
       site: { baseUrl: "https://calma.example", indexingEnabled: true },
     });
     const result = (await loader({
-      ...createLoaderArgs(services, "/talleres"),
-      params: { slug: "talleres" },
+      ...createLoaderArgs(services, "/eventos-privados"),
+      params: { slug: "eventos-privados" },
     } as never)) as {
       slug: string;
       title: string;
@@ -19,7 +19,7 @@ describe("coming soon loader", () => {
       instagramHref: string;
       site: { baseUrl: string; indexingEnabled: boolean };
     };
-    expect(result.slug).toBe("talleres");
+    expect(result.slug).toBe("eventos-privados");
     expect(result.site).toEqual({
       baseUrl: "https://calma.example",
       indexingEnabled: true,
@@ -38,9 +38,12 @@ describe("coming soon loader", () => {
         {
           tagName: "link",
           rel: "canonical",
-          href: "https://calma.example/talleres",
+          href: "https://calma.example/eventos-privados",
         },
-        { property: "og:url", content: "https://calma.example/talleres" },
+        {
+          property: "og:url",
+          content: "https://calma.example/eventos-privados",
+        },
         {
           property: "og:image",
           content: `https://calma.example${DEFAULT_SHARE_IMAGE.path}`,
@@ -77,6 +80,15 @@ describe("coming soon loader", () => {
     ).rejects.toMatchObject({ data: null, init: { status: 404 } });
   });
 
+  it("no longer serves talleres as a coming-soon page", async () => {
+    await expect(
+      loader({
+        ...createLoaderArgs(createTestServices(), "/talleres"),
+        params: {},
+      } as never),
+    ).rejects.toMatchObject({ data: null, init: { status: 404 } });
+  });
+
   it("returns a 404 response for an unsupported pathname", async () => {
     await expect(
       loader({
@@ -101,9 +113,9 @@ describe("coming soon loader", () => {
   it("builds noindex metadata for coming-soon pages and safe errors", () => {
     const result = meta({
       loaderData: {
-        title: "Talleres",
+        title: "Eventos privados",
         seo: { description: "Próximamente." },
-        slug: "talleres",
+        slug: "eventos-privados",
         site: { baseUrl: "https://calma.example", indexingEnabled: true },
       },
       error: undefined,
@@ -142,8 +154,8 @@ describe("coming soon loader", () => {
       },
     };
     const result = await loader({
-      ...createLoaderArgs(services, "/talleres"),
-      params: { slug: "talleres" },
+      ...createLoaderArgs(services, "/eventos-privados"),
+      params: { slug: "eventos-privados" },
     } as never);
     expect(result.whatsappHref).toBeUndefined();
   });

@@ -35,3 +35,4 @@ export {
   type IntensiveUseCases,
 } from "./application/intensive-service";
 export { createPublicIntensivosReader } from "./application/public-intensivos-reader";
+export { createPublicTalleresReader } from "./application/public-talleres-reader";

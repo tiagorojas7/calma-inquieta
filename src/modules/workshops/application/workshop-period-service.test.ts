@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
+import type { Material, MaterialLookup } from "~/modules/materials";
 import { createWorkshopPeriodsService } from "./workshop-period-service";
 import { InMemoryWorkshopPeriodRepository } from "~/testing/fakes/in-memory-workshop-period-repository";
 import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
@@ -9,6 +10,7 @@ import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import {
   buildImageUse,
+  buildMaterial,
   buildTeacher,
   buildWorkshopPeriod,
 } from "~/testing/fakes/admin-builders";
@@ -49,16 +51,43 @@ async function setup(now = "2026-10-15T12:00:00Z") {
     defaultCapacity: 8,
     active: true,
   });
+  const materials = new Map<string, Material>([
+    ["material-1", buildMaterial({ id: "material-1", name: "Clay" })],
+    [
+      "material-2",
+      buildMaterial({ id: "material-2", name: "Paint", active: false }),
+    ],
+    [
+      "material-3",
+      buildMaterial({ id: "material-3", name: "Glue", available: false }),
+    ],
+    ["material-4", buildMaterial({ id: "material-4", name: "Ink" })],
+  ]);
+  const materialLookupCalls: string[][] = [];
+  const materialLookup: MaterialLookup = {
+    async findByIds(ids) {
+      materialLookupCalls.push([...ids]);
+      return new Map(
+        ids.flatMap((id) => {
+          const material = materials.get(id);
+          return material ? [[id, material] as const] : [];
+        }),
+      );
+    },
+  };
   return {
     periods,
     workshops,
     turnos,
     teachers,
+    materials,
+    materialLookupCalls,
     service: createWorkshopPeriodsService({
       repository: periods,
       workshops,
       turnos,
       teachers,
+      materials: materialLookup,
       clock: fixedClock(new Date(now)),
       newId: (() => {
         let sequence = 0;
@@ -106,6 +135,7 @@ describe("WorkshopPeriodsService", () => {
       workshops: { findById: called },
       turnos: { listForWorkshop: called },
       teachers: { findByIds: called },
+      materials: { findByIds: called },
       clock: fixedClock(new Date("2026-10-15T12:00:00Z")),
     } as never);
 
@@ -226,15 +256,9 @@ describe("WorkshopPeriodsService", () => {
     });
   });
 
-  it("refuses nonempty deferred images and materials rather than discarding them", async () => {
+  it("refuses nonempty deferred images rather than discarding them", async () => {
     const { service } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material"],
-      }),
-    ).toEqual({ ok: false, error: { kind: "unavailable" } });
     expect(
       await service.update(testAdminActor(), "p", {
         ...draft,
@@ -243,7 +267,7 @@ describe("WorkshopPeriodsService", () => {
     ).toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 
-  it("preserves stored deferred images and materials when the form leaves them empty", async () => {
+  it("preserves stored deferred images while an empty material selection clears offers", async () => {
     const { service, periods } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
     const stored = periods.items.get("p");
@@ -256,19 +280,13 @@ describe("WorkshopPeriodsService", () => {
       ],
     });
 
-    const updated = await service.update(testAdminActor(), "p", draft);
-    expect(updated).toMatchObject({
+    expect(await service.update(testAdminActor(), "p", draft)).toMatchObject({
       ok: true,
-      value: {
-        project: { images: [buildImageUse()] },
-        materials: [
-          { id: "material-1", name: "Clay", active: true, available: true },
-        ],
-      },
+      value: { project: { images: [buildImageUse()] }, materials: [] },
     });
   });
 
-  it("does not silently discard deferred source images or materials while opening", async () => {
+  it("does not silently discard deferred source images while opening", async () => {
     const { service, periods } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
     const stored = periods.items.get("p");
@@ -616,5 +634,146 @@ describe("WorkshopPeriodsService", () => {
       },
     });
     expect(periods.items.get("p")?.status).toBe("closed");
+  });
+
+  it("rejects duplicate, unknown, inactive, and unavailable material selections without mutation", async () => {
+    const { service, periods, materialLookupCalls } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const before = await periods.findById("p");
+
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-1", "material-1"],
+      }),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "materialIds", code: "duplicate" }],
+      },
+    });
+    expect(materialLookupCalls).toEqual([]);
+
+    for (const [materialId, code] of [
+      ["missing", "unknown-reference"],
+      ["material-2", "not-selectable"],
+      ["material-3", "not-selectable"],
+    ] as const) {
+      expect(
+        await service.update(testAdminActor(), "p", {
+          ...draft,
+          materialIds: [materialId],
+        }),
+      ).toEqual({
+        ok: false,
+        error: { kind: "invalid", issues: [{ field: "materialIds", code }] },
+      });
+    }
+    expect(await periods.findById("p")).toEqual(before);
+  });
+
+  it("replaces the flat material list in submitted order and clears it explicitly", async () => {
+    const { service } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-4", "material-1"],
+      }),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        materials: [
+          { id: "material-4", name: "Ink" },
+          { id: "material-1", name: "Clay" },
+        ],
+      },
+    });
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-1"],
+      }),
+    ).toMatchObject({
+      ok: true,
+      value: { materials: [{ id: "material-1", name: "Clay" }] },
+    });
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: [],
+      }),
+    ).toMatchObject({ ok: true, value: { materials: [] } });
+  });
+
+  it("copies only currently selectable historical materials in source order", async () => {
+    const { service, periods, materialLookupCalls } = await setup();
+    const historicalMaterials = [
+      { id: "material-4", name: "Old ink", active: true, available: true },
+      { id: "material-2", name: "Old paint", active: true, available: true },
+      { id: "missing", name: "Removed", active: true, available: true },
+      { id: "material-1", name: "Old clay", active: true, available: true },
+      { id: "material-3", name: "Old glue", active: true, available: true },
+    ];
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "source",
+        workshopId: "w",
+        period: "2026-10",
+        fee,
+        materials: historicalMaterials,
+      }),
+    );
+
+    expect(
+      await service.openMonth(testAdminActor(), "w", "2026-11"),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        materials: [
+          { id: "material-4", name: "Ink", active: true, available: true },
+          { id: "material-1", name: "Clay", active: true, available: true },
+        ],
+      },
+    });
+    expect(materialLookupCalls).toEqual([
+      ["material-4", "material-2", "missing", "material-1", "material-3"],
+    ]);
+    expect((await periods.findById("source"))?.materials).toEqual(
+      historicalMaterials,
+    );
+  });
+
+  it("refuses explicit and effective closure before material lookup", async () => {
+    const { service, periods, materialLookupCalls } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    await service.publish(testAdminActor(), "p");
+    await service.close(testAdminActor(), "p");
+
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-1"],
+      }),
+    ).toEqual({ ok: false, error: { kind: "period-closed" } });
+
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "elapsed",
+        workshopId: "w",
+        period: "2026-09",
+        fee,
+        status: "open",
+      }),
+    );
+    expect(
+      await service.update(testAdminActor(), "elapsed", {
+        ...draft,
+        materialIds: ["material-1"],
+      }),
+    ).toEqual({ ok: false, error: { kind: "period-closed" } });
+    expect(materialLookupCalls).toEqual([]);
   });
 });

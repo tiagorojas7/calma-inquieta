@@ -4,7 +4,7 @@ import { createLoaderArgs } from "~/testing/react-router";
 import { loader } from "./sitemap";
 
 describe("sitemap resource route", () => {
-  it("returns the four indexable pages and excludes coming-soon paths", async () => {
+  it("returns the five indexable pages and excludes coming-soon paths", async () => {
     const response = loader(
       createLoaderArgs(createTestServices(), "/sitemap.xml") as never,
     );
@@ -16,11 +16,11 @@ describe("sitemap resource route", () => {
     expect(body).toContain("<urlset");
     expect(body.match(/<loc>[^<]+<\/loc>/g)).toEqual([
       "<loc>https://example.test/</loc>",
+      "<loc>https://example.test/talleres</loc>",
       "<loc>https://example.test/intensivos</loc>",
       "<loc>https://example.test/quienes-somos</loc>",
       "<loc>https://example.test/contacto</loc>",
     ]);
-    expect(body).not.toContain("/talleres");
     expect(body).not.toContain("/eventos-privados");
   });
 });

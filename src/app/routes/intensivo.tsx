@@ -2,11 +2,14 @@ import { data, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { intensivoToDetail } from "~/app/catalog/mappers";
 import { buildActivityWhatsAppUrl } from "~/app/catalog/whatsapp";
+import { buildEventJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
 import { buildPageMeta, truncateDescription } from "~/app/seo/meta";
+import { JsonLdScript } from "~/app/ui/json-ld-script";
 import { IntensivoDetailPage } from "~/app/ui/templates/intensivo-detail-page";
 import type { Route } from "./+types/intensivo";
 
 const DESCRIPTION_LIMIT = 160;
+const CENTAVOS_PER_PESO = 100;
 
 /**
  * Every unavailable slug (unknown, draft, cancelled, archived, past) is the
@@ -36,12 +39,31 @@ export async function loader({ context, params }: Route.LoaderArgs) {
         : { kind: "intensivo", name: intensivo.name, date: intensivo.date },
   });
   const cover = intensivo.images[0];
+  const path = `/intensivos/${intensivo.slug}`;
   return {
+    jsonLd: serializeJsonLd(
+      buildEventJsonLd(
+        {
+          name: intensivo.name,
+          summary: intensivo.summary,
+          path,
+          date: intensivo.date,
+          startsAt: intensivo.startsAt,
+          endsAt: intensivo.endsAt,
+          pricePesos: intensivo.price.toCentavos() / CENTAVOS_PER_PESO,
+          status: intensivo.status,
+          teacherName: intensivo.teacher?.name,
+          images: intensivo.images.map((image) => image.src),
+        },
+        profile,
+        services.site.baseUrl,
+      ),
+    ),
     detail: intensivoToDetail(intensivo, content, link),
     metaInput: {
       title: intensivo.name,
       description: truncateDescription(intensivo.summary, DESCRIPTION_LIMIT),
-      path: `/intensivos/${intensivo.slug}`,
+      path,
       siteName: profile.name,
       baseUrl: services.site.baseUrl,
       indexingEnabled: services.site.indexingEnabled,
@@ -60,5 +82,11 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
 }
 
 export default function IntensivoRoute() {
-  return <IntensivoDetailPage {...useLoaderData<typeof loader>().detail} />;
+  const { detail, jsonLd } = useLoaderData<typeof loader>();
+  return (
+    <>
+      <IntensivoDetailPage {...detail} />
+      <JsonLdScript json={jsonLd} />
+    </>
+  );
 }

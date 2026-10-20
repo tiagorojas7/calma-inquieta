@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { Money } from "~/modules/_shared";
 import type { PublicIntensivo } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
@@ -16,6 +17,12 @@ import PublicLayout, {
   ErrorBoundary,
   loader as layoutLoader,
 } from "./public-layout";
+
+function pesos(value: number): Money {
+  const money = Money.fromCentavos(value * 100);
+  if (!money.ok) throw new Error("invalid test money");
+  return money.value;
+}
 
 async function renderDetail(
   intensivos: readonly PublicIntensivo[],
@@ -199,5 +206,68 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
     ).toBeInTheDocument();
     expect(container.textContent).not.toContain("secret-db-detail");
     spy.mockRestore();
+  });
+
+  describe("structured data", () => {
+    const scripts = (container: HTMLElement) =>
+      Array.from(
+        container.ownerDocument.querySelectorAll(
+          'script[type="application/ld+json"]',
+        ),
+      );
+
+    it("embeds exactly one Event with the Cordoba offsets", async () => {
+      const { container } = await renderDetail([full]);
+      const found = scripts(container);
+      expect(found).toHaveLength(1);
+      const event = JSON.parse(found[0]?.textContent ?? "");
+      expect(event["@type"]).toBe("Event");
+      expect(event.name).toBe("Intensivo Demo");
+      expect(event.startDate).toBe("2026-11-14T10:00:00-03:00");
+      expect(event.endDate).toBe("2026-11-14T12:00:00-03:00");
+      expect(event.offers.price).toBe("58000");
+      expect(event.offers.availability).toBe(
+        "https://schema.org/LimitedAvailability",
+      );
+      expect(event.performer.name).toBe("Docente Demo");
+      expect(event.image[0]).toMatch(/imagenes.a.jpg$/u);
+      expect(event.image[0]).toContain("http");
+    });
+
+    it("keeps the deposit and private fields out of the script", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({
+          ...full,
+          deposit: pesos(15_000),
+          price: pesos(45_000),
+        }),
+      ]);
+      const text = scripts(container)[0]?.textContent ?? "";
+      expect(text).toContain("45000");
+      expect(text).not.toContain("15000");
+      expect(text).not.toContain("SoldOut");
+    });
+
+    it("maps a paused intensivo to OutOfStock", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({ ...full, status: "paused" }),
+      ]);
+      const event = JSON.parse(scripts(container)[0]?.textContent ?? "");
+      expect(event.offers.availability).toBe("https://schema.org/OutOfStock");
+    });
+
+    it("escapes a script-breaking name so it cannot close the script", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({ ...full, name: "</script><b>x" }),
+      ]);
+      expect(scripts(container)).toHaveLength(1);
+      expect(scripts(container)[0]?.textContent).not.toContain("<");
+    });
+
+    it("emits no Event for an unavailable slug", async () => {
+      const { container } = await renderDetail([], "no-existe");
+      await screen.findByRole("heading", { name: "Página no encontrada" });
+      expect(scripts(container)).toHaveLength(0);
+    });
   });
 });

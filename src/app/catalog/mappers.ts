@@ -13,6 +13,7 @@ import {
   formatTimeRange,
   weekdayName,
 } from "./format";
+import { seatsIndicator, tallerDisplay } from "./display-state";
 import type { ActivityLink } from "./whatsapp";
 
 /**
@@ -92,10 +93,12 @@ function minutesOf(time: string): number {
   return Number(hours) * MINUTES_PER_HOUR + Number(minutes);
 }
 
+function classLength(startsAt: string, endsAt: string): string {
+  return formatDuration(minutesOf(endsAt) - minutesOf(startsAt));
+}
+
 function intensivoDuration(intensivo: PublicIntensivo): string {
-  return formatDuration(
-    minutesOf(intensivo.endsAt) - minutesOf(intensivo.startsAt),
-  );
+  return classLength(intensivo.startsAt, intensivo.endsAt);
 }
 
 function coverOf(
@@ -219,5 +222,146 @@ export function intensivoToDetail(
       ...image,
     })),
     action,
+  };
+}
+
+type TallerCardTurno = { key: string; weekday: string; timeRange: string };
+
+function turnoKey(turno: PublicTaller["turnos"][number], index: number) {
+  return `${String(index)}-${String(turno.weekday)}-${turno.startsAt}`;
+}
+
+/**
+ * Props of a `TallerCard` on the listing, plus the list key. Seats follow the
+ * display state (never capacity), and paused wins over the no-offering notice.
+ */
+export function tallerToCard(taller: PublicTaller, content: CatalogContent) {
+  const display = tallerDisplay(taller.status, taller.offering);
+  const turnos: TallerCardTurno[] = taller.turnos.map((turno, index) => ({
+    key: turnoKey(turno, index),
+    weekday: weekdayName(turno.weekday),
+    timeRange: formatTimeRange(turno.startsAt, turno.endsAt),
+  }));
+  return {
+    id: taller.slug,
+    image: coverOf(taller.images, content),
+    name: taller.name,
+    ...(taller.teacher ? { teacher: taller.teacher.name } : {}),
+    summary: taller.summary,
+    turnos,
+    ...(taller.offering
+      ? {
+          price: {
+            amount: formatPesos(taller.offering.fee),
+            suffix: content.talleres.feeSuffix,
+          },
+        }
+      : {}),
+    ...(display === "no-offering"
+      ? { notice: content.talleres.noOffering }
+      : {}),
+    ...(seatsIndicator(display).kind === "limited"
+      ? { seats: content.shared.seatsLimited }
+      : {}),
+    ...(display === "paused" ? { paused: content.shared.paused } : {}),
+    href: `/talleres/${taller.slug}`,
+    ctaLabel: content.talleres.cardCtaLabel,
+  };
+}
+
+/** WhatsApp links of a taller detail: the page link and one link per turno. */
+export interface TallerLinks {
+  readonly main: ActivityLink;
+  readonly turnos: readonly ActivityLink[];
+}
+
+/**
+ * Props of the taller detail page. Per-turno inquiry links and seats exist
+ * only for a taller that is not paused; seats only with an offering.
+ */
+export function tallerToDetail(
+  taller: PublicTaller,
+  content: CatalogContent,
+  links: TallerLinks,
+) {
+  const display = tallerDisplay(taller.status, taller.offering);
+  const seats =
+    seatsIndicator(display).kind === "limited"
+      ? content.shared.seatsLimited
+      : undefined;
+  const action: DetailAction =
+    display === "paused"
+      ? {
+          kind: "paused",
+          text: content.shared.paused,
+          link: { href: links.main.href, label: links.main.label },
+        }
+      : { kind: "inquiry", href: links.main.href, label: links.main.label };
+  return {
+    breadcrumb: {
+      label: content.shared.breadcrumbLabel,
+      items: [
+        { label: content.talleres.heading, href: "/talleres" },
+        { label: taller.technique },
+        { label: taller.name },
+      ],
+    },
+    name: taller.name,
+    image: coverOf(taller.images, content),
+    description: taller.description,
+    ...(taller.teacher
+      ? {
+          teacher: {
+            heading: content.talleres.teacherHeading,
+            name: taller.teacher.name,
+            ...(taller.teacher.bioLine
+              ? { bioLine: taller.teacher.bioLine }
+              : {}),
+          },
+        }
+      : {}),
+    turnosHeading: content.talleres.turnosHeading,
+    turnos: taller.turnos.map((turno, index) => {
+      const inquiry = display === "paused" ? undefined : links.turnos[index];
+      return {
+        key: turnoKey(turno, index),
+        weekday: weekdayName(turno.weekday),
+        timeRange: formatTimeRange(turno.startsAt, turno.endsAt),
+        duration: classLength(turno.startsAt, turno.endsAt),
+        ...(seats === undefined ? {} : { seats }),
+        ...(inquiry
+          ? { inquiry: { href: inquiry.href, label: inquiry.label } }
+          : {}),
+      };
+    }),
+    ...(taller.offering
+      ? {
+          fee: {
+            label: content.talleres.feeLabel,
+            amount: formatPesos(taller.offering.fee),
+          },
+        }
+      : {}),
+    ...(display === "no-offering"
+      ? { notice: content.talleres.noOffering }
+      : {}),
+    action,
+    ...(taller.project
+      ? {
+          project: {
+            heading: content.talleres.projectHeading,
+            title: taller.project.title,
+            description: taller.project.description,
+            images: taller.project.images.map((image, offset) => ({
+              id: `${String(offset)}-${image.src}`,
+              ...image,
+            })),
+          },
+        }
+      : {}),
+    gallery: taller.images.slice(1).map((image, offset) => ({
+      id: `${String(offset + 1)}-${image.src}`,
+      ...image,
+    })),
   };
 }

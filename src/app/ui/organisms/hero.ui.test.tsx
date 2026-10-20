@@ -239,6 +239,33 @@ describe("HeroSection phone backdrop and loading", () => {
   });
 });
 
+describe("HeroSection dark phone treatment", () => {
+  it("restyles both calls to action and the subtitle card for the dark backdrop", () => {
+    renderHero();
+
+    expect(screen.getByRole("link", { name: "Ver talleres" })).toHaveClass(
+      "hero-cta",
+      "hero-cta-primary",
+    );
+    expect(screen.getByRole("link", { name: "Ver intensivos" })).toHaveClass(
+      "hero-cta",
+      "hero-cta-outline",
+    );
+    expect(screen.getByText("Un espacio para encontrarnos.")).toHaveClass(
+      "hero-subtitle",
+    );
+  });
+
+  it("keeps the phone backdrop as one of the two eager pictures, one per breakpoint", () => {
+    const { container } = renderHero();
+
+    expect(imgByAlt("Foto backdrop").closest(".hero-backdrop")).toHaveClass(
+      "lg:hidden",
+    );
+    expect(container.querySelectorAll('img[loading="eager"]')).toHaveLength(2);
+  });
+});
+
 describe("HeroSection loop tile", () => {
   const tile = (container: HTMLElement) =>
     container.querySelector(`img[src="${loop.poster.src}"]`)?.parentElement;

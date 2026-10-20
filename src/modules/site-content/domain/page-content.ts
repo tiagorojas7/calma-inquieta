@@ -130,9 +130,20 @@ export interface HomePageContent {
     readonly heading: string;
     readonly items: readonly Testimonial[];
   };
+  /** The booking lead above the catalog cards: copy and a layered photo pair. */
+  readonly catalogBand: {
+    readonly heading: string;
+    readonly body: string;
+    /** The tall photo of the pair (4:5). */
+    readonly primary: ImageRef;
+    /** The wide photo laid over the first (3:2). */
+    readonly secondary: ImageRef;
+  };
   readonly contactBand: {
     readonly heading: string;
     readonly body: string;
+    /** The photo beside the WhatsApp call to action. */
+    readonly image: ImageRef;
   };
 }
 

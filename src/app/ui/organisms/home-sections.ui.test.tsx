@@ -342,6 +342,52 @@ describe("home organisms", () => {
     });
   });
 
+  describe("ContactBand photo", () => {
+    const hands = {
+      src: "/media/home/home-band-hands-960.webp",
+      srcSet:
+        "/media/home/home-band-hands-480.webp 480w, /media/home/home-band-hands-960.webp 960w",
+      alt: "Manos terminando un espejo de paja",
+      width: 960,
+      height: 1200,
+    };
+    const renderWithPhoto = (props: object = {}) =>
+      render(
+        <MemoryRouter>
+          <ContactBand
+            heading="Hablemos"
+            body="Estamos para acompañarte."
+            whatsappHref="https://wa.me/5493510000000"
+            image={hands}
+            {...props}
+          />
+        </MemoryRouter>,
+      );
+
+    it("shows a lazy framed 4:5 photo beside the call to action", async () => {
+      const { container } = renderWithPhoto();
+      const photo = screen.getByAltText(hands.alt);
+
+      expect(photo).toHaveClass("aspect-4/5");
+      expect(photo).toHaveAttribute("loading", "lazy");
+      expect(photo).toHaveAttribute("sizes");
+      expect(photo.closest(".bg-surface")).not.toBeNull();
+      expect(
+        screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
+      ).toBeInTheDocument();
+      await expectNoAxeViolations(container);
+    });
+
+    it("keeps the band whole without a photo", () => {
+      const { container } = renderWithPhoto({ image: undefined });
+
+      expect(container.querySelectorAll("img")).toHaveLength(0);
+      expect(
+        screen.getByRole("heading", { name: "Hablemos" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("renders ContactBand content and WhatsApp link accessibly", async () => {
     const { container } = render(
       <MemoryRouter>

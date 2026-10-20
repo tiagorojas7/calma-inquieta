@@ -665,6 +665,31 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
+  it.each([
+    ["the catalog band tall photo", "catalogBand", "primary"],
+    ["the catalog band wide photo", "catalogBand", "secondary"],
+    ["the contact band photo", "contactBand", "image"],
+  ] as const)(
+    "%s goes through the path and alt gate",
+    (_label, band, field) => {
+      const content = validContent();
+      const unknown = mediaPath("band-unknown");
+
+      expect(
+        validateSiteContent({
+          ...content,
+          home: {
+            ...content.home,
+            [band]: { ...content.home[band], [field]: image(unknown, "") },
+          },
+        }),
+      ).toEqual([
+        { id: unknown, rule: "alt-missing" },
+        { id: unknown, rule: "unregistered-media" },
+      ]);
+    },
+  );
+
   it("registry issues reach validateSiteContent", () => {
     const content = withMedia(validContent(), {
       assets: [

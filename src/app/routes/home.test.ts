@@ -14,7 +14,7 @@ import {
   HERO_LEAD_SIZES,
   HERO_MOBILE_MEDIA,
 } from "~/app/ui/organisms/hero-section";
-import { loader, meta } from "./home";
+import { handle, loader, meta } from "./home";
 
 describe("home loader", () => {
   it("maps approved content, empty catalog lists, contact data and site meta", async () => {
@@ -122,6 +122,30 @@ describe("home loader", () => {
     await expect(
       loader(createLoaderArgs(services, "/") as never),
     ).rejects.toThrow("content down");
+  });
+});
+
+describe("home route handle", () => {
+  it("tells the shell that the hero backdrop is dark below lg", () => {
+    expect(handle).toEqual({ heroBackdrop: "dark-below-lg" });
+  });
+});
+
+describe("home loader band photos", () => {
+  it("carries the booking lead and the three band photos to the page", async () => {
+    const services = createTestServices();
+    const result = await loader(createLoaderArgs(services, "/") as never);
+
+    expect(result.catalogBand.heading).not.toBe("");
+    expect(result.catalogBand.body).not.toBe("");
+    for (const photo of [
+      result.catalogBand.primary,
+      result.catalogBand.secondary,
+      result.contactBand.image,
+    ]) {
+      expect(photo.src).not.toBe("");
+      expect(photo.alt).not.toBe("");
+    }
   });
 });
 

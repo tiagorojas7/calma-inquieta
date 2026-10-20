@@ -174,6 +174,9 @@ function contentImages(content: RawSiteContent): readonly {
       ...content.home.hero.collage,
       content.home.teaser.image,
       content.home.teaser.accentImage,
+      content.home.catalogBand.primary,
+      content.home.catalogBand.secondary,
+      content.home.contactBand.image,
     ].map((image) => ({ id: image.src, image, decorative: false })),
     ...[content.brand.logo, content.brand.logoLight].map((image) => ({
       id: image.src,

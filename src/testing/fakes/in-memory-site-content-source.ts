@@ -169,7 +169,17 @@ export function buildRawSiteContent(
         linkLabel: "Conocenos",
       },
       testimonials: { heading: "Lo que cuentan", items: [] },
-      contactBand: { heading: "Escribinos", body: "Contanos qué buscás." },
+      catalogBand: {
+        heading: "Tu lugar para crear",
+        body: "Sumate a un taller.",
+        primary: image("/media/stand-ins/gallery-01.jpg", "Manos tejiendo"),
+        secondary: image("/media/stand-ins/hero-1.jpg", "Telares"),
+      },
+      contactBand: {
+        heading: "Escribinos",
+        body: "Contanos qué buscás.",
+        image: image("/media/stand-ins/gallery-01.jpg", "Manos en el taller"),
+      },
     },
     about: {
       seo: seo("Quiénes somos"),

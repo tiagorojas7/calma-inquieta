@@ -676,6 +676,53 @@ describe("the Inicio copy and motifs", () => {
   });
 });
 
+describe("the Inicio band photos", () => {
+  const pairs = [
+    ["home-catalog-weaving", (home: Home) => home.catalogBand.primary, 4 / 5],
+    ["home-catalog-looms", (home: Home) => home.catalogBand.secondary, 3 / 2],
+    ["home-band-hands", (home: Home) => home.contactBand.image, 4 / 5],
+  ] as const;
+  type Home = Awaited<ReturnType<typeof content.getHomePage>>;
+
+  it.each(pairs)(
+    "%s is the published registry photo with its ratio and alt",
+    async (id, pick, ratio) => {
+      const raw = await source.load();
+      const home = await content.getHomePage();
+      const image = pick(home);
+      const asset = raw.media.assets.find((candidate) => candidate.id === id);
+      if (asset?.kind !== "image") {
+        throw new Error(`${id} is not a registered image`);
+      }
+
+      expect(image.alt).toBe(asset.alt);
+      expect(image.width / image.height).toBeCloseTo(ratio, 2);
+      expect(pathsOf(image)).toEqual(
+        expect.arrayContaining(asset.variants.map(({ path }) => path)),
+      );
+      for (const path of pathsOf(image)) {
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    },
+  );
+
+  it("the catalog band lead is es-AR copy without prices or a workshop word", async () => {
+    const { catalogBand, contactBand } = await content.getHomePage();
+
+    expect(catalogBand.heading.trim()).not.toBe("");
+    expect(catalogBand.body).toMatch(/vos|Sumate|Escribinos/u);
+    expect(
+      findCopyViolations([
+        catalogBand.heading,
+        catalogBand.body,
+        contactBand.heading,
+        contactBand.body,
+      ]),
+    ).toEqual([]);
+    expect(`${catalogBand.heading}${catalogBand.body}`).not.toMatch(/\$|\d/u);
+  });
+});
+
 describe("the curated teaser", () => {
   it("the teaser image is the published home-teaser asset and not a stand-in", async () => {
     const raw = await source.load();

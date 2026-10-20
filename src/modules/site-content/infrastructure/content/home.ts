@@ -82,8 +82,15 @@ export const homeContent = {
     heading: "Lo que cuentan nuestras alumnas",
     items: [],
   },
+  catalogBand: {
+    heading: "Tu lugar para crear con las manos",
+    body: "Sumate a un taller mensual o a un intensivo y llevate algo hecho por vos. Escribinos y te guardamos un lugar.",
+    primary: imageRef("home-catalog-weaving"),
+    secondary: imageRef("home-catalog-looms"),
+  },
   contactBand: {
     heading: "¿Querés sumarte?",
     body: "Escribinos por WhatsApp o seguinos en Instagram y te contamos qué hay para vos.",
+    image: imageRef("home-band-hands"),
   },
 } as const satisfies HomePageContent;

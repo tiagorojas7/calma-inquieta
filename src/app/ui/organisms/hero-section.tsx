@@ -37,11 +37,14 @@ type Props = {
 };
 
 /**
- * Inicio hero (S2). Phones: the backdrop photo fills the first viewport
- * under the transparent header, with the eyebrow, h1 and CTAs over its calm
- * upper half on a cream scrim and the subtitle on a card at the bottom. From
- * lg: the text on the left and the image5 collage on the right. Exactly one
- * eager, high priority image downloads per breakpoint.
+ * Inicio hero (S2, S9, S16). Both breakpoints fill the viewport (100svh,
+ * header included). Phones: the dark backdrop photo (a lamp under a concrete
+ * ceiling) sits under the transparent header, with the eyebrow, h1 and CTAs
+ * in cream over its dark upper half on a warm scrim and the subtitle on a
+ * dark glass card at the bottom (motifs.css restyles the CTAs through
+ * `hero-cta-*`). From lg: the text on the left on the light canvas and the
+ * image5 collage on the right. Exactly one eager, high priority image
+ * downloads per breakpoint.
  */
 export function HeroSection({
   eyebrow,
@@ -86,12 +89,18 @@ export function HeroSection({
         <Heading level={1} id="hero-title">
           {title}
         </Heading>
-        <Text className="max-w-prose text-lead max-lg:order-last max-lg:mt-auto max-lg:rounded-md max-lg:bg-canvas/90 max-lg:p-4">
+        <Text className="hero-subtitle max-w-prose text-lead max-lg:order-last max-lg:mt-auto">
           {subtitle}
         </Text>
         <div className="flex flex-wrap gap-4">
-          <ButtonLink href="/talleres">Ver talleres</ButtonLink>
-          <ButtonLink href="/intensivos" variant="outline">
+          <ButtonLink href="/talleres" className="hero-cta hero-cta-primary">
+            Ver talleres
+          </ButtonLink>
+          <ButtonLink
+            href="/intensivos"
+            variant="outline"
+            className="hero-cta hero-cta-outline"
+          >
             Ver intensivos
           </ButtonLink>
         </div>

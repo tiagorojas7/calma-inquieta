@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { configure, render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -15,6 +15,10 @@ import {
   HERO_MOBILE_MEDIA,
 } from "~/app/ui/organisms/hero-section";
 import HomeRoute, { loader, meta } from "./home";
+
+// Each test renders the whole route through a router stub; a cold first render
+// can pass the 1 s default of the async queries on a loaded machine.
+configure({ asyncUtilTimeout: 5000 });
 
 const fixture = {
   hero: {
@@ -61,7 +65,35 @@ const fixture = {
     linkLabel: "Conocenos",
   },
   testimonials: [],
-  contactBand: { heading: "Hablemos", body: "Escribinos" },
+  catalogBand: {
+    heading: "Tu lugar para crear",
+    body: "Sumate a un taller mensual.",
+    primary: {
+      src: "/band-weaving.webp",
+      srcSet: "/band-weaving-480.webp 480w, /band-weaving.webp 900w",
+      alt: "Manos tejiendo un cesto",
+      width: 900,
+      height: 1125,
+    },
+    secondary: {
+      src: "/band-looms.webp",
+      srcSet: "/band-looms-480.webp 480w, /band-looms.webp 960w",
+      alt: "Telares sobre lino",
+      width: 960,
+      height: 640,
+    },
+  },
+  contactBand: {
+    heading: "Hablemos",
+    body: "Escribinos",
+    image: {
+      src: "/band-hands.webp",
+      srcSet: "/band-hands-480.webp 480w, /band-hands.webp 960w",
+      alt: "Manos terminando un espejo de paja",
+      width: 960,
+      height: 1200,
+    },
+  },
   whatsappHref: "https://wa.me/5493510000000",
   instagramHref: "https://www.instagram.com/calma.inquieta/",
   jsonLd: serializeJsonLd({ "@type": "LocalBusiness", name: "Calma Inquieta" }),
@@ -123,7 +155,7 @@ describe("Inicio route", () => {
       );
       expect(
         screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1))),
-      ).toEqual([1, 2, 2, 2, 2]);
+      ).toEqual([1, 2, 2, 2, 2, 2]);
       await expectNoAxeViolations(container, { page: true });
     },
   );
@@ -298,6 +330,57 @@ describe("Inicio route", () => {
           );
         }
       }
+    });
+
+    it("the three band photos are lazy, sized and carry their alt text", async () => {
+      const { container } = await renderFixture();
+
+      for (const alt of [
+        "Manos tejiendo un cesto",
+        "Telares sobre lino",
+        "Manos terminando un espejo de paja",
+      ]) {
+        const img = container.querySelector(`img[alt="${alt}"]`);
+        expect(img, alt).not.toBeNull();
+        expect(img, alt).toHaveAttribute("loading", "lazy");
+        expect(img, alt).not.toHaveAttribute("fetchpriority");
+        expect(img?.getAttribute("sizes"), alt).toMatch(/\d/u);
+        expect(img, alt).toHaveAttribute("width");
+        expect(img, alt).toHaveAttribute("height");
+      }
+    });
+
+    it("the contact band photo sits in the clay band next to the WhatsApp call to action", async () => {
+      await renderFixture();
+      const band = screen
+        .getByRole("heading", { name: "Hablemos" })
+        .closest("section");
+
+      expect(
+        band?.querySelector('img[alt="Manos terminando un espejo de paja"]'),
+      ).not.toBeNull();
+      expect(
+        band?.querySelector('a[href="https://wa.me/5493510000000"]'),
+      ).not.toBeNull();
+    });
+
+    it("the catalog photo pair sits in the catalog band, with a call to action to book", async () => {
+      await renderFixture();
+      const band = screen
+        .getByRole("heading", { name: "Tu lugar para crear" })
+        .closest("section");
+
+      expect(band).toHaveAttribute("data-tone", "canvas");
+      expect(
+        band?.querySelector('img[alt="Manos tejiendo un cesto"]'),
+      ).not.toBeNull();
+      expect(
+        band?.querySelector('img[alt="Telares sobre lino"]'),
+      ).not.toBeNull();
+      expect(band?.querySelector('a[href="/talleres"]')).not.toBeNull();
+      expect(
+        band?.querySelector('a[href="https://wa.me/5493510000000"]'),
+      ).not.toBeNull();
     });
 
     it("no eager image downloads where it is hidden: each swaps to a blank pixel there", async () => {
@@ -502,12 +585,18 @@ describe("Inicio bands and motifs", () => {
     expect(container.querySelectorAll("[data-bleed='true']")).toHaveLength(4);
   });
 
-  it("drops the catalog band when the catalog read fails", async () => {
+  it("keeps the booking lead but drops the activity sections when the catalog read fails", async () => {
     const { container } = await renderInicio({ catalogFailed: true });
 
     expect(
       bands(container).map((band) => band.getAttribute("data-tone")),
-    ).toEqual(["canvas", "sand", "clay"]);
+    ).toEqual(["canvas", "canvas", "sand", "clay"]);
+    expect(
+      screen.getByRole("heading", { name: "Tu lugar para crear" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Talleres mensuales" }),
+    ).not.toBeInTheDocument();
   });
 
   it("no longer uses the 24 px woven cord as a divider", async () => {

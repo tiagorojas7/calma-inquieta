@@ -21,6 +21,7 @@ import {
   HERO_MOBILE_MEDIA,
   HeroSection,
 } from "~/app/ui/organisms/hero-section";
+import { HomeCatalogLead } from "~/app/ui/organisms/home-catalog-lead";
 import { Reveal } from "~/app/ui/organisms/reveal";
 import { Section } from "~/app/ui/organisms/section";
 import { TestimonialsSection } from "~/app/ui/organisms/testimonials-section";
@@ -29,6 +30,13 @@ import { UpcomingList } from "~/app/ui/organisms/upcoming-list";
 import type { Route } from "./+types/home";
 
 const INICIO_ACTIVITY_LIMIT = 3;
+
+/**
+ * The shell reads this: below lg the Inicio hero is a dark photo (a lamp under
+ * a concrete ceiling), so the header switches to the light logo and light ink
+ * until the visitor scrolls past it.
+ */
+export const handle = { heroBackdrop: "dark-below-lg" } as const;
 
 /**
  * Phones preload the backdrop and desktops the collage lead, on exactly
@@ -90,6 +98,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     },
     testimonials: content.testimonials.items,
     testimonialsHeading: content.testimonials.heading,
+    catalogBand: content.catalogBand,
     contactBand: content.contactBand,
     whatsappHref: whatsapp.ok ? whatsapp.value : undefined,
     instagramHref: profile.instagram.url,
@@ -146,14 +155,21 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         bajada={data.hero.bajada}
       />
       <TrustRow claims={data.trustClaims} />
-      {data.catalogFailed ? null : (
-        <Section bleed tone="canvas" spacing="md" className="overflow-x-clip">
-          <BotanicalSprig
-            size="md"
-            variant="wheat"
-            className="absolute -top-14 right-6 rotate-12 lg:right-24"
-          />
-          <div className="grid gap-x-12 lg:grid-cols-3">
+      <Section bleed tone="canvas" spacing="md" className="overflow-x-clip">
+        <BotanicalSprig
+          size="md"
+          variant="wheat"
+          className="absolute -top-14 right-6 rotate-12 lg:right-24"
+        />
+        <HomeCatalogLead
+          heading={data.catalogBand.heading}
+          body={data.catalogBand.body}
+          primary={data.catalogBand.primary}
+          secondary={data.catalogBand.secondary}
+          whatsappHref={data.whatsappHref}
+        />
+        {data.catalogFailed ? null : (
+          <div className="mt-12 grid gap-x-12 lg:mt-16 lg:grid-cols-3">
             <Reveal className="lg:col-span-2">
               <ActivityShowcase
                 title={data.monthlyHeading}
@@ -181,8 +197,8 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
               />
             </Reveal>
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
       <AboutTeaser
         heading={data.teaser.heading}
         body={data.teaser.body}
@@ -190,17 +206,16 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         accentImage={data.teaser.accentImage}
         pull={data.teaser.pull}
       />
-      <Reveal>
-        <TestimonialsSection
-          heading={data.testimonialsHeading}
-          items={data.testimonials}
-        />
-      </Reveal>
+      <TestimonialsSection
+        heading={data.testimonialsHeading}
+        items={data.testimonials}
+      />
       <ContactBand
         heading={data.contactBand.heading}
         body={data.contactBand.body}
         whatsappHref={data.whatsappHref ?? "#"}
         instagramHref={data.instagramHref}
+        image={data.contactBand.image}
       />
       <JsonLdScript json={data.jsonLd} />
     </>

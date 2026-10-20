@@ -543,20 +543,67 @@ describe("hero collage stylesheet", () => {
     expect(css).toMatch(/--hero-header:\s*[0-9.]+rem/);
     expect(stage).toMatch(/margin-top:\s*calc\(var\(--hero-header\) \* -1\)/);
     expect(stage).toMatch(/padding-top:\s*var\(--hero-header\)/);
-    expect(stage).toMatch(/min-height:\s*calc\(100svh/);
+    expect(stage).toMatch(/min-height:\s*100svh/);
   });
 
-  it("the scrim is cream from the tokens, at least 88 % opaque over the text", () => {
+  it("the hero fills the viewport on phones and desktop, with a vh fallback before svh", () => {
+    const phone = rule(".hero-stage")?.body ?? "";
+    const desktop = rule(".hero-stage", fromLg)?.body ?? "";
+    const heights = [...phone.matchAll(/min-height:\s*([^;]+);/g)].map(
+      (match) => match[1],
+    );
+
+    expect(heights).toEqual(["100vh", "100svh"]);
+    // From lg the band keeps the phone height and its slide under the header.
+    expect(desktop).not.toMatch(/min-height:/);
+    expect(desktop).not.toMatch(/margin-top:/);
+    expect(desktop).not.toMatch(/padding-top:/);
+  });
+
+  it("the scrim is a dark warm gradient from the tokens, at least 80 % opaque over the text", () => {
     const body = rule(".hero-scrim")?.body ?? "";
     const opacities = [
-      ...body.matchAll(/var\(--color-canvas\)\s*(\d+)%,\s*transparent\)/g),
+      ...body.matchAll(/var\(--color-ink-900\)\s*(\d+)%,[^)]*\)\s*(\d+)%/g),
     ].map((match) => Number(match[1]));
 
     expect(body).toMatch(/linear-gradient\(\s*to bottom/);
+    expect(body).toMatch(/color-mix\(/);
+    expect(body).not.toMatch(/var\(--color-canvas\)\s*\d+%,\s*transparent/);
     expect(opacities.length).toBeGreaterThanOrEqual(3);
-    expect(Math.max(...opacities)).toBeGreaterThanOrEqual(90);
-    expect(opacities.slice(0, 2).every((value) => value >= 88)).toBe(true);
-    expect(opacities.at(-1)).toBe(0);
+    expect(opacities[0]).toBeGreaterThanOrEqual(80);
+  });
+
+  const phoneOnly = /@media\s*\(max-width:\s*63\.99rem\)/;
+
+  it("below lg the copy is cream on the scrim with a light terracotta accent", () => {
+    const copy = rule(".hero-copy", phoneOnly)?.body ?? "";
+    const text =
+      blocks.find(
+        (block) =>
+          block.prelude.includes(".hero-copy") &&
+          block.prelude.includes("h1") &&
+          block.ancestors.some((a) => phoneOnly.test(a)),
+      )?.body ?? "";
+
+    expect(copy).toMatch(/--em-color:\s*color-mix\(/);
+    expect(copy).toMatch(/--em-color:[^;]*var\(--color-terracotta-700\)/);
+    expect(text).toMatch(/color:\s*var\(--color-canvas\)/);
+  });
+
+  it("below lg the calls to action and the subtitle are restyled for the dark ground", () => {
+    for (const selector of [
+      ".hero-copy .hero-cta-primary",
+      ".hero-copy .hero-cta-outline",
+      ".hero-copy .hero-subtitle",
+    ]) {
+      expect(rule(selector, phoneOnly)?.body, selector).toBeTruthy();
+    }
+    expect(rule(".hero-copy .hero-cta-primary", phoneOnly)?.body).toMatch(
+      /background-color:\s*var\(--color-canvas\)/,
+    );
+    expect(rule(".hero-copy .hero-subtitle", phoneOnly)?.body).toMatch(
+      /backdrop-filter:\s*blur\(/,
+    );
   });
 
   it("the collage board and its tiles exist only from lg", () => {
@@ -660,5 +707,54 @@ describe("brand stylesheet (T6)", () => {
         /@media\s*\(prefers-reduced-motion:\s*no-preference\)/.test(a),
       ),
     ).toBe(true);
+  });
+});
+
+describe("T7 home stylesheet", () => {
+  const css = readStyles("motifs.css");
+  const blocks = cssBlocks(css);
+  const rule = (selector: string, ancestor?: RegExp) =>
+    blocks.find(
+      (block) =>
+        block.prelude
+          .split(",")
+          .map((part) => part.trim())
+          .includes(selector) &&
+        (ancestor
+          ? block.ancestors.some((a) => ancestor.test(a))
+          : block.ancestors.length === 0),
+    );
+  const noPreference = /@media\s*\(prefers-reduced-motion:\s*no-preference\)/;
+
+  it("keeps the T7 rules under their own heading", () => {
+    expect(css).toMatch(/\/\*\s*T7 home\b/);
+  });
+
+  it("the layered photo pair reserves its boxes and puts the shadow on the frame", () => {
+    for (const selector of [".photo-pair", ".photo-pair-a", ".photo-pair-b"]) {
+      expect(rule(selector)?.body, selector).toBeTruthy();
+    }
+    expect(rule(".photo-pair-b")?.body).toMatch(/position:\s*absolute/);
+    expect(rule(".photo-pair-a")?.body).toMatch(/box-shadow:/);
+  });
+
+  it("photo hover motion is transform only and only when motion is allowed", () => {
+    const hover = blocks.filter(
+      (block) =>
+        block.prelude.includes(".photo-pair") &&
+        block.prelude.includes(":hover"),
+    );
+
+    expect(hover.length).toBeGreaterThan(0);
+    for (const block of hover) {
+      expect(block.ancestors.some((a) => noPreference.test(a))).toBe(true);
+      expect(block.body).toMatch(/transform:/);
+      expect(block.body).not.toMatch(/\b(width|height|top|left|margin)\s*:/);
+    }
+  });
+
+  it("the paper note has a tape strip and a light sheet from the tokens", () => {
+    expect(rule(".paper-note::before")?.body).toMatch(/content:/);
+    expect(rule(".paper-note-sheet")?.body).toMatch(/var\(--color-sand-/);
   });
 });

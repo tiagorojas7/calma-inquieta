@@ -17,6 +17,15 @@ describe("PaperNote", () => {
     expect(text).toHaveClass("font-script", "text-ink-900");
   });
 
+  it("has a premium finish: a tape strip class and a light sheet", () => {
+    const { container } = render(<PaperNote>Hola</PaperNote>);
+
+    expect(container.firstElementChild).toHaveClass("paper-note");
+    expect(container.querySelector(".paper-torn")).toHaveClass(
+      "paper-note-sheet",
+    );
+  });
+
   it("is slightly rotated and takes a placement class", () => {
     const { container } = render(
       <PaperNote tilt="right" className="absolute">

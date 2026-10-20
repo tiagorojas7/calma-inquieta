@@ -31,12 +31,14 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const found = await services.monthlyWorkshops.get(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
   const workshop = found.value;
+  const teachers = await loadTeacherOptions(services.teachers, actor, workshop);
+  if (!teachers.ok) throw failureResponse(teachers.error);
   return {
     id: workshop.id,
     status: workshop.status,
     published: workshop.status === "published",
     values: workshopFormValues(workshop),
-    teachers: await loadTeacherOptions(services.teachers, actor, workshop),
+    teachers: teachers.value,
     activeTurnos: workshop.turnos.filter((turno) => turno.active).length,
   };
 }

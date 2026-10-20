@@ -37,7 +37,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     actor,
     null,
   );
-  return { teachers };
+  if (!teachers.ok) throw failureResponse(teachers.error);
+  return { teachers: teachers.value };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {

@@ -1,5 +1,10 @@
 import { data } from "react-router";
-import type { FieldIssue } from "~/modules/_shared";
+import {
+  ok,
+  type AdminFailure,
+  type FieldIssue,
+  type Result,
+} from "~/modules/_shared";
 import type { TeachersService } from "~/modules/teachers";
 import type {
   MonthlyWorkshop,
@@ -10,7 +15,6 @@ import type {
 } from "~/modules/workshops";
 import type { AdminActor } from "~/modules/admin-access";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
-import { failureResponse } from "./failure-response";
 import {
   WORKSHOP_FIELD_MESSAGES,
   fieldErrors,
@@ -46,10 +50,18 @@ export function invalidWorkshopResponse(
   draft: MonthlyWorkshopDraft,
   issues: readonly FieldIssue<MonthlyWorkshopField>[],
 ) {
-  const { images: _images, confirmSlugChange: _confirm, ...values } = draft;
   return data<WorkshopActionData>(
     {
-      values,
+      values: {
+        name: draft.name,
+        slug: draft.slug,
+        summary: draft.summary,
+        description: draft.description,
+        technique: draft.technique,
+        defaultFee: draft.defaultFee,
+        teacherId: draft.teacherId,
+        percentage: draft.percentage,
+      },
       errors: fieldErrors(issues, WORKSHOP_FIELD_MESSAGES),
       formError: adminMicrocopy.workshops.form.saveFailed,
     },
@@ -110,15 +122,17 @@ export async function loadTeacherOptions(
   teachers: TeachersService,
   actor: AdminActor,
   current: MonthlyWorkshop | null,
-): Promise<readonly TeacherOption[]> {
+): Promise<Result<readonly TeacherOption[], AdminFailure>> {
   const listed = await teachers.list(actor, "all");
-  if (!listed.ok) throw failureResponse(listed.error);
+  if (!listed.ok) return listed;
   const assigned = current?.assignment?.teacher.id;
-  return listed.value
-    .filter((teacher) => teacher.active || teacher.id === assigned)
-    .map((teacher) => ({
-      id: teacher.id,
-      name: teacher.active ? teacher.name : `${teacher.name} (archivado)`,
-      modality: teacher.modality,
-    }));
+  return ok(
+    listed.value
+      .filter((teacher) => teacher.active || teacher.id === assigned)
+      .map((teacher) => ({
+        id: teacher.id,
+        name: teacher.active ? teacher.name : `${teacher.name} (archivado)`,
+        modality: teacher.modality,
+      })),
+  );
 }

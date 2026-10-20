@@ -118,7 +118,7 @@ describe("WorkshopStatePanel", () => {
     expect(screen.queryByRole("button", { name: "Pausar" })).toBeNull();
   });
 
-  it("resumes a paused workshop and restores an archived one", async () => {
+  it("resumes a paused workshop and restores an archived one", () => {
     const { unmount } = render(
       <WorkshopStatePanel status="paused" activeTurnos={1} error={undefined} />,
     );

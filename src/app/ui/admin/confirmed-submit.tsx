@@ -25,7 +25,13 @@ export function ConfirmedSubmit({
   return (
     <form ref={formRef} method="post">
       <input type="hidden" name="intent" value={intent} />
-      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
         {label}
       </Button>
       <ConfirmDialog
@@ -34,7 +40,9 @@ export function ConfirmedSubmit({
         message={message}
         confirmLabel={label}
         tone={tone}
-        onCancel={() => setOpen(false)}
+        onCancel={() => {
+          setOpen(false);
+        }}
         onConfirm={() => {
           setOpen(false);
           formRef.current?.requestSubmit();

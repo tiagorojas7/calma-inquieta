@@ -27,8 +27,11 @@ import {
 } from "~/modules/teachers";
 import { createDrizzleTeacherRepository } from "~/modules/teachers/infrastructure/drizzle-teacher-repository";
 import {
+  createMonthlyWorkshopsService,
+  createPeriodTurnoUsageLookup,
   createPublicIntensivosReader,
   createPublicTalleresReader,
+  createWorkshopPeriodLookup,
   type MonthlyWorkshopsService,
   type WorkshopPeriodsService,
   type IntensivesService,
@@ -36,6 +39,9 @@ import {
 } from "~/modules/workshops";
 import type { SuppliersService, MaterialsService } from "~/modules/materials";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
+import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
+import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
+import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infrastructure/drizzle-workshop-period-repository";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
 import { createUnavailableService } from "./unavailable-service";
@@ -113,6 +119,7 @@ export function createRequestServices(
   const teachers = createTeacherLookup(
     createDrizzleTeacherRepository(openSession),
   );
+  const periodRepository = createDrizzleWorkshopPeriodRepository(openSession);
   return {
     getSystemStatus: createGetSystemStatus({
       probe,
@@ -136,7 +143,15 @@ export function createRequestServices(
       repository: createDrizzleTeacherRepository(openSession),
       clock: systemClock,
     }),
-    monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),
+    monthlyWorkshops: createMonthlyWorkshopsService({
+      repository: createDrizzleMonthlyWorkshopRepository(openSession),
+      teachers,
+      media: EMPTY_MEDIA_LOOKUP, // the gallery is not persisted yet (C4-B5)
+      turnos: createDrizzleTurnoRepository(openSession),
+      turnoUsage: createPeriodTurnoUsageLookup(periodRepository),
+      periods: createWorkshopPeriodLookup(periodRepository),
+      clock: systemClock,
+    }),
     workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
     intensives: createUnavailableService<IntensivesService>(),
     suppliers: createUnavailableService<SuppliersService>(),

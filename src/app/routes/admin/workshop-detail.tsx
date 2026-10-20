@@ -1,0 +1,110 @@
+import { data, redirect, useActionData, useLoaderData } from "react-router";
+import { servicesContext } from "~/app/context";
+import { failureResponse } from "~/app/admin/failure-response";
+import {
+  invalidWorkshopResponse,
+  loadTeacherOptions,
+  stateFailureMessage,
+  stateRefusedResponse,
+  workshopFormValues,
+} from "~/app/admin/workshop-action-data";
+import {
+  parseWorkshopDraft,
+  parseWorkshopIntent,
+} from "~/app/admin/workshop-form-data";
+import { Heading } from "~/app/ui/atoms/heading";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { WorkshopForm, WorkshopStatePanel } from "~/app/ui/admin/workshop-form";
+import { requireAdmin } from "./require-admin";
+import type { Route } from "./+types/workshop-detail";
+
+const copy = adminMicrocopy.workshops;
+const LIST = "/admin/talleres";
+
+export function meta() {
+  return [{ title: "Editar taller | Panel | Calma Inquieta" }];
+}
+
+export async function loader({ request, context, params }: Route.LoaderArgs) {
+  const actor = requireAdmin(request, context);
+  const services = context.get(servicesContext);
+  const found = await services.monthlyWorkshops.get(actor, params.id);
+  if (!found.ok) throw failureResponse(found.error);
+  const workshop = found.value;
+  return {
+    id: workshop.id,
+    status: workshop.status,
+    published: workshop.status === "published",
+    values: workshopFormValues(workshop),
+    teachers: await loadTeacherOptions(services.teachers, actor, workshop),
+    activeTurnos: workshop.turnos.filter((turno) => turno.active).length,
+  };
+}
+
+export async function action({ request, context, params }: Route.ActionArgs) {
+  const actor = requireAdmin(request, context);
+  const workshops = context.get(servicesContext).monthlyWorkshops;
+  const form = await request.formData();
+  const intent = parseWorkshopIntent(form);
+  if (intent === null) throw data(null, { status: 400 });
+
+  if (intent === "save") {
+    const draft = parseWorkshopDraft(form);
+    const saved = await workshops.update(actor, params.id, draft);
+    if (saved.ok) return redirect(LIST);
+    if (saved.error.kind === "invalid")
+      return invalidWorkshopResponse(draft, saved.error.issues);
+    throw failureResponse(saved.error);
+  }
+
+  if (intent === "delete") {
+    const deleted = await workshops.delete(actor, params.id);
+    if (deleted.ok) return redirect(LIST);
+    if (deleted.error.kind === "rules-unmet")
+      return stateRefusedResponse(stateFailureMessage(deleted.error));
+    throw failureResponse(deleted.error);
+  }
+
+  const changed =
+    intent === "publish"
+      ? await workshops.publish(actor, params.id)
+      : intent === "pause"
+        ? await workshops.pause(actor, params.id)
+        : intent === "archive"
+          ? await workshops.archive(actor, params.id)
+          : await workshops.restore(actor, params.id);
+  if (changed.ok) return redirect(`${LIST}/${params.id}`);
+  if (
+    changed.error.kind === "transition-refused" ||
+    changed.error.kind === "rules-unmet"
+  )
+    return stateRefusedResponse(stateFailureMessage(changed.error));
+  throw failureResponse(changed.error);
+}
+
+export default function AdminWorkshopDetail() {
+  const workshop = useLoaderData<typeof loader>();
+  const rejected = useActionData<typeof action>();
+  const formRejected = rejected && "values" in rejected ? rejected : null;
+  const stateError =
+    rejected && "stateError" in rejected ? rejected.stateError : undefined;
+  return (
+    <section className="flex flex-col gap-6">
+      <Heading level={1}>{copy.editTitle}</Heading>
+      <WorkshopStatePanel
+        status={workshop.status}
+        activeTurnos={workshop.activeTurnos}
+        error={stateError}
+      />
+      <WorkshopForm
+        key={workshop.id}
+        values={formRejected?.values ?? workshop.values}
+        errors={formRejected?.errors ?? {}}
+        formError={formRejected?.formError}
+        teachers={workshop.teachers}
+        published={workshop.published}
+        cancelHref={LIST}
+      />
+    </section>
+  );
+}

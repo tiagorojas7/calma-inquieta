@@ -16,7 +16,8 @@
 ## Tasks
 
 - [x] E0 Order domain core (S1-S6), route inline. RED, GREEN and gate evidence in the Log.
-- E1-E10: owned by the coordinator, not in this lane.
+- [x] E1 Cart, pricing, wa.me text (S3 and the cart and wa.me rules of `materials-cart` and `public-enrollment`), route inline, branch `feat/monthly-enrollment-e1-cart`. Evidence in the Log.
+- E2-E10: owned by the coordinator, not in this lane.
 
 ## Log
 
@@ -24,3 +25,5 @@
 - L2 E0 scope: pure domain only (`src/modules/enrollments/domain/**` plus the module API). Phone normalization is injected because domain may not import `site-content`; E2 wires `toWhatsAppDigits`. The module needs no `eslint.config.ts` edit: element patterns are `src/modules/*/...` globs.
 - L3 E0 evidence: RED `pnpm test src/modules/enrollments` failed 3/3 files (modules absent); GREEN 78 tests in 3 files; with architecture tests 102 tests in 5 files. Lint caught 3 type-aware errors (template numbers, string plus), fixed. Locked gates: typecheck 0, lint 0, format:check 0.
 - L4 Risk: none (new module, no existing code touched). Next: E1 (cart, pricing, wa.me text) by the coordinator.
+- L5 E1 scope: `domain/cart-core.ts` (quantity 1-20, merge, 30 lines, `priceCart` reusing `priceOrder`; errors `materials-required`, `invalid-price`, `invalid-fee`, `invalid-total`) and `domain/whatsapp-message.ts` (pure text, 1.200 cap, `formatPesos`). `material-not-offered` and `material-unavailable` need B9 offers and belong to E2 behind a port. Assumptions: a zero unit price is accepted, a negative one is `invalid-price`; if even the header exceeds the cap, a minimal message with number and total is used.
+- L6 E1 evidence: RED both new test files failed to import (modules absent); GREEN `pnpm test src/modules/enrollments` 5 files, 115 tests. Other gates in the PR. Risk: none (new pure code reusing `Money` and `priceOrder`; money arithmetic is covered by tests).

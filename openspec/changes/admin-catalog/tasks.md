@@ -50,7 +50,7 @@ Each item below is one independent PR/rollback boundary. Keep tests and document
 
 Do not begin these slices in this workstream. Their required order is `F0b → F0a → F1 → F2 → F3 → F4 → F6 → F8 → F7 → F5`; F5 additionally depends on B6, B9, and F4. The slices are F0b admin UI primitives; F0a layout/middleware/denial/landing; F1 image upload and serving routes; F2 teachers; F3 workshops; F4 turnos; F6 intensivos; F8 suppliers; F7 materials; and F5 periods/material multi-select. They are mandatory for the affected `admin-shell` and `media-storage` acceptance scenarios but necessarily modify `src/app/**`, which is outside this task plan's authorized surfaces.
 
-Delivery status: F0b is merged. F0a (layout, route middleware, boundary, denial route, landing) is delivered on `feat/admin-catalog-f0a-shell`; evidence in `odd/tasks/admin-delivery.md`. F1–F5 remain pending.
+Delivery status: F0b is merged. F0a (layout, route middleware, boundary, denial route, landing) is delivered on `feat/admin-catalog-f0a-shell`; evidence in `odd/tasks/admin-delivery.md`. F1 (image upload and serving routes, `feat/admin-catalog-f1-media`) is delivered; evidence in `odd/tasks/admin-delivery.md`. F2–F5 remain pending.
 
 ## Dependency and Delivery Evidence
 

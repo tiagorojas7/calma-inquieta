@@ -19,7 +19,8 @@
 ## Tasks
 
 - F0a: S-F0a | inline (one writer, sequential) | done locally, PR pending | commit: see PR
-- F1, F2, F3, F4, F6, F8, F7, F5: pending.
+- F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
+- F2, F3, F4, F6, F8, F7, F5: pending.
 
 ## Log
 
@@ -27,3 +28,7 @@
 - F0a: RR 8.4.0 middleware experiment (`layout.routing.test.ts`, static handler with `generateMiddlewareResponse`): an error thrown by a route's middleware lands on that same route's `ErrorBoundary`; without a boundary on the route it falls to the root. Middleware is not run unless the handler is created with `generateMiddlewareResponse`, which `createRequestHandler` does. Design checklist item "thrown data(..., 403) renders the layout boundary": verified at router level; rendering of the boundary verified in `layout.ui.test.tsx`.
 - F0a: deviations from design AC4/section 11, no product decision involved: (1) the denial body for a middleware 403 is the bare denial page without email; (2) issue messages (`src/app/admin/issue-messages.ts`) are left to the first slice that has `IssueCode`s to map (F2); (3) deviation-register entry ("drawers to pages", "admin voseo") lives in `docs/design/deviation-register.md`, outside this slice's allowed surfaces; owner or next slice with docs access must add it.
 - F0a: robots `noindex, nofollow` meta is rendered by the shell, denial page, and (through the shell) the error state, not by route `meta` exports, because a child route `meta` would replace a parent's.
+- F1: `MEDIA` R2 binding is already declared in `wrangler.jsonc` on origin/main and wired in `request-services.ts`, so F1 was built; no binding, secret or Cloudflare change.
+- F1: `GET /imagenes/:file` (`routes/media-file.ts`, outside `/admin`) and `POST /admin/imagenes` (`routes/admin/image-upload.ts`, under the F0a layout, so layers 2 and 3 apply). 411 without Content-Length, 413 over `MAX_UPLOAD_REQUEST_BYTES`, before parsing. Client: `src/app/admin/image-resize.ts` (2400 px, WebP then JPEG 0.85), `upload-image.ts`, `upload-chosen-image.ts`, and the presentational `ui/admin/image-field.tsx`.
+- F1 deviations: (1) upload uses plain `fetch`, not a React Router fetcher, to avoid layout revalidation on each upload; (2) the "media object missing" log line is not emitted because `media.serve` collapses unknown id and missing object into `not-found` and `src/modules/**` is outside this lane; (3) the HEIC-on-iOS check and the browser canvas path are not unit-testable in jsdom: owner or QA must try a phone photo on a real device; (4) `ImageField` is not yet mounted in any form (F2 and later wire it with `uploadChosenImage`).
+- F1: layer 1 (`admin-gate.ts`) denies every `/admin/**.data` request, so admin screens must use document navigation (`<a>`, native `<form method="post">` or `<Form reloadDocument>`). F1 only uses a plain `fetch` POST to `/admin/imagenes` (a document-route action, not `.data`), pinned in `upload-image.test.ts`; `ImageField` renders no form. Later slices must keep this rule.

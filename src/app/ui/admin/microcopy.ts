@@ -42,6 +42,18 @@ export const adminMicrocopy = {
     help: "Si creés que es un error, pedile acceso a quien administra el panel.",
     backToSite: "Ir al sitio",
   },
+  imageField: {
+    altLabel: "Texto alternativo",
+    altHint: "Describí la imagen para quien no puede verla.",
+    uploading: "Subiendo imagen…",
+    previewAlt: "Vista previa de la imagen",
+    errors: {
+      "too-large": "La imagen es demasiado grande.",
+      "unsupported-format": "Formato no admitido.",
+      unavailable: "La subida de imágenes no está disponible por ahora.",
+      failed: "No se pudo subir la imagen. Probá de nuevo.",
+    },
+  },
   errors: {
     generic: {
       title: "Algo salió mal",

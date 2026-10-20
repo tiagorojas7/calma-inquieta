@@ -230,4 +230,13 @@ describe("Taller detail", { timeout: 60_000 }, () => {
     expect(container.textContent).not.toContain("secret-db-detail");
     spy.mockRestore();
   });
+
+  it("emits no structured data for a monthly taller", async () => {
+    const { container } = await renderDetail([full]);
+    expect(
+      container.ownerDocument.querySelectorAll(
+        'script[type="application/ld+json"]',
+      ),
+    ).toHaveLength(0);
+  });
 });

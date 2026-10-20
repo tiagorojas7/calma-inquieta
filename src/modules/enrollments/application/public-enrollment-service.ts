@@ -254,7 +254,13 @@ export function createPublicEnrollmentService(
         period: period.period,
         fee: period.fee,
         materialsRequired: period.materialsRequired,
-        turnos: turnos.map(({ capacity: _capacity, ...turno }) => turno),
+        turnos: turnos.map((t) => ({
+          id: t.id,
+          label: t.label,
+          weekday: t.weekday,
+          startsAt: t.startsAt,
+          endsAt: t.endsAt,
+        })),
         materials: materials
           .filter((m) => m.active)
           .map((m) => ({

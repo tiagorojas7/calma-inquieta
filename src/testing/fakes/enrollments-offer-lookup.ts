@@ -11,10 +11,13 @@ import type {
 export class InMemoryOfferLookup implements EnrollmentOfferLookup {
   lookups = 0;
 
-  constructor(
-    private readonly offers: readonly EnrollmentOffer[],
-    private readonly slug = "ceramica-inicial",
-  ) {}
+  private readonly offers: readonly EnrollmentOffer[];
+  private readonly slug: string;
+
+  constructor(offers: readonly EnrollmentOffer[], slug = "ceramica-inicial") {
+    this.offers = offers;
+    this.slug = slug;
+  }
 
   findOffer(query: EnrollmentOfferQuery): Promise<EnrollmentOffer | null> {
     this.lookups += 1;

@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { findCopyViolations } from "../domain/copy-rules";
 import {
   DEFAULT_SHARE_IMAGE,
+  largestVariant,
   mentionsExcludedSource,
   publishedPaths,
   validateMediaRegistry,
@@ -207,20 +209,22 @@ describe("the warm-graded home media", () => {
   const ratio = ({ width, height }: { width: number; height: number }) =>
     width / height;
 
-  it("the mobile hero backdrop is a portrait 9:16 image of 480, 720 and 900 px from a source with no people", () => {
+  it("the mobile hero backdrop is the 9:16 paper-feather lamp crop of 480 and 720 px, from a source with no people", () => {
     const backdrop = imageAsset("home-hero-backdrop");
 
-    expect(backdrop).toMatchObject({ area: "home", format: "webp" });
-    expect(backdrop.variants.map(({ width }) => width)).toEqual([
-      480, 720, 900,
-    ]);
+    expect(backdrop).toMatchObject({
+      area: "home",
+      format: "webp",
+      sourceId: "img-20260718-wa0044",
+    });
+    expect(backdrop.variants.map(({ width }) => width)).toEqual([480, 720]);
     for (const variant of backdrop.variants) {
       expect(ratio(variant)).toBeCloseTo(9 / 16, 2);
     }
     expect(
       MEDIA_RIGHTS.find(({ sourceId }) => sourceId === backdrop.sourceId),
     ).toEqual({
-      sourceId: "img-20260530-wa0030",
+      sourceId: "img-20260718-wa0044",
       people: "none",
       consent: "not-required",
     });
@@ -228,6 +232,7 @@ describe("the warm-graded home media", () => {
       false,
     );
     expect(findCopyViolations([backdrop.alt])).toEqual([]);
+    expect(backdrop.alt).toMatch(/lámpara/u);
     for (const variant of backdrop.variants) {
       expect(publishedPaths(registry).has(variant.path), variant.path).toBe(
         true,
@@ -249,6 +254,202 @@ describe("the warm-graded home media", () => {
     expect(imageAsset("share-default").variants[0].path).toBe(
       DEFAULT_SHARE_IMAGE.path,
     );
+  });
+});
+
+describe("the band photos", () => {
+  const imageAsset = (id: string) => {
+    const asset = assets.find((candidate) => candidate.id === id);
+    if (asset?.kind !== "image") {
+      throw new Error(`${id} is not a registered image`);
+    }
+    return asset;
+  };
+  const ratio = ({ width, height }: { width: number; height: number }) =>
+    width / height;
+  const ledger = (sourceId: string) =>
+    MEDIA_RIGHTS.find((entry) => entry.sourceId === sourceId);
+
+  const BANDS = [
+    {
+      id: "home-band-hands",
+      sourceId: "img-20260425-wa0049",
+      people: "hands",
+      ratio: 4 / 5,
+    },
+    {
+      id: "home-catalog-weaving",
+      sourceId: "img-20260411-wa0110",
+      people: "hands",
+      ratio: 4 / 5,
+    },
+    {
+      id: "home-catalog-looms",
+      sourceId: "img-20260420-wa0049",
+      people: "none",
+      ratio: 3 / 2,
+    },
+  ] as const;
+
+  it.each(BANDS)(
+    "$id is a warm-graded home WebP of ratio $ratio from $sourceId, at 480 and 960 px or less",
+    (band) => {
+      const asset = imageAsset(band.id);
+
+      expect(asset).toMatchObject({
+        area: "home",
+        format: "webp",
+        sourceId: band.sourceId,
+      });
+      expect(asset.variants.length).toBeGreaterThanOrEqual(2);
+      expect(asset.variants[0]?.width).toBe(480);
+      for (const variant of asset.variants) {
+        expect(variant.width).toBeLessThanOrEqual(960);
+        expect(ratio(variant), variant.path).toBeCloseTo(band.ratio, 2);
+        expect(variant.path).toMatch(
+          new RegExp(`^/media/home/${band.id}-${String(variant.width)}[.]`),
+        );
+        expect(publishedPaths(registry).has(variant.path), variant.path).toBe(
+          true,
+        );
+      }
+      expect(asset.decorative).toBeUndefined();
+      expect(findCopyViolations([asset.alt])).toEqual([]);
+      expect(asset.alt.trim().length).toBeGreaterThan(20);
+      expect(ledger(band.sourceId)).toEqual({
+        sourceId: band.sourceId,
+        people: band.people,
+        consent: "not-required",
+      });
+    },
+  );
+
+  it("the weaving band is the only asset placed from the hands-only catalog pick", () => {
+    expect(
+      assets.filter(({ sourceId }) => sourceId === "img-20260411-wa0110"),
+    ).toHaveLength(1);
+  });
+});
+
+describe("the brand logo", () => {
+  const CREAM = [249, 246, 241];
+  const logo = (id: string) => {
+    const asset = assets.find((candidate) => candidate.id === id);
+    if (asset?.kind !== "image") {
+      throw new Error(`${id} is not a registered image`);
+    }
+    return asset;
+  };
+
+  async function opaqueMeans(path: string) {
+    const { data, info } = await sharp(`public${path}`)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let count = 0;
+    const sum: [number, number, number] = [0, 0, 0];
+    for (let at = 0; at < data.length; at += info.channels) {
+      if ((data[at + 3] ?? 0) < 200) continue;
+      count += 1;
+      for (const channel of [0, 1, 2] as const) {
+        sum[channel] += data[at + channel] ?? 0;
+      }
+    }
+    return { count, mean: sum.map((value) => value / Math.max(count, 1)) };
+  }
+
+  it.each(["brand-logo", "brand-logo-light"])(
+    "%s is a trimmed WebP with alpha in the brand area, sized for a 40 to 56 px navbar at 1x and 2x",
+    async (id) => {
+      const asset = logo(id);
+
+      expect(asset).toMatchObject({
+        area: "brand",
+        format: "webp",
+        sourceId: "logo-calma-inquieta",
+      });
+      const heights = asset.variants.map(({ height }) => height);
+      expect(Math.min(...heights)).toBeGreaterThanOrEqual(56);
+      expect(Math.max(...heights)).toBeGreaterThanOrEqual(112);
+      for (const variant of asset.variants) {
+        // The artwork is about 930x973 inside the canvas, so a trimmed logo is near square.
+        expect(variant.width / variant.height, variant.path).toBeCloseTo(
+          930 / 973,
+          1,
+        );
+        expect(publishedPaths(registry).has(variant.path), variant.path).toBe(
+          true,
+        );
+        const metadata = await sharp(`public${variant.path}`).metadata();
+        expect(metadata.hasAlpha, variant.path).toBe(true);
+      }
+      expect(findCopyViolations([asset.alt])).toEqual([]);
+      expect(asset.alt.trim()).not.toBe("");
+    },
+  );
+
+  it("brand-logo keeps the dark ink and brand-logo-light is the cream canvas colour", async () => {
+    const dark = await opaqueMeans(largestVariant(logo("brand-logo")).path);
+    const light = await opaqueMeans(
+      largestVariant(logo("brand-logo-light")).path,
+    );
+
+    expect(dark.count).toBeGreaterThan(100);
+    expect(Math.max(...dark.mean)).toBeLessThan(90);
+    expect(light.count).toBeGreaterThan(100);
+    for (const [channel, value] of CREAM.entries()) {
+      expect(light.mean[channel], `channel ${String(channel)}`).toBeCloseTo(
+        value,
+        -1,
+      );
+    }
+  });
+
+  it("the brand artwork is one ledger row: no people, not required", () => {
+    expect(
+      MEDIA_RIGHTS.filter(({ sourceId }) => sourceId === "logo-calma-inquieta"),
+    ).toEqual([
+      {
+        sourceId: "logo-calma-inquieta",
+        people: "none",
+        consent: "not-required",
+      },
+    ]);
+  });
+});
+
+describe("the recipe and the registry", () => {
+  interface Job {
+    readonly id: string;
+    readonly area: string;
+    readonly format: string;
+    readonly widths: readonly number[];
+  }
+  const jobs = (JSON.parse(readFileSync(RECIPE, "utf8")) as readonly Job[]).map(
+    (job) => job,
+  );
+  const images = assets.filter((asset) => asset.kind === "image");
+
+  it("every recipe job is a registered image of the same area and format, with no variant wider than the job asks", () => {
+    expect(new Set(jobs.map(({ id }) => id)).size).toBe(jobs.length);
+    for (const job of jobs) {
+      const asset = images.find(({ id }) => id === job.id);
+      expect(asset, `${job.id} is not registered`).toBeDefined();
+      expect(asset?.area, job.id).toBe(job.area);
+      expect(asset?.format, job.id).toBe(job.format);
+      for (const variant of asset?.variants ?? []) {
+        expect(variant.width, variant.path).toBeLessThanOrEqual(
+          Math.max(...job.widths),
+        );
+      }
+    }
+  });
+
+  it("every registered image has a recipe job", () => {
+    const ids = new Set(jobs.map(({ id }) => id));
+    for (const asset of images) {
+      expect(ids.has(asset.id), `${asset.id} has no recipe job`).toBe(true);
+    }
   });
 });
 
@@ -451,15 +652,45 @@ describe("the media refs", () => {
   });
 });
 
-describe("the ambient loop", () => {
+describe("the ambient loops", () => {
   const VIDEO_DIR = "/media/video/";
   const videoFiles = allMediaFiles.filter(
     (path) => path.startsWith(VIDEO_DIR) && /\.(mp4|webm)$/.test(path),
   );
   const loops = assets.filter((asset) => asset.kind === "video");
   const loop = loops.find(({ id }) => id === "home-loop");
-  const mp4 = videoFiles.find((path) => path.endsWith(".mp4"));
-  const webm = videoFiles.find((path) => path.endsWith(".webm"));
+
+  const ABOUT_LOOPS = [
+    {
+      id: "about-loop-weaving",
+      sourceId: "vid-20261014-185243141",
+      people: "hands",
+    },
+    {
+      id: "about-loop-frame",
+      sourceId: "vid-20261014-185337211",
+      people: "hands",
+    },
+    {
+      id: "about-loop-basket",
+      sourceId: "vid-20260922-200038255",
+      people: "none",
+    },
+  ] as const;
+
+  const videoAsset = (id: string) => {
+    const asset = loops.find((candidate) => candidate.id === id);
+    if (asset?.kind !== "video") {
+      throw new Error(`${id} is not a registered video`);
+    }
+    return asset;
+  };
+  const filesOf = (id: string, extension: "mp4" | "webm") =>
+    videoFiles.filter((path) =>
+      new RegExp(
+        `^/media/video/${id}-[0-9]+[.][0-9a-f]{8}[.]${extension}$`,
+      ).test(path),
+    );
 
   /** Handler types of every `hdlr` box found in the bytes ("vide", "soun"). */
   function handlerTypes(bytes: Buffer): string[] {
@@ -473,23 +704,33 @@ describe("the ambient loop", () => {
     return types;
   }
 
-  it("the loop MP4 has no soun handler", () => {
-    expect(mp4).toBeDefined();
-    const types = handlerTypes(bytesOf(mp4 ?? ""));
-    expect(types).toContain("vide");
-    expect(types).not.toContain("soun");
+  const ids = ["home-loop", ...ABOUT_LOOPS.map(({ id }) => id)];
+
+  it("the registry holds the home loop and the three About loops, each with one WebM and one MP4", () => {
+    expect(loops.map(({ id }) => id)).toEqual(ids);
+    expect(videoFiles).toHaveLength(ids.length * 2);
+    for (const id of ids) {
+      expect(filesOf(id, "webm"), id).toHaveLength(1);
+      expect(filesOf(id, "mp4"), id).toHaveLength(1);
+      expect(videoAsset(id).sources, id).toEqual([
+        { path: filesOf(id, "webm")[0], type: "video/webm" },
+        { path: filesOf(id, "mp4")[0], type: "video/mp4" },
+      ]);
+    }
   });
 
-  it("the loop WebM has no A_OPUS or A_VORBIS codec id", () => {
-    expect(webm).toBeDefined();
-    const bytes = bytesOf(webm ?? "");
-    expect(bytes.indexOf("V_VP9", 0, "latin1")).toBeGreaterThan(-1);
-    expect(bytes.indexOf("A_OPUS", 0, "latin1")).toBe(-1);
-    expect(bytes.indexOf("A_VORBIS", 0, "latin1")).toBe(-1);
+  it.each(ids)("%s has no audio track in its MP4 or WebM", (id) => {
+    const mp4 = bytesOf(filesOf(id, "mp4")[0] ?? "");
+    const webm = bytesOf(filesOf(id, "webm")[0] ?? "");
+
+    expect(handlerTypes(mp4)).toContain("vide");
+    expect(handlerTypes(mp4)).not.toContain("soun");
+    expect(webm.indexOf("V_VP9", 0, "latin1")).toBeGreaterThan(-1);
+    expect(webm.indexOf("A_OPUS", 0, "latin1")).toBe(-1);
+    expect(webm.indexOf("A_VORBIS", 0, "latin1")).toBe(-1);
   });
 
   it("each video file is at most 1,572,864 bytes", () => {
-    expect(videoFiles).toHaveLength(2);
     for (const file of videoFiles) {
       expect(statSync(`public${file}`).size, file).toBeLessThanOrEqual(
         VIDEO_BUDGET,
@@ -497,7 +738,7 @@ describe("the ambient loop", () => {
     }
   });
 
-  it("the video asset has durationSeconds at most 6 and audio false", () => {
+  it("the home loop is 720x900, at most 6 seconds, without audio", () => {
     expect(loop).toMatchObject({
       kind: "video",
       area: "video",
@@ -510,57 +751,91 @@ describe("the ambient loop", () => {
     ).toBeLessThanOrEqual(6);
   });
 
-  it("exactly one loop (one WebM and one MP4) exists under public/media/video", () => {
-    expect(videoFiles.filter((path) => path.endsWith(".webm"))).toHaveLength(1);
-    expect(videoFiles.filter((path) => path.endsWith(".mp4"))).toHaveLength(1);
-    expect(loops).toHaveLength(1);
-    expect(loop?.kind === "video" ? loop.sources : []).toEqual([
-      { path: webm, type: "video/webm" },
-      { path: mp4, type: "video/mp4" },
-    ]);
-    for (const file of videoFiles) {
-      expect(file).toMatch(/^\/media\/video\/home-loop-720\.[0-9a-f]{8}\./);
-    }
-  });
+  it.each(ABOUT_LOOPS)(
+    "$id is a 9:16 tile of at most 6 seconds without audio, sized for a 280 to 420 px frame",
+    ({ id, sourceId }) => {
+      const asset = videoAsset(id);
 
-  it("the poster resolves to a registered image with width and height", () => {
-    const poster = assets.find(
-      (asset) => loop?.kind === "video" && asset.id === loop.posterId,
-    );
-    expect(poster).toMatchObject({ kind: "image", area: "video" });
+      expect(asset).toMatchObject({
+        area: "video",
+        audio: false,
+        sourceId,
+        posterId: `${id}-poster`,
+      });
+      expect(asset.width / asset.height).toBeCloseTo(9 / 16, 2);
+      expect(asset.width).toBeGreaterThanOrEqual(360);
+      expect(asset.width).toBeLessThanOrEqual(540);
+      expect(asset.durationSeconds).toBeGreaterThan(3);
+      expect(asset.durationSeconds).toBeLessThanOrEqual(6);
+      expect(asset.sources.map(({ type }) => type)).toEqual([
+        "video/webm",
+        "video/mp4",
+      ]);
+      for (const { path } of asset.sources) {
+        expect(path).toMatch(
+          new RegExp(
+            `^/media/video/${id}-${String(asset.width)}[.][0-9a-f]{8}[.]`,
+          ),
+        );
+      }
+    },
+  );
+
+  const posterOf = (id: string) => {
+    const video = videoAsset(id);
+    const poster = assets.find((asset) => asset.id === video.posterId);
     if (poster?.kind !== "image") {
-      return;
+      throw new Error(`${video.posterId} is not a registered image`);
     }
-    expect(poster.decorative).toBe(true);
-    for (const variant of poster.variants) {
-      expect(variant.width).toBeGreaterThan(0);
-      expect(variant.height).toBeGreaterThan(0);
-      expect(variant.width / variant.height).toBeCloseTo(4 / 5, 2);
-      expect(variant.path.startsWith(VIDEO_DIR)).toBe(true);
+    return poster;
+  };
+
+  it.each(["home-loop", ...ABOUT_LOOPS.map(({ id }) => id)])(
+    "the poster of %s resolves to a decorative registered image of the video area",
+    (id) => {
+      const poster = posterOf(id);
+      const ratio = id === "home-loop" ? 4 / 5 : 9 / 16;
+
+      expect(poster).toMatchObject({
+        area: "video",
+        decorative: true,
+        format: "webp",
+        sourceId: videoAsset(id).sourceId,
+      });
+      for (const variant of poster.variants) {
+        expect(variant.width / variant.height, variant.path).toBeCloseTo(
+          ratio,
+          2,
+        );
+        expect(variant.path.startsWith(VIDEO_DIR)).toBe(true);
+      }
+    },
+  );
+
+  it("the loop sources are in the ledger with their people class, not required, and are not excluded", () => {
+    const expected = [
+      { id: "home-loop", sourceId: "vid-20261014-185300580", people: "hands" },
+      ...ABOUT_LOOPS,
+    ];
+    for (const { id, sourceId, people } of expected) {
+      expect(
+        MEDIA_RIGHTS.filter((entry) => entry.sourceId === sourceId),
+        id,
+      ).toEqual([{ sourceId, people, consent: "not-required" }]);
+      expect(videoAsset(id).sourceId).toBe(sourceId);
+      expect(mentionsExcludedSource(sourceId, EXCLUDED_SOURCES)).toBe(false);
     }
   });
 
-  it("the loop source is in the ledger as hands, not required, and is not excluded", () => {
-    expect(
-      MEDIA_RIGHTS.find(
-        ({ sourceId }) => sourceId === "vid-20261014-185300580",
-      ),
-    ).toEqual({
-      sourceId: "vid-20261014-185300580",
-      people: "hands",
-      consent: "not-required",
-    });
-    expect(loop?.sourceId).toBe("vid-20261014-185300580");
-    expect(mentionsExcludedSource(loop?.sourceId ?? "", EXCLUDED_SOURCES)).toBe(
-      false,
-    );
-  });
-
-  it("the loop asset is publishable", () => {
+  it("every loop and poster is publishable", () => {
     const published = publishedPaths(registry);
-    expect(loops).toHaveLength(1);
     for (const asset of loops) {
       for (const { path } of asset.sources) {
+        expect(published.has(path), path).toBe(true);
+      }
+    }
+    for (const id of ids) {
+      for (const { path } of posterOf(id).variants) {
         expect(published.has(path), path).toBe(true);
       }
     }

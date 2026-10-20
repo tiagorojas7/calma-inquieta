@@ -393,3 +393,187 @@ describe("grade", () => {
     await expect(stat(join(root, "public"))).rejects.toThrow();
   });
 });
+
+describe("explicit crop, trim and tint", () => {
+  const quiet = () =>
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+  async function derivePng(
+    root: string,
+    options: Record<string, unknown>,
+    widths: readonly number[] = [1000],
+  ) {
+    const printed = quiet();
+    const result = await deriveJob(
+      {
+        id: "artwork",
+        source: "source.png",
+        area: "brand",
+        widths,
+        format: "png",
+        ...options,
+      } as never,
+      root,
+      root,
+    );
+    printed.mockRestore();
+    const variant = result.variants[0];
+    return readFile(join(root, "public", variant?.path ?? ""));
+  }
+
+  async function pixel(buffer: Buffer, x: number, y: number) {
+    const { data, info } = await sharp(buffer)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const at = (y * info.width + x) * 4;
+    return [data[at], data[at + 1], data[at + 2], data[at + 3]];
+  }
+
+  it("crops the exact pixel box of the oriented source", async () => {
+    const root = await temporaryDirectory("media-crop-");
+    await sharp({
+      create: { width: 80, height: 40, channels: 3, background: "#2244aa" },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toFile(join(root, "source.jpg"));
+    const printed = quiet();
+
+    const result = await deriveJob(
+      {
+        id: "boxed",
+        source: "source.jpg",
+        area: "home",
+        crop: { left: 4, top: 30, width: 30, height: 50 },
+        widths: [30],
+        format: "webp",
+      },
+      root,
+      root,
+    );
+    printed.mockRestore();
+
+    expect(result.variants).toEqual([
+      expect.objectContaining({ width: 30, height: 50 }),
+    ]);
+  });
+
+  it("keeps only the pixels inside the crop box", async () => {
+    const root = await temporaryDirectory("media-crop-pixels-");
+    const left = await sharp({
+      create: { width: 50, height: 100, channels: 3, background: "#ff0000" },
+    })
+      .png()
+      .toBuffer();
+    await sharp({
+      create: { width: 100, height: 100, channels: 3, background: "#0000ff" },
+    })
+      .composite([{ input: left, left: 0, top: 0 }])
+      .png()
+      .toFile(join(root, "source.png"));
+
+    const output = await derivePng(root, {
+      crop: { left: 50, top: 0, width: 50, height: 100 },
+    });
+
+    const channels = (await sharp(output).stats()).channels.map((c) => c.mean);
+    expect(channels.slice(0, 3)).toEqual([0, 0, 255]);
+  });
+
+  it("rejects a crop together with an aspect, and a crop outside the source", async () => {
+    const root = await temporaryDirectory("media-crop-invalid-");
+    await sharp({
+      create: { width: 40, height: 40, channels: 3, background: "#808080" },
+    })
+      .png()
+      .toFile(join(root, "source.png"));
+
+    await expect(
+      derivePng(root, {
+        aspect: 1,
+        crop: { left: 0, top: 0, width: 10, height: 10 },
+      }),
+    ).rejects.toThrow(/crop or aspect/);
+    await expect(
+      derivePng(root, { crop: { left: 30, top: 0, width: 20, height: 10 } }),
+    ).rejects.toThrow(/outside the source/);
+    await expect(stat(join(root, "public"))).rejects.toThrow();
+  });
+
+  async function artwork(prefix: string): Promise<string> {
+    const root = await temporaryDirectory(prefix);
+    const block = await sharp({
+      create: {
+        width: 40,
+        height: 20,
+        channels: 4,
+        background: { r: 20, g: 20, b: 20, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const soft = await sharp({
+      create: {
+        width: 10,
+        height: 20,
+        channels: 4,
+        background: { r: 20, g: 20, b: 20, alpha: 0.5 },
+      },
+    })
+      .png()
+      .toBuffer();
+    await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([
+        { input: block, left: 30, top: 40 },
+        { input: soft, left: 70, top: 40 },
+      ])
+      .png()
+      .toFile(join(root, "source.png"));
+    return root;
+  }
+
+  it("trims the transparent margin around the artwork", async () => {
+    const root = await artwork("media-trim-");
+
+    const output = await derivePng(root, { trim: true });
+
+    expect(await dimensions(output)).toEqual({ width: 50, height: 20 });
+  });
+
+  it("leaves the transparent margin alone when trim is omitted", async () => {
+    const root = await artwork("media-no-trim-");
+
+    const output = await derivePng(root, {});
+
+    expect(await dimensions(output)).toEqual({ width: 100, height: 100 });
+  });
+
+  it("recolours the artwork to a flat colour and keeps the alpha", async () => {
+    const root = await artwork("media-tint-");
+
+    const output = await derivePng(root, { trim: true, tint: "#f9f6f1" });
+
+    expect(await pixel(output, 5, 10)).toEqual([249, 246, 241, 255]);
+    const [red, green, blue, alpha] = await pixel(output, 45, 10);
+    expect([red, green, blue]).toEqual([249, 246, 241]);
+    expect(alpha).toBeGreaterThan(120);
+    expect(alpha).toBeLessThan(135);
+  });
+
+  it("rejects a tint that is not a #rrggbb colour before writing", async () => {
+    const root = await artwork("media-tint-invalid-");
+
+    await expect(derivePng(root, { tint: "cream" })).rejects.toThrow(
+      /Invalid tint/,
+    );
+    await expect(stat(join(root, "public"))).rejects.toThrow();
+  });
+});

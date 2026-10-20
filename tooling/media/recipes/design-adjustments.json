@@ -22,16 +22,17 @@
   },
   {
     "id": "home-hero-backdrop",
-    "source": "IMG-20260530-WA0030.jpg",
+    "source": "IMG-20260718-WA0044.jpg",
     "area": "home",
-    "aspect": 0.5625,
-    "focus": {
-      "x": 0.5,
-      "y": 0.5
-    },
-    "widths": [480, 720, 900],
+    "widths": [480, 720],
     "format": "webp",
-    "grade": "warm"
+    "grade": "warm",
+    "crop": {
+      "left": 240,
+      "top": 0,
+      "width": 731,
+      "height": 1300
+    }
   },
   {
     "id": "share-default",
@@ -169,11 +170,99 @@
     "grade": "warm"
   },
   {
+    "id": "home-band-hands",
+    "source": "IMG-20260425-WA0049.jpg",
+    "area": "home",
+    "aspect": 0.8,
+    "focus": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "widths": [480, 960],
+    "format": "webp",
+    "grade": "warm",
+    "quality": 72
+  },
+  {
+    "id": "home-catalog-weaving",
+    "source": "IMG-20260411-WA0110.jpg",
+    "area": "home",
+    "aspect": 0.8,
+    "focus": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "widths": [480, 960],
+    "format": "webp",
+    "grade": "warm",
+    "quality": 72
+  },
+  {
+    "id": "home-catalog-looms",
+    "source": "IMG-20260420-WA0049.jpg",
+    "area": "home",
+    "aspect": 1.5,
+    "focus": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "widths": [480, 960],
+    "format": "webp",
+    "grade": "warm",
+    "quality": 72
+  },
+  {
+    "id": "brand-logo",
+    "source": "Logo Calma Inquieta (Sin fondo).png",
+    "area": "brand",
+    "trim": true,
+    "widths": [56, 112, 168],
+    "format": "webp",
+    "quality": 90
+  },
+  {
+    "id": "brand-logo-light",
+    "source": "Logo Calma Inquieta (Sin fondo).png",
+    "area": "brand",
+    "trim": true,
+    "tint": "#f9f6f1",
+    "widths": [56, 112, 168],
+    "format": "webp",
+    "quality": 90
+  },
+  {
     "id": "home-loop-poster",
     "source": "home-loop-poster.png",
     "area": "video",
     "aspect": 0.8,
     "widths": [480, 720],
     "format": "webp"
+  },
+  {
+    "id": "about-loop-weaving-poster",
+    "source": "about-loop-weaving-poster.png",
+    "area": "video",
+    "aspect": 0.5625,
+    "widths": [360],
+    "format": "webp",
+    "quality": 60
+  },
+  {
+    "id": "about-loop-frame-poster",
+    "source": "about-loop-frame-poster.png",
+    "area": "video",
+    "aspect": 0.5625,
+    "widths": [360],
+    "format": "webp",
+    "quality": 60
+  },
+  {
+    "id": "about-loop-basket-poster",
+    "source": "about-loop-basket-poster.png",
+    "area": "video",
+    "aspect": 0.5625,
+    "widths": [360],
+    "format": "webp",
+    "quality": 60
   }
 ]

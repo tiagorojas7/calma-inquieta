@@ -36,6 +36,12 @@ export interface DeriveJob {
   readonly area: string;
   readonly aspect?: number;
   readonly focus?: FocusPoint;
+  /** An exact pixel box of the EXIF-rotated source; exclusive with `aspect`. */
+  readonly crop?: CropBox;
+  /** Cuts the transparent margin around artwork before anything else. */
+  readonly trim?: boolean;
+  /** A `#rrggbb` colour that replaces every pixel's colour and keeps its alpha. */
+  readonly tint?: string;
   readonly widths: readonly number[];
   readonly format: ImageFormat;
   readonly quality?: number;
@@ -49,7 +55,7 @@ export interface DerivedVariant {
   readonly path: string;
 }
 
-interface CropBox {
+export interface CropBox {
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -144,6 +150,17 @@ export async function encodeIco(
   await writeFile(output, Buffer.concat([header, ...images]));
 }
 
+function fitsWithin(box: CropBox, width: number, height: number): boolean {
+  return (
+    box.left >= 0 &&
+    box.top >= 0 &&
+    box.width > 0 &&
+    box.height > 0 &&
+    box.left + box.width <= width &&
+    box.top + box.height <= height
+  );
+}
+
 function selectedWidths(
   sourceWidth: number,
   requested: readonly number[],
@@ -194,6 +211,41 @@ function applyGrade(
     });
 }
 
+const TINT_PATTERN = /^#[0-9a-f]{6}$/iu;
+
+function parseTint(tint: string): readonly [number, number, number] {
+  if (!TINT_PATTERN.test(tint)) {
+    throw new Error(`Invalid tint "${tint}": use a #rrggbb colour`);
+  }
+  return [
+    Number.parseInt(tint.slice(1, 3), 16),
+    Number.parseInt(tint.slice(3, 5), 16),
+    Number.parseInt(tint.slice(5, 7), 16),
+  ];
+}
+
+/** Trims the transparent margin and/or flattens the artwork to one colour, keeping alpha. */
+async function prepareArtwork(
+  input: SharpImage,
+  job: DeriveJob,
+  tint: readonly [number, number, number] | undefined,
+): Promise<SharpImage> {
+  const trimmed = job.trim === true ? input.trim() : input;
+  if (tint === undefined) return sharp(await trimmed.png().toBuffer());
+  const { data, info } = await trimmed
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  for (let index = 0; index < data.length; index += 4) {
+    data[index] = tint[0];
+    data[index + 1] = tint[1];
+    data[index + 2] = tint[2];
+  }
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  });
+}
+
 async function encode(
   input: SharpImage,
   format: Exclude<ImageFormat, "ico">,
@@ -237,16 +289,33 @@ export async function deriveJob(
   const area = safeSegment("area", job.area);
   const id = safeSegment("id", job.id);
   const grade = gradeFor(job.grade);
+  const tint = job.tint === undefined ? undefined : parseTint(job.tint);
+  if (job.crop !== undefined && job.aspect !== undefined) {
+    throw new Error(`Job "${id}": use crop or aspect, not both`);
+  }
   const sourcePath = isAbsolute(job.source)
     ? job.source
     : join(sourceRoot, job.source);
-  const { width, height } = (await sharp(sourcePath).metadata()).autoOrient;
-  const input = sharp(sourcePath).rotate();
+  const oriented = sharp(sourcePath).rotate();
+  const artwork =
+    job.trim === true || tint !== undefined
+      ? await prepareArtwork(oriented, job, tint)
+      : undefined;
+  const input = artwork ?? oriented;
+  const { width, height } = artwork
+    ? await artwork.metadata()
+    : (await sharp(sourcePath).metadata()).autoOrient;
 
+  if (job.crop !== undefined && !fitsWithin(job.crop, width, height)) {
+    throw new Error(
+      `Job "${id}": crop is outside the source (${String(width)}x${String(height)})`,
+    );
+  }
   const crop =
-    job.aspect === undefined
+    job.crop ??
+    (job.aspect === undefined
       ? undefined
-      : cropBox(width, height, job.aspect, job.focus);
+      : cropBox(width, height, job.aspect, job.focus));
   const sourceWidth = crop?.width ?? width;
   const outputDir = join(outputRoot, "public", "media", area);
   const widths = selectedWidths(sourceWidth, job.widths);

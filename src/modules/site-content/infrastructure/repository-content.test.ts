@@ -526,7 +526,6 @@ const GALLERY_ORDER = [
 const CURATION_RESERVES = [
   "img-20260804-185559792-hdr",
   "img-20260917-180559720-hdr",
-  "img-20260718-wa0044",
   "img-20260420-wa0046",
   "img-20260312-wa0051",
   "img-20260530-wa0020",

@@ -60,25 +60,20 @@ export const MEDIA_ASSETS = [
   {
     kind: "image",
     id: "home-hero-backdrop",
-    sourceId: "img-20260530-wa0030",
+    sourceId: "img-20260718-wa0044",
     area: "home",
-    alt: "Un banco de madera con asiento tejido en cuerda y borlas blancas, frente a cortinas de lino color crema",
+    alt: "Una lámpara de papel con forma de plumas, encendida bajo un techo de hormigón oscuro",
     format: "webp",
     variants: [
       {
         width: 480,
-        height: 853,
-        path: "/media/home/home-hero-backdrop-480.25657208.webp",
+        height: 854,
+        path: "/media/home/home-hero-backdrop-480.25017a19.webp",
       },
       {
         width: 720,
         height: 1280,
-        path: "/media/home/home-hero-backdrop-720.c11bc471.webp",
-      },
-      {
-        width: 900,
-        height: 1600,
-        path: "/media/home/home-hero-backdrop-900.71f667db.webp",
+        path: "/media/home/home-hero-backdrop-720.e9b93717.webp",
       },
     ],
   },
@@ -422,6 +417,227 @@ export const MEDIA_ASSETS = [
       { path: "/media/video/home-loop-720.451c3923.mp4", type: "video/mp4" },
     ],
     posterId: "home-loop-poster",
+  },
+  {
+    kind: "image",
+    id: "home-band-hands",
+    sourceId: "img-20260425-wa0049",
+    area: "home",
+    alt: "Manos terminando un espejo de paja tejida en forma de sol, sobre la mesa del taller",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 600,
+        path: "/media/home/home-band-hands-480.b091b8a8.webp",
+      },
+      {
+        width: 960,
+        height: 1200,
+        path: "/media/home/home-band-hands-960.4110a956.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-catalog-weaving",
+    sourceId: "img-20260411-wa0110",
+    area: "home",
+    alt: "Manos tejiendo un cesto de fibra natural durante un taller, cruzando cada tira con cuidado",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 600,
+        path: "/media/home/home-catalog-weaving-480.0d4dbf18.webp",
+      },
+      {
+        width: 900,
+        height: 1125,
+        path: "/media/home/home-catalog-weaving-900.ddbeed4a.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-catalog-looms",
+    sourceId: "img-20260420-wa0049",
+    area: "home",
+    alt: "Telares de cartón y muestras de malla tejida con fibra, sobre una tela de lino",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 320,
+        path: "/media/home/home-catalog-looms-480.a534aee4.webp",
+      },
+      {
+        width: 960,
+        height: 640,
+        path: "/media/home/home-catalog-looms-960.f0c17955.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "brand-logo",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, logo con las iniciales C e I y una mariposa trazada a mano",
+    format: "webp",
+    variants: [
+      {
+        width: 56,
+        height: 59,
+        path: "/media/brand/brand-logo-56.7b093bc3.webp",
+      },
+      {
+        width: 112,
+        height: 117,
+        path: "/media/brand/brand-logo-112.56092e2a.webp",
+      },
+      {
+        width: 168,
+        height: 176,
+        path: "/media/brand/brand-logo-168.68add358.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "brand-logo-light",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, logo con las iniciales C e I y una mariposa trazada a mano",
+    format: "webp",
+    variants: [
+      {
+        width: 56,
+        height: 59,
+        path: "/media/brand/brand-logo-light-56.298df7e7.webp",
+      },
+      {
+        width: 112,
+        height: 117,
+        path: "/media/brand/brand-logo-light-112.0deb4e2a.webp",
+      },
+      {
+        width: 168,
+        height: 176,
+        path: "/media/brand/brand-logo-light-168.c3f7e32c.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "about-loop-weaving-poster",
+    sourceId: "vid-20261014-185243141",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-weaving-poster-360.abbd5772.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-weaving",
+    sourceId: "vid-20261014-185243141",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.5,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-weaving-360.55878374.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-weaving-360.de63a4cf.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-weaving-poster",
+  },
+  {
+    kind: "image",
+    id: "about-loop-frame-poster",
+    sourceId: "vid-20261014-185337211",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-frame-poster-360.ff1d5d5d.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-frame",
+    sourceId: "vid-20261014-185337211",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.5,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-frame-360.019eb787.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-frame-360.ef263203.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-frame-poster",
+  },
+  {
+    kind: "image",
+    id: "about-loop-basket-poster",
+    sourceId: "vid-20260922-200038255",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-basket-poster-360.6cc7a4a5.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-basket",
+    sourceId: "vid-20260922-200038255",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.4,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-basket-360.3256f839.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-basket-360.70e79d14.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-basket-poster",
   },
 ] as const satisfies readonly MediaAsset[];
 

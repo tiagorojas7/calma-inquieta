@@ -24,7 +24,9 @@ Objective: change 4 (public-catalog), talleres half, backend slice C4-B3 (C4-F2,
 | 4.5-4.7 contract suite, reader, privacy                            | S1-S7      | inline | done                                                                     | see Log |
 | 4.8-4.9 Drizzle taller records, DB seed                            | S8         | inline | done                                                                     | see Log |
 | 4.10-4.11 composition wiring                                       | S7         | inline | done                                                                     | see Log |
-| 5 C4-B4 retire coming-soon entries                                 | PL         | inline | skipped, blocked: needs C4-F2 merged                                     | none    |
+| 10.1-10.2 taller mappers (branch `-pages`)                         | TP         | inline | done                                                                     | 455b562 |
+| 10.3-10.5 talleres pages, routes, site map, coming-soon            | TP, SEO    | inline | done                                                                     | see Log |
+| 5 C4-B4 retire coming-soon entries                                 | PL         | inline | skipped: needs C4-F2 merged and overlaps the front redesign (see Log)    | none    |
 | 6 C4-B5 real media lookup                                          | DA4        | inline | skipped, blocked: no Drizzle `MediaLookup` and no R2 bucket (R1) on main | none    |
 
 ## Log
@@ -37,3 +39,9 @@ Objective: change 4 (public-catalog), talleres half, backend slice C4-B3 (C4-F2,
 - C4-B5: `MediaLookup` is an interface only; no Drizzle implementation exists on main and change-3 B2b/R1 are not done. Skipped.
 - RED evidence: rules 8 failed (functions missing); fake records 5 failed (`createInMemoryPublicTallerRecords is not a function`); reader suites failed to load (`Cannot find module ./public-talleres-reader`); composition 2 failed (`promise resolved "[]" instead of rejecting`, `expected [] to deeply equal [ 'ceramica' ]`). The Drizzle records adapter was written before its db test was first run, so it has no separate RED.
 - Differences kept: taller records are not date-bound, so `listVisibleSlugs()` takes no argument (port already so).
+- C4-F2 (branch `feat/public-catalog-talleres-pages`, stacked on PR #68): request was "C4-F2 talleres listing and detail pages (tasks.md Phase 10), plus C4-B4 in the same PR if it becomes possible".
+- C4-F2 decisions: the card lists every turno (weekday and time range, no duration); "y N turnos mas" stays Inicio-only. The detail lists turnos with duration, per-turno seats ("Cupo limitado" only open with an offering) and a per-turno inquiry link only when the taller is not paused. An open taller without an offering still shows the inquiry CTA and turno links with the notice "Proximamente abrimos inscripciones". Detail breadcrumb is Talleres, technique, name.
+- C4-F2 deviation: the taller mapper tests are in the new `src/app/catalog/taller-mappers.test.ts` (not appended to `mappers.test.ts`) to keep the mappers file edit small.
+- C4-F2 RED evidence: mappers 18 failed (functions missing); talleres/taller/project-section tests failed to load (module missing); coming-soon 1 failed ("no longer serves talleres"); site-map 2 failed (`indexable` and five sitemap entries); the existing `routes/sitemap.test.ts` also had to move from four to five entries (it failed after the flip).
+- C4-B4 not done: retiring the `talleres` coming-soon entry edits `site-content/domain/page-content.ts`, `repository-content.test.ts`, `content-rules.test.ts`, `site-content.test.ts` and `in-memory-site-content-source.ts`, files that the front redesign branches (`feat/front-redesign-*`) also modify. Deferred to its own PR after both land. The route no longer serves the `talleres` coming-soon page; the content entry is dead until then.
+- C4-F2 not done: 10.6 (`docs/design/deviation-register.md` is outside this slice's edit surface), 10.7 gate in CI, 10.8 visual check (no dev server, optional here), 10.9 manual phone check.

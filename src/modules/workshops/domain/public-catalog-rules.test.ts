@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   compareIntensivos,
+  compareTalleres,
+  compareTurnos,
   isPublicSlug,
   isUpcoming,
+  selectOffering,
 } from "./public-catalog-rules";
 
 describe("isPublicSlug", () => {
@@ -75,6 +78,73 @@ describe("compareIntensivos", () => {
       sorted([
         { ...base, slug: "b", name: "Torno" },
         { ...base, slug: "a", name: "torno" },
+      ]),
+    ).toEqual(["a", "b"]);
+  });
+});
+
+describe("selectOffering", () => {
+  const at = (...periods: string[]) => periods.map((period) => ({ period }));
+  const pick = (periods: string[], current: string) =>
+    selectOffering(at(...periods), current)?.period ?? null;
+
+  it("picks the current month when it is open", () => {
+    expect(pick(["2026-11", "2026-10"], "2026-10")).toBe("2026-10");
+  });
+
+  it("picks the next open month when the current one is missing", () => {
+    expect(pick(["2026-11"], "2026-10")).toBe("2026-11");
+  });
+
+  it("picks the earliest of two later months, whatever the input order", () => {
+    expect(pick(["2026-12", "2026-11"], "2026-10")).toBe("2026-11");
+    expect(pick(["2027-01", "2026-12"], "2026-10")).toBe("2026-12");
+  });
+
+  it("ignores a past month", () => {
+    expect(pick(["2026-09"], "2026-10")).toBeNull();
+  });
+
+  it("gives null for no periods", () => {
+    expect(pick([], "2026-10")).toBeNull();
+  });
+});
+
+describe("compareTurnos", () => {
+  const order = (turnos: { weekday: number; startsAt: string; id: string }[]) =>
+    turnos.sort(compareTurnos).map((t) => t.id);
+
+  it("orders by weekday, Monday first and Sunday last, then by start time", () => {
+    expect(
+      order([
+        { id: "mie18", weekday: 3, startsAt: "18:00" },
+        { id: "dom9", weekday: 7, startsAt: "09:00" },
+        { id: "lun18", weekday: 1, startsAt: "18:00" },
+        { id: "lun10", weekday: 1, startsAt: "10:00" },
+      ]),
+    ).toEqual(["lun10", "lun18", "mie18", "dom9"]);
+  });
+});
+
+describe("compareTalleres", () => {
+  const order = (items: { name: string; slug: string }[]) =>
+    items.sort(compareTalleres).map((t) => t.slug);
+
+  it("orders by name ignoring case and accents", () => {
+    expect(
+      order([
+        { slug: "p", name: "Pintura" },
+        { slug: "c", name: "Cerámica" },
+        { slug: "a", name: "acuarela" },
+      ]),
+    ).toEqual(["a", "c", "p"]);
+  });
+
+  it("breaks a name tie by slug", () => {
+    expect(
+      order([
+        { slug: "b", name: "Torno" },
+        { slug: "a", name: "torno" },
       ]),
     ).toEqual(["a", "b"]);
   });

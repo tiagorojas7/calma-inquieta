@@ -5,11 +5,17 @@ import {
   fullyPopulatedSeed,
   PRIVACY_SENTINELS,
   seedIntensivo,
+  seedPeriod,
+  seedTaller,
+  seedTurno,
   seedMediaLookup,
   seedTeacherLookup,
 } from "./catalog-seed";
 import { fixedClock } from "./fixed-clock";
-import { createInMemoryPublicIntensivoRecords } from "./in-memory-public-catalog-records";
+import {
+  createInMemoryPublicIntensivoRecords,
+  createInMemoryPublicTallerRecords,
+} from "./in-memory-public-catalog-records";
 
 const FROM = { fromDate: "2026-11-01" };
 
@@ -148,7 +154,7 @@ describe("the seed lookups", () => {
 });
 
 describe("createSeededPublicCatalog", () => {
-  it("serves the seed through the real intensivos reader and no talleres yet", async () => {
+  it("serves the seed through the real intensivos and talleres readers", async () => {
     const catalog = createSeededPublicCatalog(
       fullyPopulatedSeed(),
       fixedClock(new Date("2026-10-15T15:00:00Z")),
@@ -157,6 +163,123 @@ describe("createSeededPublicCatalog", () => {
     expect((await catalog.intensivos.list()).map((item) => item.slug)).toEqual([
       "intensivo-demo",
     ]);
-    expect(await catalog.talleres.list()).toEqual([]);
+    expect((await catalog.talleres.list()).map((item) => item.slug)).toEqual([
+      "taller-demo",
+    ]);
+  });
+});
+
+describe("the in-memory taller records", () => {
+  const FROM = { fromPeriod: "2026-10" };
+
+  it("lists only published and paused talleres", async () => {
+    const records = createInMemoryPublicTallerRecords(
+      buildSeed({
+        talleres: [
+          seedTaller({ slug: "publicado", status: "published" }),
+          seedTaller({ slug: "pausado", status: "paused" }),
+          seedTaller({ slug: "borrador", status: "draft" }),
+          seedTaller({ slug: "archivado", status: "archived" }),
+        ],
+      }),
+    );
+
+    expect((await records.listVisible(FROM)).map((r) => r.slug).sort()).toEqual(
+      ["pausado", "publicado"],
+    );
+    expect((await records.listVisibleSlugs()).slice().sort()).toEqual([
+      "pausado",
+      "publicado",
+    ]);
+    expect((await records.findVisibleBySlug("pausado", FROM))?.slug).toBe(
+      "pausado",
+    );
+    expect(await records.findVisibleBySlug("borrador", FROM)).toBeNull();
+    expect(await records.findVisibleBySlug("PUBLICADO", FROM)).toBeNull();
+  });
+
+  it("returns the active turnos only", async () => {
+    const activo = seedTurno({ label: "Activo" });
+    const retirado = seedTurno({ label: "Retirado", active: false });
+    const records = createInMemoryPublicTallerRecords(
+      buildSeed({ talleres: [seedTaller({ turnos: [activo, retirado] })] }),
+    );
+
+    const [record] = await records.listVisible(FROM);
+
+    expect(record?.activeTurnos.map((t) => t.label)).toEqual(["Activo"]);
+  });
+
+  it("returns the open periods from the requested month only, with their capacities and project", async () => {
+    const turno = seedTurno();
+    const records = createInMemoryPublicTallerRecords(
+      buildSeed({
+        talleres: [
+          seedTaller({
+            turnos: [turno],
+            periods: [
+              seedPeriod({ period: "2026-09" }),
+              seedPeriod({
+                period: "2026-10",
+                projectTitle: "Taza",
+                capacities: [{ turnoId: turno.id, capacity: 8 }],
+              }),
+              seedPeriod({ period: "2026-11", status: "draft" }),
+              seedPeriod({ period: "2026-12", status: "closed" }),
+              seedPeriod({ period: "2027-01" }),
+            ],
+          }),
+        ],
+      }),
+    );
+
+    const [record] = await records.listVisible(FROM);
+
+    expect(record?.openPeriods.map((p) => p.period)).toEqual([
+      "2026-10",
+      "2027-01",
+    ]);
+    expect(record?.openPeriods[0]?.capacities).toEqual([
+      { turnoId: turno.id, capacity: 8 },
+    ]);
+    expect(record?.openPeriods[0]?.project.title).toBe("Taza");
+  });
+
+  it("has the exact record keys and carries no snapshot, percentage or audit data", async () => {
+    const records = createInMemoryPublicTallerRecords(fullyPopulatedSeed());
+
+    const [record] = await records.listVisible(FROM);
+
+    expect(Object.keys(record ?? {}).sort()).toEqual([
+      "activeTurnos",
+      "description",
+      "images",
+      "name",
+      "openPeriods",
+      "slug",
+      "status",
+      "summary",
+      "teacherId",
+      "technique",
+    ]);
+    expect(Object.keys(record?.openPeriods[0] ?? {}).sort()).toEqual([
+      "capacities",
+      "fee",
+      "period",
+      "project",
+    ]);
+    const json = JSON.stringify(record);
+    expect(json).not.toContain("SNAPSHOT-SENTINEL");
+    expect(json).not.toContain("DRAFT-PROJECT-TEXT");
+  });
+
+  it("carries the taller sentinels in the fully populated seed", () => {
+    const taller = fullyPopulatedSeed().talleres.find(
+      (t) => t.slug === "taller-demo",
+    );
+
+    expect(taller?.agreedPercentageBp).toBe(3550);
+    expect(taller?.periods[0]?.snapshotTeacherName).toBe("SNAPSHOT-SENTINEL");
+    expect(taller?.periods[0]?.snapshotTeacherModality).toBe("third_party");
   });
 });

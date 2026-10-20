@@ -3,13 +3,20 @@ import type { MediaAsset, MediaLookup } from "~/modules/media";
 import type { Teacher, TeacherLookup } from "~/modules/teachers";
 import {
   createPublicIntensivosReader,
+  createPublicTalleresReader,
   type CatalogImageRef,
   type IntensiveStatus,
+  type LocalTime,
+  type PeriodKey,
   type PublicCatalogService,
+  type Weekday,
+  type WorkshopStatus,
 } from "~/modules/workshops";
 import { buildMediaAsset, buildTeacher } from "./admin-builders";
-import { createFakePublicCatalog } from "./fake-public-catalog";
-import { createInMemoryPublicIntensivoRecords } from "./in-memory-public-catalog-records";
+import {
+  createInMemoryPublicIntensivoRecords,
+  createInMemoryPublicTallerRecords,
+} from "./in-memory-public-catalog-records";
 
 /**
  * What the change-3 tables hold, in the shape the catalog tests share: the
@@ -39,10 +46,56 @@ export interface SeedIntensivo {
   readonly images: readonly CatalogImageRef[];
 }
 
+export interface SeedTurno {
+  readonly id: string;
+  readonly label: string;
+  readonly weekday: Weekday;
+  readonly startsAt: LocalTime;
+  readonly endsAt: LocalTime;
+  readonly defaultCapacity: number;
+  readonly active: boolean;
+}
+
+export interface SeedPeriod {
+  readonly id: string;
+  readonly period: PeriodKey;
+  readonly fee: Money;
+  readonly status: "draft" | "open" | "closed";
+  readonly projectTitle: string | null;
+  readonly projectDescription: string | null;
+  readonly projectImages: readonly CatalogImageRef[];
+  readonly snapshotTeacherId: string;
+  readonly snapshotTeacherName: string;
+  readonly snapshotTeacherModality: "own" | "third_party";
+  readonly snapshotPercentageBp: number | null;
+  readonly capacities: readonly {
+    readonly turnoId: string;
+    readonly capacity: number;
+  }[];
+}
+
+export interface SeedTaller {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly summary: string;
+  readonly description: string;
+  readonly technique: string;
+  readonly defaultFee: Money;
+  readonly teacherId: string | null;
+  readonly agreedPercentageBp: number | null;
+  readonly status: WorkshopStatus;
+  readonly updatedBy: string;
+  readonly images: readonly CatalogImageRef[];
+  readonly turnos: readonly SeedTurno[];
+  readonly periods: readonly SeedPeriod[];
+}
+
 export interface CatalogSeed {
   readonly teachers: readonly Teacher[];
   readonly assets: readonly MediaAsset[];
   readonly intensivos: readonly SeedIntensivo[];
+  readonly talleres: readonly SeedTaller[];
 }
 
 export const SEED_TEACHER_ID = "11111111-1111-4111-8111-111111111111";
@@ -86,8 +139,78 @@ export function seedIntensivo(
   };
 }
 
+let nextTaller = 0;
+let nextTurno = 0;
+let nextPeriod = 0;
+
+/** A published taller with no turnos and no periods; each call gets a fresh uuid and slug. */
+export function seedTaller(overrides: Partial<SeedTaller> = {}): SeedTaller {
+  nextTaller += 1;
+  const n = String(nextTaller).padStart(12, "0");
+  return {
+    id: `77777777-7777-4777-8777-${n}`,
+    slug: `taller-${String(nextTaller)}`,
+    name: "Taller Demo",
+    summary: "Resumen del taller de demostración.",
+    description: "Descripción del taller de demostración.",
+    technique: "Técnica de demostración",
+    defaultFee: moneyOf(4_500_000),
+    teacherId: null,
+    agreedPercentageBp: null,
+    status: "published",
+    updatedBy: "owner@example.com",
+    images: [],
+    turnos: [],
+    periods: [],
+    ...overrides,
+  };
+}
+
+/** An active Monday 10:00-12:00 turno; each call gets a fresh uuid and label. */
+export function seedTurno(overrides: Partial<SeedTurno> = {}): SeedTurno {
+  nextTurno += 1;
+  const n = String(nextTurno).padStart(12, "0");
+  return {
+    id: `55555555-5555-4555-8555-${n}`,
+    label: `Turno ${String(nextTurno)}`,
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "23:00",
+    defaultCapacity: 10,
+    active: true,
+    ...overrides,
+  };
+}
+
+/** An open period with no project and no capacities; teacher snapshot fields are placeholders. */
+export function seedPeriod(overrides: Partial<SeedPeriod> = {}): SeedPeriod {
+  nextPeriod += 1;
+  const n = String(nextPeriod).padStart(12, "0");
+  return {
+    id: `66666666-6666-4666-8666-${n}`,
+    period: "2026-10",
+    fee: moneyOf(4_500_000),
+    status: "open",
+    projectTitle: null,
+    projectDescription: null,
+    projectImages: [],
+    snapshotTeacherId: SEED_TEACHER_ID,
+    snapshotTeacherName: "Docente de la foto",
+    snapshotTeacherModality: "own",
+    snapshotPercentageBp: null,
+    capacities: [],
+    ...overrides,
+  };
+}
+
 export function buildSeed(overrides: Partial<CatalogSeed> = {}): CatalogSeed {
-  return { teachers: [], assets: [], intensivos: [], ...overrides };
+  return {
+    teachers: [],
+    assets: [],
+    intensivos: [],
+    talleres: [],
+    ...overrides,
+  };
 }
 
 /** Values that must never appear in a public response (design PC14). */
@@ -117,12 +240,48 @@ export const PRIVATE_KEYS: readonly string[] = [
 
 /**
  * Every private field populated: a third-party teacher with a percentage,
- * contact data and audit trail, an image asset with private metadata, and a
- * draft whose text must stay out. `SNAPSHOT-SENTINEL` belongs to the taller
- * period snapshot (C4-B3); an intensivo has no snapshot to carry it.
+ * contact data and audit trail, an image asset with private metadata, a taller
+ * period with a teacher snapshot, and drafts whose text must stay out.
  */
 export function fullyPopulatedSeed(): CatalogSeed {
+  const lunes = seedTurno({ label: "Lunes tarde", startsAt: "15:00" });
   return buildSeed({
+    talleres: [
+      seedTaller({
+        slug: "taller-demo",
+        teacherId: SEED_TEACHER_ID,
+        agreedPercentageBp: 3550,
+        updatedBy: "auditor@example.test",
+        images: [{ assetId: SEED_ASSET_ID, alt: "Mesa de trabajo" }],
+        turnos: [lunes],
+        periods: [
+          seedPeriod({
+            period: "2026-10",
+            projectTitle: "Taza con asa",
+            projectDescription: "Proyecto del mes.",
+            projectImages: [{ assetId: SEED_ASSET_ID, alt: "Taza terminada" }],
+            snapshotTeacherName: "SNAPSHOT-SENTINEL",
+            snapshotTeacherModality: "third_party",
+            snapshotPercentageBp: 3550,
+            capacities: [{ turnoId: lunes.id, capacity: 8 }],
+          }),
+          seedPeriod({
+            period: "2026-11",
+            status: "draft",
+            projectTitle: "DRAFT-PROJECT-TEXT",
+            capacities: [{ turnoId: lunes.id, capacity: 8 }],
+          }),
+        ],
+      }),
+      seedTaller({
+        slug: "taller-borrador",
+        description: "DRAFT-ONLY-TEXT",
+        status: "draft",
+        teacherId: SEED_TEACHER_ID,
+        agreedPercentageBp: 3550,
+        updatedBy: "auditor@example.test",
+      }),
+    ],
     teachers: [
       buildTeacher({
         id: SEED_TEACHER_ID,
@@ -197,14 +356,19 @@ export function seedMediaLookup(seed: CatalogSeed): MediaLookup {
 
 /**
  * The real readers over in-memory records and seed lookups, for loader privacy
- * tests (PC14, delivery level). The talleres reader joins in C4-B3.
+ * tests (PC14, delivery level).
  */
 export function createSeededPublicCatalog(
   seed: CatalogSeed,
   clock: Clock,
 ): PublicCatalogService {
   return {
-    talleres: createFakePublicCatalog().talleres,
+    talleres: createPublicTalleresReader({
+      records: createInMemoryPublicTallerRecords(seed),
+      teachers: seedTeacherLookup(seed),
+      media: seedMediaLookup(seed),
+      clock,
+    }),
     intensivos: createPublicIntensivosReader({
       records: createInMemoryPublicIntensivoRecords(seed),
       teachers: seedTeacherLookup(seed),

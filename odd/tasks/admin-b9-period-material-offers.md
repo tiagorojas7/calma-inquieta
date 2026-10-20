@@ -18,7 +18,7 @@
 - [x] B9-T4. RED Drizzle/shared-contract/schema coverage for ordered offer round trips, replacement, FKs/uniqueness, and atomic rollback.
 - [x] B9-T5. GREEN/REFACTOR transactional Drizzle persistence plus additive schema and generator-produced `0010_period_material_offers`; run focused checks and commit persistence separately.
 - [x] B9-T6. Run final focused and full gates under `C:/Temp/calma-gate.lock`, including embedded PostgreSQL without weakening/skipping DB tests; handle only confirmed abandoned `calma-pg-*` clusters if the documented failure occurs.
-- [ ] B9-T7. Run native review when available (otherwise ASSESS exactly), push, open the linked PR with one type label, and monitor until CLEAN, MERGEABLE, and CI `verify` passes.
+- [x] B9-T7. Run native review when available (otherwise ASSESS exactly), push, open the linked PR with one type label, and monitor until CLEAN, MERGEABLE, and CI `verify` passes.
 
 ## Acceptance criteria
 
@@ -60,3 +60,4 @@
 - The post-merge gate found one stale in-memory migration fixture, then passed after correction: drift clean; format, lint, typecheck, build, and diff checks pass; unit+UI coverage passes 191 files / 2,171 tests at 95.01% statements, 91.27% branches, 97.34% functions, and 97.01% lines; complete serial DB passes 18 files / 247 tests. No checks were skipped or weakened. Gate-fix commits: `46fd54f` and post-merge fixture/evidence commit `c330c58`.
 - Final native review over the clean committed `origin/main..HEAD` range again failed before lineage creation. ASSESS returned `unassessable`, requiring writer verification and an independent verifier. The locked gate satisfies writer verification; an isolated explicit `openai-codex/gpt-5.6-sol` verifier reviewed the complete committed patch and returned PASS with no findings.
 - Review workload is 2,178 total diff lines (2,144 additions and 34 deletions), including 1,547 generator-owned migration SQL/snapshot/journal lines. The authored 631-line remainder is already split into behavior and persistence work-unit commits; splitting the atomic persistence/schema/generated migration contract would increase merge/review risk, so the requested single B9 PR carries an explicit size-exception rationale rather than compressing code or tests.
+- PR #73 opened with `enhancement` and `size:exception`: https://github.com/tiagorojas7/calma-inquieta/pull/73. Its first candidate was CLEAN, MERGEABLE, and CI `verify` passed; deploy skipped as expected. The owner retains merge control.

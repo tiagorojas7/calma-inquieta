@@ -224,6 +224,40 @@ describe("createSiteContent", () => {
     expect(granted.photo?.src).toBe(path);
   });
 
+  it("getBrand returns the published logos and drops an unpublishable one", async () => {
+    const base = buildRawSiteContent();
+    expect(await content(base).getBrand()).toEqual(base.brand);
+
+    const path = "/media/brand/brand-logo-pending-56.0a1b2c3d.webp";
+    const pending = {
+      ...base,
+      brand: {
+        ...base.brand,
+        logoLight: { src: path, alt: "", width: 56, height: 59 },
+      },
+      media: {
+        ...base.media,
+        assets: [
+          ...base.media.assets,
+          {
+            kind: "image",
+            id: "brand-logo-pending",
+            sourceId: "brand-pending-source",
+            area: "brand",
+            alt: "",
+            decorative: true,
+            format: "webp",
+            variants: [{ width: 56, height: 59, path }],
+          },
+        ],
+      },
+    } satisfies RawSiteContent;
+
+    const withheld = await content(pending).getBrand();
+    expect(withheld.logo).toEqual(base.brand.logo);
+    expect(withheld).not.toHaveProperty("logoLight");
+  });
+
   it("returns the contact page and the coming-soon page of the requested slug", async () => {
     const reader = content();
 

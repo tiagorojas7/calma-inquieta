@@ -735,6 +735,25 @@ describe("the curated contact photo", () => {
   });
 });
 
+describe("the brand logos", () => {
+  it("are the published dark and light registry logos, decorative beside the wordmark", async () => {
+    const raw = await source.load();
+    const brand = await content.getBrand();
+
+    expect(brand.logo).toBeDefined();
+    expect(brand.logoLight).toBeDefined();
+    expect(raw.brand.logo.src).toContain("/media/brand/brand-logo-");
+    expect(raw.brand.logoLight.src).toContain("/media/brand/brand-logo-light-");
+    for (const logo of [raw.brand.logo, raw.brand.logoLight]) {
+      expect(logo.alt).toBe("");
+      expect(logo.srcSet?.split(",")).toHaveLength(3);
+      for (const path of pathsOf(logo)) {
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+});
+
 describe("the launch gate on the repository content", () => {
   it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are seven and unpublishedMedia is empty", async () => {
     const gate = await content.getLaunchGate();

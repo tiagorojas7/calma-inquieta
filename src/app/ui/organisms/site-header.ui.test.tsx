@@ -304,3 +304,139 @@ describe("SiteHeader", () => {
     expect(toggle).toHaveClass("relative", "z-50");
   });
 });
+
+describe("SiteHeader brand", () => {
+  const logo = {
+    src: "/media/brand/brand-logo-56.7b093bc3.webp",
+    srcSet: "/media/brand/brand-logo-56.7b093bc3.webp 56w",
+    width: 56,
+    height: 59,
+  };
+  const logoLight = {
+    src: "/media/brand/brand-logo-light-56.298df7e7.webp",
+    srcSet: "/media/brand/brand-logo-light-56.298df7e7.webp 56w",
+    width: 56,
+    height: 59,
+  };
+
+  function renderBrand(
+    props: Partial<Parameters<typeof SiteHeader>[0]> = {},
+    path = "/",
+  ) {
+    const Stub = createRoutesStub([
+      {
+        path: "*",
+        Component: () => (
+          <SiteHeader
+            pages={PUBLIC_PAGES}
+            profile={{ whatsappHref }}
+            menuOpen={false}
+            onMenuOpenChange={vi.fn()}
+            {...props}
+          />
+        ),
+      },
+    ]);
+    return render(<Stub initialEntries={[path]} />);
+  }
+
+  it("shows the monogram beside the visible wordmark, and the link keeps its name", async () => {
+    const { container } = renderBrand({ brand: { logo } });
+
+    const home = screen.getByRole("link", { name: "Calma Inquieta" });
+    expect(home).toHaveAttribute("href", "/");
+    expect(home).toHaveTextContent("Calma Inquieta");
+    const image = home.querySelector("img");
+    expect(image).toHaveAttribute("src", logo.src);
+    expect(image).toHaveAttribute("alt", "");
+    expect(screen.queryByRole("img")).toBeNull();
+    await expectNoAxeViolations(container);
+  });
+
+  it("falls back to the wordmark alone when no logo is published", () => {
+    renderBrand({ brand: {} });
+
+    const home = screen.getByRole("link", { name: "Calma Inquieta" });
+    expect(home.querySelector("img")).toBeNull();
+    expect(home).toHaveTextContent("Calma Inquieta");
+  });
+
+  it("marks a dark hero backdrop and ships the light logo only then", () => {
+    const { unmount } = renderBrand({ brand: { logo, logoLight } });
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-backdrop");
+    expect(screen.getByRole("banner").querySelector("img")).toHaveAttribute(
+      "loading",
+      "eager",
+    );
+    expect(
+      screen.getByRole("banner").querySelector('img[data-ink="light"]'),
+    ).toBeNull();
+    unmount();
+
+    renderBrand({
+      brand: { logo, logoLight },
+      heroBackdrop: "dark-below-lg",
+    });
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-backdrop", "dark-below-lg");
+    expect(header.querySelector('img[data-ink="light"]')).toHaveAttribute(
+      "src",
+      logoLight.src,
+    );
+    expect(header.querySelector('img[data-ink="dark"]')).toHaveAttribute(
+      "src",
+      logo.src,
+    );
+  });
+
+  it("keeps the scroll state and the menu toggle on a dark backdrop", () => {
+    renderBrand({
+      brand: { logo, logoLight },
+      heroBackdrop: "dark-below-lg",
+    });
+    const header = screen.getByRole("banner");
+
+    expect(header).toHaveAttribute("data-solid", "false");
+    setScrollY(80);
+    fireEvent.scroll(window);
+    expect(header).toHaveAttribute("data-solid", "true");
+    expect(screen.getByRole("button", { name: "Abrir menú" })).toHaveAttribute(
+      "aria-controls",
+      "menu-principal",
+    );
+  });
+
+  it("shows a tagline in the script accent inside the open menu", () => {
+    renderBrand({
+      profile: {
+        whatsappHref,
+        tagline: "Equilibrio entre serenidad y movimiento",
+      },
+      menuOpen: true,
+    });
+
+    const tagline = screen.getByText("Equilibrio entre serenidad y movimiento");
+    expect(tagline).toHaveAttribute("data-script", "true");
+    expect(tagline.closest(".menu-item")).not.toBeNull();
+  });
+
+  it("puts the WhatsApp glyph in the call to action without changing its name", () => {
+    renderBrand();
+
+    const cta = screen.getByRole("link", { name: "Escribinos por WhatsApp" });
+    expect(cta.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("gives back width at lg so the nav and call to action fit at 1024 px", () => {
+    renderBrand({ brand: { logo } });
+
+    const home = screen.getByRole("link", { name: "Calma Inquieta" });
+    expect(home.querySelector("span:not(.brand-logo)")).toHaveClass(
+      "text-2xl",
+      "lg:text-xl",
+      "xl:text-2xl",
+    );
+    const cta = screen.getByRole("link", { name: "Escribinos por WhatsApp" });
+    expect(cta.querySelector("svg")).toHaveClass("lg:max-xl:hidden");
+  });
+});

@@ -175,6 +175,11 @@ function contentImages(content: RawSiteContent): readonly {
       content.home.teaser.image,
       content.home.teaser.accentImage,
     ].map((image) => ({ id: image.src, image, decorative: false })),
+    ...[content.brand.logo, content.brand.logoLight].map((image) => ({
+      id: image.src,
+      image,
+      decorative: true,
+    })),
     ...content.about.introImages.map((image) => ({
       id: image.src,
       image,

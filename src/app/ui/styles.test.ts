@@ -584,3 +584,81 @@ describe("hero collage stylesheet", () => {
     expect(rule(".photo-torn")?.body).not.toMatch(/shadow/);
   });
 });
+
+describe("brand stylesheet (T6)", () => {
+  const css = readStyles("layout.css");
+  const section = css.slice(css.indexOf("/* T6 brand */"));
+  const blocks = cssBlocks(section);
+  const belowLg = /@media\s*\(max-width:\s*63\.999rem\)/;
+  const darkTop =
+    '.site-header[data-backdrop="dark-below-lg"][data-solid="false"]';
+  const rule = (selector: string, ancestor?: RegExp) =>
+    blocks.find(
+      (block) =>
+        block.prelude
+          .split(",")
+          .map((part) => part.trim().replace(/\s+/g, " "))
+          .includes(selector) &&
+        (ancestor
+          ? block.ancestors.some((a) => ancestor.test(a))
+          : block.ancestors.length === 0),
+    );
+
+  it("starts with the T6 marker so the parent can merge the section", () => {
+    expect(css).toContain("/* T6 brand */");
+    expect(blocks.length).toBeGreaterThan(5);
+  });
+
+  it("keeps the header at 44 px of content with the dark logo as the default ink", () => {
+    expect(rule(".brand-logo-img")?.body).toMatch(/height:\s*2\.75rem/);
+    expect(rule('.brand-logo-img[data-ink="light"]')?.body).toMatch(
+      /display:\s*none/,
+    );
+  });
+
+  it("swaps to the light logo and light ink only over the dark hero below lg", () => {
+    expect(rule(darkTop, belowLg)?.body).toMatch(
+      /color:\s*var\(--color-canvas\)/,
+    );
+    expect(
+      rule(`${darkTop} .brand-logo-img[data-ink="dark"]`, belowLg)?.body,
+    ).toMatch(/display:\s*none/);
+    expect(
+      rule(`${darkTop} .brand-logo-img[data-ink="light"]`, belowLg)?.body,
+    ).toMatch(/display:\s*block/);
+    // From lg the hero is light: nothing in the swap sits outside the media query.
+    for (const block of blocks) {
+      if (block.prelude.includes("data-backdrop")) {
+        expect(
+          block.ancestors.some((a) => belowLg.test(a)),
+          block.prelude,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("lays the footer out in a grid that goes three-column from lg", () => {
+    expect(rule(".site-footer-grid")?.body).toMatch(/display:\s*grid/);
+    expect(
+      rule(".site-footer-grid", /@media\s*\(min-width:\s*64rem\)/)?.body,
+    ).toMatch(/grid-template-columns/);
+  });
+
+  it("holds no colour literal", () => {
+    expect(section).not.toMatch(/#[0-9a-f]{3,8}|rgba?\(/i);
+  });
+
+  it("tilts the monogram on hover only inside a no-preference block", () => {
+    const motion = cssBlocks(readStyles("motion.css"));
+    const hover = motion.find((block) =>
+      block.prelude.includes(".brand-link:hover .brand-logo"),
+    );
+
+    expect(hover?.body).toMatch(/transform:\s*rotate\(/);
+    expect(
+      hover?.ancestors.some((a) =>
+        /@media\s*\(prefers-reduced-motion:\s*no-preference\)/.test(a),
+      ),
+    ).toBe(true);
+  });
+});

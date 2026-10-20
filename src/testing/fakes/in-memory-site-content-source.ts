@@ -131,6 +131,10 @@ export function buildRawSiteContent(
         "eventos-privados": "Hola, quiero consultar por un evento privado.",
       },
     },
+    brand: {
+      logo: image("/media/stand-ins/brand-logo.svg", ""),
+      logoLight: image("/media/stand-ins/brand-logo.svg", ""),
+    },
     home: {
       seo: seo("Inicio"),
       hero: {
@@ -284,6 +288,7 @@ export function buildRawSiteContent(
       standIn("hero-1", "/media/stand-ins/hero-1.jpg"),
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
       standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
+      standIn("brand-logo", "/media/stand-ins/brand-logo.svg"),
     ],
     media: shareRegistry,
     ...overrides,

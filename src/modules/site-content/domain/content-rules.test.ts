@@ -130,6 +130,26 @@ describe("validateSiteContent", () => {
     expect(issues).toEqual([{ id: blank.src, rule: "alt-missing" }]);
   });
 
+  it("flags a brand logo whose path is not registered", () => {
+    const content = validContent();
+    const missing = image("/media/brand/missing-56.00000000.webp", "");
+
+    expect(
+      validateSiteContent({
+        ...content,
+        brand: { ...content.brand, logo: missing },
+      }),
+    ).toEqual([{ id: missing.src, rule: "unregistered-media" }]);
+  });
+
+  it("accepts an empty alt on the brand logos, which sit beside the visible wordmark", () => {
+    const content = validContent();
+
+    expect(content.brand.logo.alt).toBe("");
+    expect(content.brand.logoLight.alt).toBe("");
+    expect(validateSiteContent(content)).toEqual([]);
+  });
+
   it("flags a pull-quote id that repeats another content id", () => {
     const content = validContent();
 

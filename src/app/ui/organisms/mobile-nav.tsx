@@ -14,7 +14,7 @@ export function MobileNav({
   return (
     <button
       type="button"
-      className="relative z-50 inline-flex size-11 items-center justify-center rounded-full text-ink-900 transition-[background-color,transform] duration-200 ease-calm hover:bg-sand-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 motion-safe:active:scale-95 lg:hidden"
+      className="menu-toggle relative z-50 inline-flex size-11 items-center justify-center rounded-full text-current transition-[background-color,transform] duration-200 ease-calm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 motion-safe:active:scale-95 lg:hidden"
       aria-expanded={menuOpen}
       aria-controls="menu-principal"
       aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}

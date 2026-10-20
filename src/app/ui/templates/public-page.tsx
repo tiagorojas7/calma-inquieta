@@ -10,9 +10,19 @@ type Profile = Parameters<typeof SiteFooter>[0]["profile"] & { name: string };
 type PublicPageProps = PropsWithChildren<{
   pages: readonly Page[];
   profile: Profile;
+  /** The monogram in its two inks; omitted logos fall back to the wordmark. */
+  brand?: Parameters<typeof SiteHeader>[0]["brand"];
+  /** Set when the page opens with a dark photo behind the header below lg. */
+  heroBackdrop?: Parameters<typeof SiteHeader>[0]["heroBackdrop"];
 }>;
 
-export function PublicPage({ pages, profile, children }: PublicPageProps) {
+export function PublicPage({
+  pages,
+  profile,
+  brand,
+  heroBackdrop,
+  children,
+}: PublicPageProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
@@ -80,7 +90,12 @@ export function PublicPage({ pages, profile, children }: PublicPageProps) {
       <SkipLink inert={menuOpen} />
       <SiteHeader
         pages={pages}
-        profile={{ whatsappHref: profile.whatsappHref }}
+        profile={{
+          whatsappHref: profile.whatsappHref,
+          tagline: profile.bajada,
+        }}
+        {...(brand ? { brand } : {})}
+        {...(heroBackdrop ? { heroBackdrop } : {})}
         menuOpen={menuOpen}
         onMenuOpenChange={setMenuOpen}
       />
@@ -92,7 +107,12 @@ export function PublicPage({ pages, profile, children }: PublicPageProps) {
       >
         {children}
       </main>
-      <SiteFooter pages={pages} profile={profile} inert={menuOpen} />
+      <SiteFooter
+        pages={pages}
+        profile={profile}
+        {...(brand?.logo ? { brand: { logo: brand.logo } } : {})}
+        inert={menuOpen}
+      />
     </>
   );
 }

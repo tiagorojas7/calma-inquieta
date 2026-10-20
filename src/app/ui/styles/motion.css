@@ -126,3 +126,15 @@
     animation-timing-function: var(--ease-calm);
   }
 }
+
+/* T6 brand */
+@media (prefers-reduced-motion: no-preference) {
+  .brand-logo {
+    transition: transform 400ms var(--ease-calm);
+  }
+
+  .brand-link:hover .brand-logo,
+  .brand-link:focus-visible .brand-logo {
+    transform: rotate(-5deg) scale(1.06);
+  }
+}

@@ -234,8 +234,20 @@ export interface CatalogContent {
   };
 }
 
+/**
+ * The brand mark shown in the header. Both logos are decorative (empty alt):
+ * the visible wordmark beside them names the link.
+ */
+export interface BrandContent {
+  /** Dark ink, for the light page. */
+  readonly logo: ImageRef;
+  /** Cream, for the dark hero photo below lg. */
+  readonly logoLight: ImageRef;
+}
+
 export interface RawSiteContent {
   readonly profile: RawBusinessProfile;
+  readonly brand: BrandContent;
   readonly home: HomePageContent;
   readonly about: AboutPageContent;
   readonly contact: ContactPageContent;

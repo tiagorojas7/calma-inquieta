@@ -39,3 +39,75 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .43 0 0 0 0 .31 0 0 0 0 .23 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 160px 160px;
 }
+
+/* T6 brand */
+
+/* Header logo: the dark "CI" monogram is the default ink; the light one is
+   rendered only over the dark hero photo (see site-header.tsx) and stays
+   hidden until the rules below show it. The 2.75rem height keeps the header
+   at its 4.75rem total. */
+.brand-logo {
+  display: inline-flex;
+  flex: none;
+}
+
+.brand-logo-img {
+  display: block;
+  height: 2.75rem;
+  width: auto;
+}
+
+.brand-logo-img[data-ink="light"] {
+  display: none;
+}
+
+.menu-toggle:hover {
+  background-color: var(--color-sand-200);
+}
+
+/* Over the dark lamp photo (Inicio below lg) the transparent header uses
+   light ink and the light logo. Once it turns solid, or from lg where the
+   hero is light, none of this applies and the normal ink returns. */
+@media (max-width: 63.999rem) {
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"] {
+    color: var(--color-canvas);
+  }
+
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"]
+    .brand-logo-img[data-ink="dark"] {
+    display: none;
+  }
+
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"]
+    .brand-logo-img[data-ink="light"] {
+    display: block;
+  }
+
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"] .brand-link {
+    text-shadow: 0 1px 14px
+      color-mix(in srgb, var(--color-ink-900) 55%, transparent);
+  }
+
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"]
+    .menu-toggle:hover {
+    background-color: color-mix(in srgb, var(--color-canvas) 18%, transparent);
+  }
+
+  .site-header[data-backdrop="dark-below-lg"][data-solid="false"]
+    :is(.brand-link, .menu-toggle):focus-visible {
+    outline-color: var(--color-canvas);
+  }
+}
+
+/* Footer: brand block, contact column and page navigation. */
+.site-footer-grid {
+  display: grid;
+  gap: 2.5rem;
+}
+
+@media (min-width: 64rem) {
+  .site-footer-grid {
+    grid-template-columns: 1.3fr 1.1fr 0.7fr;
+    gap: 3rem;
+  }
+}

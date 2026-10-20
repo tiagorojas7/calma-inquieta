@@ -43,9 +43,11 @@ import {
 } from "~/modules/workshops";
 import {
   createOfferedMaterialSnapshotsLookup,
+  createSuppliersService,
   type SuppliersService,
   type MaterialsService,
 } from "~/modules/materials";
+import { createDrizzleSupplierRepository } from "~/modules/materials/infrastructure/drizzle-supplier-repository";
 import {
   createAdminEnrollmentService,
   createPublicEnrollmentService,
@@ -267,7 +269,10 @@ export function createRequestServices(
       media,
       clock: systemClock,
     }),
-    suppliers: createUnavailableService<SuppliersService>(),
+    suppliers: createSuppliersService({
+      repository: createDrizzleSupplierRepository(openSession),
+      clock: systemClock,
+    }),
     materials: createUnavailableService<MaterialsService>(),
     ...enrollmentServices,
     // A real reader failure is not caught: it reaches the error boundary.

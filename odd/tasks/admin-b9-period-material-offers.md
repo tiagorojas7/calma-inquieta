@@ -14,9 +14,9 @@
 
 - [x] B9-T1. Resume Engram context, update from merged PR #66, create the isolated branch/worktree, read authoritative task/spec and B6/B8b seams, and confirm migration history ends at generated `0009_materials`.
 - [x] B9-T2. RED behavior/fake matrix for actor-first denial, duplicate/unknown/not-selectable material IDs, ordered flat lists, closed/effectively closed refusal, historical retention, and filtered “Abrir mes” copying.
-- [ ] B9-T3. GREEN/REFACTOR period service/repository/fake changes and shared fake contract; run focused checks and commit the behavior work unit.
-- [ ] B9-T4. RED Drizzle/shared-contract/schema coverage for ordered offer round trips, replacement, FKs/uniqueness, and atomic rollback.
-- [ ] B9-T5. GREEN/REFACTOR transactional Drizzle persistence plus additive schema and generator-produced `0010_period_material_offers`; run focused checks and commit persistence separately.
+- [x] B9-T3. GREEN/REFACTOR period service/repository/fake changes and shared fake contract; run focused checks and commit the behavior work unit.
+- [x] B9-T4. RED Drizzle/shared-contract/schema coverage for ordered offer round trips, replacement, FKs/uniqueness, and atomic rollback.
+- [x] B9-T5. GREEN/REFACTOR transactional Drizzle persistence plus additive schema and generator-produced `0010_period_material_offers`; run focused checks and commit persistence separately.
 - [ ] B9-T6. Run final focused and full gates under `C:/Temp/calma-gate.lock`, including embedded PostgreSQL without weakening/skipping DB tests; handle only confirmed abandoned `calma-pg-*` clusters if the documented failure occurs.
 - [ ] B9-T7. Run native review when available (otherwise ASSESS exactly), push, open the linked PR with one type label, and monitor until CLEAN, MERGEABLE, and CI `verify` passes.
 
@@ -49,3 +49,7 @@
 - Authoritative task 14 does not require production composition.
 - B9-T2 RED was observed at 2 files with 4 failing behavior assertions and 26 passing tests: clearing stored offers, duplicate validation, ordered replacement, and filtered “Abrir mes” copy all failed against the B6 deferral behavior.
 - B9-T3 GREEN/REFACTOR adds `MaterialLookup` to the period service, validates duplicate/missing/not-selectable IDs, replaces the ordered flat list, filters historical copy through one batched lookup, and preserves actor/closure ordering. Focused verification passes 2 files / 30 tests; typecheck, Prettier, and diff checks pass. Independent OpenAI verifier: PASS.
+- Native review could not create a lineage (`candidate-owner-preparation-failed`); ASSESS returned `unassessable` and required writer self-verification plus an independent verifier, both satisfied. Behavior work-unit commit: `a114dbb` (`feat(workshops): enable period material offers`), 230 authored source/test diff lines before the ODD document.
+- B9-T4 RED kept the fake shared contract green at 12/12 and produced 6 intended Drizzle failures out of 18 tests: ordered offer round-trip/replacement, insert/update rollback, missing offer table constraints, and historical visibility.
+- B9-T5 GREEN currently passes fake 12/12, Drizzle 18/18, migration/architecture 23/23, typecheck, Prettier, diff check, and a no-change Drizzle generation check. The generated artifacts are exactly `0010_period_material_offers.sql`, `0010_snapshot.json`, and the journal entry.
+- Native persistence review again failed before lineage creation (`candidate-owner-preparation-failed`). ASSESS required writer self-verification plus an independent verifier. After the package verifier remained unavailable, an isolated read-only Pi verifier was launched explicitly with `openai-codex/gpt-5.6-sol`, no tools/extensions/session, over the staged patch; it returned PASS with no blocker/critical findings. Its only warning was missing direct behavioral checks for the schema-declared CASCADE/RESTRICT actions; the generated schema/migration and architecture tests already verify those declarations, so this remains non-blocking follow-up depth rather than a B9 correctness gap.

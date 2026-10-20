@@ -19,7 +19,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { mediaAsset } from "./media";
+import { material } from "./materials";
 import { teacher } from "./teachers";
+export { material } from "./materials";
 export { teacher } from "./teachers";
 
 export const monthlyWorkshop = pgTable(
@@ -183,6 +185,31 @@ export const periodTurno = pgTable(
       "period_turno_capacity_check",
       sql`${table.capacity} BETWEEN 1 AND 500`,
     ),
+  ],
+);
+
+export const periodMaterialOffer = pgTable(
+  "period_material_offer",
+  {
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => workshopPeriod.id, { onDelete: "cascade" }),
+    materialId: uuid("material_id")
+      .notNull()
+      .references(() => material.id, { onDelete: "restrict" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "period_material_offer_pkey",
+      columns: [table.periodId, table.materialId],
+    }),
+    unique("period_material_offer_period_id_position_unique").on(
+      table.periodId,
+      table.position,
+    ),
+    index("period_material_offer_material_id_idx").on(table.materialId),
+    check("period_material_offer_position_check", sql`${table.position} >= 0`),
   ],
 );
 

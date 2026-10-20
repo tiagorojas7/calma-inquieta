@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { err, Money, ok } from "~/modules/_shared";
 import {
+  material,
+  periodMaterialOffer,
   periodTurno,
   teacher,
   workshopPeriod,
@@ -93,6 +95,20 @@ async function insertTurnos(
   );
 }
 
+async function insertMaterialOffers(
+  db: Db,
+  value: StoredWorkshopPeriod,
+): Promise<void> {
+  if (!value.materials.length) return;
+  await db.insert(periodMaterialOffer).values(
+    value.materials.map((material, index) => ({
+      periodId: value.id,
+      materialId: material.id,
+      position: index,
+    })),
+  );
+}
+
 async function load(
   db: Db,
   root: PeriodRow,
@@ -108,6 +124,15 @@ async function load(
       asc(workshopTurno.startsAt),
       asc(workshopTurno.id),
     );
+
+  const materialOffers = await db
+    .select({
+      material: material,
+    })
+    .from(periodMaterialOffer)
+    .innerJoin(material, eq(periodMaterialOffer.materialId, material.id))
+    .where(eq(periodMaterialOffer.periodId, root.id))
+    .orderBy(asc(periodMaterialOffer.position));
 
   return {
     id: root.id,
@@ -131,7 +156,12 @@ async function load(
       turnoActive: turno.active,
       capacity: period.capacity,
     })),
-    materials: [],
+    materials: materialOffers.map(({ material }) => ({
+      id: material.id,
+      name: material.name,
+      active: material.active,
+      available: material.available,
+    })),
     snapshot: {
       teacher: {
         id: snapshotTeacher.id,
@@ -186,6 +216,7 @@ export function createDrizzleWorkshopPeriodRepository(
               .insert(workshopPeriod)
               .values({ id: value.id, ...values(value) });
             await insertTurnos(tx, value);
+            await insertMaterialOffers(tx, value);
             return ok(undefined);
           });
         } catch (error) {
@@ -214,7 +245,11 @@ export function createDrizzleWorkshopPeriodRepository(
           await tx
             .delete(periodTurno)
             .where(eq(periodTurno.periodId, value.id));
+          await tx
+            .delete(periodMaterialOffer)
+            .where(eq(periodMaterialOffer.periodId, value.id));
           await insertTurnos(tx, value);
+          await insertMaterialOffers(tx, value);
           return ok(undefined);
         });
       }),

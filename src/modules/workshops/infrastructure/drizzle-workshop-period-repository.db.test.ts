@@ -17,6 +17,11 @@ const IDS = {
   teacher: "00000000-0000-4000-8000-000000000301",
   turno: "00000000-0000-4000-8000-000000000201",
   retiredTurno: "00000000-0000-4000-8000-000000000202",
+  supplier: "00000000-0000-4000-8000-000000000401",
+  material1: "00000000-0000-4000-8000-000000000501",
+  material2: "00000000-0000-4000-8000-000000000502",
+  material3: "00000000-0000-4000-8000-000000000503",
+  material4: "00000000-0000-4000-8000-000000000504",
 };
 
 afterAll(async () => {
@@ -96,6 +101,19 @@ async function freshRepository() {
       VALUES
         (${IDS.turno}, ${IDS.workshop}, 'Morning', 'morning', 1, '10:00', '12:00', 8, true),
         (${IDS.retiredTurno}, ${IDS.workshop}, 'Retired', 'retired', 2, '10:00', '12:00', 8, false)`);
+    await session.db.execute(sql`
+      INSERT INTO supplier
+        (id, name, name_key, active, updated_by, updated_at)
+      VALUES (${IDS.supplier}, 'Supplier', 'supplier', true, 'seed', now())`);
+    await session.db.execute(sql`
+      INSERT INTO material
+        (id, name, name_key, description, category, category_key, supplier_id,
+         available, active, updated_by, updated_at)
+      VALUES
+        (${IDS.material1}, 'Material 1', 'material-1', 'Description', 'Category', 'category', ${IDS.supplier}, true, true, 'seed', now()),
+        (${IDS.material2}, 'Material 2', 'material-2', 'Description', 'Category', 'category', ${IDS.supplier}, true, true, 'seed', now()),
+        (${IDS.material3}, 'Material 3', 'material-3', 'Description', 'Category', 'category', ${IDS.supplier}, true, true, 'seed', now()),
+        (${IDS.material4}, 'Material 4', 'material-4', 'Description', 'Category', 'category', ${IDS.supplier}, true, true, 'seed', now())`);
   } finally {
     await session.close();
   }
@@ -286,5 +304,133 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
         }),
       ),
     ).rejects.toThrow(/image/i);
+  });
+
+  it("rolls root and offer inserts back when a material reference is refused", async () => {
+    const { repo } = await freshRepository();
+    const value = period({
+      materials: [
+        {
+          id: "00000000-0000-4000-8000-000000000599",
+          name: "Missing",
+          active: true,
+          available: true,
+        },
+      ],
+    });
+    await expect(repo.insert(value)).rejects.toThrow();
+    expect(await repo.findById(value.id)).toBeNull();
+  });
+
+  it("rolls root and offer replacement back together", async () => {
+    const { repo } = await freshRepository();
+    const original = period({
+      materials: [
+        {
+          id: IDS.material1,
+          name: "Material 1",
+          active: true,
+          available: true,
+        },
+      ],
+    });
+    await repo.insert(original);
+
+    await expect(
+      repo.update({
+        ...original,
+        materialsRequired: true,
+        materials: [
+          {
+            id: "00000000-0000-4000-8000-000000000599",
+            name: "Missing",
+            active: true,
+            available: true,
+          },
+        ],
+      }),
+    ).rejects.toThrow();
+    expect(await repo.findById(original.id)).toEqual(original);
+  });
+
+  it("enforces offer material, position, and per-period uniqueness constraints", async () => {
+    const { repo, openSession } = await freshRepository();
+    const value = period();
+    await repo.insert(value);
+    const session = await openSession();
+    try {
+      await session.db.execute(sql`
+        INSERT INTO period_material_offer (period_id, material_id, position)
+        VALUES (${value.id}, ${IDS.material1}, 0)`);
+      await expect(
+        rejection(
+          session.db.execute(sql`
+            INSERT INTO period_material_offer (period_id, material_id, position)
+            VALUES (${value.id}, ${IDS.material1}, 1)`),
+        ),
+      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23505");
+      await expect(
+        rejection(
+          session.db.execute(sql`
+            INSERT INTO period_material_offer (period_id, material_id, position)
+            VALUES (${value.id}, ${IDS.material2}, 0)`),
+        ),
+      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23505");
+      await expect(
+        rejection(
+          session.db.execute(sql`
+            INSERT INTO period_material_offer (period_id, material_id, position)
+            VALUES (${value.id}, ${IDS.material2}, -1)`),
+        ),
+      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23514");
+    } finally {
+      await session.close();
+    }
+  });
+
+  it("keeps historical offers visible with current material state", async () => {
+    const { repo, openSession } = await freshRepository();
+    const value = period({
+      materials: [
+        {
+          id: IDS.material2,
+          name: "Material 2",
+          active: true,
+          available: true,
+        },
+        {
+          id: IDS.material1,
+          name: "Material 1",
+          active: true,
+          available: true,
+        },
+      ],
+    });
+    await repo.insert(value);
+    const session = await openSession();
+    try {
+      await session.db.execute(
+        sql`UPDATE material SET active = false WHERE id = ${IDS.material2}`,
+      );
+      await session.db.execute(
+        sql`UPDATE material SET available = false WHERE id = ${IDS.material1}`,
+      );
+    } finally {
+      await session.close();
+    }
+    expect((await repo.findById(value.id))?.materials).toEqual([
+      {
+        id: IDS.material2,
+        name: "Material 2",
+        active: false,
+        available: true,
+      },
+      {
+        id: IDS.material1,
+        name: "Material 1",
+        active: true,
+        available: false,
+      },
+    ]);
   });
 });

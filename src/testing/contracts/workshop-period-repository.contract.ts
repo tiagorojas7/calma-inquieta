@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
+import type { EnabledMaterial } from "~/modules/workshops";
 import type {
   StoredWorkshopPeriod,
   WorkshopPeriodRepository,
@@ -221,6 +222,70 @@ export function runWorkshopPeriodRepositoryContract(
         period({ id: open, period: "2026-11", status: "open" }),
       );
       expect(await repository.deleteDraft(open)).toBe("not-draft");
+    });
+
+    it("round-trips ordered materials and isolates returned values", async () => {
+      const repository = await create();
+      const materials: EnabledMaterial[] = [
+        {
+          id: "00000000-0000-4000-8000-000000000501",
+          name: "Material 1",
+          active: true,
+          available: true,
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000502",
+          name: "Material 2",
+          active: true,
+          available: true,
+        },
+      ];
+      await repository.insert(period({ materials }));
+
+      const read = await repository.findById(IDS.period);
+      if (!read) throw new Error("contract fixture missing");
+      expect(read.materials).toEqual(materials);
+      (read.materials[0] as { name: string }).name = "Changed";
+      expect((await repository.findById(IDS.period))?.materials).toEqual(
+        materials,
+      );
+    });
+
+    it("replaces and clears the whole ordered material list", async () => {
+      const repository = await create();
+      await repository.insert(
+        period({
+          materials: [
+            {
+              id: "00000000-0000-4000-8000-000000000501",
+              name: "Material 1",
+              active: true,
+              available: true,
+            },
+          ],
+        }),
+      );
+      const replacement: EnabledMaterial[] = [
+        {
+          id: "00000000-0000-4000-8000-000000000503",
+          name: "Material 3",
+          active: true,
+          available: true,
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000504",
+          name: "Material 4",
+          active: true,
+          available: true,
+        },
+      ];
+      await repository.update(period({ materials: replacement }));
+      expect((await repository.findById(IDS.period))?.materials).toEqual(
+        replacement,
+      );
+
+      await repository.update(period({ materials: [] }));
+      expect((await repository.findById(IDS.period))?.materials).toEqual([]);
     });
   });
 }

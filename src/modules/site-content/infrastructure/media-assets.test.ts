@@ -302,7 +302,7 @@ describe("the band photos", () => {
         sourceId: band.sourceId,
       });
       expect(asset.variants.length).toBeGreaterThanOrEqual(2);
-      expect(asset.variants[0]?.width).toBe(480);
+      expect(asset.variants[0].width).toBe(480);
       for (const variant of asset.variants) {
         expect(variant.width).toBeLessThanOrEqual(960);
         expect(ratio(variant), variant.path).toBeCloseTo(band.ratio, 2);

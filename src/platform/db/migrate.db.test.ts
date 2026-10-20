@@ -79,6 +79,7 @@ describe("runMigrations", () => {
       { table_name: "material_variant" },
       { table_name: "media_asset" },
       { table_name: "monthly_workshop" },
+      { table_name: "period_material_offer" },
       { table_name: "period_turno" },
       { table_name: "supplier" },
       { table_name: "teacher" },

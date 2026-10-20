@@ -71,6 +71,13 @@
       "when": 1792429757704,
       "tag": "0009_materials",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792475669053,
+      "tag": "0010_period_material_offers",
+      "breakpoints": true
     }
   ]
 }

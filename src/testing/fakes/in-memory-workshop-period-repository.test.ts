@@ -110,6 +110,14 @@ describe("InMemoryWorkshopPeriodRepository", () => {
     const repository = new InMemoryWorkshopPeriodRepository();
     const original = {
       ...period("period", "2026-10"),
+      materials: [
+        {
+          id: "material-1",
+          name: "Material 1",
+          active: true,
+          available: true,
+        },
+      ],
       turnos: [
         {
           turnoId: "turno-1",
@@ -133,6 +141,14 @@ describe("InMemoryWorkshopPeriodRepository", () => {
         fee: money.value,
         project: { ...original.project, title: "changed" },
         turnos: [{ ...originalTurno, capacity: 99 }],
+        materials: [
+          {
+            id: "material-2",
+            name: "Material 2",
+            active: true,
+            available: true,
+          },
+        ],
         snapshot: {
           ...original.snapshot,
           teacher: { ...original.snapshot.teacher, name: "Changed" },

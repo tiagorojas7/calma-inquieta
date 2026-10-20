@@ -19,11 +19,13 @@ import {
   type PeriodKey as CorePeriodKey,
 } from "../domain/period-core";
 import type { TeacherLookup } from "~/modules/teachers";
+import type { Material, MaterialLookup } from "~/modules/materials";
 import type { MonthlyWorkshopRepository } from "./monthly-workshop-repository";
 import type { TurnoRepository } from "./turno-repository";
 import type { WorkshopPeriodRepository } from "./workshop-period-repository";
 import { parsePercentage } from "./contracts";
 import type {
+  EnabledMaterial,
   OpenMonthRule,
   PeriodField,
   PeriodKey,
@@ -63,6 +65,7 @@ export interface WorkshopPeriodServiceDeps {
   readonly workshops: MonthlyWorkshopRepository;
   readonly turnos: TurnoRepository;
   readonly teachers: TeacherLookup;
+  readonly materials: MaterialLookup;
   readonly clock: Clock;
   readonly newId?: () => string;
 }
@@ -195,10 +198,31 @@ export function createWorkshopPeriodsService(
       // All required facts have passed: teacher exists and is active.
       if (!teacher) throw new Error("unreachable missing teacher");
       const source = await deps.repository.latestBefore(workshopId, period);
-      // Images and material offers belong to later persistence slices. Never
-      // create a successor by silently losing already-stored deferred data.
-      if (source?.project.images.length || source?.materials.length)
-        return err({ kind: "unavailable" });
+      // Images belong to a later persistence slice. Never create a successor
+      // by silently losing already-stored deferred data.
+      if (source?.project.images.length) return err({ kind: "unavailable" });
+      const sourceMaterialIds = source?.materials.map(
+        (material) => material.id,
+      );
+      const currentMaterials: ReadonlyMap<string, Material> =
+        sourceMaterialIds?.length
+          ? await deps.materials.findByIds(sourceMaterialIds)
+          : new Map<string, Material>();
+      const materials: EnabledMaterial[] = (sourceMaterialIds ?? []).flatMap(
+        (id) => {
+          const material = currentMaterials.get(id);
+          return material?.active && material.available
+            ? [
+                {
+                  id: material.id,
+                  name: material.name,
+                  active: material.active,
+                  available: material.available,
+                },
+              ]
+            : [];
+        },
+      );
       const sourceCapacities = new Map(
         source?.turnos.map((turno) => [turno.turnoId, turno.capacity]),
       );
@@ -226,7 +250,7 @@ export function createWorkshopPeriodsService(
             turnoActive: true,
             capacity: sourceCapacities.get(turno.id) ?? turno.defaultCapacity,
           })),
-        materials: [],
+        materials,
         snapshot: {
           teacher: {
             id: teacher.id,
@@ -247,8 +271,12 @@ export function createWorkshopPeriodsService(
       const loaded = await load(actor, id);
       if (!loaded.ok) return loaded;
       if (closed(loaded.value.value)) return err({ kind: "period-closed" });
-      if (draft.projectImages.length || draft.materialIds.length)
-        return err({ kind: "unavailable" });
+      if (draft.projectImages.length) return err({ kind: "unavailable" });
+      if (new Set(draft.materialIds).size !== draft.materialIds.length)
+        return err({
+          kind: "invalid",
+          issues: [{ field: "materialIds", code: "duplicate" }],
+        });
       const fee = parseWholePesos(draft.fee.trim());
       const issues: {
         field: PeriodField;
@@ -259,6 +287,7 @@ export function createWorkshopPeriodsService(
           | "too-many-decimals"
           | "out-of-range"
           | "unknown-reference"
+          | "not-selectable"
           | "percentage-not-applicable";
       }[] = [];
       if (!fee.ok) issues.push({ field: "fee", code: fee.error });
@@ -302,6 +331,25 @@ export function createWorkshopPeriodsService(
           field: "snapshotPercentage",
           code: "percentage-not-applicable",
         });
+      const selectedMaterials: ReadonlyMap<string, Material> = draft.materialIds
+        .length
+        ? await deps.materials.findByIds(draft.materialIds)
+        : new Map<string, Material>();
+      const materials: EnabledMaterial[] = [];
+      for (const id of draft.materialIds) {
+        const material = selectedMaterials.get(id);
+        if (!material)
+          issues.push({ field: "materialIds", code: "unknown-reference" });
+        else if (!material.active || !material.available)
+          issues.push({ field: "materialIds", code: "not-selectable" });
+        else
+          materials.push({
+            id: material.id,
+            name: material.name,
+            active: material.active,
+            available: material.available,
+          });
+      }
       if (issues.length || !fee.ok || (percentage && !percentage.ok))
         return err({ kind: "invalid", issues });
       const capacities = new Map(
@@ -314,7 +362,7 @@ export function createWorkshopPeriodsService(
         ...loaded.value.value,
         fee: fee.value,
         materialsRequired: draft.materialsRequired,
-        materials: loaded.value.value.materials,
+        materials,
         project: {
           title: draft.projectTitle.trim(),
           description: draft.projectDescription.trim(),

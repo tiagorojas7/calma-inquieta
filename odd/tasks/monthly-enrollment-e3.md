@@ -28,15 +28,15 @@ Previously accepted decisions remain binding: pending orders do not reserve seat
 
 ## Tasks
 
-| ID  | Work unit                                                                        | Status      | Evidence                                                                                                       |
-| --- | -------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| T1  | Add RED admin-service tests for authorization, confirmation and cancellation     | done        | Valid behavioral RED: 6 failures / 22 tests after the first partial writer was rejected                        |
-| T2  | Extend repository/ledger contracts and fakes for atomic admin outcomes           | done        | `AdminEnrollmentStore` is the atomic application boundary; reusable seat-ledger contract added                 |
-| T3  | Implement confirmation and cancellation behavior                                 | done        | One captured clock instant, validation, idempotence, audit and rollback covered                                |
-| T4  | Add materials transitions, bulk behavior and fake concurrency                    | done        | Bulk isolation, 8-for-3 capacity, double-click and independent-turno cases covered                             |
-| T5  | Add the unavailable placeholder and coordinate AppServices registration after F6 | done        | Composition RED observed, then `AppServices.enrollments` fails closed; F6 hunks documented as disjoint         |
-| T6  | Run independent verification and full gates                                      | done        | Independent verifier PASS; 175 module tests, 12 fake tests, typecheck, lint, format, build and diff-check pass |
-| T7  | Commit, publish and prepare the E3 PR                                            | in progress | Work-unit commit `6040b2d`; push and PR remain owner decisions                                                 |
+| ID  | Work unit                                                                        | Status | Evidence                                                                                                       |
+| --- | -------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| T1  | Add RED admin-service tests for authorization, confirmation and cancellation     | done   | Valid behavioral RED: 6 failures / 22 tests after the first partial writer was rejected                        |
+| T2  | Extend repository/ledger contracts and fakes for atomic admin outcomes           | done   | `AdminEnrollmentStore` is the atomic application boundary; reusable seat-ledger contract added                 |
+| T3  | Implement confirmation and cancellation behavior                                 | done   | One captured clock instant, validation, idempotence, audit and rollback covered                                |
+| T4  | Add materials transitions, bulk behavior and fake concurrency                    | done   | Bulk isolation, 8-for-3 capacity, double-click and independent-turno cases covered                             |
+| T5  | Add the unavailable placeholder and coordinate AppServices registration after F6 | done   | Composition RED observed, then `AppServices.enrollments` fails closed; F6 hunks documented as disjoint         |
+| T6  | Run independent verification and full gates                                      | done   | Independent verifier PASS; 175 module tests, 12 fake tests, typecheck, lint, format, build and diff-check pass |
+| T7  | Commit, publish and prepare the E3 PR                                            | done   | Commits `6040b2d`, `b0aa1f3`; PR #83 opened with owner-approved `size:exception`                               |
 
 ## Parallel ownership
 
@@ -53,3 +53,4 @@ Previously accepted decisions remain binding: pending orders do not reserve seat
 - L5 (2026-10-21). Composition coordination: F6 wiring is isolated in `973913c`; the other terminal explicitly released adjacent hunks. `request-services.enrollments.test.ts` failed RED because `services.enrollments` was undefined, then passed after adding the fail-closed placeholder.
 - L6 (2026-10-21). Independent verification found a same-turno rollback race, a bulk placeholder shape mismatch, a missing fake `AppServices` member and lint-safe Córdoba formatting. Behavioral regressions were added before remediation; the unavailable placeholder also gained authorization-first coverage after a second verifier finding. Final independent verification passed: focused 33, module 175 and fake 12 tests; typecheck, lint, format, build and diff-check all passed. Production remains within budget at 338 added / 4 removed lines.
 - L7 (2026-10-21). Work-unit commit: `6040b2d feat(enrollments): add admin order operations`.
+- L8 (2026-10-21). Evidence commit `b0aa1f3`; branch published and PR #83 opened with the owner-approved `size:exception`.

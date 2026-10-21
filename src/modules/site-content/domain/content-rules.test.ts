@@ -266,15 +266,15 @@ describe("validateSiteContent", () => {
       ...content,
       comingSoon: {
         ...content.comingSoon,
-        intensivos: {
-          ...content.comingSoon.intensivos,
+        "eventos-privados": {
+          ...content.comingSoon["eventos-privados"],
           seo: { title: "", description: "" },
         },
       },
     });
 
     expect(issues).toEqual([
-      { id: "coming-soon/intensivos", rule: "empty-seo" },
+      { id: "coming-soon/eventos-privados", rule: "empty-seo" },
     ]);
   });
 

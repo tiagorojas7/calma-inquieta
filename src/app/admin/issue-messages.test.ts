@@ -3,11 +3,13 @@ import type { IssueCode } from "~/modules/_shared";
 import { findCopyViolations } from "~/modules/site-content";
 import {
   ISSUE_MESSAGES,
+  TURNO_FIELD_MESSAGES,
   WORKSHOP_FIELD_MESSAGES,
   fieldErrors,
   issueMessage,
   publishRulesMessage,
   transitionRefusedMessage,
+  turnoRulesMessage,
   workshopRuleMessage,
 } from "./issue-messages";
 
@@ -132,6 +134,61 @@ describe("workshop messages", () => {
           Object.values(byCode),
         ),
       ),
+    ).toEqual([]);
+  });
+});
+
+describe("turno messages", () => {
+  it("words each turno field issue the service can report", () => {
+    expect(
+      fieldErrors(
+        [
+          { field: "label", code: "duplicate" },
+          { field: "weekday", code: "out-of-range" },
+          { field: "timeRange", code: "invalid-format" },
+          { field: "defaultCapacity", code: "out-of-range" },
+        ],
+        TURNO_FIELD_MESSAGES,
+      ),
+    ).toEqual({
+      label: "Ya hay un turno con ese nombre en este taller.",
+      weekday: "Elegí un día de la semana.",
+      timeRange:
+        "Ingresá los horarios con el formato HH:MM, por ejemplo 10:00.",
+      defaultCapacity: "Ingresá un número entero de 1 a 500.",
+    });
+  });
+
+  it("keeps the end-before-start text for the time range, and the duplicate-free codes generic", () => {
+    expect(
+      fieldErrors(
+        [
+          { field: "timeRange", code: "end-before-start" },
+          { field: "label", code: "required" },
+        ],
+        TURNO_FIELD_MESSAGES,
+      ),
+    ).toEqual({
+      timeRange: "El horario de fin tiene que ser posterior al de inicio.",
+      label: "Completá este campo.",
+    });
+  });
+
+  it("explains why a turno cannot be retired or deleted", () => {
+    expect(turnoRulesMessage(["last-active-turno-of-published"])).toBe(
+      "Es el único turno activo de un taller publicado. Pausá el taller primero.",
+    );
+    expect(turnoRulesMessage(["turno-used"])).toBe(
+      "Algún mes ya usó este turno, así que no se puede eliminar. Retiralo para que no se ofrezca más.",
+    );
+    expect(
+      findCopyViolations([
+        ...Object.values(TURNO_FIELD_MESSAGES).flatMap((byCode) =>
+          Object.values(byCode),
+        ),
+        turnoRulesMessage(["turno-used"]),
+        turnoRulesMessage(["last-active-turno-of-published"]),
+      ]),
     ).toEqual([]);
   });
 });

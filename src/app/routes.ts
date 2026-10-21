@@ -13,6 +13,7 @@ export default [
     route("talleres", "routes/admin/workshops.tsx"),
     route("talleres/nuevo", "routes/admin/workshop-new.tsx"),
     route("talleres/:id", "routes/admin/workshop-detail.tsx"),
+    route("talleres/:id/turnos", "routes/admin/turnos.tsx"),
     route("profesores", "routes/admin/teachers.tsx"),
     route("profesores/nuevo", "routes/admin/teacher-new.tsx"),
     route("profesores/:id", "routes/admin/teacher-detail.tsx"),

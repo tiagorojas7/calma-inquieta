@@ -13,6 +13,7 @@ import {
   parseWorkshopIntent,
 } from "~/app/admin/workshop-form-data";
 import { Heading } from "~/app/ui/atoms/heading";
+import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { WorkshopForm, WorkshopStatePanel } from "~/app/ui/admin/workshop-form";
 import { requireAdmin } from "./require-admin";
@@ -98,6 +99,14 @@ export default function AdminWorkshopDetail() {
         activeTurnos={workshop.activeTurnos}
         error={stateError}
       />
+      <div>
+        <AdminButtonLink
+          href={`${LIST}/${workshop.id}/turnos`}
+          variant="outline"
+        >
+          {copy.turnos.manage}
+        </AdminButtonLink>
+      </div>
       <WorkshopForm
         key={workshop.id}
         values={formRejected?.values ?? workshop.values}

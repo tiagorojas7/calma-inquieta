@@ -41,6 +41,10 @@ export interface StoredOrder extends Omit<OrderDraft, "year"> {
   /** `CI-YYYY-NNNN`, assigned by the repository inside the create transaction. */
   readonly number: string;
   readonly status: OrderStatus;
+  readonly paidAt?: Date;
+  readonly paidAmount?: Money;
+  readonly confirmedBy?: string;
+  readonly paymentNote?: string;
 }
 
 export type DuplicateOrder = { readonly kind: "duplicate-order" };
@@ -58,6 +62,8 @@ export interface TransitionContext {
   readonly actor: string;
   readonly at: Date;
   readonly note?: string;
+  readonly paidAt?: Date;
+  readonly paidAmount?: Money;
 }
 
 /**
@@ -70,6 +76,10 @@ export interface OrderRepository {
   create(draft: OrderDraft): Promise<Result<StoredOrder, DuplicateOrder>>;
   /** The only public lookup key; an order number never matches. */
   findByPublicId(publicId: string): Promise<StoredOrder | null>;
+  /** Admin-only lookup; implementations later lock this row with its transition. */
+  findForAdmin(orderId: string): Promise<StoredOrder | null>;
+  /** E3 fake read; E4 maps filters and pagination to persistence. */
+  listForAdmin(): Promise<readonly StoredOrder[]>;
   /** Moves the status along the transitions table and appends one audit row. */
   transitionOrder(
     orderId: string,

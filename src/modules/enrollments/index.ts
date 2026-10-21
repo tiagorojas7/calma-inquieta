@@ -5,6 +5,21 @@ export * from "./domain/student-input";
 export * from "./domain/whatsapp-message";
 export { buildOrderWhatsAppLink } from "./application/order-whatsapp-link";
 export {
+  createAdminEnrollmentService,
+  createUnavailableAdminEnrollmentService,
+  type AdminEnrollmentServiceDeps,
+  type AdminEnrollmentUseCases,
+  type ConfirmPaymentInput,
+  type CancelEnrollmentInput,
+} from "./application/admin-enrollment-service";
+export type {
+  AdminEnrollmentDetail,
+  AdminEnrollmentPeriodLookup,
+  AdminEnrollmentStore,
+  AdminListItem,
+  AdminListQuery,
+} from "./application/admin-enrollment-store";
+export {
   createPublicEnrollmentService,
   type OfferGateError,
   type PublicEnrollmentServiceDeps,

@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { Money } from "~/modules/_shared";
 import type { PublicIntensivo } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
@@ -16,6 +17,16 @@ import PublicLayout, {
   ErrorBoundary,
   loader as layoutLoader,
 } from "./public-layout";
+
+function parseJson(text: string): unknown {
+  return JSON.parse(text);
+}
+
+function pesos(value: number): Money {
+  const money = Money.fromCentavos(value * 100);
+  if (!money.ok) throw new Error("invalid test money");
+  return money.value;
+}
 
 async function renderDetail(
   intensivos: readonly PublicIntensivo[],
@@ -199,5 +210,71 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
     ).toBeInTheDocument();
     expect(container.textContent).not.toContain("secret-db-detail");
     spy.mockRestore();
+  });
+
+  describe("structured data", () => {
+    const scripts = (container: HTMLElement) =>
+      Array.from(
+        container.ownerDocument.querySelectorAll(
+          'script[type="application/ld+json"]',
+        ),
+      );
+
+    it("embeds exactly one Event with the Cordoba offsets", async () => {
+      const { container } = await renderDetail([full]);
+      const found = scripts(container);
+      expect(found).toHaveLength(1);
+      expect(parseJson(found[0]?.textContent ?? "")).toMatchObject({
+        "@type": "Event",
+        name: "Intensivo Demo",
+        startDate: "2026-11-14T10:00:00-03:00",
+        endDate: "2026-11-14T12:00:00-03:00",
+        offers: {
+          price: "58000",
+          availability: "https://schema.org/LimitedAvailability",
+        },
+        performer: { name: "Docente Demo" },
+        image: [expect.stringMatching(/imagenes.a.jpg$/u), expect.any(String)],
+      });
+    });
+
+    it("keeps the deposit and private fields out of the script", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({
+          ...full,
+          deposit: pesos(15_000),
+          price: pesos(45_000),
+        }),
+      ]);
+      const text = scripts(container)[0]?.textContent ?? "";
+      expect(text).toContain("45000");
+      expect(text).not.toContain("15000");
+      expect(text).not.toContain("SoldOut");
+    });
+
+    it("maps a paused intensivo to OutOfStock", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({ ...full, status: "paused" }),
+      ]);
+      expect(parseJson(scripts(container)[0]?.textContent ?? "")).toMatchObject(
+        {
+          offers: { availability: "https://schema.org/OutOfStock" },
+        },
+      );
+    });
+
+    it("escapes a script-breaking name so it cannot close the script", async () => {
+      const { container } = await renderDetail([
+        buildPublicIntensivo({ ...full, name: "</script><b>x" }),
+      ]);
+      expect(scripts(container)).toHaveLength(1);
+      expect(scripts(container)[0]?.textContent).not.toContain("<");
+    });
+
+    it("emits no Event for an unavailable slug", async () => {
+      const { container } = await renderDetail([], "no-existe");
+      await screen.findByRole("heading", { name: "Página no encontrada" });
+      expect(scripts(container)).toHaveLength(0);
+    });
   });
 });

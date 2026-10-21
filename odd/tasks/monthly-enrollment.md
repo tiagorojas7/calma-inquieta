@@ -17,7 +17,8 @@
 
 - [x] E0 Order domain core (S1-S6), route inline. RED, GREEN and gate evidence in the Log.
 - [x] E1 Cart, pricing, wa.me text (S3 and the cart and wa.me rules of `materials-cart` and `public-enrollment`), route inline, branch `feat/monthly-enrollment-e1-cart`. Evidence in the Log.
-- E2-E10: owned by the coordinator, not in this lane.
+- [x] E2 Public enrollment application (S2, S3, S4, S5 and the public-enrollment, materials-cart and orders rules at application level), route inline, branch `feat/monthly-enrollment-e2-public`. Evidence in the Log.
+- E3-E10: owned by the coordinator, not in this lane.
 
 ## Log
 
@@ -27,3 +28,6 @@
 - L4 Risk: none (new module, no existing code touched). Next: E1 (cart, pricing, wa.me text) by the coordinator.
 - L5 E1 scope: `domain/cart-core.ts` (quantity 1-20, merge, 30 lines, `priceCart` reusing `priceOrder`; errors `materials-required`, `invalid-price`, `invalid-fee`, `invalid-total`) and `domain/whatsapp-message.ts` (pure text, 1.200 cap, `formatPesos`). `material-not-offered` and `material-unavailable` need B9 offers and belong to E2 behind a port. Assumptions: a zero unit price is accepted, a negative one is `invalid-price`; if even the header exceeds the cap, a minimal message with number and total is used.
 - L6 E1 evidence: RED both new test files failed to import (modules absent); GREEN `pnpm test src/modules/enrollments` 5 files, 115 tests. Other gates in the PR. Risk: none (new pure code reusing `Money` and `priceOrder`; money arithmetic is covered by tests).
+- L7 E2 scope: `application/{enrollment-repository,offer-lookup,offered-materials,seat-ledger,random-bytes}.ts` ports, `public-enrollment-service.ts` (getOffer, requestEnrollment, getOrderByPublicId), `order-whatsapp-link.ts` (reuses `site-content` `buildWhatsAppUrl`/`toWhatsAppDigits`), fakes `src/testing/fakes/enrollments-*.ts`, contract skeleton `src/testing/contracts/order-repository.contract.ts` (E4 runs it on Drizzle and adds parallel creators, CHECKs and list filters).
+- L8 E2 decisions: `material-not-offered` and `material-unavailable` live behind `OfferedMaterialsLookup`, which returns deactivated offers too; the offer lookup returns the offer for the requested month (`period: null` is `period-closed`); a filled honeypot answers `ok` with a decoy view and an unstored public id, before any lookup; `SeatLedger` is read-only in E2 (claim and release arrive in E3); `OrderRepository.transitionOrder` is driven by the E0 `transition` table and writes audit only on success.
+- L9 E2 evidence: RED `pnpm test src/modules/enrollments/application src/testing/fakes/enrollments` failed 3/3 files (modules absent); GREEN with architecture tests 10 files, 180 tests. Typecheck caught parameter properties (`erasableSyntaxOnly`) in a fake and lint an unused destructured field; both fixed. Risk: none (new application code and fakes; no existing code, schema or public API touched).

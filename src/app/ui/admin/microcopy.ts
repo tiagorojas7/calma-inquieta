@@ -94,6 +94,82 @@ export const adminMicrocopy = {
         `Sigue asignado a: ${names}. Las asignaciones y los períodos existentes lo conservan.`,
     },
   },
+  workshops: {
+    title: "Talleres",
+    newTitle: "Nuevo taller",
+    editTitle: "Editar taller",
+    newAction: "Nuevo taller",
+    filterLabel: "Mostrar talleres",
+    filters: {
+      vigentes: "Vigentes",
+      borradores: "Borradores",
+      publicados: "Publicados",
+      pausados: "Pausados",
+      archivados: "Archivados",
+    },
+    columns: {
+      name: "Nombre",
+      teacher: "Profesor",
+      state: "Estado",
+      turnos: "Turnos activos",
+    },
+    noTeacher: "Sin profesor",
+    empty: {
+      title: "Todavía no hay talleres",
+      message: "Creá el primero para empezar a armar el calendario.",
+    },
+    form: {
+      name: "Nombre",
+      slug: "Enlace",
+      slugHint:
+        "Letras minúsculas, números y guiones. Si lo dejás vacío se arma con el nombre.",
+      confirmSlugChange:
+        "Entiendo que cambiar el enlace de un taller publicado rompe su dirección actual",
+      summary: "Resumen",
+      summaryHint: "Una frase para las tarjetas del sitio.",
+      description: "Descripción",
+      technique: "Técnica",
+      defaultFee: "Arancel mensual (en pesos)",
+      defaultFeeHint:
+        "Solo pesos enteros, sin puntos ni centavos. Ejemplo: 12000.",
+      teacher: "Profesor",
+      teacherPlaceholder: "Sin profesor",
+      percentage: "Porcentaje acordado",
+      percentageHint:
+        "Solo para profesores de terceros, de 0 a 100 con hasta dos decimales. Ejemplo: 35,5.",
+      save: "Guardar",
+      cancel: "Cancelar",
+      saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    state: {
+      status: "Estado",
+      turnos: (count: number) =>
+        count === 1 ? "1 turno activo" : `${String(count)} turnos activos`,
+      publish: "Publicar",
+      resume: "Volver a publicar",
+      pause: "Pausar",
+      archive: "Archivar",
+      restore: "Restaurar como borrador",
+      delete: "Eliminar borrador",
+      confirm: {
+        pause: {
+          title: "¿Pausar el taller?",
+          message:
+            "Sigue visible, pero deja de aceptar nuevas solicitudes hasta que lo vuelvas a publicar.",
+        },
+        archive: {
+          title: "¿Archivar el taller?",
+          message:
+            "Deja de verse en el sitio. Sus turnos, períodos e historial se conservan y podés restaurarlo.",
+        },
+        delete: {
+          title: "¿Eliminar el borrador?",
+          message:
+            "Se elimina para siempre junto con sus turnos. No se puede deshacer.",
+        },
+      },
+    },
+  },
   errors: {
     generic: {
       title: "Algo salió mal",

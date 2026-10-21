@@ -1,10 +1,13 @@
 import { RouterContextProvider } from "react-router";
 import { servicesContext } from "~/app/context";
 import type { AppServices } from "~/composition/request-services";
-import { createTeachersService } from "~/modules/teachers";
+import { createTeacherLookup, createTeachersService } from "~/modules/teachers";
+import { createMonthlyWorkshopsService } from "~/modules/workshops";
 import { adminAccessFor, deniedAccess } from "~/testing/fakes/admin-actor";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
+import { InMemoryTurnoRepository } from "~/testing/fakes/in-memory-turno-repository";
 import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-repository";
 
 export const ORIGIN = "https://panel.example.test";
@@ -36,6 +39,29 @@ export function teachersFixture() {
     newId: () => `t${String(++next)}`,
   });
   return { repository, service };
+}
+
+/**
+ * Real monthly workshops service over in-memory repositories, ids w1, w2, ...
+ * Teachers come from the same fixture as the teachers screens (ids t1, ...).
+ * No period uses a turno and no workshop has periods.
+ */
+export function workshopsFixture() {
+  const teachers = teachersFixture();
+  const repository = new InMemoryMonthlyWorkshopRepository();
+  const turnos = new InMemoryTurnoRepository(repository);
+  let next = 0;
+  const service = createMonthlyWorkshopsService({
+    repository,
+    teachers: createTeacherLookup(teachers.repository),
+    media: { findAssets: () => Promise.resolve(new Map()) },
+    turnos,
+    turnoUsage: { isUsed: () => Promise.resolve(false) },
+    periods: { hasPeriods: () => Promise.resolve(false) },
+    clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
+    newId: () => `w${String(++next)}`,
+  });
+  return { teachers, repository, turnos, service };
 }
 
 /**

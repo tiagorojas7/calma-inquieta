@@ -1,4 +1,6 @@
 import type { FieldIssue, IssueCode } from "~/modules/_shared";
+import type { WorkshopPublishRule, WorkshopStatus } from "~/modules/workshops";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 
 /**
  * Spanish (es-AR, voseo) admin message for each validation issue code. The
@@ -27,13 +29,66 @@ export function issueMessage(code: IssueCode): string {
   return ISSUE_MESSAGES[code];
 }
 
-/** One message per field: the first issue reported for it wins. */
+/** Field-level wording that replaces the generic text for one code. */
+export type FieldMessages<F extends string> = Partial<
+  Record<F, Partial<Record<IssueCode, string>>>
+>;
+
+/**
+ * One message per field: the first issue reported for it wins. `overrides`
+ * words a code more precisely for one field (a duplicate slug is not a
+ * duplicate name).
+ */
 export function fieldErrors<F extends string>(
   issues: readonly FieldIssue<F>[],
+  overrides: FieldMessages<F> = {},
 ): Partial<Record<F, string>> {
   const errors: Partial<Record<F, string>> = {};
   for (const issue of issues) {
-    errors[issue.field] ??= issueMessage(issue.code);
+    errors[issue.field] ??=
+      overrides[issue.field]?.[issue.code] ?? issueMessage(issue.code);
   }
   return errors;
+}
+
+/** Monthly workshop fields whose generic text would mislead. */
+export const WORKSHOP_FIELD_MESSAGES = {
+  slug: {
+    duplicate: "Ese enlace ya lo usa otro taller.",
+    "confirmation-required":
+      "Cambiar el enlace de un taller publicado rompe su dirección actual. Marcá la confirmación para guardar.",
+  },
+  teacherId: {
+    required: "Elegí un profesor para poder cargar el porcentaje.",
+  },
+} as const satisfies FieldMessages<string>;
+
+const RULE_MESSAGES = {
+  name: "un nombre",
+  slug: "un enlace válido",
+  teacher: "un profesor asignado",
+  percentage: "el porcentaje acordado",
+  "default-fee": "un arancel mensual",
+  "active-turno": "al menos un turno activo",
+  "draft-without-periods":
+    "Solo se elimina un borrador que no tenga ningún período. Archivalo si ya no lo usás.",
+} as const;
+
+export function workshopRuleMessage(rule: keyof typeof RULE_MESSAGES): string {
+  return RULE_MESSAGES[rule];
+}
+
+/** Names every unmet publish rule, never just the first. */
+export function publishRulesMessage(
+  rules: readonly WorkshopPublishRule[],
+): string {
+  return `Para publicar falta: ${rules.map(workshopRuleMessage).join(", ")}.`;
+}
+
+export function transitionRefusedMessage(
+  from: WorkshopStatus,
+  to: WorkshopStatus,
+): string {
+  const names = adminMicrocopy.status;
+  return `No se puede pasar de ${names[from]} a ${names[to]}.`;
 }

@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { IssueCode } from "~/modules/_shared";
 import { findCopyViolations } from "~/modules/site-content";
-import { ISSUE_MESSAGES, fieldErrors, issueMessage } from "./issue-messages";
+import {
+  ISSUE_MESSAGES,
+  WORKSHOP_FIELD_MESSAGES,
+  fieldErrors,
+  issueMessage,
+  publishRulesMessage,
+  transitionRefusedMessage,
+  workshopRuleMessage,
+} from "./issue-messages";
 
 const ALL_CODES: readonly IssueCode[] = [
   "required",
@@ -61,5 +69,69 @@ describe("fieldErrors", () => {
 
   it("is empty when there are no issues", () => {
     expect(fieldErrors([])).toEqual({});
+  });
+});
+
+describe("workshop messages", () => {
+  it("words every publish rule, the refused transition and the delete rule in voseo", () => {
+    const rules = [
+      "name",
+      "slug",
+      "teacher",
+      "percentage",
+      "default-fee",
+      "active-turno",
+    ] as const;
+    for (const rule of rules)
+      expect(workshopRuleMessage(rule).length).toBeGreaterThan(5);
+    expect(workshopRuleMessage("active-turno")).toBe(
+      "al menos un turno activo",
+    );
+    expect(workshopRuleMessage("draft-without-periods")).toContain("período");
+    expect(
+      findCopyViolations(
+        [...rules, "draft-without-periods" as const].map(workshopRuleMessage),
+      ),
+    ).toEqual([]);
+  });
+
+  it("lists every unmet publish rule in one sentence", () => {
+    expect(publishRulesMessage(["teacher", "active-turno"])).toBe(
+      "Para publicar falta: un profesor asignado, al menos un turno activo.",
+    );
+  });
+
+  it("words a refused transition with Spanish state names", () => {
+    expect(transitionRefusedMessage("draft", "paused")).toBe(
+      "No se puede pasar de Borrador a Pausado.",
+    );
+  });
+
+  it("uses a slug-specific text for the codes that name a name or a choice", () => {
+    expect(
+      fieldErrors(
+        [
+          { field: "slug", code: "duplicate" },
+          { field: "name", code: "duplicate" },
+        ],
+        WORKSHOP_FIELD_MESSAGES,
+      ),
+    ).toEqual({
+      slug: "Ese enlace ya lo usa otro taller.",
+      name: "Ya existe uno activo con el mismo nombre.",
+    });
+    expect(
+      fieldErrors(
+        [{ field: "slug", code: "confirmation-required" }],
+        WORKSHOP_FIELD_MESSAGES,
+      ).slug,
+    ).toContain("Marcá la confirmación");
+    expect(
+      findCopyViolations(
+        Object.values(WORKSHOP_FIELD_MESSAGES).flatMap((byCode) =>
+          Object.values(byCode),
+        ),
+      ),
+    ).toEqual([]);
   });
 });

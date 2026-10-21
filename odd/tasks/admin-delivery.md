@@ -1,7 +1,7 @@
 # Admin delivery slices (change 3 admin-catalog, FRONT)
 
 - Objective: deliver the FRONT slices F0a, F1, F2, F3, F4, F6, F8, F7, F5 of change 3 `admin-catalog` (F0b merged).
-- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f0a-shell`.
+- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f3-workshops`.
 - TDD strict (`AGENTS.md`); runner `corepack pnpm test <path>`.
 
 ## Specs
@@ -20,8 +20,9 @@
 
 - F0a: S-F0a | inline (one writer, sequential) | done locally, PR pending | commit: see PR
 - F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
-- F2: S-F2 (teachers admin screens) | inline | done locally, PR pending (stacked on F1, #71, and F0a, #67) | commit: see PR
-- F3, F4, F6, F8, F7, F5: pending.
+- F2: S-F2 (teachers admin screens) | inline | done, PR #75 (stacked on F1 and F0a) | commit: see PR
+- F3: S-F3 (monthly workshops admin screens) | inline | done locally, PR pending (stacked on F2, #75) | commit: see PR
+- F4, F6, F8, F7, F5: pending.
 
 ## Log
 
@@ -38,3 +39,8 @@
 - F2: `createRequestServices` now wires the real `createTeachersService` over the Drizzle repository (it was the unavailable placeholder, so every teacher screen would have answered 503). Pinned by `request-services.teachers.test.ts`.
 - F2: layer 1 rule honoured: forms are native `<form method="post" noValidate>` (never `Form` or fetchers), links are plain `<a>`. Latent defect found and fixed: `AdminEmptyState` used the atom `ButtonLink`, which renders a router `Link` for internal hrefs (client navigation, so `.data` requests the gate refuses); it now uses the new plain-anchor `AdminButtonLink`. Pinned by `document-navigation.ui.test.tsx` (click not intercepted) and `teacher-form.ui.test.tsx` (submit not prevented, method post).
 - F2 deviations: (1) teachers have no photo in the spec, so `ImageField` is not mounted here (first consumer is workshops, F3); (2) archive has no confirm dialog (it needs client state; archive is reversible via Reactivar, and the warning appears on the page after archiving); (3) the archive warning names activities through `monthlyWorkshops.listAssignmentsOfTeacher`, which today returns empty lists and is `unavailable` in composition until workshops are wired: the loader treats a read failure as "no warning" and the UI/loader are tested with a mocked service; intensives are included in the names; (4) after archive or reactivate the redirect goes to the teacher page (to show the warning), after create or save to the list.
+- F3 specs covered (openspec `monthly-workshops`, `admin-shell`): "Workshop record" (name, slug, summary, description, technique, default fee, teacher, percentage; "A new workshop MUST start as `draft`"); "Slug rules" ("generated from the name when not provided", "changing it MUST require an explicit confirmation" for a published workshop); "Teacher assignment with agreed percentage" (one teacher, percentage for `de terceros`); "Lifecycle states and transitions" and "Publish rules" ("A refusal MUST name every unmet rule"); "Archive instead of delete" (delete only a draft without periods); "Listing and filter" ("name, teacher, status and number of active turnos, filterable by status, and MUST exclude archived workshops by default"); "Admin-only access". Routes: `/admin/talleres?estado=vigentes|borradores|publicados|pausados|archivados`, `/admin/talleres/nuevo`, `/admin/talleres/:id`. Turnos are F4 (`/admin/talleres/:id/turnos`), periods F5: not here.
+- F3: `createRequestServices` wired `monthlyWorkshops` to the unavailable placeholder, so every workshop screen would have answered 503. It now builds the real `createMonthlyWorkshopsService` over the Drizzle monthly workshop, turno and period repositories (period repo only for the `TurnoUsageLookup` and `WorkshopPeriodLookup` seams). Pinned by `request-services.monthly-workshops.test.ts`. `workshopPeriods` stays unavailable (F5).
+- F3: `issue-messages.ts` extended: `fieldErrors` takes per-field overrides (`WORKSHOP_FIELD_MESSAGES`: a duplicate slug is "Ese enlace ya lo usa otro taller.", the slug confirmation, the teacher-required text) and the workshop rule codes get Spanish texts (`publishRulesMessage` lists every unmet rule, `transitionRefusedMessage` names the states in Spanish, the delete rule).
+- F3: layer 1 rule honoured: every form is a native `<form method="post">` (the edit form with `noValidate`), links are plain anchors, no fetcher. Archive, pause and delete ask first through `ConfirmedSubmit`, which submits the same native form with `requestSubmit` after the `ConfirmDialog` (still a document post). Pinned in `workshop-form.ui.test.tsx`.
+- F3 deviations and gaps (owner action marked): (1) **images are not mounted.** `MonthlyWorkshopsService.create/update` answers `unavailable` when `images` is not empty and `get` returns `images: []`, because B4 never persisted the gallery (no `workshop_image` repository code) and `src/modules/**` is outside this lane. Mounting `ImageField` would turn every save with a photo into a 503. The form posts `images: []`; once BACK persists the gallery, F3 follow-up wires `ImageField` + `uploadChosenImage` (owner/BACK action). (2) A workshop cannot reach `published` from the UI until F4 delivers turnos (publish needs an active turno); the edit page shows the active-turno count only, with no link to a route that does not exist yet. (3) The percentage field is always visible, with a hint that it applies to third-party teachers; the service decides (`percentage-not-applicable`, `required`). (4) A teacher archived after assignment stays selectable on that workshop, labelled "(archivado)", so saving does not silently unassign. (5) Publish, resume and restore have no confirmation (reversible, no public side effect beyond the intended one).

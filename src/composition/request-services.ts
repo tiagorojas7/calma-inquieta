@@ -38,6 +38,10 @@ import {
   type PublicCatalogService,
 } from "~/modules/workshops";
 import type { SuppliersService, MaterialsService } from "~/modules/materials";
+import {
+  createUnavailableAdminEnrollmentService,
+  type AdminEnrollmentUseCases,
+} from "~/modules/enrollments";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
@@ -67,6 +71,7 @@ export interface AppServices {
   readonly intensives: IntensivesService;
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
+  readonly enrollments: AdminEnrollmentUseCases;
   readonly publicCatalog: PublicCatalogService;
 }
 
@@ -156,6 +161,7 @@ export function createRequestServices(
     intensives: createUnavailableService<IntensivesService>(),
     suppliers: createUnavailableService<SuppliersService>(),
     materials: createUnavailableService<MaterialsService>(),
+    enrollments: createUnavailableAdminEnrollmentService(),
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {
       talleres: createPublicTalleresReader({

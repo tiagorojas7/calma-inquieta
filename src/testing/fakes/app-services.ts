@@ -4,6 +4,7 @@ import { createFakePublicCatalog } from "./fake-public-catalog";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { ok } from "~/modules/_shared";
 import { createSuppliersService } from "~/modules/materials";
+import { createUnavailableAdminEnrollmentService } from "~/modules/enrollments";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
 import {
@@ -68,6 +69,7 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/materials").MaterialsService
       >(),
+    enrollments: createUnavailableAdminEnrollmentService(),
     publicCatalog: createFakePublicCatalog(),
     ...overrides,
   };

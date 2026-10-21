@@ -43,8 +43,14 @@ export const MEDIA_RIGHTS: readonly RightsEntry[] = [
   handsOnly("img-20260325-wa0013"),
   handsOnly("img-20260411-wa0110"),
   handsOnly("img-20260306-wa0071"),
+  // The Inicio contact band: hands finishing a straw sunburst mirror (owner pick 2026-10-19).
+  handsOnly("img-20260425-wa0049"),
   // The ambient loop: hands and a forearm show from about the third second (owner decision 2026-10-19).
   handsOnly("vid-20261014-185300580"),
+  // The Quiénes somos intro loops (owner picks 2026-10-19): two show hands, the third a basket and no people.
+  handsOnly("vid-20261014-185243141"),
+  handsOnly("vid-20261014-185337211"),
+  noPeople("vid-20260922-200038255"),
   // Every other placed source shows no people.
   noPeople("img-20260819-174607732-hdr"),
   noPeople("img-20260530-wa0021"),
@@ -56,6 +62,13 @@ export const MEDIA_RIGHTS: readonly RightsEntry[] = [
   noPeople("img-20260511-wa0019"),
   noPeople("img-20260411-wa0013"),
   noPeople("img-20260530-wa0019"),
+  // The mobile hero backdrop. Its published 9:16 crop (left 240, width 731 of the 1200x1600 frame) excludes the seated person's leg at the bottom right of the original.
+  noPeople("img-20260718-wa0044"),
+  noPeople("img-20260420-wa0049"),
+  // Brand artwork: the studio logo, a drawing with no people.
+  noPeople("logo-calma-inquieta"),
+  // Kept although no asset uses it any more: the old backdrop source (replaced by wa0044).
+  noPeople("img-20260530-wa0030"),
 ];
 
 /** Sources that may never be registered, whatever the ledger says (owner decisions OD-5 and OD-7). */

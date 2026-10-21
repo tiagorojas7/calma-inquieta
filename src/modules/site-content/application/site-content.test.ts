@@ -58,14 +58,17 @@ describe("createSiteContent", () => {
     expect(home.testimonials.heading).toBe("Voces");
   });
 
-  it("getHomePage returns hero.image", async () => {
+  it("getHomePage returns the hero backdrop, collage, note and keywords", async () => {
     const base = buildRawSiteContent();
     const home = await content(base).getHomePage();
 
-    expect(home.hero.image).toEqual(base.home.hero.image);
-    expect(home.hero.image.mobile.src).not.toBe("");
-    expect(home.hero.image.desktop.src).not.toBe("");
-    expect(home.hero).not.toHaveProperty("images");
+    expect(home.hero.backdrop).toEqual(base.home.hero.backdrop);
+    expect(home.hero.collage).toEqual(base.home.hero.collage);
+    expect(home.hero.note).toBe(base.home.hero.note);
+    expect(home.hero.keywords).toEqual(base.home.hero.keywords);
+    expect(home.hero.backdrop.src).not.toBe("");
+    expect(home.hero.collage.length).toBeGreaterThanOrEqual(3);
+    expect(home.hero).not.toHaveProperty("image");
   });
 
   it("returns empty arrays, not null, for lists with no content", async () => {
@@ -126,6 +129,44 @@ describe("createSiteContent", () => {
     expect(about.gallery).toEqual(base.about.gallery);
   });
 
+  it("getAboutPage drops an intro image whose asset is pending", async () => {
+    const base = buildRawSiteContent();
+    const path = "/media/about/about-intro-pending-480.0a1b2c3d.webp";
+    const about = await content({
+      ...base,
+      about: {
+        ...base.about,
+        introImages: [
+          ...base.about.introImages,
+          { src: path, alt: "Una mesa", width: 480, height: 640 },
+        ],
+      },
+      media: {
+        assets: [
+          {
+            kind: "image",
+            id: "about-intro-pending",
+            sourceId: "about-intro-pending-source",
+            area: "about",
+            alt: "Una mesa",
+            format: "webp",
+            variants: [{ width: 480, height: 640, path }],
+          },
+        ],
+        rights: [
+          {
+            sourceId: "about-intro-pending-source",
+            people: "faces",
+            consent: "pending",
+          },
+        ],
+        excluded: [],
+      },
+    }).getAboutPage();
+
+    expect(about.introImages).toEqual(base.about.introImages);
+  });
+
   it("getContactPage drops an unpublishable photo", async () => {
     const base = buildRawSiteContent();
     const path = "/media/contact/contact-pending-480.0a1b2c3d.webp";
@@ -181,6 +222,40 @@ describe("createSiteContent", () => {
       },
     }).getContactPage();
     expect(granted.photo?.src).toBe(path);
+  });
+
+  it("getBrand returns the published logos and drops an unpublishable one", async () => {
+    const base = buildRawSiteContent();
+    expect(await content(base).getBrand()).toEqual(base.brand);
+
+    const path = "/media/brand/brand-logo-pending-56.0a1b2c3d.webp";
+    const pending = {
+      ...base,
+      brand: {
+        ...base.brand,
+        logoLight: { src: path, alt: "", width: 56, height: 59 },
+      },
+      media: {
+        ...base.media,
+        assets: [
+          ...base.media.assets,
+          {
+            kind: "image",
+            id: "brand-logo-pending",
+            sourceId: "brand-pending-source",
+            area: "brand",
+            alt: "",
+            decorative: true,
+            format: "webp",
+            variants: [{ width: 56, height: 59, path }],
+          },
+        ],
+      },
+    } satisfies RawSiteContent;
+
+    const withheld = await content(pending).getBrand();
+    expect(withheld.logo).toEqual(base.brand.logo);
+    expect(withheld).not.toHaveProperty("logoLight");
   });
 
   it("returns the contact page and the coming-soon page of the requested slug", async () => {
@@ -365,9 +440,45 @@ describe("createSiteContent ambient loop", () => {
     const home = await content(raw).getHomePage();
 
     expect(home.hero).not.toHaveProperty("loop");
-    expect(home.hero.image).toEqual(raw.home.hero.image);
+    expect(home.hero.backdrop).toEqual(raw.home.hero.backdrop);
+    expect(home.hero.collage).toEqual(raw.home.hero.collage);
     expect(home.hero.eyebrow).toBe(raw.home.hero.eyebrow);
     expect(home.hero.title).toEqual(raw.home.hero.title);
+  });
+
+  it("getAboutPage keeps the published intro loops and drops an unpublished one", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "none",
+      consent: "not-required",
+    });
+    const stray: AmbientLoop = {
+      ...loop,
+      sources: [
+        { src: "/media/video/stray-360.0a1b2c3d.mp4", type: "video/mp4" },
+      ],
+    };
+    const about = await content({
+      ...raw,
+      about: { ...raw.about, introLoops: [loop, stray] },
+    }).getAboutPage();
+
+    expect(about.introLoops).toEqual([loop]);
+  });
+
+  it("getAboutPage returns no intro loops when none is published, keeping the photos", async () => {
+    const raw = withLoop({
+      sourceId: "loop-source",
+      people: "faces",
+      consent: "pending",
+    });
+    const about = await content({
+      ...raw,
+      about: { ...raw.about, introLoops: [loop] },
+    }).getAboutPage();
+
+    expect(about.introLoops).toEqual([]);
+    expect(about.introImages).toEqual(raw.about.introImages);
   });
 
   it("getHomePage drops a loop with a single unpublishable source", async () => {

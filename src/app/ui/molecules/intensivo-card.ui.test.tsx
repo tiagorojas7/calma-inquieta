@@ -29,6 +29,10 @@ describe("IntensivoCard", () => {
       intensivoCardFixture.date.label,
     );
     expect(screen.getByRole("time")).toHaveTextContent("14");
+    expect(screen.getByRole("time").parentElement).toHaveClass(
+      "bg-sand-100",
+      "shadow-card",
+    );
     expect(screen.getByText("2 h 30 min")).toBeVisible();
     expect(screen.getByText("$ 45.000")).toBeVisible();
     expect(screen.getByText("Seña $ 15.000")).toBeVisible();
@@ -38,6 +42,11 @@ describe("IntensivoCard", () => {
     expect(
       screen.getByRole("link", { name: intensivoCardFixture.ctaLabel }),
     ).toHaveAttribute("href", intensivoCardFixture.href);
+    expect(screen.getByRole("article")).toHaveClass("card-hover", "h-full");
+    expect(
+      screen.getByRole("img", { name: intensivoCardFixture.image.alt })
+        .parentElement,
+    ).toHaveClass("card-hover-frame");
     await expectNoAxeViolations(container);
   });
 
@@ -62,6 +71,7 @@ describe("IntensivoCard", () => {
       ...intensivoCardPausedFixture,
       seats: "Cupo limitado",
     });
+    expect(screen.getByText("Pausado")).toHaveAttribute("data-tone", "notice");
     expect(screen.getByText("Inscripciones pausadas")).toBeVisible();
     expect(screen.queryByText("Cupo limitado")).toBeNull();
     expect(

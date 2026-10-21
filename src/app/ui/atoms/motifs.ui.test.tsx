@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { BotanicalSprig } from "./botanical-sprig";
 import { Butterfly } from "./butterfly";
 import { CordDivider, twinedStrand } from "./cord-divider";
 
@@ -125,5 +126,93 @@ describe("Butterfly", () => {
     const { container } = render(<Butterfly />);
 
     expect(container.firstElementChild).toHaveClass("size-7", "lg:size-10");
+  });
+});
+
+describe("Butterfly sizes", () => {
+  it.each([
+    ["lg", ["size-30", "lg:size-44"]],
+    ["xl", ["size-40", "lg:size-56"]],
+  ] as const)(
+    "the %s variant is 120 to 224 px and keeps the flight and wings",
+    (size, classes) => {
+      const { container } = render(<Butterfly size={size} />);
+
+      expect(container.firstElementChild).toHaveClass(
+        "motif-flight",
+        ...classes,
+      );
+      expect(container.firstElementChild).toHaveAttribute("data-size", size);
+      expect(container.querySelectorAll("g.motif-wing")).toHaveLength(2);
+    },
+  );
+
+  it("takes its own placement and drops the default corner anchor", () => {
+    const { container } = render(
+      <Butterfly size="lg" className="left-4 top-4" />,
+    );
+
+    expect(container.firstElementChild).toHaveClass("left-4", "top-4");
+    expect(container.firstElementChild).not.toHaveClass("-top-5", "right-6");
+  });
+
+  it("keeps the small default", () => {
+    const { container } = render(<Butterfly />);
+
+    expect(container.firstElementChild).toHaveAttribute("data-size", "sm");
+  });
+});
+
+describe("BotanicalSprig", () => {
+  it.each([
+    ["sm", "size-15"],
+    ["md", "size-25"],
+    ["lg", "size-37.5"],
+  ] as const)("the %s size is %s (60 to 150 px)", (size, cls) => {
+    const { container } = render(<BotanicalSprig size={size} />);
+
+    expect(container.firstElementChild).toHaveClass(cls);
+    expect(container.firstElementChild).toHaveAttribute("data-size", size);
+  });
+
+  it.each(["olive", "sage", "wheat"] as const)(
+    "the %s variant is a decorative inline svg with no text or request",
+    (variant) => {
+      const { container } = render(<BotanicalSprig variant={variant} />);
+      const root = container.firstElementChild;
+
+      expect(root).toHaveAttribute("aria-hidden", "true");
+      expect(root).toHaveClass("pointer-events-none");
+      expect(root).toHaveAttribute("data-variant", variant);
+      expect(container.querySelector("svg")).toHaveAttribute(
+        "focusable",
+        "false",
+      );
+      expect(container.querySelectorAll("path").length).toBeGreaterThan(4);
+      expect(container.textContent).toBe("");
+      expect(container.innerHTML).not.toMatch(/href=|src=|url\(/);
+    },
+  );
+
+  it("the three variants draw different sprigs", () => {
+    const drawn = (["olive", "sage", "wheat"] as const).map(
+      (variant) =>
+        render(<BotanicalSprig variant={variant} />).container.innerHTML,
+    );
+
+    expect(new Set(drawn).size).toBe(3);
+  });
+
+  it("draws light stems for dark bands", () => {
+    const { container } = render(<BotanicalSprig light />);
+
+    expect(container.firstElementChild).toHaveClass("text-sand-200");
+    expect(container.firstElementChild).not.toHaveClass("text-olive-800");
+  });
+
+  it("takes a placement class", () => {
+    const { container } = render(<BotanicalSprig className="rotate-12" />);
+
+    expect(container.firstElementChild).toHaveClass("rotate-12");
   });
 });

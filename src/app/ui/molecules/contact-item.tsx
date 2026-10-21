@@ -12,13 +12,17 @@ export function ContactItem({
   href?: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <Icon name={icon} aria-hidden="true" className="mt-1 text-clay-800" />
+    <div className="card-hover flex items-start gap-4 rounded-md bg-white p-4 shadow-card">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sand-100 text-clay-800">
+        <Icon name={icon} aria-hidden="true" />
+      </span>
       <div className="flex flex-col">
-        <span className="font-semibold text-ink-900">{label}</span>
+        <span className="font-display text-lg font-semibold text-ink-900">
+          {label}
+        </span>
         {href ? (
           <a
-            className="text-clay-800 underline underline-offset-4"
+            className="link-underline-rest link-underline text-clay-800"
             href={href}
             rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
           >

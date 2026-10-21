@@ -18,17 +18,17 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 600,
-        path: "/media/home/home-hero-mobile-480.13e77fb5.webp",
+        path: "/media/home/home-hero-mobile-480.672703ad.webp",
       },
       {
         width: 720,
         height: 900,
-        path: "/media/home/home-hero-mobile-720.58b52aa5.webp",
+        path: "/media/home/home-hero-mobile-720.7ae91450.webp",
       },
       {
         width: 1080,
         height: 1350,
-        path: "/media/home/home-hero-mobile-1080.a90a6d0e.webp",
+        path: "/media/home/home-hero-mobile-1080.72f4fab7.webp",
       },
     ],
   },
@@ -43,17 +43,37 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/home/home-hero-desktop-480.522bdb58.webp",
+        path: "/media/home/home-hero-desktop-480.614d48fa.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/home/home-hero-desktop-960.4c6a3278.webp",
+        path: "/media/home/home-hero-desktop-960.67e37134.webp",
       },
       {
         width: 1600,
         height: 2133,
-        path: "/media/home/home-hero-desktop-1600.2b820d5f.webp",
+        path: "/media/home/home-hero-desktop-1600.c887fe23.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-hero-backdrop",
+    sourceId: "img-20260718-wa0044",
+    area: "home",
+    alt: "Una lámpara de papel con forma de plumas, encendida bajo un techo de hormigón oscuro",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 854,
+        path: "/media/home/home-hero-backdrop-480.25017a19.webp",
+      },
+      {
+        width: 720,
+        height: 1280,
+        path: "/media/home/home-hero-backdrop-720.e9b93717.webp",
       },
     ],
   },
@@ -83,12 +103,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-espacio-480.985cb07e.webp",
+        path: "/media/about/about-espacio-480.dc7a11e1.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-espacio-960.3ff2bdc2.webp",
+        path: "/media/about/about-espacio-960.767da8bc.webp",
       },
     ],
   },
@@ -103,12 +123,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 853,
-        path: "/media/about/about-manos-aro-480.bd0049bc.webp",
+        path: "/media/about/about-manos-aro-480.1f164765.webp",
       },
       {
         width: 900,
         height: 1600,
-        path: "/media/about/about-manos-aro-900.b0f24b88.webp",
+        path: "/media/about/about-manos-aro-900.b5b155b6.webp",
       },
     ],
   },
@@ -123,12 +143,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-espejo-flecos-480.7fec60f0.webp",
+        path: "/media/about/about-espejo-flecos-480.964c03af.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-espejo-flecos-960.5e2a6c47.webp",
+        path: "/media/about/about-espejo-flecos-960.3b6f0749.webp",
       },
     ],
   },
@@ -143,12 +163,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-mesa-taller-480.b5a94a23.webp",
+        path: "/media/about/about-mesa-taller-480.e732a77f.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-mesa-taller-960.9a1180e2.webp",
+        path: "/media/about/about-mesa-taller-960.ba13f64e.webp",
       },
     ],
   },
@@ -163,12 +183,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-macrame-480.f48f6bc2.webp",
+        path: "/media/about/about-macrame-480.1ab16dbd.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-macrame-960.5fa0aeba.webp",
+        path: "/media/about/about-macrame-960.c94c34e5.webp",
       },
     ],
   },
@@ -183,12 +203,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-ceramica-manos-480.beadafdb.webp",
+        path: "/media/about/about-ceramica-manos-480.3a2e5ab7.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-ceramica-manos-960.137fba96.webp",
+        path: "/media/about/about-ceramica-manos-960.2256390e.webp",
       },
     ],
   },
@@ -203,12 +223,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-cuenco-tejido-480.570261f0.webp",
+        path: "/media/about/about-cuenco-tejido-480.26249dcc.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-cuenco-tejido-960.98956937.webp",
+        path: "/media/about/about-cuenco-tejido-960.2a7da1c5.webp",
       },
     ],
   },
@@ -223,17 +243,17 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/about/about-acuarela-480.c9eb252e.webp",
+        path: "/media/about/about-acuarela-480.ec5a8715.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/about/about-acuarela-960.f984cf6e.webp",
+        path: "/media/about/about-acuarela-960.0717c74f.webp",
       },
       {
         width: 1600,
         height: 2133,
-        path: "/media/about/about-acuarela-1600.ec6588db.webp",
+        path: "/media/about/about-acuarela-1600.786a4613.webp",
       },
     ],
   },
@@ -248,17 +268,17 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 360,
-        path: "/media/about/about-comunidad-480.9d2efa54.webp",
+        path: "/media/about/about-comunidad-480.ab10d2d2.webp",
       },
       {
         width: 960,
         height: 720,
-        path: "/media/about/about-comunidad-960.f3ff5607.webp",
+        path: "/media/about/about-comunidad-960.faab714e.webp",
       },
       {
         width: 1600,
         height: 1200,
-        path: "/media/about/about-comunidad-1600.fad08082.webp",
+        path: "/media/about/about-comunidad-1600.e2fa024b.webp",
       },
     ],
   },
@@ -273,12 +293,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 389,
-        path: "/media/about/about-jarrones-480.9cbdb163.webp",
+        path: "/media/about/about-jarrones-480.5e0b2ff9.webp",
       },
       {
         width: 960,
         height: 779,
-        path: "/media/about/about-jarrones-960.50ab47f7.webp",
+        path: "/media/about/about-jarrones-960.497314d4.webp",
       },
     ],
   },
@@ -293,12 +313,52 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 600,
-        path: "/media/home/home-teaser-480.502a7908.webp",
+        path: "/media/home/home-teaser-480.d7edc2a9.webp",
       },
       {
         width: 800,
         height: 1000,
-        path: "/media/home/home-teaser-800.cf772cf0.webp",
+        path: "/media/home/home-teaser-800.e4abc393.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-collage-square",
+    sourceId: "img-20260709-wa0009",
+    area: "home",
+    alt: "Un cuenco de cerámica con el borde tejido en cestería, visto desde arriba sobre un mantel de rayas",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 480,
+        path: "/media/home/home-collage-square-480.596cdd96.webp",
+      },
+      {
+        width: 960,
+        height: 960,
+        path: "/media/home/home-collage-square-960.d4fb4142.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-collage-wide",
+    sourceId: "img-20260530-wa0021",
+    area: "home",
+    alt: "Una lámpara de cuerda encendida sobre el rincón del estudio, con espejos tejidos en la pared",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 360,
+        path: "/media/home/home-collage-wide-480.86e790d7.webp",
+      },
+      {
+        width: 960,
+        height: 720,
+        path: "/media/home/home-collage-wide-960.19691d4a.webp",
       },
     ],
   },
@@ -313,12 +373,12 @@ export const MEDIA_ASSETS = [
       {
         width: 480,
         height: 640,
-        path: "/media/contact/contact-fachada-480.87a69003.webp",
+        path: "/media/contact/contact-fachada-480.3b789a04.webp",
       },
       {
         width: 960,
         height: 1280,
-        path: "/media/contact/contact-fachada-960.4aab4923.webp",
+        path: "/media/contact/contact-fachada-960.d51a3b71.webp",
       },
     ],
   },
@@ -357,6 +417,227 @@ export const MEDIA_ASSETS = [
       { path: "/media/video/home-loop-720.451c3923.mp4", type: "video/mp4" },
     ],
     posterId: "home-loop-poster",
+  },
+  {
+    kind: "image",
+    id: "home-band-hands",
+    sourceId: "img-20260425-wa0049",
+    area: "home",
+    alt: "Manos terminando un espejo de paja tejida en forma de sol, sobre la mesa del taller",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 600,
+        path: "/media/home/home-band-hands-480.b091b8a8.webp",
+      },
+      {
+        width: 960,
+        height: 1200,
+        path: "/media/home/home-band-hands-960.4110a956.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-catalog-weaving",
+    sourceId: "img-20260411-wa0110",
+    area: "home",
+    alt: "Manos tejiendo un cesto de fibra natural durante un taller, cruzando cada tira con cuidado",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 600,
+        path: "/media/home/home-catalog-weaving-480.0d4dbf18.webp",
+      },
+      {
+        width: 900,
+        height: 1125,
+        path: "/media/home/home-catalog-weaving-900.ddbeed4a.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "home-catalog-looms",
+    sourceId: "img-20260420-wa0049",
+    area: "home",
+    alt: "Telares de cartón y muestras de malla tejida con fibra, sobre una tela de lino",
+    format: "webp",
+    variants: [
+      {
+        width: 480,
+        height: 320,
+        path: "/media/home/home-catalog-looms-480.a534aee4.webp",
+      },
+      {
+        width: 960,
+        height: 640,
+        path: "/media/home/home-catalog-looms-960.f0c17955.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "brand-logo",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, logo con las iniciales C e I y una mariposa trazada a mano",
+    format: "webp",
+    variants: [
+      {
+        width: 56,
+        height: 59,
+        path: "/media/brand/brand-logo-56.7b093bc3.webp",
+      },
+      {
+        width: 112,
+        height: 117,
+        path: "/media/brand/brand-logo-112.56092e2a.webp",
+      },
+      {
+        width: 168,
+        height: 176,
+        path: "/media/brand/brand-logo-168.68add358.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "brand-logo-light",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, logo con las iniciales C e I y una mariposa trazada a mano",
+    format: "webp",
+    variants: [
+      {
+        width: 56,
+        height: 59,
+        path: "/media/brand/brand-logo-light-56.298df7e7.webp",
+      },
+      {
+        width: 112,
+        height: 117,
+        path: "/media/brand/brand-logo-light-112.0deb4e2a.webp",
+      },
+      {
+        width: 168,
+        height: 176,
+        path: "/media/brand/brand-logo-light-168.c3f7e32c.webp",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "about-loop-weaving-poster",
+    sourceId: "vid-20261014-185243141",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-weaving-poster-360.abbd5772.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-weaving",
+    sourceId: "vid-20261014-185243141",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.5,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-weaving-360.55878374.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-weaving-360.de63a4cf.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-weaving-poster",
+  },
+  {
+    kind: "image",
+    id: "about-loop-frame-poster",
+    sourceId: "vid-20261014-185337211",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-frame-poster-360.ff1d5d5d.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-frame",
+    sourceId: "vid-20261014-185337211",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.5,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-frame-360.019eb787.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-frame-360.ef263203.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-frame-poster",
+  },
+  {
+    kind: "image",
+    id: "about-loop-basket-poster",
+    sourceId: "vid-20260922-200038255",
+    area: "video",
+    alt: "",
+    decorative: true,
+    format: "webp",
+    variants: [
+      {
+        width: 360,
+        height: 640,
+        path: "/media/video/about-loop-basket-poster-360.6cc7a4a5.webp",
+      },
+    ],
+  },
+  {
+    kind: "video",
+    id: "about-loop-basket",
+    sourceId: "vid-20260922-200038255",
+    area: "video",
+    width: 360,
+    height: 640,
+    durationSeconds: 5.4,
+    audio: false,
+    sources: [
+      {
+        path: "/media/video/about-loop-basket-360.3256f839.webm",
+        type: "video/webm",
+      },
+      {
+        path: "/media/video/about-loop-basket-360.70e79d14.mp4",
+        type: "video/mp4",
+      },
+    ],
+    posterId: "about-loop-basket-poster",
   },
 ] as const satisfies readonly MediaAsset[];
 

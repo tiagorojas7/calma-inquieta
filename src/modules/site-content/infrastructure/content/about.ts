@@ -1,5 +1,5 @@
 import type { AboutPageContent } from "../../domain/page-content";
-import { imageRef } from "./media-refs";
+import { imageRef, loopRef } from "./media-refs";
 
 /**
  * Quiénes somos. Drafted from docs/brand/dmr-calma-inquieta.md (sections 2 and
@@ -36,6 +36,28 @@ export const aboutContent = {
     approved: false,
     text: "Te ofrecemos un lugar para aprender una técnica manual sin apuro, acompañada por instructoras, y llevarte una pieza hecha por vos.",
   },
+  /** The brand caption already in circulation (DMR rule R14: no invented tagline). */
+  pullQuote: {
+    id: "about-pull-quote",
+    approved: false,
+    text: "Calma, creatividad y un poquito de inquietud.",
+  },
+  /** The intro collage: a portrait, a wide group shot and a near-square detail. */
+  introImages: [
+    imageRef("about-espacio"),
+    imageRef("about-comunidad"),
+    imageRef("about-jarrones"),
+  ],
+  /**
+   * Three muted loops of the craft, in collage order: the weaving on the
+   * left, the basket in orbit at the centre, the frame on the right. They
+   * replace the photos in the collage; the photos stay in the gallery.
+   */
+  introLoops: [
+    loopRef("about-loop-weaving"),
+    loopRef("about-loop-basket"),
+    loopRef("about-loop-frame"),
+  ],
   values: [
     {
       id: "about-value-calm",

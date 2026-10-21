@@ -1,9 +1,29 @@
+/** sm is the small corner accent; lg (120 to 176 px) and xl (160 to 224 px) are the hero and contact-band butterflies. */
+const sizeClasses = {
+  sm: "size-7 lg:size-10",
+  lg: "size-30 lg:size-44",
+  xl: "size-40 lg:size-56",
+} as const;
+
+export type ButterflySize = keyof typeof sizeClasses;
+
+/** The corner anchor used when the caller brings no placement of its own. */
+const DEFAULT_PLACEMENT = "-top-5 right-6 lg:-top-6";
+
 /** Decorative line butterfly: absolutely positioned, flight and flap live in motifs.css. */
-export function Butterfly() {
+export function Butterfly({
+  size = "sm",
+  className = DEFAULT_PLACEMENT,
+}: {
+  size?: ButterflySize;
+  /** Replaces the default corner placement (positioning classes only). */
+  className?: string;
+} = {}) {
   return (
     <div
       aria-hidden="true"
-      className="motif-flight pointer-events-none absolute -top-5 right-6 z-10 size-7 text-clay-800 lg:-top-6 lg:size-10"
+      data-size={size}
+      className={`motif-flight pointer-events-none absolute z-10 text-clay-800 ${sizeClasses[size]} ${className}`}
     >
       <svg
         className="size-full"

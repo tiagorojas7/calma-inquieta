@@ -183,3 +183,103 @@ describe("GalleryGrid responsive images", () => {
     expect(shown).not.toHaveAttribute("srcset");
   });
 });
+
+describe("GalleryGrid mosaic", () => {
+  const mixed = [
+    {
+      id: "m-portrait",
+      src: "/media/about/p-480.webp",
+      alt: "Retrato",
+      width: 480,
+      height: 640,
+    },
+    {
+      id: "m-tall",
+      src: "/media/about/t-480.webp",
+      alt: "Vertical",
+      width: 480,
+      height: 853,
+    },
+    {
+      id: "m-wide",
+      src: "/media/about/w-480.webp",
+      alt: "Apaisada",
+      width: 480,
+      height: 360,
+    },
+    {
+      id: "m-near",
+      src: "/media/about/n-480.webp",
+      alt: "Casi cuadrada",
+      width: 480,
+      height: 389,
+    },
+  ] as const;
+
+  const tile = (alt: string) =>
+    screen.getByRole("button", { name: alt }).closest("li") as HTMLElement;
+
+  it("tags each tile with its shape from the real ratio", () => {
+    render(<GalleryGrid images={mixed} />);
+    expect(tile("Retrato")).toHaveAttribute("data-shape", "portrait");
+    expect(tile("Vertical")).toHaveAttribute("data-shape", "tall");
+    expect(tile("Apaisada")).toHaveAttribute("data-shape", "wide");
+    expect(tile("Casi cuadrada")).toHaveAttribute("data-shape", "wide");
+  });
+
+  it("gives wider photos a larger share of the row, in ratio order", () => {
+    render(<GalleryGrid images={mixed} />);
+    const grow = (alt: string) => Number(tile(alt).style.flexGrow);
+    expect(grow("Apaisada")).toBeGreaterThan(grow("Retrato"));
+    expect(grow("Retrato")).toBeGreaterThan(grow("Vertical"));
+    expect(grow("Vertical")).toBeGreaterThan(0);
+  });
+
+  it("never crops: each image reserves its own width over height, lazy", () => {
+    render(<GalleryGrid images={mixed} />);
+    for (const image of mixed) {
+      const img = within(
+        screen.getByRole("button", { name: image.alt }),
+      ).getByRole("img");
+      expect(img.style.aspectRatio).toBe(
+        `${String(image.width)} / ${String(image.height)}`,
+      );
+      expect(img).toHaveAttribute("loading", "lazy");
+    }
+  });
+
+  it("is no longer a square grid", () => {
+    const { container } = render(<GalleryGrid images={mixed} />);
+    expect(container.querySelector(".aspect-square")).toBeNull();
+  });
+
+  it("reveals tiles in a stagger and zooms the photo on hover", () => {
+    render(<GalleryGrid images={mixed} />);
+    for (const image of mixed) {
+      expect(tile(image.alt)).toHaveAttribute("data-reveal");
+    }
+    expect(tile("Vertical").style.getPropertyValue("--reveal-delay")).toBe(
+      "80ms",
+    );
+    const button = screen.getByRole("button", { name: "Retrato" });
+    expect(button).toHaveClass("card-hover-frame");
+    expect(button.parentElement).toHaveClass("card-hover");
+  });
+
+  it("keeps the lightbox working from a mosaic tile", async () => {
+    render(<GalleryGrid images={mixed} />);
+    await userEvent.click(screen.getByRole("button", { name: "Apaisada" }));
+    expect(
+      within(screen.getByRole("dialog")).getByRole("img", { name: "Apaisada" }),
+    ).toBeVisible();
+  });
+
+  it("sits in a full-bleed canvas band when it has a heading", () => {
+    const { container } = render(
+      <GalleryGrid heading="Un vistazo" images={mixed} />,
+    );
+    const band = container.querySelector("section");
+    expect(band).toHaveAttribute("data-bleed", "true");
+    expect(band).toHaveAttribute("data-tone", "canvas");
+  });
+});

@@ -79,13 +79,14 @@ describe("root document", () => {
 describe("root links", () => {
   const entries = () => links();
 
-  it("preloads the two above-the-fold fonts anonymously", () => {
+  it("preloads the three above-the-fold fonts anonymously: the 400 and 500 display weights and the body", () => {
     const preloads = entries().filter(
       (link) => "rel" in link && link.rel === "preload",
     );
 
     expect(preloads.map((link) => "href" in link && link.href)).toEqual([
       "/fonts/cormorant-garamond-latin-400-normal.woff2",
+      "/fonts/cormorant-garamond-latin-500-normal.woff2",
       "/fonts/montserrat-latin-400-normal.woff2",
     ]);
     for (const link of preloads) {

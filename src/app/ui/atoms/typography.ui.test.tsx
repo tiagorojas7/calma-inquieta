@@ -37,6 +37,30 @@ describe("typography atoms", () => {
   });
 
   it.each([
+    ["display", "font-medium"],
+    ["h1", "font-medium"],
+    ["h2", "font-medium"],
+    ["h3", "font-semibold"],
+  ] as const)("gives heading size %s the weight %s", (size, weight) => {
+    render(
+      <Heading level={2} size={size}>
+        Título
+      </Heading>,
+    );
+    expect(screen.getByRole("heading")).toHaveClass("font-display", weight);
+    expect(screen.getByRole("heading")).not.toHaveClass("leading-tight");
+  });
+
+  it("keeps the mixed roman and italic heading text in the DOM as <em>", () => {
+    render(
+      <Heading level={1}>
+        Calma <em>inquieta</em>
+      </Heading>,
+    );
+    expect(screen.getByText("inquieta").tagName).toBe("EM");
+  });
+
+  it.each([
     ["default", "text-ink-700"],
     ["muted", "text-ink-600"],
     ["accent", "text-clay-800"],

@@ -8,6 +8,8 @@
 @import "./tokens.css";
 @import "./fonts.css";
 @import "./motifs.css";
+@import "./motion.css";
+@import "./layout.css";
 
 @layer base {
   /* Page background and body text (§3.3). */
@@ -25,6 +27,26 @@
   :focus-visible {
     outline: 2px solid var(--color-clay-800);
     outline-offset: 2px;
+  }
+
+  /* Full-bleed bands (Section) are 100vw wide; clip the scrollbar-width
+     overshoot without creating a scroll container, so sticky still works. */
+  html {
+    overflow-x: clip;
+  }
+
+  /* Mixed roman and italic headings (S3): <em> renders Cormorant italic in
+     the accent colour (terracotta-700, AA on canvas, surface and sand-200).
+     Section tones that darken the background redefine --em-color. The
+     italic face ships at 400 only, so the weight is pinned to avoid a
+     synthesized bold. */
+  h1 em,
+  h2 em,
+  h3 em {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--em-color, var(--color-terracotta-700));
   }
 
   /* Minimum 24 px target for every control (§3.3); primary CTAs raise it

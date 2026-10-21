@@ -13,9 +13,11 @@ export function CatalogGrid({
     return <EmptyState message={empty.message} actions={[empty.action]} />;
   }
   return (
-    <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
       {items.map(({ key, node }) => (
-        <li key={key}>{node}</li>
+        <li key={key} className="h-full">
+          {node}
+        </li>
       ))}
     </ul>
   );

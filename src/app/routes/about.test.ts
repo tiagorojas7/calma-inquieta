@@ -13,6 +13,13 @@ describe("about loader", () => {
     expect(result.heading).toBe("Quiénes somos");
     expect(result.history.length).toBeGreaterThan(0);
     expect(result.valueProposition).toEqual(expect.any(String));
+    expect(result.pullQuote).toEqual(expect.any(String));
+    expect(result.introImages.length).toBeGreaterThan(0);
+    expect(result.introImages[0]?.alt.length).toBeGreaterThan(0);
+    expect(result.introLoops).toEqual([]);
+    expect(result.cta.heading).toEqual(expect.any(String));
+    expect(result.cta.body).toEqual(expect.any(String));
+    expect(result.cta.whatsappHref).toMatch(/^https:\/\/wa\.me\//);
     expect(result.values.length).toBeGreaterThan(0);
     expect(result.gallery).toBeDefined();
     expect(result.videos).toEqual([]);

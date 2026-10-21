@@ -2,13 +2,9 @@ import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { buildLocalBusinessJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
 import { buildPageMeta } from "~/app/seo/meta";
-import { ButtonLink } from "~/app/ui/atoms/button";
-import { Heading } from "~/app/ui/atoms/heading";
-import { Image } from "~/app/ui/atoms/image";
-import { Text } from "~/app/ui/atoms/text";
 import { JsonLdScript } from "~/app/ui/json-ld-script";
-import { ContactItem } from "~/app/ui/molecules/contact-item";
 import { microcopy } from "~/app/ui/microcopy";
+import { ContactSection } from "~/app/ui/organisms/contact-section";
 import {
   buildDirectionsUrl,
   buildWhatsAppUrl,
@@ -23,8 +19,6 @@ type Item = {
   value: string;
   href?: string;
 };
-
-const PHOTO_SIZES = "(min-width: 64rem) 28rem, calc(100vw - 2.5rem)";
 
 const DAY_LABELS = {
   Mo: "Lun",
@@ -137,29 +131,15 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
 export default function ContactRoute() {
   const data = useLoaderData<typeof loader>();
   return (
-    <section
-      className={`grid gap-8 py-section ${data.photo ? "lg:grid-cols-2 lg:items-start lg:gap-x-12" : ""}`}
-    >
-      <div className="flex max-w-prose flex-col items-start gap-6">
-        <Heading level={1}>{data.heading}</Heading>
-        <Text>{data.intro}</Text>
-        <div className="grid w-full gap-6 sm:grid-cols-2">
-          {data.items.map(({ id, ...item }) => (
-            <ContactItem key={id} {...item} />
-          ))}
-        </div>
-        <ButtonLink href={data.directionsHref} variant="outline">
-          {microcopy.directions}
-        </ButtonLink>
-      </div>
-      {data.photo ? (
-        <Image
-          {...data.photo}
-          sizes={PHOTO_SIZES}
-          className="w-full max-w-md rounded-sm object-cover lg:justify-self-end"
-        />
-      ) : null}
+    <>
+      <ContactSection
+        heading={data.heading}
+        intro={data.intro}
+        photo={data.photo}
+        items={data.items}
+        directionsHref={data.directionsHref}
+      />
       <JsonLdScript json={data.jsonLd} />
-    </section>
+    </>
   );
 }

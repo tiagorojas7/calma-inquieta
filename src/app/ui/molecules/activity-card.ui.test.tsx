@@ -23,6 +23,13 @@ describe("ActivityCard extensions", () => {
     expect(
       screen.getByRole("heading", { name: activityFixture.title }),
     ).toBeVisible();
+    expect(screen.getByRole("article")).toHaveClass("card-hover", "h-full");
+    expect(screen.getByRole("img").parentElement).toHaveClass(
+      "card-hover-frame",
+    );
+    expect(
+      screen.getByRole("link", { name: activityFixture.ctaLabel }),
+    ).toHaveClass("mt-auto");
     await expectNoAxeViolations(container);
   });
 

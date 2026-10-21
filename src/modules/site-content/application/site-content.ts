@@ -8,11 +8,13 @@ import {
   publishableTestimonials,
   publishedImages,
   publishedLoop,
+  publishedLoops,
   summarizeLaunchGate,
   type LaunchGate,
 } from "../domain/content-rules";
 import type {
   AboutPageContent,
+  BrandContent,
   CatalogContent,
   ComingSoonContent,
   ComingSoonSlug,
@@ -30,6 +32,8 @@ export interface SiteContent {
   getAboutPage(): Promise<AboutPageContent>;
   /** The photo is returned only when its asset is publishable. */
   getContactPage(): Promise<ContactPageContent>;
+  /** The header logos, each returned only when its asset is publishable. */
+  getBrand(): Promise<Partial<BrandContent>>;
   getComingSoonPage(slug: ComingSoonSlug): Promise<ComingSoonContent>;
   /** Labels, listing copy and WhatsApp templates of the public catalog. */
   getCatalogContent(): Promise<CatalogContent>;
@@ -65,7 +69,12 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
     },
     async getAboutPage() {
       const raw = await source.load();
-      return { ...raw.about, gallery: publishedImages(raw.about.gallery, raw) };
+      return {
+        ...raw.about,
+        introImages: publishedImages(raw.about.introImages, raw),
+        introLoops: publishedLoops(raw.about.introLoops, raw),
+        gallery: publishedImages(raw.about.gallery, raw),
+      };
     },
     async getContactPage() {
       const raw = await source.load();
@@ -73,6 +82,15 @@ export function createSiteContent(source: SiteContentSource): SiteContent {
       return photo && publishedImages([photo], raw).length > 0
         ? { ...contact, photo }
         : contact;
+    },
+    async getBrand() {
+      const raw = await source.load();
+      const [logo] = publishedImages([raw.brand.logo], raw);
+      const [logoLight] = publishedImages([raw.brand.logoLight], raw);
+      return {
+        ...(logo ? { logo } : {}),
+        ...(logoLight ? { logoLight } : {}),
+      };
     },
     async getComingSoonPage(slug) {
       return (await source.load()).comingSoon[slug];

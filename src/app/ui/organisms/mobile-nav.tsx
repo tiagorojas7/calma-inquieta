@@ -1,6 +1,9 @@
-import { Button } from "../atoms/button";
 import { Icon } from "../atoms/icon";
 
+/**
+ * Menu toggle: also the close button of the full-screen overlay (it stays
+ * above it, z-50, and swaps its icon and label when open).
+ */
 export function MobileNav({
   menuOpen,
   onMenuOpenChange,
@@ -9,9 +12,9 @@ export function MobileNav({
   onMenuOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Button
+    <button
       type="button"
-      className="relative z-50 lg:hidden"
+      className="menu-toggle relative z-50 inline-flex size-11 items-center justify-center rounded-full text-current transition-[background-color,transform] duration-200 ease-calm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 motion-safe:active:scale-95 lg:hidden"
       aria-expanded={menuOpen}
       aria-controls="menu-principal"
       aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -20,6 +23,6 @@ export function MobileNav({
       }}
     >
       <Icon name={menuOpen ? "close" : "menu"} />
-    </Button>
+    </button>
   );
 }

@@ -58,6 +58,7 @@ describe("Icon", () => {
     "chevron-right",
     "play",
     "pin",
+    "map",
     "clock",
     "mail",
   ] as const)("draws the %s icon as a decorative shape", (name) => {
@@ -82,5 +83,18 @@ describe("Icon", () => {
       expect(svg?.querySelector("path, circle")).not.toBeNull();
       unmount();
     }
+  });
+
+  it("draws the footer social glyphs with more than the bare outline", () => {
+    const whatsapp = render(<Icon name="whatsapp" />);
+    expect(whatsapp.container.querySelectorAll("svg path")).toHaveLength(2);
+    whatsapp.unmount();
+
+    const instagram = render(<Icon name="instagram" />);
+    expect(instagram.container.querySelectorAll("svg circle")).toHaveLength(2);
+    instagram.unmount();
+
+    const map = render(<Icon name="map" />);
+    expect(map.container.querySelector("svg path")).not.toBeNull();
   });
 });

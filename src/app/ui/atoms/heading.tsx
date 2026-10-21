@@ -2,10 +2,12 @@
 import type { ElementType, HTMLAttributes, PropsWithChildren } from "react";
 
 const headingClasses: Record<string, string> = {
-  display: "font-display text-display leading-tight text-ink-900",
-  h1: "font-display text-display leading-tight text-ink-900",
-  h2: "font-display text-h2 leading-tight text-ink-900",
-  h3: "font-display text-h3 leading-tight text-ink-900",
+  // Line heights come from the --text-* tokens. Weights: 500 for the large
+  // sizes, 600 for h3 where the smaller size needs the extra hierarchy.
+  display: "font-display text-display font-medium text-ink-900",
+  h1: "font-display text-display font-medium text-ink-900",
+  h2: "font-display text-h2 font-medium text-ink-900",
+  h3: "font-display text-h3 font-semibold text-ink-900",
   h4: "font-sans text-base font-semibold leading-tight text-ink-900",
 };
 const textClasses: Record<string, string> = {

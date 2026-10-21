@@ -45,8 +45,10 @@ export function TallerCard({
 }) {
   const showSeats = Boolean(seats) && !paused && !notice;
   return (
-    <article className="flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-card">
-      <Image {...image} className="w-full rounded-sm object-cover" />
+    <article className="card-hover flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-card">
+      <div className="card-hover-frame w-full rounded-sm">
+        <Image {...image} className="block w-full object-cover" />
+      </div>
       <Heading level={2} size="h3">
         {name}
       </Heading>
@@ -55,9 +57,15 @@ export function TallerCard({
       <TurnoList items={turnos} />
       {price ? <PriceTag {...price} /> : null}
       {paused ? (
-        <PausedNotice text={paused} />
+        <>
+          <Pill tone="notice">Pausado</Pill>
+          <PausedNotice text={paused} />
+        </>
       ) : notice ? (
-        <Text tone="accent">{notice}</Text>
+        <>
+          <Pill tone="notice">Próximamente</Pill>
+          <Text tone="accent">{notice}</Text>
+        </>
       ) : null}
       {showSeats && seats ? <Pill>{seats}</Pill> : null}
       <ButtonLink href={href} variant="text-arrow" className="mt-auto">

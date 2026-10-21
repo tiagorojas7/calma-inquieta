@@ -131,6 +131,10 @@ export function buildRawSiteContent(
         "eventos-privados": "Hola, quiero consultar por un evento privado.",
       },
     },
+    brand: {
+      logo: image("/media/stand-ins/brand-logo.svg", ""),
+      logoLight: image("/media/stand-ins/brand-logo.svg", ""),
+    },
     home: {
       seo: seo("Inicio"),
       hero: {
@@ -139,10 +143,10 @@ export function buildRawSiteContent(
         subtitle: "Talleres creativos en Argüello.",
         primaryCtaLabel: "Ver talleres",
         secondaryCtaLabel: "Ver intensivos",
-        image: {
-          mobile: heroImage,
-          desktop: heroImage,
-        },
+        backdrop: heroImage,
+        collage: [heroImage, heroImage, heroImage],
+        note: "Crear también es una forma de volver a vos.",
+        keywords: ["Arte", "Manos", "Encuentro", "Bienestar"],
         loop: heroLoop,
       },
       trustClaims: [
@@ -160,10 +164,22 @@ export function buildRawSiteContent(
         heading: "Quiénes somos",
         body: { id: "teaser-body", approved: true, text: "Somos un equipo." },
         image: image("/media/stand-ins/about-teaser.svg", "Composición"),
+        accentImage: image("/media/stand-ins/hero-1.jpg", "Detalle"),
+        pull: "Hecho con las manos, compartido entre todas.",
         linkLabel: "Conocenos",
       },
       testimonials: { heading: "Lo que cuentan", items: [] },
-      contactBand: { heading: "Escribinos", body: "Contanos qué buscás." },
+      catalogBand: {
+        heading: "Tu lugar para crear",
+        body: "Sumate a un taller.",
+        primary: image("/media/stand-ins/gallery-01.jpg", "Manos tejiendo"),
+        secondary: image("/media/stand-ins/hero-1.jpg", "Telares"),
+      },
+      contactBand: {
+        heading: "Escribinos",
+        body: "Contanos qué buscás.",
+        image: image("/media/stand-ins/gallery-01.jpg", "Manos en el taller"),
+      },
     },
     about: {
       seo: seo("Quiénes somos"),
@@ -177,6 +193,11 @@ export function buildRawSiteContent(
       values: [
         { id: "value-1", approved: true, title: "Calma", text: "Sin apuro." },
       ],
+      pullQuote: { id: "pull-quote", approved: true, text: "Crear sin apuro." },
+      introImages: [
+        image("/media/stand-ins/gallery-01.jpg", "Composición del espacio"),
+      ],
+      introLoops: [],
       gallery: [
         {
           id: "gallery-1",
@@ -278,6 +299,7 @@ export function buildRawSiteContent(
       standIn("hero-1", "/media/stand-ins/hero-1.jpg"),
       standIn("about-teaser", "/media/stand-ins/about-teaser.svg"),
       standIn("gallery-01", "/media/stand-ins/gallery-01.jpg"),
+      standIn("brand-logo", "/media/stand-ins/brand-logo.svg"),
     ],
     media: shareRegistry,
     ...overrides,

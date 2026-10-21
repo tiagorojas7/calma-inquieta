@@ -106,6 +106,64 @@ describe("validateSiteContent", () => {
     expect(issues).toEqual([{ id: "gallery-1", rule: "alt-missing" }]);
   });
 
+  it("flags an about intro image that is not a registered path", () => {
+    const content = validContent();
+    const stray = image("/media/about/not-registered-480.0a1b2c3d.webp");
+
+    const issues = validateSiteContent({
+      ...content,
+      about: { ...content.about, introImages: [stray] },
+    });
+
+    expect(issues).toEqual([{ id: stray.src, rule: "unregistered-media" }]);
+  });
+
+  it("flags an about intro image with an empty alt, naming its path", () => {
+    const content = validContent();
+    const blank = image("/media/stand-ins/gallery-01.jpg", " ");
+
+    const issues = validateSiteContent({
+      ...content,
+      about: { ...content.about, introImages: [blank] },
+    });
+
+    expect(issues).toEqual([{ id: blank.src, rule: "alt-missing" }]);
+  });
+
+  it("flags a brand logo whose path is not registered", () => {
+    const content = validContent();
+    const missing = image("/media/brand/missing-56.00000000.webp", "");
+
+    expect(
+      validateSiteContent({
+        ...content,
+        brand: { ...content.brand, logo: missing },
+      }),
+    ).toEqual([{ id: missing.src, rule: "unregistered-media" }]);
+  });
+
+  it("accepts an empty alt on the brand logos, which sit beside the visible wordmark", () => {
+    const content = validContent();
+
+    expect(content.brand.logo.alt).toBe("");
+    expect(content.brand.logoLight.alt).toBe("");
+    expect(validateSiteContent(content)).toEqual([]);
+  });
+
+  it("flags a pull-quote id that repeats another content id", () => {
+    const content = validContent();
+
+    const issues = validateSiteContent({
+      ...content,
+      about: {
+        ...content.about,
+        pullQuote: { ...content.about.pullQuote, id: "history-1" },
+      },
+    });
+
+    expect(issues).toEqual([{ id: "history-1", rule: "duplicate-id" }]);
+  });
+
   it("accepts an empty alt on a decorative gallery image", () => {
     const content = validContent();
     const decorative: GalleryImage = {
@@ -131,10 +189,7 @@ describe("validateSiteContent", () => {
         ...content.home,
         hero: {
           ...content.home.hero,
-          image: {
-            ...content.home.hero.image,
-            mobile: image("/media/stand-ins/hero-1.jpg", ""),
-          },
+          backdrop: image("/media/stand-ins/hero-1.jpg", ""),
         },
       },
     });
@@ -345,6 +400,7 @@ describe("listUnapproved", () => {
           approved: false,
           text: "v",
         },
+        pullQuote: { id: "pull-quote", approved: false, text: "p" },
         values: [{ id: "value-1", approved: false, title: "t", text: "t" }],
         faq: [{ id: "faq-1", approved: false, question: "q", answer: "a" }],
       },
@@ -355,6 +411,7 @@ describe("listUnapproved", () => {
       { id: "teaser-body", area: "home:teaser" },
       { id: "history-1", area: "about:history" },
       { id: "value-proposition", area: "about:value-proposition" },
+      { id: "pull-quote", area: "about:pull-quote" },
       { id: "value-1", area: "about:values" },
       { id: "faq-1", area: "about:faq" },
     ]);
@@ -436,16 +493,20 @@ const withMedia = (
   },
 });
 
-/** Replaces the hero's phone image; the desktop image stays the content's own valid one. */
+/** Replaces the hero backdrop (phones) and the collage lead; the other collage photos stay valid. */
 const withHero = (
   content: RawSiteContent,
-  mobile: ImageRef,
-  desktop: ImageRef = content.home.hero.image.desktop,
+  backdrop: ImageRef,
+  lead: ImageRef = content.home.hero.collage[0] ?? backdrop,
 ): RawSiteContent => ({
   ...content,
   home: {
     ...content.home,
-    hero: { ...content.home.hero, image: { mobile, desktop } },
+    hero: {
+      ...content.home.hero,
+      backdrop,
+      collage: [lead, ...content.home.hero.collage.slice(1)],
+    },
   },
 });
 
@@ -519,7 +580,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("the hero desktop image goes through the same path check as the phone image", () => {
+  it("the collage lead goes through the same path check as the backdrop", () => {
     const pending = imageAsset("hero-pending");
     const unknown = mediaPath("hero-unknown");
     const content = withMedia(
@@ -537,7 +598,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("flags a hero desktop image without alt, naming its path", () => {
+  it("flags a collage lead without alt, naming its path", () => {
     const content = withHero(
       validContent(),
       image("/media/stand-ins/hero-1.jpg"),
@@ -549,7 +610,7 @@ describe("validateSiteContent media gate", () => {
     ]);
   });
 
-  it("checks the srcSet paths of the hero desktop image like src", () => {
+  it("checks the srcSet paths of the collage lead like src", () => {
     const asset = imageAsset("hero-a");
     const unknown = mediaPath("hero-unknown", 960);
     const content = withMedia(
@@ -564,6 +625,70 @@ describe("validateSiteContent media gate", () => {
       { id: unknown, rule: "unregistered-media" },
     ]);
   });
+
+  it.each([1, 2])(
+    "every collage photo goes through the path and alt gate (index %i)",
+    (index) => {
+      const content = validContent();
+      const unknown = mediaPath("collage-unknown");
+      const collage = content.home.hero.collage.map((photo, at) =>
+        at === index ? image(unknown, " ") : photo,
+      );
+
+      expect(
+        validateSiteContent({
+          ...content,
+          home: { ...content.home, hero: { ...content.home.hero, collage } },
+        }),
+      ).toEqual([
+        { id: unknown, rule: "alt-missing" },
+        { id: unknown, rule: "unregistered-media" },
+      ]);
+    },
+  );
+
+  it("the teaser accent image goes through the path and alt gate", () => {
+    const content = validContent();
+    const unknown = mediaPath("teaser-unknown");
+
+    expect(
+      validateSiteContent({
+        ...content,
+        home: {
+          ...content.home,
+          teaser: { ...content.home.teaser, accentImage: image(unknown, "") },
+        },
+      }),
+    ).toEqual([
+      { id: unknown, rule: "alt-missing" },
+      { id: unknown, rule: "unregistered-media" },
+    ]);
+  });
+
+  it.each([
+    ["the catalog band tall photo", "catalogBand", "primary"],
+    ["the catalog band wide photo", "catalogBand", "secondary"],
+    ["the contact band photo", "contactBand", "image"],
+  ] as const)(
+    "%s goes through the path and alt gate",
+    (_label, band, field) => {
+      const content = validContent();
+      const unknown = mediaPath("band-unknown");
+
+      expect(
+        validateSiteContent({
+          ...content,
+          home: {
+            ...content.home,
+            [band]: { ...content.home[band], [field]: image(unknown, "") },
+          },
+        }),
+      ).toEqual([
+        { id: unknown, rule: "alt-missing" },
+        { id: unknown, rule: "unregistered-media" },
+      ]);
+    },
+  );
 
   it("registry issues reach validateSiteContent", () => {
     const content = withMedia(validContent(), {
@@ -1017,6 +1142,29 @@ describe("validateSiteContent ambient loop", () => {
     );
 
     expect(issues).toContainEqual({ id: leaked, rule: "excluded-source" });
+  });
+
+  it("intro loops are walked like the hero loop", () => {
+    const base = withLoop({
+      assets: [poster, video],
+      rights: [row("none", "not-required")],
+    });
+    const aboutWith = (ambient: AmbientLoop): RawSiteContent => ({
+      ...base,
+      about: { ...base.about, introLoops: [ambient] },
+    });
+
+    expect(validateSiteContent(aboutWith(loop))).toEqual([]);
+
+    const leaked = "/media/video/about-loop-stray-360.0a1b2c3d.mp4";
+    expect(
+      validateSiteContent(
+        aboutWith({
+          ...loop,
+          sources: [...loop.sources, { src: leaked, type: "video/mp4" }],
+        }),
+      ),
+    ).toEqual([{ id: leaked, rule: "unregistered-media" }]);
   });
 
   it("content without a loop reports nothing for it", () => {

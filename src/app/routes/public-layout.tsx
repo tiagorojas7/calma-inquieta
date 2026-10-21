@@ -2,9 +2,10 @@ import {
   isRouteErrorResponse,
   Outlet,
   useLoaderData,
+  useMatches,
   useRouteLoaderData,
 } from "react-router";
-import { buildWhatsAppUrl } from "~/modules/site-content";
+import { buildDirectionsUrl, buildWhatsAppUrl } from "~/modules/site-content";
 import { servicesContext } from "~/app/context";
 import { PUBLIC_PAGES } from "~/app/site-map";
 import { PublicPage } from "~/app/ui/templates/public-page";
@@ -13,7 +14,10 @@ import { ErrorPage } from "~/app/ui/templates/error-page";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
-  const profile = await services.siteContent.getBusinessProfile();
+  const [profile, brand] = await Promise.all([
+    services.siteContent.getBusinessProfile(),
+    services.siteContent.getBrand(),
+  ]);
   const whatsappHref = buildWhatsAppUrl(
     profile.whatsapp.display,
     profile.whatsappMessages.general,
@@ -22,6 +26,8 @@ export async function loader({ context }: Route.LoaderArgs) {
     wordmark: profile.name,
     whatsappHref: whatsappHref.ok ? whatsappHref.value : undefined,
     instagramHref: profile.instagram.url,
+    directionsHref: buildDirectionsUrl(profile.address),
+    brand,
     footer: {
       address: profile.address,
       bajada: profile.bajada,
@@ -45,6 +51,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         name: data.wordmark,
         whatsappHref: data.whatsappHref ?? "#",
         instagramHref: data.instagramHref,
+        directionsHref: data.directionsHref,
         address: data.footer.address,
         bajada: data.footer.bajada,
         whatsappDisplay: data.footer.whatsapp.display,
@@ -56,13 +63,18 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         name: "Calma Inquieta",
         whatsappHref: "#",
         instagramHref: "#",
+        directionsHref: "#",
         address: { street: "", locality: "", city: "" },
         bajada: "",
         whatsappDisplay: "",
         provisional: true,
       };
   return (
-    <PublicPage pages={PUBLIC_PAGES} profile={profile}>
+    <PublicPage
+      pages={PUBLIC_PAGES}
+      profile={profile}
+      {...(data ? { brand: data.brand } : {})}
+    >
       <ErrorPage status={status} />
     </PublicPage>
   );
@@ -74,11 +86,21 @@ export default function PublicLayout({
   children?: React.ReactNode;
 }) {
   const data = useLoaderData<typeof loader>();
+  const matches = useMatches();
+  // A route opts in with `export const handle = { heroBackdrop: "dark-below-lg" }`.
+  const heroBackdrop = matches.some(
+    (match) =>
+      (match.handle as { heroBackdrop?: unknown } | undefined)?.heroBackdrop ===
+      "dark-below-lg",
+  )
+    ? ("dark-below-lg" as const)
+    : undefined;
   const footer = data.footer;
   const profile = {
     name: data.wordmark,
     whatsappHref: data.whatsappHref ?? "#",
     instagramHref: data.instagramHref,
+    directionsHref: data.directionsHref,
     address: footer.address,
     bajada: footer.bajada,
     whatsappDisplay: footer.whatsapp.display,
@@ -96,7 +118,12 @@ export default function PublicLayout({
       : {}),
   };
   return (
-    <PublicPage pages={PUBLIC_PAGES} profile={profile}>
+    <PublicPage
+      pages={PUBLIC_PAGES}
+      profile={profile}
+      brand={data.brand}
+      {...(heroBackdrop ? { heroBackdrop } : {})}
+    >
       {children ?? <Outlet />}
     </PublicPage>
   );

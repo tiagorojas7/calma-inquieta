@@ -214,16 +214,178 @@ describe("home organisms", () => {
         />
       </MemoryRouter>,
     );
-    expect(container.querySelector("section")).toHaveClass("lg:grid-cols-2");
+    expect(container.querySelector(".lg\\:grid-cols-2")).not.toBeNull();
     rerender(
       <MemoryRouter>
         <AboutTeaser heading="Quiénes somos" body="Creamos juntas." />
       </MemoryRouter>,
     );
-    expect(container.querySelector("section")).not.toHaveClass(
-      "lg:grid-cols-2",
-    );
+    expect(container.querySelector(".lg\\:grid-cols-2")).toBeNull();
     expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  describe("AboutTeaser collage", () => {
+    const main = {
+      src: "/media/home/home-teaser-800.0a1b2c3d.webp",
+      alt: "Una cesta con flores silvestres",
+      width: 800,
+      height: 1000,
+    };
+    const accent = {
+      src: "/media/about/about-jarrones-960.0a1b2c3d.webp",
+      alt: "Dos jarrones tejidos sobre una repisa",
+      width: 960,
+      height: 779,
+    };
+    const renderTeaser = (props: object = {}) =>
+      render(
+        <MemoryRouter>
+          <AboutTeaser
+            heading="Quiénes somos"
+            body="Creamos juntas."
+            image={main}
+            accentImage={accent}
+            pull="Hecho a mano, compartido entre todas"
+            {...props}
+          />
+        </MemoryRouter>,
+      );
+
+    it("is a full-bleed sand band", () => {
+      const { container } = renderTeaser();
+      const band = container.querySelector("section");
+
+      expect(band).toHaveAttribute("data-bleed", "true");
+      expect(band).toHaveAttribute("data-tone", "sand");
+    });
+
+    it("overlaps two lazy photos of different ratios, the second in a white frame", () => {
+      renderTeaser();
+      const first = screen.getByAltText(main.alt);
+      const second = screen.getByAltText(accent.alt);
+
+      expect(first).toHaveClass("aspect-4/5");
+      expect(second).toHaveClass("aspect-4/3");
+      expect(first).toHaveAttribute("loading", "lazy");
+      expect(second).toHaveAttribute("loading", "lazy");
+      expect(second.closest(".bg-surface")).not.toBeNull();
+      expect(first.closest(".bg-surface")).toBeNull();
+      expect(first.closest(".teaser-collage")).toBe(
+        second.closest(".teaser-collage"),
+      );
+    });
+
+    it("adds the script pull phrase and a decorative sprig", () => {
+      const { container } = renderTeaser();
+      const pull = screen.getByText("Hecho a mano, compartido entre todas");
+
+      expect(pull).toHaveAttribute("data-script", "true");
+      expect(container.querySelector("[data-variant]")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    });
+
+    it("reveals its blocks with a stagger", () => {
+      const { container } = renderTeaser();
+      const revealed = [...container.querySelectorAll("[data-reveal]")];
+
+      expect(revealed.length).toBeGreaterThanOrEqual(2);
+      expect(
+        revealed.map((element) =>
+          (element as HTMLElement).style.getPropertyValue("--reveal-delay"),
+        ),
+      ).toContain("80ms");
+    });
+
+    it("has no axe violations", async () => {
+      const { container } = renderTeaser();
+      await expectNoAxeViolations(container);
+    });
+  });
+
+  describe("ContactBand band", () => {
+    const renderBand = () =>
+      render(
+        <MemoryRouter>
+          <ContactBand
+            heading="Hablemos"
+            body="Estamos para acompañarte."
+            whatsappHref="https://wa.me/5493510000000"
+            instagramHref="https://www.instagram.com/calma.inquieta/"
+          />
+        </MemoryRouter>,
+      );
+
+    it("is a full-bleed clay band with a big butterfly and a sprig", () => {
+      const { container } = renderBand();
+      const band = container.querySelector("section");
+
+      expect(band).toHaveAttribute("data-bleed", "true");
+      expect(band).toHaveAttribute("data-tone", "clay");
+      expect(
+        container.querySelector('[data-size="xl"].motif-flight'),
+      ).not.toBeNull();
+      expect(container.querySelector("[data-variant]")).not.toBeNull();
+    });
+
+    it("styles both calls to action for the dark band", async () => {
+      const { container } = renderBand();
+
+      expect(
+        screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
+      ).toHaveClass("bg-canvas", "text-clay-800");
+      expect(screen.getByRole("link", { name: /Instagram/ })).toHaveClass(
+        "text-canvas",
+      );
+      await expectNoAxeViolations(container);
+    });
+  });
+
+  describe("ContactBand photo", () => {
+    const hands = {
+      src: "/media/home/home-band-hands-960.webp",
+      srcSet:
+        "/media/home/home-band-hands-480.webp 480w, /media/home/home-band-hands-960.webp 960w",
+      alt: "Manos terminando un espejo de paja",
+      width: 960,
+      height: 1200,
+    };
+    const renderWithPhoto = (props: object = {}) =>
+      render(
+        <MemoryRouter>
+          <ContactBand
+            heading="Hablemos"
+            body="Estamos para acompañarte."
+            whatsappHref="https://wa.me/5493510000000"
+            image={hands}
+            {...props}
+          />
+        </MemoryRouter>,
+      );
+
+    it("shows a lazy framed 4:5 photo beside the call to action", async () => {
+      const { container } = renderWithPhoto();
+      const photo = screen.getByAltText(hands.alt);
+
+      expect(photo).toHaveClass("aspect-4/5");
+      expect(photo).toHaveAttribute("loading", "lazy");
+      expect(photo).toHaveAttribute("sizes");
+      expect(photo.closest(".bg-surface")).not.toBeNull();
+      expect(
+        screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
+      ).toBeInTheDocument();
+      await expectNoAxeViolations(container);
+    });
+
+    it("keeps the band whole without a photo", () => {
+      const { container } = renderWithPhoto({ image: undefined });
+
+      expect(container.querySelectorAll("img")).toHaveLength(0);
+      expect(
+        screen.getByRole("heading", { name: "Hablemos" }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("renders ContactBand content and WhatsApp link accessibly", async () => {

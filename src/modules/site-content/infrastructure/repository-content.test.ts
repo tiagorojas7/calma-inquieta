@@ -56,9 +56,7 @@ describe("the repository content", () => {
     const raw = await source.load();
 
     expect(validateSiteContent(raw)).toEqual([]);
-    expect(raw.home.hero.image.mobile.src.startsWith("/media/home/")).toBe(
-      true,
-    );
+    expect(raw.home.hero.backdrop.src.startsWith("/media/home/")).toBe(true);
   });
 
   it("contains no copy violation anywhere in its strings", async () => {
@@ -182,11 +180,11 @@ describe("the drafted page content", () => {
 
     expect(home.hero.primaryCtaLabel).toBe("Ver talleres");
     expect(home.hero.secondaryCtaLabel).toBe("Ver intensivos");
-    expect(home.hero.image.mobile.alt.trim()).not.toBe("");
+    expect(home.hero.backdrop.alt.trim()).not.toBe("");
     expect(home.testimonials.items).toEqual([]);
   });
 
-  it("the hero image is art-directed from published registry assets", async () => {
+  it("the hero backdrop and collage are published registry assets of the expected ratios", async () => {
     const raw = await source.load();
     const home = await content.getHomePage();
     const registered = (id: string) => {
@@ -197,11 +195,15 @@ describe("the drafted page content", () => {
       return asset;
     };
     const pairs = [
-      ["home-hero-mobile", home.hero.image.mobile, 4 / 5],
-      ["home-hero-desktop", home.hero.image.desktop, 3 / 4],
+      ["home-hero-backdrop", home.hero.backdrop, 9 / 16],
+      ["home-hero-desktop", home.hero.collage[0], 3 / 4],
+      ["home-collage-wide", home.hero.collage[1], 4 / 3],
+      ["home-collage-square", home.hero.collage[2], 1],
     ] as const;
 
+    expect(home.hero.collage).toHaveLength(3);
     for (const [id, image, ratio] of pairs) {
+      if (!image) throw new Error("missing hero image " + id);
       const asset = registered(id);
       const paths = asset.variants.map((variant) => variant.path);
       const candidates = (image.srcSet ?? "")
@@ -238,6 +240,7 @@ describe("the drafted page content", () => {
       1 +
       raw.about.history.length +
       1 +
+      1 + // the pull-quote
       raw.about.values.length +
       raw.about.faq.length +
       2; // the two catalog listing intros
@@ -286,6 +289,9 @@ describe("the drafted page content", () => {
       "font-cormorant-garamond-400-italic",
       "font-montserrat-400-normal",
       "font-montserrat-600-normal",
+      "font-cormorant-garamond-500-normal",
+      "font-cormorant-garamond-600-normal",
+      "font-caveat-600-normal",
     ]);
   });
 
@@ -295,9 +301,10 @@ describe("the drafted page content", () => {
     const about = await content.getAboutPage();
     const contact = await content.getContactPage();
     const images = [
-      home.hero.image.mobile,
-      home.hero.image.desktop,
+      home.hero.backdrop,
+      ...home.hero.collage,
       home.teaser.image,
+      home.teaser.accentImage,
       ...about.gallery,
       ...(contact.photo ? [contact.photo] : []),
     ];
@@ -519,7 +526,6 @@ const GALLERY_ORDER = [
 const CURATION_RESERVES = [
   "img-20260804-185559792-hdr",
   "img-20260917-180559720-hdr",
-  "img-20260718-wa0044",
   "img-20260420-wa0046",
   "img-20260312-wa0051",
   "img-20260530-wa0020",
@@ -567,6 +573,56 @@ describe("the curated gallery", () => {
     }
   });
 
+  it("the intro collage has three published about photos of different ratios", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+
+    expect(about.introImages).toHaveLength(3);
+    const ratios = about.introImages.map((image) => image.width / image.height);
+    expect(new Set(ratios.map((ratio) => ratio.toFixed(2))).size).toBe(3);
+    for (const image of about.introImages) {
+      expect(image.alt.trim(), image.src).not.toBe("");
+      expect(image.srcSet, image.src).toBeDefined();
+      for (const path of pathsOf(image)) {
+        expect(path.startsWith("/media/about/"), path).toBe(true);
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+
+  it("the intro collage has three published 9:16 muted loops with posters", async () => {
+    const raw = await source.load();
+    const about = await content.getAboutPage();
+
+    expect(about.introLoops).toHaveLength(3);
+    for (const loop of about.introLoops) {
+      expect(loop.width / loop.height).toBeCloseTo(9 / 16, 2);
+      expect(loop.poster.alt).toBe("");
+      expect(loop.sources.map(({ type }) => type)).toEqual([
+        "video/webm",
+        "video/mp4",
+      ]);
+      for (const path of [
+        ...pathsOf(loop.poster),
+        ...loop.sources.map(({ src }) => src),
+      ]) {
+        expect(path.startsWith("/media/video/about-loop-"), path).toBe(true);
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+
+  it("the pull-quote is an unapproved draft in the launch checklist", async () => {
+    const about = await content.getAboutPage();
+    const unapproved = await content.listUnapprovedContent();
+
+    expect(about.pullQuote.text.trim()).not.toBe("");
+    expect(unapproved).toContainEqual({
+      id: about.pullQuote.id,
+      area: "about:pull-quote",
+    });
+  });
+
   it("the curation reserves are not registered", async () => {
     const raw = await source.load();
     const registered = exclusionToken(JSON.stringify(raw.media.assets));
@@ -587,9 +643,10 @@ describe("the curated gallery", () => {
     const home = await content.getHomePage();
     const about = await content.getAboutPage();
     const images = [
-      home.hero.image.mobile,
-      home.hero.image.desktop,
+      home.hero.backdrop,
+      ...home.hero.collage,
       home.teaser.image,
+      home.teaser.accentImage,
       ...about.gallery,
     ];
 
@@ -606,6 +663,85 @@ describe("the curated gallery", () => {
       }
     }
     expect(owned).toBeGreaterThan(30);
+  });
+});
+
+describe("the Inicio copy and motifs", () => {
+  it("has a handwritten note, four keywords and a teaser pull phrase, all in voseo", async () => {
+    const home = await content.getHomePage();
+
+    expect(home.hero.note).toMatch(/vos/u);
+    expect(home.hero.keywords).toHaveLength(4);
+    expect(home.teaser.pull.trim()).not.toBe("");
+    expect(
+      findCopyViolations([
+        home.hero.note,
+        ...home.hero.keywords,
+        home.teaser.pull,
+      ]),
+    ).toEqual([]);
+  });
+
+  it("the teaser pairs two published home photos of different ratios", async () => {
+    const raw = await source.load();
+    const home = await content.getHomePage();
+    const { image, accentImage } = home.teaser;
+
+    expect(image.src).not.toBe(accentImage.src);
+    expect(image.width / image.height).not.toBeCloseTo(
+      accentImage.width / accentImage.height,
+      1,
+    );
+    for (const path of [...pathsOf(image), ...pathsOf(accentImage)]) {
+      expect(isPublishedPath(path, raw), path).toBe(true);
+    }
+  });
+});
+
+describe("the Inicio band photos", () => {
+  const pairs = [
+    ["home-catalog-weaving", (home: Home) => home.catalogBand.primary, 4 / 5],
+    ["home-catalog-looms", (home: Home) => home.catalogBand.secondary, 3 / 2],
+    ["home-band-hands", (home: Home) => home.contactBand.image, 4 / 5],
+  ] as const;
+  type Home = Awaited<ReturnType<typeof content.getHomePage>>;
+
+  it.each(pairs)(
+    "%s is the published registry photo with its ratio and alt",
+    async (id, pick, ratio) => {
+      const raw = await source.load();
+      const home = await content.getHomePage();
+      const image = pick(home);
+      const asset = raw.media.assets.find((candidate) => candidate.id === id);
+      if (asset?.kind !== "image") {
+        throw new Error(`${id} is not a registered image`);
+      }
+
+      expect(image.alt).toBe(asset.alt);
+      expect(image.width / image.height).toBeCloseTo(ratio, 2);
+      expect(pathsOf(image)).toEqual(
+        expect.arrayContaining(asset.variants.map(({ path }) => path)),
+      );
+      for (const path of pathsOf(image)) {
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    },
+  );
+
+  it("the catalog band lead is es-AR copy without prices or a workshop word", async () => {
+    const { catalogBand, contactBand } = await content.getHomePage();
+
+    expect(catalogBand.heading.trim()).not.toBe("");
+    expect(catalogBand.body).toMatch(/vos|Sumate|Escribinos/u);
+    expect(
+      findCopyViolations([
+        catalogBand.heading,
+        catalogBand.body,
+        contactBand.heading,
+        contactBand.body,
+      ]),
+    ).toEqual([]);
+    expect(`${catalogBand.heading}${catalogBand.body}`).not.toMatch(/\$|\d/u);
   });
 });
 
@@ -668,15 +804,34 @@ describe("the curated contact photo", () => {
   });
 });
 
+describe("the brand logos", () => {
+  it("are the published dark and light registry logos, decorative beside the wordmark", async () => {
+    const raw = await source.load();
+    const brand = await content.getBrand();
+
+    expect(brand.logo).toBeDefined();
+    expect(brand.logoLight).toBeDefined();
+    expect(raw.brand.logo.src).toContain("/media/brand/brand-logo-");
+    expect(raw.brand.logoLight.src).toContain("/media/brand/brand-logo-light-");
+    for (const logo of [raw.brand.logo, raw.brand.logoLight]) {
+      expect(logo.alt).toBe("");
+      expect(logo.srcSet?.split(",")).toHaveLength(3);
+      for (const path of pathsOf(logo)) {
+        expect(isPublishedPath(path, raw), path).toBe(true);
+      }
+    }
+  });
+});
+
 describe("the launch gate on the repository content", () => {
-  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are four and unpublishedMedia is empty", async () => {
+  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are seven and unpublishedMedia is empty", async () => {
     const gate = await content.getLaunchGate();
 
     expect(gate.imageStandIns.map(({ id }) => id)).toEqual([
       "gallery-01",
       "favicon",
     ]);
-    expect(gate.fontStandIns).toHaveLength(4);
+    expect(gate.fontStandIns).toHaveLength(7);
     expect(gate.unpublishedMedia).toEqual([]);
   });
 });

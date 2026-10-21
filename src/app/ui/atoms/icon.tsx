@@ -1,11 +1,17 @@
 import type { SVGProps } from "react";
 const paths = {
   arrow: <path d="M4 12h15m-6-6 6 6-6 6" />,
-  whatsapp: <path d="M5 19l1-3a7 7 0 1 1 2 2l-3 1Z" />,
+  whatsapp: (
+    <>
+      <path d="M5 19l1-3a7 7 0 1 1 2 2l-3 1Z" />
+      <path d="M9.4 8.8c.2 2.2 2.4 4.4 4.7 4.7l1.1-1.2-1.7-.9-.8.6a3.8 3.8 0 0 1-1.8-1.8l.6-.8-.9-1.7Z" />
+    </>
+  ),
   instagram: (
     <>
       <rect x="4" y="4" width="16" height="16" rx="4" />
       <circle cx="12" cy="12" r="4" />
+      <circle cx="16.9" cy="7.1" r=".6" />
     </>
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
@@ -18,6 +24,9 @@ const paths = {
       <path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11Z" />
       <circle cx="12" cy="10" r="2" />
     </>
+  ),
+  map: (
+    <path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4ZM9 4v13.6m6-11.2v13.4" />
   ),
   clock: (
     <>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildDirectionsUrl } from "~/modules/site-content";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import { loader } from "./public-layout";
@@ -35,10 +36,14 @@ describe("public layout loader", () => {
         getBusinessProfile: () => Promise.resolve(profile),
       },
     });
+    const brand = await services.siteContent.getBrand();
+    expect(brand.logo).toBeDefined();
     await expect(loader(createLoaderArgs(services) as never)).resolves.toEqual({
       wordmark: "Calma Inquieta",
       whatsappHref: "https://wa.me/5493517395239?text=Hola",
       instagramHref: profile.instagram.url,
+      directionsHref: buildDirectionsUrl(profile.address),
+      brand,
       footer: {
         address: profile.address,
         bajada: profile.bajada,
@@ -61,5 +66,19 @@ describe("public layout loader", () => {
     });
     const result = await loader(createLoaderArgs(services) as never);
     expect(result.whatsappHref).toBeUndefined();
+  });
+
+  it("passes only the published logos on, so a missing one leaves the wordmark alone", async () => {
+    const services = createTestServices({
+      siteContent: {
+        ...createTestServices().siteContent,
+        getBusinessProfile: () => Promise.resolve(profile),
+        getBrand: () => Promise.resolve({}),
+      },
+    });
+
+    const result = await loader(createLoaderArgs(services) as never);
+
+    expect(result.brand).toEqual({});
   });
 });

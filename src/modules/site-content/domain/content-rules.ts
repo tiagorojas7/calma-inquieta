@@ -162,6 +162,14 @@ export function publishedLoop(
     : undefined;
 }
 
+/** The loops whose every path is published, in order. */
+export function publishedLoops(
+  loops: readonly AmbientLoop[],
+  content: RawSiteContent,
+): readonly AmbientLoop[] {
+  return loops.filter((loop) => publishedLoop(loop, content) !== undefined);
+}
+
 /** Every image the content shows, with the identifier a failure should name. */
 function contentImages(content: RawSiteContent): readonly {
   readonly id: string;
@@ -169,14 +177,25 @@ function contentImages(content: RawSiteContent): readonly {
   readonly decorative: boolean;
 }[] {
   return [
-    ...[content.home.hero.image.mobile, content.home.hero.image.desktop].map(
-      (image) => ({ id: image.src, image, decorative: false }),
-    ),
-    {
-      id: content.home.teaser.image.src,
-      image: content.home.teaser.image,
+    ...[
+      content.home.hero.backdrop,
+      ...content.home.hero.collage,
+      content.home.teaser.image,
+      content.home.teaser.accentImage,
+      content.home.catalogBand.primary,
+      content.home.catalogBand.secondary,
+      content.home.contactBand.image,
+    ].map((image) => ({ id: image.src, image, decorative: false })),
+    ...[content.brand.logo, content.brand.logoLight].map((image) => ({
+      id: image.src,
+      image,
+      decorative: true,
+    })),
+    ...content.about.introImages.map((image) => ({
+      id: image.src,
+      image,
       decorative: false,
-    },
+    })),
     ...content.about.gallery.map((image) => ({
       id: image.id,
       image,
@@ -211,6 +230,7 @@ function contentIds(content: RawSiteContent): readonly string[] {
     ...content.home.testimonials.items.map((item) => item.id),
     ...content.about.history.map((entry) => entry.id),
     content.about.valueProposition.id,
+    content.about.pullQuote.id,
     content.catalog.talleres.intro.id,
     content.catalog.intensivos.intro.id,
     ...content.about.values.map((value) => value.id),
@@ -251,6 +271,12 @@ export function validateSiteContent(
   }
   const { loop } = content.home.hero;
   for (const path of loop ? loopPaths(loop) : []) {
+    const rule = pathRule(path, content);
+    if (rule) {
+      issues.push({ id: path, rule });
+    }
+  }
+  for (const path of content.about.introLoops.flatMap(loopPaths)) {
     const rule = pathRule(path, content);
     if (rule) {
       issues.push({ id: path, rule });
@@ -327,6 +353,7 @@ export function listUnapproved(
       area: "about:value-proposition",
       items: [content.about.valueProposition],
     },
+    { area: "about:pull-quote", items: [content.about.pullQuote] },
     { area: "about:values", items: content.about.values },
     { area: "about:faq", items: content.about.faq },
     {

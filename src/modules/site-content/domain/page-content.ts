@@ -93,8 +93,18 @@ export interface HomePageContent {
     readonly subtitle: string;
     readonly primaryCtaLabel: string;
     readonly secondaryCtaLabel: string;
-    /** The hero still: a required slot from the media registry. */
-    readonly image: ArtDirectedImage;
+    /** Phones: the full-bleed 9:16 photo behind the text (the LCP below lg). */
+    readonly backdrop: ImageRef;
+    /**
+     * From lg: the collage photos, in slot order. The first is the large
+     * lead (the LCP from lg), the second sits in a white frame, the third
+     * has a torn-paper edge.
+     */
+    readonly collage: readonly ImageRef[];
+    /** The handwritten kraft note laid over the collage (es-AR voseo). */
+    readonly note: string;
+    /** The small tracked word list at the foot of the collage. */
+    readonly keywords: readonly string[];
     /** Optional: the reader drops it unless every path is published. */
     readonly loop?: AmbientLoop;
   };
@@ -109,6 +119,10 @@ export interface HomePageContent {
     readonly heading: string;
     readonly body: ApprovableText;
     readonly image: ImageRef;
+    /** The second, overlapping photo of the pair (another ratio). */
+    readonly accentImage: ImageRef;
+    /** The handwritten pull phrase beside the text. */
+    readonly pull: string;
     readonly linkLabel: string;
   };
   /** The reader returns consented testimonials only. */
@@ -116,9 +130,20 @@ export interface HomePageContent {
     readonly heading: string;
     readonly items: readonly Testimonial[];
   };
+  /** The booking lead above the catalog cards: copy and a layered photo pair. */
+  readonly catalogBand: {
+    readonly heading: string;
+    readonly body: string;
+    /** The tall photo of the pair (4:5). */
+    readonly primary: ImageRef;
+    /** The wide photo laid over the first (3:2). */
+    readonly secondary: ImageRef;
+  };
   readonly contactBand: {
     readonly heading: string;
     readonly body: string;
+    /** The photo beside the WhatsApp call to action. */
+    readonly image: ImageRef;
   };
 }
 
@@ -128,6 +153,15 @@ export interface AboutPageContent {
   readonly heading: string;
   readonly history: readonly ApprovableText[];
   readonly valueProposition: ApprovableText;
+  /** A short handwritten line beside the intro; drafted copy awaiting approval. */
+  readonly pullQuote: ApprovableText;
+  /** Two or three photos of different ratios for the intro collage; unpublished ones are dropped on read. */
+  readonly introImages: readonly ImageRef[];
+  /**
+   * Muted 9:16 loops for the intro collage. When at least one is published
+   * the collage shows them; otherwise it falls back to `introImages`.
+   */
+  readonly introLoops: readonly AmbientLoop[];
   readonly values: readonly ValueItem[];
   readonly gallery: readonly GalleryImage[];
   readonly videos: readonly VideoEntry[];
@@ -216,8 +250,20 @@ export interface CatalogContent {
   };
 }
 
+/**
+ * The brand mark shown in the header. Both logos are decorative (empty alt):
+ * the visible wordmark beside them names the link.
+ */
+export interface BrandContent {
+  /** Dark ink, for the light page. */
+  readonly logo: ImageRef;
+  /** Cream, for the dark hero photo below lg. */
+  readonly logoLight: ImageRef;
+}
+
 export interface RawSiteContent {
   readonly profile: RawBusinessProfile;
+  readonly brand: BrandContent;
   readonly home: HomePageContent;
   readonly about: AboutPageContent;
   readonly contact: ContactPageContent;

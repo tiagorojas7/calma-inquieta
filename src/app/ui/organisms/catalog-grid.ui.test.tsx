@@ -31,6 +31,11 @@ describe("CatalogGrid", () => {
       </MemoryRouter>,
     );
     expect(screen.getAllByRole("article")).toHaveLength(3);
+    const grid = container.firstElementChild;
+    expect(grid).toHaveClass("items-stretch");
+    for (const item of Array.from(grid?.children ?? [])) {
+      expect(item).toHaveClass("h-full");
+    }
     const headings = screen
       .getAllByRole("heading", { level: 2 })
       .map((heading) => heading.textContent);

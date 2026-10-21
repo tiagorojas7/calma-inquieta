@@ -8,10 +8,12 @@ import { contactContent } from "./content/contact";
 import { homeContent } from "./content/home";
 import { MEDIA_ASSETS } from "./content/media-assets";
 import { EXCLUDED_SOURCES, MEDIA_RIGHTS } from "./content/media-rights";
+import { brandContent } from "./content/site";
 import { STAND_IN_ASSETS } from "./content/stand-in-assets";
 
 const rawSiteContent = {
   profile: businessProfile,
+  brand: brandContent,
   home: homeContent,
   about: aboutContent,
   contact: contactContent,

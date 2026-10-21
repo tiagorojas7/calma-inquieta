@@ -9,12 +9,15 @@ export interface PreloadDescriptor {
   as: "image";
   imageSrcSet: string;
   imageSizes: string;
-  media: string;
+  media?: string;
   fetchPriority: "high";
 }
 
 interface PreloadOptions {
-  sizes: string;
+  /** Layout width of the mobile image (a full-bleed backdrop is 100vw). */
+  mobileSizes: string;
+  /** Layout width of the desktop image (a collage tile is a share of the viewport). */
+  desktopSizes: string;
   mobileMedia: string;
   desktopMedia: string;
 }
@@ -33,13 +36,32 @@ const descriptor = (
   fetchPriority: "high",
 });
 
-/** Two preloads with mutually exclusive media, one per art-directed source. */
+/**
+ * Two preloads with mutually exclusive media, one per art-directed source, so
+ * a phone never fetches the desktop image and the other way round. The sizes
+ * differ per side because the two images fill different layout boxes.
+ */
 export function artDirectedPreloads(
   image: { mobile: PreloadImage; desktop: PreloadImage },
-  { sizes, mobileMedia, desktopMedia }: PreloadOptions,
+  { mobileSizes, desktopSizes, mobileMedia, desktopMedia }: PreloadOptions,
 ): readonly PreloadDescriptor[] {
   return [
-    descriptor(image.mobile, sizes, mobileMedia),
-    descriptor(image.desktop, sizes, desktopMedia),
+    descriptor(image.mobile, mobileSizes, mobileMedia),
+    descriptor(image.desktop, desktopSizes, desktopMedia),
   ];
+}
+
+/** One preload with no media, for a hero image that shows on every width. */
+export function imagePreload(
+  image: PreloadImage,
+  sizes: string,
+): PreloadDescriptor {
+  return {
+    tagName: "link",
+    rel: "preload",
+    as: "image",
+    imageSrcSet: image.srcSet ?? image.src,
+    imageSizes: sizes,
+    fetchPriority: "high",
+  };
 }

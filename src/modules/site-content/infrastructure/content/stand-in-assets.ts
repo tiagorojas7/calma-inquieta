@@ -72,4 +72,28 @@ export const STAND_IN_ASSETS = [
     licence: FONT_LICENCE,
     replaceWith: FONT_REPLACE_WITH,
   },
+  {
+    id: "font-cormorant-garamond-500-normal",
+    path: "/fonts/cormorant-garamond-latin-500-normal.woff2",
+    kind: "font",
+    source: FONT_SOURCE,
+    licence: FONT_LICENCE,
+    replaceWith: FONT_REPLACE_WITH,
+  },
+  {
+    id: "font-cormorant-garamond-600-normal",
+    path: "/fonts/cormorant-garamond-latin-600-normal.woff2",
+    kind: "font",
+    source: FONT_SOURCE,
+    licence: FONT_LICENCE,
+    replaceWith: FONT_REPLACE_WITH,
+  },
+  {
+    id: "font-caveat-600-normal",
+    path: "/fonts/caveat-latin-600-normal.woff2",
+    kind: "font",
+    source: FONT_SOURCE,
+    licence: FONT_LICENCE,
+    replaceWith: FONT_REPLACE_WITH,
+  },
 ] as const satisfies readonly StandInAsset[];

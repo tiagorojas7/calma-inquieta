@@ -8,12 +8,10 @@ import {
   buildPublicTurno,
 } from "~/testing/fakes/public-catalog-builders";
 import { createLoaderArgs } from "~/testing/react-router";
-import {
-  HERO_DESKTOP_MEDIA,
-  HERO_MOBILE_MEDIA,
-  HERO_STILL_SIZES,
-} from "~/app/ui/organisms/hero-section";
-import { loader, meta } from "./home";
+import { HERO_LEAD_RESPONSIVE_SIZES } from "~/app/ui/organisms/hero-section";
+import * as homeRoute from "./home";
+
+const { loader, meta } = homeRoute;
 
 describe("home loader", () => {
   it("maps approved content, empty catalog lists, contact data and site meta", async () => {
@@ -124,6 +122,30 @@ describe("home loader", () => {
   });
 });
 
+describe("home route handle", () => {
+  it("exports no header handle: the hero is light on every width", () => {
+    expect("handle" in homeRoute).toBe(false);
+  });
+});
+
+describe("home loader band photos", () => {
+  it("carries the booking lead and the three band photos to the page", async () => {
+    const services = createTestServices();
+    const result = await loader(createLoaderArgs(services, "/") as never);
+
+    expect(result.catalogBand.heading).not.toBe("");
+    expect(result.catalogBand.body).not.toBe("");
+    for (const photo of [
+      result.catalogBand.primary,
+      result.catalogBand.secondary,
+      result.contactBand.image,
+    ]) {
+      expect(photo.src).not.toBe("");
+      expect(photo.alt).not.toBe("");
+    }
+  });
+});
+
 describe("home meta share image", () => {
   it("meta contains og:image and the two size tags", async () => {
     const services = createTestServices();
@@ -160,31 +182,28 @@ describe("home meta image preloads", () => {
     return { result, descriptors };
   }
 
-  it("meta includes two image preloads whose srcset and sizes equal the picture", async () => {
+  it("meta preloads only the collage lead, with the sizes its img carries", async () => {
     const { result, descriptors } = await homeMeta();
     const found = preloads(descriptors);
-    expect(found).toHaveLength(2);
-    const [mobile, desktop] = found;
-    expect(mobile).toMatchObject({
+
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
       as: "image",
-      imageSrcSet: result.hero.image.mobile.srcSet,
-      imageSizes: HERO_STILL_SIZES,
-      media: HERO_MOBILE_MEDIA,
+      imageSrcSet: result.hero.collage[0]?.srcSet,
+      imageSizes: HERO_LEAD_RESPONSIVE_SIZES,
     });
-    expect(desktop).toMatchObject({
-      as: "image",
-      imageSrcSet: result.hero.image.desktop.srcSet,
-      imageSizes: HERO_STILL_SIZES,
-      media: HERO_DESKTOP_MEDIA,
-    });
+    expect(found[0]).not.toHaveProperty("media");
     expect(descriptors[0]?.title).toContain("Inicio");
   });
 
-  it("the preload media conditions are mutually exclusive", async () => {
-    const { descriptors } = await homeMeta();
-    const media = preloads(descriptors).map((entry) => entry.media);
-    expect(media).toEqual([HERO_MOBILE_MEDIA, HERO_DESKTOP_MEDIA]);
-    expect(HERO_MOBILE_MEDIA).toBe(`not all and ${HERO_DESKTOP_MEDIA}`);
+  it("carries the whole Inicio hero and teaser content to the page", async () => {
+    const { result } = await homeMeta();
+
+    expect(result.hero.collage.length).toBeGreaterThanOrEqual(3);
+    expect(result.hero.note).not.toBe("");
+    expect(result.hero.keywords).toHaveLength(4);
+    expect(result.teaser.accentImage.src).not.toBe("");
+    expect(result.teaser.pull).not.toBe("");
   });
 
   it("the error branch meta has no image preload", () => {

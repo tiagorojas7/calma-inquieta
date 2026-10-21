@@ -13,21 +13,31 @@ export function ConfirmedSubmit({
   title,
   message,
   tone = "default",
+  fields,
+  buttonName,
 }: {
   intent: string;
   label: string;
   title: string;
   message: string;
   tone?: "default" | "destructive";
+  /** Extra hidden fields, such as the id of the row the action is about. */
+  fields?: Readonly<Record<string, string>>;
+  /** Accessible name of the opening button when the label alone is ambiguous. */
+  buttonName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   return (
     <form ref={formRef} method="post">
       <input type="hidden" name="intent" value={intent} />
+      {Object.entries(fields ?? {}).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <Button
         type="button"
         variant="outline"
+        aria-label={buttonName}
         onClick={() => {
           setOpen(true);
         }}

@@ -92,3 +92,33 @@ export function transitionRefusedMessage(
   const names = adminMicrocopy.status;
   return `No se puede pasar de ${names[from]} a ${names[to]}.`;
 }
+
+/** Turno fields whose generic text would mislead. */
+export const TURNO_FIELD_MESSAGES = {
+  label: { duplicate: "Ya hay un turno con ese nombre en este taller." },
+  weekday: {
+    "invalid-format": "Elegí un día de la semana.",
+    "out-of-range": "Elegí un día de la semana.",
+  },
+  timeRange: {
+    "invalid-format":
+      "Ingresá los horarios con el formato HH:MM, por ejemplo 10:00.",
+  },
+  defaultCapacity: {
+    "invalid-format": "Ingresá un número entero de 1 a 500.",
+    "out-of-range": "Ingresá un número entero de 1 a 500.",
+  },
+} as const satisfies FieldMessages<string>;
+
+const TURNO_RULE_MESSAGES = {
+  "last-active-turno-of-published":
+    "Es el único turno activo de un taller publicado. Pausá el taller primero.",
+  "turno-used":
+    "Algún mes ya usó este turno, así que no se puede eliminar. Retiralo para que no se ofrezca más.",
+} as const;
+
+export function turnoRulesMessage(
+  rules: readonly (keyof typeof TURNO_RULE_MESSAGES)[],
+): string {
+  return rules.map((rule) => TURNO_RULE_MESSAGES[rule]).join(" ");
+}

@@ -1,7 +1,7 @@
 # Admin delivery slices (change 3 admin-catalog, FRONT)
 
 - Objective: deliver the FRONT slices F0a, F1, F2, F3, F4, F6, F8, F7, F5 of change 3 `admin-catalog` (F0b merged).
-- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f3-workshops`.
+- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f4-turnos`.
 - TDD strict (`AGENTS.md`); runner `corepack pnpm test <path>`.
 
 ## Specs
@@ -21,8 +21,9 @@
 - F0a: S-F0a | inline (one writer, sequential) | done locally, PR pending | commit: see PR
 - F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
 - F2: S-F2 (teachers admin screens) | inline | done, PR #75 (stacked on F1 and F0a) | commit: see PR
-- F3: S-F3 (monthly workshops admin screens) | inline | done locally, PR pending (stacked on F2, #75) | commit: see PR
-- F4, F6, F8, F7, F5: pending.
+- F3: S-F3 (monthly workshops admin screens) | inline | merged in PR #79 | commit: see PR
+- F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | in progress in `CalmaInquieta-admin`; 14 changed/untracked paths recovered before any continuation | commit: pending
+- F6, F8, F7, F5: pending in this lane (F8 has a separate completed branch awaiting ordered integration).
 
 ## Log
 
@@ -44,3 +45,7 @@
 - F3: `issue-messages.ts` extended: `fieldErrors` takes per-field overrides (`WORKSHOP_FIELD_MESSAGES`: a duplicate slug is "Ese enlace ya lo usa otro taller.", the slug confirmation, the teacher-required text) and the workshop rule codes get Spanish texts (`publishRulesMessage` lists every unmet rule, `transitionRefusedMessage` names the states in Spanish, the delete rule).
 - F3: layer 1 rule honoured: every form is a native `<form method="post">` (the edit form with `noValidate`), links are plain anchors, no fetcher. Archive, pause and delete ask first through `ConfirmedSubmit`, which submits the same native form with `requestSubmit` after the `ConfirmDialog` (still a document post). Pinned in `workshop-form.ui.test.tsx`.
 - F3 deviations and gaps (owner action marked): (1) **images are not mounted.** `MonthlyWorkshopsService.create/update` answers `unavailable` when `images` is not empty and `get` returns `images: []`, because B4 never persisted the gallery (no `workshop_image` repository code) and `src/modules/**` is outside this lane. Mounting `ImageField` would turn every save with a photo into a 503. The form posts `images: []`; once BACK persists the gallery, F3 follow-up wires `ImageField` + `uploadChosenImage` (owner/BACK action). (2) A workshop cannot reach `published` from the UI until F4 delivers turnos (publish needs an active turno); the edit page shows the active-turno count only, with no link to a route that does not exist yet. (3) The percentage field is always visible, with a hint that it applies to third-party teachers; the service decides (`percentage-not-applicable`, `required`). (4) A teacher archived after assignment stays selectable on that workshop, labelled "(archivado)", so saving does not silently unassign. (5) Publish, resume and restore have no confirmation (reversible, no public side effect beyond the intended one).
+- F4 recovery: Claude's 14-path partial candidate was preserved and inspected before continuation. Verification found two defective tests and one missing product behavior: retirement submitted without the admin-shell confirmation required for state changes. The repair corrected the retired-label uniqueness scenario, scoped the delete-dialog assertion, and routes retirement through `ConfirmedSubmit`; reactivation stays direct.
+- F4 scope: `/admin/talleres/:id/turnos` lists active and retired turnos, creates and edits label/weekday/time/capacity, retires, reactivates and deletes through actor-first `services.turnos` calls, maps last-active and used-turno refusals, and uses native document forms and plain anchors. The workshop detail now links to the route.
+- F4 verification: focused suite `5 files / 56 tests` PASS; `typecheck` PASS; targeted ESLint over all changed TypeScript/TSX paths PASS; Prettier over all 15 candidate paths PASS; `git diff --check` PASS. An independent verifier inspected the complete candidate against the service contracts and both specs and returned PASS. Known non-blocking warnings: jsdom lacks canvas `getContext`; ESLint reports the existing boundaries configuration deprecation.
+- F4 native review preflight: `INSPECT` timed out before native status with `mutation_outcome: not_started` and `next_action: stop`; no lineage or approval was created. The fail-closed ASSESS plan required writer self-verification plus an independent verifier, both satisfied above.

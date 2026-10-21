@@ -151,6 +151,9 @@ describe("workshop admin screens", () => {
     expect(screen.getByLabelText("Profesor")).toHaveValue("t2");
     expect(screen.getByText("Publicado")).toBeVisible();
     expect(screen.getByText("2 turnos activos")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Administrar turnos" }),
+    ).toHaveAttribute("href", "/admin/talleres/w1/turnos");
     expect(screen.getByRole("button", { name: "Pausar" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Archivar" })).toBeVisible();
     expect(

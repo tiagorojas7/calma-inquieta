@@ -114,6 +114,51 @@ export const adminMicrocopy = {
       turnos: "Turnos activos",
     },
     noTeacher: "Sin profesor",
+    turnos: {
+      manage: "Administrar turnos",
+      title: (workshop: string) => `Turnos de ${workshop}`,
+      back: "Volver al taller",
+      listLabel: "Turnos del taller",
+      columns: {
+        label: "Turno",
+        day: "Día",
+        range: "Horario",
+        capacity: "Capacidad",
+        state: "Estado",
+        actions: "Acciones",
+      },
+      empty: {
+        title: "Todavía no hay turnos",
+        message:
+          "Cargá el primero. Un taller necesita al menos un turno activo para publicarse.",
+      },
+      retired: "Retirado",
+      edit: "Editar",
+      retire: "Retirar",
+      reactivate: "Reactivar",
+      delete: "Eliminar",
+      rowName: (action: string, label: string) => `${action} ${label}`,
+      confirmDelete: {
+        title: "¿Eliminar el turno?",
+        message:
+          "Se elimina para siempre. Ningún mes lo usó todavía, por eso se puede borrar.",
+      },
+      form: {
+        addTitle: "Agregar turno",
+        editTitle: "Editar turno",
+        label: "Nombre del turno",
+        labelHint: "Por ejemplo: Mañana, Tarde o Noche.",
+        weekday: "Día de la semana",
+        startsAt: "Desde",
+        endsAt: "Hasta",
+        defaultCapacity: "Capacidad por defecto",
+        defaultCapacityHint:
+          "Cupos para los meses nuevos. Cambiarla no modifica los meses que ya abriste.",
+        save: "Guardar turno",
+        cancelEdit: "Cancelar edición",
+        saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+      },
+    },
     empty: {
       title: "Todavía no hay talleres",
       message: "Creá el primero para empezar a armar el calendario.",

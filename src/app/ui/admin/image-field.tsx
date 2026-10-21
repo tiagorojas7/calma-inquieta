@@ -27,7 +27,8 @@ interface Chosen {
 /**
  * File input for one image. The browser-side resize and the network call are
  * injected through `upload`, so this stays presentational. It submits the
- * stored asset as `<name>AssetId` and its required alt text as `<name>Alt`.
+ * stored asset as `<name>AssetId`, its preview source as `<name>Src`, and its
+ * required alt text as `<name>Alt`.
  */
 export function ImageField({
   name,
@@ -91,6 +92,7 @@ export function ImageField({
             className="max-h-48 w-auto rounded-sm"
           />
           <input type="hidden" name={`${name}AssetId`} value={chosen.assetId} />
+          <input type="hidden" name={`${name}Src`} value={chosen.src} />
           <TextField
             key={chosen.assetId}
             label={copy.altLabel}

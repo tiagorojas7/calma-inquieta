@@ -52,6 +52,17 @@ export function fieldErrors<F extends string>(
 }
 
 /** Monthly workshop fields whose generic text would mislead. */
+export const INTENSIVE_FIELD_MESSAGES = {
+  slug: { duplicate: "Ese enlace ya lo usa otro intensivo." },
+  timeRange: {
+    "invalid-format":
+      "Ingresá los horarios con el formato HH:MM, por ejemplo 10:00.",
+    "end-before-start":
+      "El horario de fin tiene que ser posterior al de inicio.",
+  },
+  images: { "too-many": "Podés cargar hasta 6 imágenes." },
+} as const satisfies FieldMessages<string>;
+
 export const WORKSHOP_FIELD_MESSAGES = {
   slug: {
     duplicate: "Ese enlace ya lo usa otro taller.",

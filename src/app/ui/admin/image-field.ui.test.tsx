@@ -33,6 +33,9 @@ describe("ImageField", () => {
     expect(container.querySelector('input[name="photoAssetId"]')).toHaveValue(
       "i1",
     );
+    expect(container.querySelector('input[name="photoSrc"]')).toHaveValue(
+      stored.src,
+    );
     expect(screen.getByLabelText("Texto alternativo")).toHaveAttribute(
       "name",
       "photoAlt",

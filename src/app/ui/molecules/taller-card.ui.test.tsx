@@ -38,6 +38,11 @@ describe("TallerCard", () => {
     expect(
       screen.getByRole("img", { name: tallerCardFixture.image.alt }),
     ).toHaveAttribute("loading", "lazy");
+    expect(screen.getByRole("article")).toHaveClass("card-hover", "h-full");
+    expect(
+      screen.getByRole("img", { name: tallerCardFixture.image.alt })
+        .parentElement,
+    ).toHaveClass("card-hover-frame");
     await expectNoAxeViolations(container);
   });
 
@@ -46,6 +51,7 @@ describe("TallerCard", () => {
       ...tallerCardPausedFixture,
       seats: "Cupo limitado",
     });
+    expect(screen.getByText("Pausado")).toHaveAttribute("data-tone", "notice");
     expect(screen.getByText("Inscripciones pausadas")).toBeVisible();
     expect(screen.queryByText("Cupo limitado")).toBeNull();
     expect(
@@ -59,6 +65,10 @@ describe("TallerCard", () => {
       ...tallerCardNoOfferingFixture,
       seats: "Cupo limitado",
     });
+    expect(screen.getByText("Próximamente")).toHaveAttribute(
+      "data-tone",
+      "notice",
+    );
     expect(
       screen.getByText("Próximamente abrimos inscripciones"),
     ).toBeVisible();

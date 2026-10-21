@@ -28,13 +28,15 @@ export function ActivityCard({
   ctaLabel: string;
 }) {
   return (
-    <article className="flex flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-card">
-      <Image {...image} className="w-full rounded-sm object-cover" />
+    <article className="card-hover flex h-full flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-card">
+      <div className="card-hover-frame w-full rounded-sm">
+        <Image {...image} className="block w-full object-cover" />
+      </div>
       {badge ? <Pill tone="notice">{badge}</Pill> : null}
       <Heading level={3}>{title}</Heading>
       <Text>{description}</Text>
       {schedule ? <Text tone="muted">{schedule}</Text> : null}
-      <ButtonLink href={href} variant="text-arrow">
+      <ButtonLink href={href} variant="text-arrow" className="mt-auto">
         {ctaLabel}
       </ButtonLink>
     </article>

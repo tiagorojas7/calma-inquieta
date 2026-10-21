@@ -49,10 +49,14 @@ export function IntensivoCard({
   ctaLabel: string;
 }) {
   return (
-    <article className="flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-card">
-      <Image {...image} className="w-full rounded-sm object-cover" />
+    <article className="card-hover flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-card">
+      <div className="card-hover-frame w-full rounded-sm">
+        <Image {...image} className="block w-full object-cover" />
+      </div>
       <div className="flex items-center gap-4">
-        <DateBadge {...date} />
+        <div className="rounded-sm bg-sand-100 p-2 shadow-card">
+          <DateBadge {...date} />
+        </div>
         <Heading level={2} size="h3">
           {name}
         </Heading>
@@ -65,7 +69,12 @@ export function IntensivoCard({
         {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
         {seats && !paused ? <Pill>{seats}</Pill> : null}
       </div>
-      {paused ? <PausedNotice text={paused} /> : null}
+      {paused ? (
+        <>
+          <Pill tone="notice">Pausado</Pill>
+          <PausedNotice text={paused} />
+        </>
+      ) : null}
       <ConditionsNote {...conditions} />
       <ButtonLink href={href} variant="text-arrow" className="mt-auto">
         {ctaLabel}

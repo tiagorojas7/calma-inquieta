@@ -22,7 +22,7 @@
 - F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
 - F2: S-F2 (teachers admin screens) | inline | done, PR #75 (stacked on F1 and F0a) | commit: see PR
 - F3: S-F3 (monthly workshops admin screens) | inline | merged in PR #79 | commit: see PR
-- F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | in progress in `CalmaInquieta-admin`; 14 changed/untracked paths recovered before any continuation | commit: pending
+- F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | done locally; integration and PR pending | commit: `8f65c9a`
 - F6, F8, F7, F5: pending in this lane (F8 has a separate completed branch awaiting ordered integration).
 
 ## Log
@@ -48,4 +48,5 @@
 - F4 recovery: Claude's 14-path partial candidate was preserved and inspected before continuation. Verification found two defective tests and one missing product behavior: retirement submitted without the admin-shell confirmation required for state changes. The repair corrected the retired-label uniqueness scenario, scoped the delete-dialog assertion, and routes retirement through `ConfirmedSubmit`; reactivation stays direct.
 - F4 scope: `/admin/talleres/:id/turnos` lists active and retired turnos, creates and edits label/weekday/time/capacity, retires, reactivates and deletes through actor-first `services.turnos` calls, maps last-active and used-turno refusals, and uses native document forms and plain anchors. The workshop detail now links to the route.
 - F4 verification: focused suite `5 files / 56 tests` PASS; `typecheck` PASS; targeted ESLint over all changed TypeScript/TSX paths PASS; Prettier over all 15 candidate paths PASS; `git diff --check` PASS. An independent verifier inspected the complete candidate against the service contracts and both specs and returned PASS. Known non-blocking warnings: jsdom lacks canvas `getContext`; ESLint reports the existing boundaries configuration deprecation.
-- F4 native review preflight: `INSPECT` timed out before native status with `mutation_outcome: not_started` and `next_action: stop`; no lineage or approval was created. The fail-closed ASSESS plan required writer self-verification plus an independent verifier, both satisfied above.
+- F4 work-unit commit: `8f65c9a` (`feat(admin): add turno management screens`), 15 files and 1,460 additions / 3 deletions. The total is above the review budget because the strict behavior/route/UI tests dominate the slice; production stays cohesive around one screen and route contract, so no test compression or file-type split was applied. Rollback boundary: revert `8f65c9a`.
+- F4 native review preflight: `INSPECT` timed out before native status both before and after the work-unit commit, with `mutation_outcome: not_started` and `next_action: stop`; no lineage or approval was created. The fail-closed ASSESS plan required writer self-verification plus an independent verifier, both satisfied above.

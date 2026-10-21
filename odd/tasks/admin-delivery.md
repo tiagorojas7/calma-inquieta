@@ -1,7 +1,7 @@
 # Admin delivery slices (change 3 admin-catalog, FRONT)
 
 - Objective: deliver the FRONT slices F0a, F1, F2, F3, F4, F6, F8, F7, F5 of change 3 `admin-catalog` (F0b merged).
-- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f4-turnos`.
+- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current: `feat/admin-catalog-f6-intensivos`, temporarily stacked on F4 PR #81 head `0357850` and rebased to `main` after the owner merges F4.
 - TDD strict (`AGENTS.md`); runner `corepack pnpm test <path>`.
 
 ## Specs
@@ -22,8 +22,9 @@
 - F1: S-F1 | inline | done locally, PR pending (stacked on F0a, #67) | commit: see PR
 - F2: S-F2 (teachers admin screens) | inline | done, PR #75 (stacked on F1 and F0a) | commit: see PR
 - F3: S-F3 (monthly workshops admin screens) | inline | merged in PR #79 | commit: see PR
-- F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | done locally; PR pending | commit: `1e2cc1f`
-- F6, F8, F7, F5: pending in this lane (F8 has a separate completed branch awaiting ordered integration).
+- F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | PR #81 CLEAN/MERGEABLE, CI verify passed | commit: `1e2cc1f`
+- F6: S-F6 (intensivos admin screens and real request-service wiring) | delegated isolated writer | in progress in `CalmaInquieta-f6` | commit: pending
+- F8, F7, F5: pending in this lane (F8 has a separate completed branch awaiting ordered integration).
 
 ## Log
 
@@ -51,3 +52,7 @@
 - F4 work-unit commit: original `8f65c9a`, rebased cleanly onto `origin/main` `8310974` as `1e2cc1f` (`feat(admin): add turno management screens`); evidence commit rebased as `73d24a1`. Backup branch: `backup/f4-pre-main-945d7b1`. The candidate has 15 files and 1,460 additions / 3 deletions. The total is above the review budget because the strict behavior/route/UI tests dominate the slice; production stays cohesive around one screen and route contract, so no test compression or file-type split was applied. Rollback boundary: revert `1e2cc1f`.
 - F4 native review preflight: `INSPECT` timed out before native status both before and after the work-unit commit, with `mutation_outcome: not_started` and `next_action: stop`; no lineage or approval was created. The fail-closed ASSESS plan required writer self-verification plus an independent verifier, both satisfied above.
 - F4 post-main gate: `format:check`, `lint`, `typecheck`, `build`, `git diff --check origin/main...HEAD`, and the focused 5-file / 56-test suite PASS. The full `corepack pnpm test` produced no result before the 600-second local timeout, so GitHub `verify` remains the full-suite delivery gate; the timeout is not reported as a pass. Worktree clean after generated type checks.
+- F4 delivery: PR #81 is CLEAN and MERGEABLE. The first CI attempt passed 234/235 files and 2,659/2,659 tests but one DB suite could not start because PostgreSQL reported `too many clients already`; one failed-job rerun without code changes passed drift, lint, format, typecheck, coverage, build and gitleaks. Repeated retries are forbidden if connection exhaustion returns; that would require diagnosis.
+- F6 plan: implement the three admin routes `/admin/intensivos`, `/admin/intensivos/nuevo`, `/admin/intensivos/:id`, their native-document list/form/lifecycle UI, typed parsing and Spanish issue mapping. Wire the already-merged B7 service in `src/composition/request-services.ts` through `createDrizzleIntensiveRepository`, the existing teacher lookup, a structural media lookup over the Drizzle media repository, and `systemClock`; pin the wiring with a composition test. No `src/modules/**`, site-content or public UI edits.
+- F6 delivery budget: one cohesive work unit, forecast 300–400 production lines plus 600–900 test lines over 14–18 paths. Tests may require `size:exception`; if production alone exceeds 400, split A (list/form/create/edit) and B (lifecycle/reschedule/gallery) before delivery. Public C4-B4 runs concurrently on disjoint site-content paths.
+- F6 wiring strict TDD: RED proved `services.intensives` still answered `unavailable`; GREEN composes the B7 service over the Drizzle intensive repository, shared teacher lookup, structural media lookup and system clock. Focused intensives, teachers and monthly-workshops request-service tests PASS; typecheck, targeted lint/Prettier and diff-check PASS. An independent verifier confirmed actor-first denial avoids DB access and the admin path reaches Drizzle. Rollback boundary: revert the wiring work unit to restore the unavailable placeholder.

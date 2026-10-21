@@ -262,10 +262,9 @@ describe("createSiteContent", () => {
     const reader = content();
 
     expect((await reader.getContactPage()).heading).toBe("Contacto");
-    expect((await reader.getComingSoonPage("intensivos")).title).toBe(
-      "Intensivos",
+    expect((await reader.getComingSoonPage("eventos-privados")).title).toBe(
+      "Eventos privados",
     );
-    expect((await reader.getComingSoonPage("talleres")).title).toBe("Talleres");
   });
 
   it("lists unapproved content for the launch checklist", async () => {
@@ -321,7 +320,7 @@ describe("createSiteContent", () => {
       reader.getAboutPage(),
       reader.getContactPage(),
       reader.getLaunchGate(),
-      reader.getComingSoonPage("talleres"),
+      reader.getComingSoonPage("eventos-privados"),
       reader.listUnapprovedContent(),
       reader.listStandInAssets(),
     ]) {

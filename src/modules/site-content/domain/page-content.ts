@@ -181,7 +181,7 @@ export interface ContactPageContent {
   readonly photo?: ImageRef;
 }
 
-export type ComingSoonSlug = "talleres" | "intensivos" | "eventos-privados";
+export type ComingSoonSlug = "eventos-privados";
 
 export interface ComingSoonContent {
   readonly seo: SeoCopy;

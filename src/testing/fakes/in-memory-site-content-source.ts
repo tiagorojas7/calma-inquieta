@@ -226,18 +226,6 @@ export function buildRawSiteContent(
       photo: image("/media/stand-ins/gallery-01.jpg", "Frente del local"),
     },
     comingSoon: {
-      talleres: {
-        seo: seo("Talleres"),
-        title: "Talleres",
-        message: "Muy pronto.",
-        whatsappTopic: "talleres",
-      },
-      intensivos: {
-        seo: seo("Intensivos"),
-        title: "Intensivos",
-        message: "Muy pronto.",
-        whatsappTopic: "intensivos",
-      },
       "eventos-privados": {
         seo: seo("Eventos privados"),
         title: "Eventos privados",

@@ -251,19 +251,16 @@ describe("the drafted page content", () => {
     expect(unapproved.map((item) => item.id)).toContain("about-history-1");
   });
 
-  it("has a page for each coming-soon slug, each with a WhatsApp topic", async () => {
-    const talleres = await content.getComingSoonPage("talleres");
-    const intensivos = await content.getComingSoonPage("intensivos");
+  it("retains only the private-events coming-soon page", async () => {
+    const raw = await source.load();
     const eventos = await content.getComingSoonPage("eventos-privados");
 
-    expect(intensivos.title).toBe("Talleres intensivos");
-    expect(talleres.whatsappTopic).toBe("talleres");
-    expect(intensivos.whatsappTopic).toBe("intensivos");
+    expect(Object.keys(raw.comingSoon)).toEqual(["eventos-privados"]);
+    expect(eventos.title.trim()).not.toBe("");
+    expect(eventos.message.trim()).not.toBe("");
+    expect(eventos.seo.title.trim()).not.toBe("");
+    expect(eventos.seo.description.trim()).not.toBe("");
     expect(eventos.whatsappTopic).toBe("eventos-privados");
-    for (const page of [talleres, intensivos, eventos]) {
-      expect(page.message.trim()).not.toBe("");
-      expect(page.seo.title).not.toBe("");
-    }
   });
 
   it("gives every page a distinct SEO title and description", async () => {
@@ -275,8 +272,8 @@ describe("the drafted page content", () => {
       ...Object.values(raw.comingSoon).map((page) => page.seo),
     ];
 
-    expect(new Set(seos.map((seo) => seo.title)).size).toBe(6);
-    expect(new Set(seos.map((seo) => seo.description)).size).toBe(6);
+    expect(new Set(seos.map((seo) => seo.title)).size).toBe(4);
+    expect(new Set(seos.map((seo) => seo.description)).size).toBe(4);
   });
 
   it("registers every stand-in the manifest lists", async () => {
@@ -433,8 +430,8 @@ describe("the catalog copy", () => {
       expect(seo.title.trim()).not.toBe("");
       expect(seo.description.trim()).not.toBe("");
     }
-    expect(new Set(seos.map((seo) => seo.title)).size).toBe(8);
-    expect(new Set(seos.map((seo) => seo.description)).size).toBe(8);
+    expect(new Set(seos.map((seo) => seo.title)).size).toBe(6);
+    expect(new Set(seos.map((seo) => seo.description)).size).toBe(6);
   });
 
   it("keeps the two listing intros as unapproved drafts on the checklist", async () => {

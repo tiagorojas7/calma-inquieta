@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose an approved product or engineering capability.
+title: "[Feature]: "
+labels:
+  - type:feature
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for documenting the change before implementation.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the capability and the user outcome.
+      placeholder: Add admin management for intensive workshops.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State included behavior and explicit non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that prove completion.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: List tests, checks, and manual verification required.
+    validations:
+      required: true

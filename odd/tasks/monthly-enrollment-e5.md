@@ -39,15 +39,15 @@ Do not edit `src/app/**`, `src/composition/**`, workshops/materials modules, sch
 
 ## Tasks
 
-| ID  | Work unit                                                                 | Status      | Evidence                                                         |
-| --- | ------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------- |
-| T1  | Define shared admin-store/ledger contracts and characterize fake behavior | done        | 17/17 shared contract tests; independent verifier PASS           |
-| T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27 |
-| T3  | Implement and verify `DrizzleSeatLedger`                                  | in progress |                                                                  |
-| T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | pending     |                                                                  |
-| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | pending     |                                                                  |
-| T6  | Run independent verification and all repository gates                     | pending     |                                                                  |
-| T7  | Commit, publish, and prepare the E5 PR                                    | pending     |                                                                  |
+| ID  | Work unit                                                                 | Status      | Evidence                                                               |
+| --- | ------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
+| T1  | Define shared admin-store/ledger contracts and characterize fake behavior | done        | 17/17 shared contract tests; independent verifier PASS                 |
+| T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27       |
+| T3  | Implement and verify `DrizzleSeatLedger`                                  | done        | Fake/Drizzle ledger 12/12; module 192; architecture 17; typecheck pass |
+| T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | in progress |                                                                        |
+| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | pending     |                                                                        |
+| T6  | Run independent verification and all repository gates                     | pending     |                                                                        |
+| T7  | Commit, publish, and prepare the E5 PR                                    | pending     |                                                                        |
 
 ## Delivery strategy
 
@@ -59,3 +59,4 @@ E5 depends on E4 and remains stacked until PR #84 merges. The forecast is approx
 - L2 (2026-10-22). Read-only architecture mapping selected `DrizzleAdminEnrollmentStore` as the production atomic boundary plus a standalone `DrizzleSeatLedger`. Calling independent ledger and repository transactions from the admin service is explicitly rejected.
 - L3 (2026-10-22). The owner explicitly approved `size:exception` for one cohesive E5 PR because the atomic store and its concurrency evidence cannot be separated honestly under 400 lines.
 - L4 (2026-10-22). Shared contract characterization was GREEN because E3 already implemented the fake semantics: seat ledger plus admin store passed 17/17, and admin service regressions passed 27/27. Independent verification found no contract weakness; PostgreSQL lock/CHECK/rollback probes remain deliberately RED work for T3-T5.
+- L5 (2026-10-22). Drizzle ledger RED progressed from missing import to four named behavioral failures. GREEN passed fake/Drizzle ledger 12/12, module 192/192, architecture 17/17 and canonical typecheck. Independent inspection found no ledger SQL defect; its reported FAIL refers only to intentionally pending T4/T5 admin atomicity and concurrency probes.

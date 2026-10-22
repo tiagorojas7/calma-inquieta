@@ -1,6 +1,39 @@
 import { describe, expect, it } from "vitest";
 import type { OrderRepository } from "~/modules/enrollments/application/enrollment-repository";
-import { orderDraft, pesos } from "~/testing/fakes/enrollments-builders";
+import {
+  orderDraft as rawOrderDraft,
+  pesos,
+} from "~/testing/fakes/enrollments-builders";
+
+const IDs = {
+  workshop: "00000000-0000-4000-8000-000000000001",
+  weavingWorkshop: "00000000-0000-4000-8000-000000000002",
+  period: "00000000-0000-4000-8000-000000000003",
+  otherPeriod: "00000000-0000-4000-8000-000000000004",
+  turno: "00000000-0000-4000-8000-000000000005",
+  otherTurno: "00000000-0000-4000-8000-000000000006",
+  material: "00000000-0000-4000-8000-000000000007",
+  variant: "00000000-0000-4000-8000-000000000008",
+  supplier: "00000000-0000-4000-8000-000000000009",
+};
+
+/** Uses persistence-valid identifiers so every adapter shares the same inputs. */
+const orderDraft = (...args: Parameters<typeof rawOrderDraft>) => {
+  const value = rawOrderDraft(...args);
+  return {
+    ...value,
+    workshopId:
+      value.workshopId === "w-weaving" ? IDs.weavingWorkshop : IDs.workshop,
+    periodId: value.periodId === "p-2" ? IDs.otherPeriod : IDs.period,
+    turnoId: value.turnoId === "t-2" ? IDs.otherTurno : IDs.turno,
+    lines: value.lines.map((line) => ({
+      ...line,
+      materialId: IDs.material,
+      variantId: IDs.variant,
+      supplierId: IDs.supplier,
+    })),
+  };
+};
 
 const other = (email: string) => ({
   fullName: "Otra Persona",
@@ -10,14 +43,16 @@ const other = (email: string) => ({
 
 export interface OrderRepositoryContractHarness {
   readonly repository: OrderRepository;
-  /** Makes the next create fail after allocating its number. */
-  readonly failNextCreateAfterNumbering: () => void;
+  /** Performs a create that fails after allocating its number. */
+  readonly failCreateAfterNumbering: (
+    draft: ReturnType<typeof orderDraft>,
+  ) => Promise<unknown>;
 }
 
 const createDraft = (index: number, overrides = {}) =>
   orderDraft({
     publicId: `P${String(index).padStart(21, "0")}`,
-    student: other(`student-${index}@example.com`),
+    student: other(`student-${String(index)}@example.com`),
     ...overrides,
   });
 
@@ -70,12 +105,9 @@ export function runOrderRepositoryContract(
     });
 
     it("does not burn a number when creation fails after numbering", async () => {
-      const { repository: repo, failNextCreateAfterNumbering } = await create();
-      failNextCreateAfterNumbering();
+      const { repository: repo, failCreateAfterNumbering } = await create();
 
-      await expect(repo.create(orderDraft())).rejects.toThrow(
-        "injected failure after numbering",
-      );
+      await expect(failCreateAfterNumbering(orderDraft())).rejects.toThrow();
       const retry = await repo.create(orderDraft());
       expect(retry.ok && retry.value.number).toBe("CI-2026-0001");
     });
@@ -238,7 +270,7 @@ export function runOrderRepositoryContract(
         ).map((order) => order.id),
       ).toEqual([newest.value.id, oldest.value.id]);
       expect(
-        (await repo.listForAdmin({ workshopId: "w-weaving" })).map(
+        (await repo.listForAdmin({ workshopId: IDs.weavingWorkshop })).map(
           (order) => order.id,
         ),
       ).toEqual([weaving.value.id]);
@@ -256,17 +288,18 @@ export function runOrderRepositoryContract(
 
     it("uses fixed 50-row pages for admin lists", async () => {
       const { repository: repo } = await create();
-      const created = await Promise.all(
-        Array.from({ length: 51 }, (_, index) =>
-          repo.create(
+      const created = [];
+      for (let index = 0; index < 51; index += 1) {
+        created.push(
+          await repo.create(
             createDraft(index, {
               requestedAt: new Date(
                 Date.parse("2026-10-20T10:00:00Z") + index * 1_000,
               ),
             }),
           ),
-        ),
-      );
+        );
+      }
       if (created.some((result) => !result.ok)) throw new Error("fixture");
 
       const firstPage = await repo.listForAdmin({ page: 1 });
@@ -327,7 +360,11 @@ export function runOrderRepositoryContract(
         note: "pidió baja",
       });
       expect(
-        await repo.transitionOrder("missing", "cancelled", { actor: "x", at }),
+        await repo.transitionOrder(
+          "00000000-0000-4000-8000-000000000099",
+          "cancelled",
+          { actor: "x", at },
+        ),
       ).toEqual({ ok: false, error: { kind: "not-found" } });
     });
   });

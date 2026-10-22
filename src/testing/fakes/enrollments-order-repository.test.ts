@@ -7,8 +7,10 @@ runOrderRepositoryContract(() => {
   const repository = new InMemoryOrderRepository();
   return {
     repository,
-    failNextCreateAfterNumbering: () =>
-      repository.failNextCreateAfterNumbering(),
+    failCreateAfterNumbering: async (draft) => {
+      repository.failNextCreateAfterNumbering();
+      return repository.create(draft);
+    },
   };
 });
 

@@ -35,6 +35,7 @@ export type {
   OrderDraft,
   OrderLineDraft,
   OrderRepository,
+  OrderRepositoryListQuery,
   StoredOrder,
   TransitionContext,
 } from "./application/enrollment-repository";

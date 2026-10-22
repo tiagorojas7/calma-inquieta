@@ -100,6 +100,7 @@ export function IntensiveForm({
   ];
   return (
     <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+      <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <TextField
         label={copy.form.name}

@@ -20,7 +20,11 @@ const columns: readonly DataTableColumn<IntensiveRow>[] = [
   {
     key: "name",
     header: copy.columns.name,
-    cell: (row) => row.name,
+    cell: (row) => (
+      <a href={`/admin/intensivos/${row.id}`} className={linkClasses}>
+        {row.name}
+      </a>
+    ),
   },
   {
     key: "teacher",

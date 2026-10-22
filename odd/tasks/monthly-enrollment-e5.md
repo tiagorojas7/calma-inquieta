@@ -1,0 +1,61 @@
+# Monthly Enrollment E5 — Atomic Seat Transactions
+
+Branch: `feat/monthly-enrollment-e5-seat-ledger`  
+Base: E4 branch at `27ba9e3` (PR #84, OPEN/CLEAN, CI PASS)  
+Mode: ODD with strict TDD  
+Risk: high (money state, seat capacity, PostgreSQL concurrency)
+
+## Scope
+
+Deliver a standalone Drizzle `SeatLedger` plus a transactional `DrizzleAdminEnrollmentStore`. Administrative confirm/cancel/material mutations must lock and mutate order, counter, and audit in one PostgreSQL transaction. E6 owns composition. F6 owns admin intensive routes and UI.
+
+## Acceptance
+
+- Fake and Drizzle admin stores satisfy the same mutation/read contract.
+- Eight simultaneous confirmations against three remaining places produce exactly three payments and five `turno-full` results.
+- Concurrent duplicate confirmation consumes one seat and writes one successful payment audit.
+- Concurrent cancel/confirm on one order never desynchronizes order, counter, or audit.
+- Different turnos progress independently under deterministic probes.
+- Audit insertion failure rolls back order and counter.
+- Manual oversell violates the database CHECK.
+- Capacity below confirmed blocks new claims without corrupting the existing count.
+- Concurrency suite passes twenty consecutive runs without retry-until-green.
+- No production composition, route, UI, workshops, or materials files change.
+
+## Allowed edit surfaces
+
+- `src/modules/enrollments/infrastructure/drizzle-seat-ledger.ts`
+- `src/modules/enrollments/infrastructure/drizzle-admin-enrollment-store.ts`
+- enrollment infrastructure DB tests under `src/modules/enrollments/infrastructure/**`
+- `src/testing/contracts/seat-ledger.contract.ts`
+- `src/testing/contracts/admin-enrollment-store.contract.ts`
+- `src/testing/fakes/enrollments-seat-ledger*.ts`
+- `src/testing/fakes/enrollments-order-repository*.ts`
+- enrollment application ports/tests only when contract parity requires a narrow type correction
+- `src/modules/enrollments/index.ts` for module API exports
+- this tracker
+
+Do not edit `src/app/**`, `src/composition/**`, workshops/materials modules, schema/migration artifacts, or F6-owned files.
+
+## Tasks
+
+| ID  | Work unit                                                                 | Status      | Evidence                                                         |
+| --- | ------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------- |
+| T1  | Define shared admin-store/ledger contracts and characterize fake behavior | done        | 17/17 shared contract tests; independent verifier PASS           |
+| T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27 |
+| T3  | Implement and verify `DrizzleSeatLedger`                                  | in progress |                                                                  |
+| T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | pending     |                                                                  |
+| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | pending     |                                                                  |
+| T6  | Run independent verification and all repository gates                     | pending     |                                                                  |
+| T7  | Commit, publish, and prepare the E5 PR                                    | pending     |                                                                  |
+
+## Delivery strategy
+
+E5 depends on E4 and remains stacked until PR #84 merges. The forecast is approximately 260 production plus 430 test lines. Tests will not be compressed. The owner approved `size:exception` for one cohesive E5 PR.
+
+## Log
+
+- L1 (2026-10-22). E5 worktree created from E4 head `27ba9e3`; PR #84 is OPEN/CLEAN with CI PASS.
+- L2 (2026-10-22). Read-only architecture mapping selected `DrizzleAdminEnrollmentStore` as the production atomic boundary plus a standalone `DrizzleSeatLedger`. Calling independent ledger and repository transactions from the admin service is explicitly rejected.
+- L3 (2026-10-22). The owner explicitly approved `size:exception` for one cohesive E5 PR because the atomic store and its concurrency evidence cannot be separated honestly under 400 lines.
+- L4 (2026-10-22). Shared contract characterization was GREEN because E3 already implemented the fake semantics: seat ledger plus admin store passed 17/17, and admin service regressions passed 27/27. Independent verification found no contract weakness; PostgreSQL lock/CHECK/rollback probes remain deliberately RED work for T3-T5.

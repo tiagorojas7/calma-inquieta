@@ -6,6 +6,14 @@ export function runSeatLedgerContract(
   setup: () => Promise<SeatLedger> | SeatLedger,
 ): void {
   describe("SeatLedger contract", () => {
+    it("starts at zero", async () => {
+      const ledger = await setup();
+
+      await expect(ledger.confirmedSeats("period-1", "turno-1")).resolves.toBe(
+        0,
+      );
+    });
+
     it("claims up to capacity and then reports turno-full", async () => {
       const ledger = await setup();
       await expect(ledger.claim("period-1", "turno-1", 2)).resolves.toEqual({
@@ -66,6 +74,25 @@ export function runSeatLedgerContract(
       );
       await expect(ledger.confirmedSeats("period-2", "turno-1")).resolves.toBe(
         1,
+      );
+    });
+
+    it("allows exactly the remaining capacity under concurrent claims", async () => {
+      const ledger = await setup();
+      await ledger.claim("period-1", "turno-1", 3);
+
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => ledger.claim("period-1", "turno-1", 3)),
+      );
+
+      expect(results.filter((result) => result.ok)).toHaveLength(2);
+      expect(results.filter((result) => !result.ok)).toEqual([
+        { ok: false, error: { kind: "turno-full" } },
+        { ok: false, error: { kind: "turno-full" } },
+        { ok: false, error: { kind: "turno-full" } },
+      ]);
+      await expect(ledger.confirmedSeats("period-1", "turno-1")).resolves.toBe(
+        3,
       );
     });
   });

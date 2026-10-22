@@ -45,7 +45,7 @@ Do not edit `src/app/**`, composition production code, workshops/materials modul
 | T3  | Implement the Drizzle order repository and contract parity             | done        | Fake/Drizzle contract 23/23; 20-creator and rollback probes pass         |
 | T4  | Generate and verify the additive migration                             | done        | Generated `0011_many_martin_li`; empty/prior-state path and catalog pass |
 | T5  | Run independent verification and all repository gates                  | done        | Verifier PASS; full suite 2993/2993; typecheck/lint/format/build pass    |
-| T6  | Commit, publish, and prepare the E4 PR                                 | in progress | Local commits `032f381`, `a4d096b`; delivery commit pending              |
+| T6  | Commit, publish, and prepare the E4 PR                                 | in progress | Local commits `032f381`, `a4d096b`, `1a31692`; publish/PR pending        |
 
 ## Delivery strategy
 
@@ -59,3 +59,4 @@ One E4 PR to `main`, independently mergeable before E5. If the handwritten diff 
 - L4 (2026-10-22). Schema/migration RED observed 10 failures before the five tables existed. Independent verification then found that paid cancellations could not retain payment evidence and that prior-state application was unproven. A regression reproduced SQLSTATE 23514, the paid-state check was corrected, and migration tests now apply through 0010 before 0011. Regenerated `0011_many_martin_li` is purely additive. Final schema/migration verification passed 39 DB/architecture tests plus 187 enrollment/fake tests.
 - L5 (2026-10-22). The owner explicitly approved `size:exception` for one cohesive E4 PR because the contract/fake work unit alone was 409 changed lines and splitting schema from the Drizzle adapter would separate tests from behavior.
 - L6 (2026-10-22). Drizzle repository RED produced 11 named contract failures. GREEN passed fake/Drizzle parity (23/23), 20 parallel creators, rollback number reuse, snapshots, filters and transitions. Final verifier found seven lint issues and three stale latest-migration fixtures; remediation preserved behavior and all gates passed: enrollments 186, schema/migration/architecture 56, full suite 2993, typecheck, lint, format, build and diff-check.
+- L7 (2026-10-22). Work-unit commits: `032f381 test(enrollments): define order persistence contract`, `a4d096b feat(enrollments): add order persistence schema`, and `1a31692 feat(enrollments): persist enrollment orders`.

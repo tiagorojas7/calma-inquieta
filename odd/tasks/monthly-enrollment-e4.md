@@ -38,14 +38,14 @@ Do not edit `src/app/**`, composition production code, workshops/materials modul
 
 ## Tasks
 
-| ID  | Work unit                                                              | Status      | Evidence                                                                 |
-| --- | ---------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
-| T1  | Extend the shared order-repository contract and capture behavioral RED | done        | RED: 2 list/pagination failures; GREEN: 39 focused and 175 module tests  |
-| T2  | Add the enrollment schema and database CHECK/unique/index constraints  | done        | 9 schema DB tests; independent verifier PASS                             |
-| T3  | Implement the Drizzle order repository and contract parity             | done        | Fake/Drizzle contract 23/23; 20-creator and rollback probes pass         |
-| T4  | Generate and verify the additive migration                             | done        | Generated `0011_many_martin_li`; empty/prior-state path and catalog pass |
-| T5  | Run independent verification and all repository gates                  | done        | Verifier PASS; full suite 2993/2993; typecheck/lint/format/build pass    |
-| T6  | Commit, publish, and prepare the E4 PR                                 | in progress | Local commits `032f381`, `a4d096b`, `1a31692`; publish/PR pending        |
+| ID  | Work unit                                                              | Status | Evidence                                                                 |
+| --- | ---------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| T1  | Extend the shared order-repository contract and capture behavioral RED | done   | RED: 2 list/pagination failures; GREEN: 39 focused and 175 module tests  |
+| T2  | Add the enrollment schema and database CHECK/unique/index constraints  | done   | 9 schema DB tests; independent verifier PASS                             |
+| T3  | Implement the Drizzle order repository and contract parity             | done   | Fake/Drizzle contract 23/23; 20-creator and rollback probes pass         |
+| T4  | Generate and verify the additive migration                             | done   | Generated `0011_many_martin_li`; empty/prior-state path and catalog pass |
+| T5  | Run independent verification and all repository gates                  | done   | Verifier PASS; full suite 2993/2993; typecheck/lint/format/build pass    |
+| T6  | Commit, publish, and prepare the E4 PR                                 | done   | Commits through `b2eadb7`; PR #84 opened with approved `size:exception`  |
 
 ## Delivery strategy
 
@@ -60,3 +60,4 @@ One E4 PR to `main`, independently mergeable before E5. If the handwritten diff 
 - L5 (2026-10-22). The owner explicitly approved `size:exception` for one cohesive E4 PR because the contract/fake work unit alone was 409 changed lines and splitting schema from the Drizzle adapter would separate tests from behavior.
 - L6 (2026-10-22). Drizzle repository RED produced 11 named contract failures. GREEN passed fake/Drizzle parity (23/23), 20 parallel creators, rollback number reuse, snapshots, filters and transitions. Final verifier found seven lint issues and three stale latest-migration fixtures; remediation preserved behavior and all gates passed: enrollments 186, schema/migration/architecture 56, full suite 2993, typecheck, lint, format, build and diff-check.
 - L7 (2026-10-22). Work-unit commits: `032f381 test(enrollments): define order persistence contract`, `a4d096b feat(enrollments): add order persistence schema`, and `1a31692 feat(enrollments): persist enrollment orders`.
+- L8 (2026-10-22). Evidence commit `b2eadb7`; branch published and PR #84 opened with the owner-approved `size:exception`.

@@ -1,6 +1,7 @@
 import type { FieldIssue, IssueCode } from "~/modules/_shared";
 import type {
   IntensivePublishRule,
+  IntensiveStatus,
   WorkshopPublishRule,
   WorkshopStatus,
 } from "~/modules/workshops";
@@ -122,9 +123,13 @@ export function intensivePublishRulesMessage(
     .join(", ")}.`;
 }
 
+export function intensiveDeleteRuleMessage(): string {
+  return "Solo se puede eliminar un borrador.";
+}
+
 export function transitionRefusedMessage(
-  from: WorkshopStatus,
-  to: WorkshopStatus,
+  from: WorkshopStatus | IntensiveStatus,
+  to: WorkshopStatus | IntensiveStatus,
 ): string {
   const names = adminMicrocopy.status;
   return `No se puede pasar de ${names[from]} a ${names[to]}.`;

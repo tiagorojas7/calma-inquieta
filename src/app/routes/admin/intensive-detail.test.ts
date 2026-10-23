@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Money } from "~/modules/_shared";
+import type { IntensiveStatus } from "~/modules/workshops";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import type { IntensivesService } from "~/modules/workshops";
 import type { TeachersService } from "~/modules/teachers";
@@ -102,9 +103,34 @@ function load(options = {}) {
 }
 function submit(options = {}) {
   return action({
-    request: postRequest("/admin/intensivos/i1", fields),
+    request: postRequest("/admin/intensivos/i1", { intent: "save", ...fields }),
     params: { id: "i1" },
     context: context(options),
+  } as never);
+}
+
+function lifecycleContext(methods: Partial<IntensivesService>, admin = true) {
+  return adminContext(
+    {
+      intensives: withOverrides(
+        createUnavailableService<IntensivesService>(),
+        methods,
+      ),
+      teachers: createUnavailableService<TeachersService>(),
+    },
+    { admin },
+  );
+}
+
+function submitIntent(
+  fields: Record<string, string>,
+  methods: Partial<IntensivesService>,
+  admin = true,
+) {
+  return action({
+    request: postRequest("/admin/intensivos/i1", fields),
+    params: { id: "i1" },
+    context: lifecycleContext(methods, admin),
   } as never);
 }
 
@@ -285,6 +311,167 @@ describe("admin intensive detail", () => {
         errors: { name: "Completá este campo." },
       },
     });
+  });
+
+  it("rejects unknown intents and denial before FormData or a service call", async () => {
+    const publish = vi.fn();
+    await expect(
+      thrownStatus(() => submitIntent({ intent: "unknown" }, { publish })),
+    ).resolves.toBe(400);
+    expect(publish).not.toHaveBeenCalled();
+    await expect(
+      thrownStatus(() =>
+        submitIntent({ intent: "publish" }, { publish }, false),
+      ),
+    ).resolves.toBe(403);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("calls every lifecycle service with actor and id, then redirects correctly", async () => {
+    const changed = { ok: true as const, value: intensive };
+    for (const intent of [
+      "publish",
+      "pause",
+      "cancel",
+      "archive",
+      "restore",
+    ] as const) {
+      const method = vi.fn(() => Promise.resolve(changed));
+      const response = await submitIntent({ intent }, { [intent]: method });
+      expect(method).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "a@x.test" }),
+        "i1",
+      );
+      expect((response as Response).headers.get("Location")).toBe(
+        "/admin/intensivos/i1",
+      );
+    }
+    const remove = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: undefined }),
+    );
+    const response = await submitIntent(
+      { intent: "delete" },
+      { delete: remove },
+    );
+    expect(remove).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos",
+    );
+  });
+
+  it("names every publish rule, transition status, and draft-only delete refusal", async () => {
+    const refused = (from: IntensiveStatus, to: IntensiveStatus) =>
+      Promise.resolve({
+        ok: false as const,
+        error: { kind: "transition-refused" as const, from, to },
+      });
+    await expect(
+      submitIntent(
+        { intent: "pause" },
+        { pause: () => refused("draft", "paused") },
+      ),
+    ).resolves.toMatchObject({
+      init: { status: 422 },
+      data: { stateError: "No se puede pasar de Borrador a Pausado." },
+    });
+    await expect(
+      submitIntent(
+        { intent: "delete" },
+        {
+          delete: () =>
+            Promise.resolve({
+              ok: false as const,
+              error: {
+                kind: "rules-unmet" as const,
+                rules: ["draft-only" as const],
+              },
+            }),
+        },
+      ),
+    ).resolves.toMatchObject({
+      data: { stateError: "Solo se puede eliminar un borrador." },
+    });
+  });
+
+  it("reschedules only its three fields, preserves invalid posted values, and maps failures", async () => {
+    const reschedule = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: intensive as never }),
+    );
+    const response = await submitIntent(
+      {
+        intent: "reschedule",
+        eventDate: "2026-12-12",
+        startsAt: "09:00",
+        endsAt: "12:00",
+        name: "ignored",
+      },
+      { reschedule },
+    );
+    expect(reschedule).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+      { eventDate: "2026-12-12", startsAt: "09:00", endsAt: "12:00" },
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1",
+    );
+    await expect(
+      submitIntent(
+        {
+          intent: "reschedule",
+          eventDate: "",
+          startsAt: "14:00",
+          endsAt: "10:00",
+        },
+        {
+          reschedule: () =>
+            Promise.resolve({
+              ok: false as const,
+              error: {
+                kind: "invalid" as const,
+                issues: [
+                  { field: "eventDate" as const, code: "required" as const },
+                  {
+                    field: "timeRange" as const,
+                    code: "end-before-start" as const,
+                  },
+                ],
+              },
+            }),
+        },
+      ),
+    ).resolves.toMatchObject({
+      init: { status: 422 },
+      data: {
+        reschedule: {
+          values: { eventDate: "", startsAt: "14:00", endsAt: "10:00" },
+          errors: {
+            eventDate: "Completá este campo.",
+            timeRange:
+              "El horario de fin tiene que ser posterior al de inicio.",
+          },
+        },
+      },
+    });
+    for (const [kind, status] of [
+      ["denied", 403],
+      ["not-found", 404],
+      ["unavailable", 503],
+    ] as const)
+      await expect(
+        thrownStatus(() =>
+          submitIntent(
+            { intent: "archive" },
+            {
+              archive: () =>
+                Promise.resolve({ ok: false as const, error: { kind } }),
+            },
+          ),
+        ),
+      ).resolves.toBe(status);
   });
 
   it("names every unmet intensive publish rule in a form-level 422", async () => {

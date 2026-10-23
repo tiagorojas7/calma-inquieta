@@ -246,6 +246,38 @@ export const adminMicrocopy = {
       title: "Todavía no hay intensivos",
       message: "Creá el primero para empezar a organizar actividades.",
     },
+    state: {
+      status: "Estado",
+      publish: "Publicar",
+      resume: "Volver a publicar",
+      pause: "Pausar",
+      cancel: "Cancelar intensivo",
+      archive: "Archivar",
+      restore: "Restaurar como borrador",
+      delete: "Eliminar borrador",
+      reschedule: "Reprogramar",
+      confirm: {
+        pause: {
+          title: "¿Pausar el intensivo?",
+          message:
+            "Sigue visible, pero deja de aceptar nuevas solicitudes hasta que lo vuelvas a publicar.",
+        },
+        cancel: {
+          title: "¿Cancelar el intensivo?",
+          message:
+            "Se cancela y no acepta nuevas solicitudes. El historial se conserva y no se puede deshacer.",
+        },
+        archive: {
+          title: "¿Archivar el intensivo?",
+          message:
+            "Deja de verse en el sitio. Sus datos se conservan y podés restaurarlo.",
+        },
+        delete: {
+          title: "¿Eliminar el borrador?",
+          message: "Se elimina para siempre. No se puede deshacer.",
+        },
+      },
+    },
     form: {
       name: "Nombre",
       slug: "Enlace",

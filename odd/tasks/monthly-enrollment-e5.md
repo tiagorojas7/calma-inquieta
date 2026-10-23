@@ -39,15 +39,15 @@ Do not edit `src/app/**`, `src/composition/**`, workshops/materials modules, sch
 
 ## Tasks
 
-| ID  | Work unit                                                                 | Status      | Evidence                                                               |
-| --- | ------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
-| T1  | Define shared admin-store/ledger contracts and characterize fake behavior | done        | 17/17 shared contract tests; independent verifier PASS                 |
-| T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27       |
-| T3  | Implement and verify `DrizzleSeatLedger`                                  | done        | Fake/Drizzle ledger 12/12; module 192; architecture 17; typecheck pass |
-| T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | done        | Shared DB contract and full DB file 19/19; atomic rollback verified    |
-| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | done        | Blob evidence: 7 selected probes × 20 repeats = 140/140 PASS           |
-| T6  | Run independent verification and all repository gates                     | in progress |                                                                        |
-| T7  | Commit, publish, and prepare the E5 PR                                    | pending     |                                                                        |
+| ID  | Work unit                                                                 | Status      | Evidence                                                                 |
+| --- | ------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
+| T1  | Define shared admin-store/ledger contracts and characterize fake behavior | done        | 17/17 shared contract tests; independent verifier PASS                   |
+| T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27         |
+| T3  | Implement and verify `DrizzleSeatLedger`                                  | done        | Fake/Drizzle ledger 12/12; module 192; architecture 17; typecheck pass   |
+| T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | done        | Shared DB contract and full DB file 19/19; atomic rollback verified      |
+| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | done        | Blob evidence: 7 selected probes × 20 repeats = 140/140 PASS             |
+| T6  | Run independent verification and all repository gates                     | done        | Unit 2202, UI 536, E5 DB 19; type/lint/format/build/diff pass            |
+| T7  | Commit, publish, and prepare the E5 PR                                    | in progress | Local commits complete; push/PR and Linux CI require owner authorization |
 
 ## Delivery strategy
 
@@ -63,3 +63,4 @@ E5 depends on E4; PR #84 is merged and the E5 base is now an ancestor of `origin
 - L6 (2026-10-22). Drizzle admin store RED progressed from missing import to 11 named contract failures. GREEN passed the shared contract, then the first expanded DB run exposed two incorrect test expectations and a Windows embedded-PostgreSQL lifecycle crash. Sequential per-test database cleanup eliminated the crash. Corrected serializable cancel/confirm outcomes and nested SQLSTATE assertion brought the full DB file to 17/17.
 - L7 (2026-10-22). Independent audit rejected the weak different-turno probe. The strengthened suite now uses an advisory-lock trigger plus `pg_stat_activity` to prove the second turno commits while the first waits, uses exact capacity 8 with 5 preloaded seats, and proves amount-mismatch/closed-period no-op behavior. Strengthened probes 4/4 and full DB file 19/19 passed.
 - L8 (2026-10-23). The first 20-run command was invalid because its anchored pattern selected zero tests. The corrected fresh-process proof passed preflight plus four runs (35/35 executions), then the fifth Vitest process crashed with Windows `0xC0000409` before executing probes and without assertion or teardown errors. A single-process `--repeats 19` run then passed all seven selected probes with `repeatCount: 19`, proving 140/140 executions in 661.55s with no worker crash, unhandled error, retry or teardown failure. Machine-readable evidence is `C:/Temp/e5-stability-seven-v1.json`; this isolates the earlier failure to repeated Windows process lifecycle rather than product concurrency behavior.
+- L9 (2026-10-23). Final independent review found and remediated sequential cleanup, exact optional audit notes and strict fake lint before delivery. Typecheck, lint, format, build and diff-check pass. Unit passed 2202/2202 and UI passed 536/536. The DB project passed 21/22 files and 276 tests before a Windows worker crashed with `0xC0000409` in an unchanged workshop test; that exact file then passed 18/18 in isolated monoworker execution with no leftover postgres/Vitest process. The E5 DB file separately passed 19/19 and its concurrency core passed 140/140. The remaining delivery gate is Linux PR CI because the combined Windows harness cannot provide one clean all-project invocation.

@@ -218,7 +218,13 @@ export const adminMicrocopy = {
   intensives: {
     title: "Intensivos",
     newTitle: "Nuevo intensivo",
+    editTitle: "Editar intensivo",
     newAction: "Nuevo intensivo",
+    audit: {
+      title: "Última actualización",
+      by: "Actualizado por",
+      at: "Fecha y hora",
+    },
     filterLabel: "Mostrar intensivos",
     filters: {
       vigentes: "Vigentes",

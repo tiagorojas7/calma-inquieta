@@ -1,5 +1,9 @@
 import type { FieldIssue, IssueCode } from "~/modules/_shared";
-import type { WorkshopPublishRule, WorkshopStatus } from "~/modules/workshops";
+import type {
+  IntensivePublishRule,
+  WorkshopPublishRule,
+  WorkshopStatus,
+} from "~/modules/workshops";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 
 /**
@@ -94,6 +98,28 @@ export function publishRulesMessage(
   rules: readonly WorkshopPublishRule[],
 ): string {
   return `Para publicar falta: ${rules.map(workshopRuleMessage).join(", ")}.`;
+}
+
+const INTENSIVE_RULE_MESSAGES = {
+  name: "un nombre",
+  slug: "un enlace válido",
+  teacher: "un profesor asignado",
+  percentage: "el porcentaje acordado",
+  "time-range": "un horario válido",
+  "future-start": "una fecha futura",
+  price: "un precio",
+  deposit: "una seña válida",
+  capacity: "una capacidad válida",
+  "min-seats": "cupos mínimos válidos",
+} as const satisfies Record<IntensivePublishRule, string>;
+
+/** Names all eligibility failures returned while a live intensivo is edited. */
+export function intensivePublishRulesMessage(
+  rules: readonly IntensivePublishRule[],
+): string {
+  return `No se puede guardar este intensivo porque falta: ${rules
+    .map((rule) => INTENSIVE_RULE_MESSAGES[rule])
+    .join(", ")}.`;
 }
 
 export function transitionRefusedMessage(

@@ -3,6 +3,8 @@ import type { IssueCode } from "~/modules/_shared";
 import { findCopyViolations } from "~/modules/site-content";
 import {
   INTENSIVE_FIELD_MESSAGES,
+  intensivePublishRulesMessage,
+  intensiveDeleteRuleMessage,
   ISSUE_MESSAGES,
   TURNO_FIELD_MESSAGES,
   WORKSHOP_FIELD_MESSAGES,
@@ -97,6 +99,35 @@ describe("intensive messages", () => {
         INTENSIVE_FIELD_MESSAGES,
       ),
     ).toEqual({ images: "Podés cargar hasta 6 imágenes." });
+  });
+});
+
+describe("intensive publish messages", () => {
+  it("names every unmet intensive rule in one es-AR form-level message", () => {
+    expect(
+      intensivePublishRulesMessage([
+        "name",
+        "slug",
+        "teacher",
+        "percentage",
+        "time-range",
+        "future-start",
+        "price",
+        "deposit",
+        "capacity",
+        "min-seats",
+      ]),
+    ).toBe(
+      "No se puede guardar este intensivo porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
+    );
+  });
+});
+
+describe("intensive lifecycle messages", () => {
+  it("names a draft-only deletion refusal in es-AR", () => {
+    expect(intensiveDeleteRuleMessage()).toBe(
+      "Solo se puede eliminar un borrador.",
+    );
   });
 });
 

@@ -3,6 +3,7 @@ import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
+import AdminIntensiveDetail from "./intensive-detail";
 import AdminIntensiveNew from "./intensive-new";
 import AdminIntensives from "./intensives";
 
@@ -50,12 +51,9 @@ describe("intensive admin screens", () => {
         }}
       />,
     );
-    expect(await screen.findByText("Cerámica de sábado")).not.toHaveAttribute(
-      "href",
-    );
     expect(
-      screen.queryByRole("link", { name: "Cerámica de sábado" }),
-    ).toBeNull();
+      await screen.findByRole("link", { name: "Cerámica de sábado" }),
+    ).toHaveAttribute("href", "/admin/intensivos/i1");
     expect(screen.getByText("12")).toBeVisible();
     expect(screen.getByRole("link", { name: "Archivados" })).toHaveAttribute(
       "href",
@@ -102,6 +100,84 @@ describe("intensive admin screens", () => {
     await expectNoAxeViolations(container);
   }, 30_000);
 
+  it("renders the edit screen and audit without axe violations", async () => {
+    const Stub = createRoutesStub([
+      {
+        id: "intensive-detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        loader: () => ({
+          id: "i1",
+          values: {
+            name: "Cerámica de sábado",
+            slug: "ceramica-sabado",
+            summary: "Un resumen",
+            description: "Un detalle",
+            teacherId: "t1",
+            percentage: "35",
+            eventDate: "2026-10-10",
+            startsAt: "10:00",
+            endsAt: "13:00",
+            price: "30000",
+            deposit: "10000",
+            capacity: "12",
+            minSeats: "4",
+            policyText: "Traé delantal.",
+            materialsIncluded: true,
+            images: [],
+          },
+          teachers: [{ id: "t1", name: "Ana", modality: "own" }],
+          audit: {
+            updatedBy: "admin@example.com",
+            updatedAt: "10 oct 2026, 09:00",
+          },
+        }),
+        action: () => null,
+      },
+    ]);
+    const { container } = render(
+      <Stub
+        initialEntries={["/admin/intensivos/i1"]}
+        hydrationData={{
+          loaderData: {
+            "intensive-detail": {
+              id: "i1",
+              values: {
+                name: "Cerámica de sábado",
+                slug: "ceramica-sabado",
+                summary: "Un resumen",
+                description: "Un detalle",
+                teacherId: "t1",
+                percentage: "35",
+                eventDate: "2026-10-10",
+                startsAt: "10:00",
+                endsAt: "13:00",
+                price: "30000",
+                deposit: "10000",
+                capacity: "12",
+                minSeats: "4",
+                policyText: "Traé delantal.",
+                materialsIncluded: true,
+                images: [],
+              },
+              teachers: [{ id: "t1", name: "Ana", modality: "own" }],
+              audit: {
+                updatedBy: "admin@example.com",
+                updatedAt: "10 oct 2026, 09:00",
+              },
+            },
+          },
+        }}
+      />,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Editar intensivo" }),
+    ).toBeVisible();
+    expect(screen.getByText("admin@example.com")).toBeVisible();
+    expect(screen.getByText("10 oct 2026, 09:00")).toBeVisible();
+    await expectNoAxeViolations(container);
+  }, 30_000);
+
   it("redisplays the rejected gallery preview source", () => {
     render(
       <IntensiveForm
@@ -138,5 +214,103 @@ describe("intensive admin screens", () => {
       "src",
       "/imagenes/img-1.webp",
     );
+  });
+});
+
+const values = {
+  name: "Cerámica de sábado",
+  slug: "ceramica-sabado",
+  summary: "Un resumen",
+  description: "Un detalle",
+  teacherId: "t1",
+  percentage: "",
+  eventDate: "2026-10-10",
+  startsAt: "10:00",
+  endsAt: "13:00",
+  price: "30000",
+  deposit: "10000",
+  capacity: "12",
+  minSeats: "4",
+  policyText: "Traé delantal.",
+  materialsIncluded: true,
+  images: [],
+};
+
+describe("intensive detail lifecycle controls", () => {
+  it("keeps lifecycle controls out of the edit form and renders a native reschedule panel", async () => {
+    const Stub = createRoutesStub([
+      {
+        id: "detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => ({
+          id: "i1",
+          status: "published",
+          values,
+          teachers: [{ id: "t1", name: "Ana", modality: "own" }],
+          audit: { updatedBy: "a@x.test", updatedAt: "10 oct 2026, 10:00" },
+        }),
+      },
+    ]);
+    const { container } = render(
+      <Stub initialEntries={["/admin/intensivos/i1"]} />,
+    );
+    expect(await screen.findByText("Publicado")).toBeVisible();
+    const edit = screen.getByLabelText("Nombre").closest("form");
+    expect(edit?.querySelector("input[name=intent]")).toHaveValue("save");
+    expect(edit?.querySelector("button[name=intent]")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Pausar" }).closest("form"),
+    ).not.toBe(edit);
+    expect(
+      screen.getByRole("button", { name: "Reprogramar" }).closest("form"),
+    ).not.toBe(edit);
+    await expectNoAxeViolations(container);
+  });
+
+  it("preserves edit-gallery errors separately from a rejected reschedule", async () => {
+    const Stub = createRoutesStub([
+      {
+        id: "detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => ({
+          id: "i1",
+          status: "draft",
+          values,
+          teachers: [],
+          audit: { updatedBy: "a", updatedAt: "hoy" },
+        }),
+      },
+    ]);
+    render(
+      <Stub
+        initialEntries={["/admin/intensivos/i1"]}
+        hydrationData={{
+          loaderData: {
+            detail: {
+              id: "i1",
+              status: "draft",
+              values,
+              teachers: [],
+              audit: { updatedBy: "a", updatedAt: "hoy" },
+            },
+          },
+          actionData: {
+            detail: {
+              reschedule: {
+                values: { eventDate: "", startsAt: "14:00", endsAt: "10:00" },
+                errors: { eventDate: "Completá este campo." },
+              },
+            },
+          },
+        }}
+      />,
+    );
+    expect((await screen.findAllByLabelText("Fecha"))[0]).toHaveValue("");
+    expect(screen.getByLabelText("Nombre")).toHaveValue("Cerámica de sábado");
+    expect(screen.getByText("Completá este campo.")).toBeVisible();
   });
 });

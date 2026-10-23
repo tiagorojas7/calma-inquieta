@@ -1,5 +1,10 @@
 import type { FieldIssue, IssueCode } from "~/modules/_shared";
-import type { WorkshopPublishRule, WorkshopStatus } from "~/modules/workshops";
+import type {
+  IntensivePublishRule,
+  IntensiveStatus,
+  WorkshopPublishRule,
+  WorkshopStatus,
+} from "~/modules/workshops";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 
 /**
@@ -96,9 +101,35 @@ export function publishRulesMessage(
   return `Para publicar falta: ${rules.map(workshopRuleMessage).join(", ")}.`;
 }
 
+const INTENSIVE_RULE_MESSAGES = {
+  name: "un nombre",
+  slug: "un enlace válido",
+  teacher: "un profesor asignado",
+  percentage: "el porcentaje acordado",
+  "time-range": "un horario válido",
+  "future-start": "una fecha futura",
+  price: "un precio",
+  deposit: "una seña válida",
+  capacity: "una capacidad válida",
+  "min-seats": "cupos mínimos válidos",
+} as const satisfies Record<IntensivePublishRule, string>;
+
+/** Names all eligibility failures returned while a live intensivo is edited. */
+export function intensivePublishRulesMessage(
+  rules: readonly IntensivePublishRule[],
+): string {
+  return `No se puede guardar este intensivo porque falta: ${rules
+    .map((rule) => INTENSIVE_RULE_MESSAGES[rule])
+    .join(", ")}.`;
+}
+
+export function intensiveDeleteRuleMessage(): string {
+  return "Solo se puede eliminar un borrador.";
+}
+
 export function transitionRefusedMessage(
-  from: WorkshopStatus,
-  to: WorkshopStatus,
+  from: WorkshopStatus | IntensiveStatus,
+  to: WorkshopStatus | IntensiveStatus,
 ): string {
   const names = adminMicrocopy.status;
   return `No se puede pasar de ${names[from]} a ${names[to]}.`;

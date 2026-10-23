@@ -12,6 +12,31 @@ function text(form: FormData, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+const INTENTS = [
+  "save",
+  "publish",
+  "pause",
+  "cancel",
+  "archive",
+  "restore",
+  "delete",
+  "reschedule",
+] as const;
+export type IntensiveIntent = (typeof INTENTS)[number];
+
+export function parseIntensiveIntent(form: FormData): IntensiveIntent | null {
+  const intent = text(form, "intent");
+  return INTENTS.find((known) => known === intent) ?? null;
+}
+
+export function parseIntensiveSchedule(form: FormData) {
+  return {
+    eventDate: text(form, "eventDate"),
+    startsAt: text(form, "startsAt"),
+    endsAt: text(form, "endsAt"),
+  };
+}
+
 export function parseIntensiveDraft(form: FormData): IntensiveWorkshopDraft {
   const assetIds = form.getAll("galleryAssetId");
   const sources = form.getAll("gallerySrc");

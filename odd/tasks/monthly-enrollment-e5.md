@@ -1,8 +1,8 @@
 # Monthly Enrollment E5 — Atomic Seat Transactions
 
-Branch: `feat/monthly-enrollment-e5-seat-ledger`  
+Branch: `feat/monthly-enrollment-e5-seat-ledger`
 Base: E4 branch at `27ba9e3` (PR #84 merged as `802a744`)
-Mode: ODD with strict TDD  
+Mode: ODD with strict TDD
 Risk: high (money state, seat capacity, PostgreSQL concurrency)
 
 ## Scope

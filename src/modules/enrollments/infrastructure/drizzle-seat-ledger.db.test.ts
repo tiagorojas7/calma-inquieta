@@ -1,4 +1,4 @@
-import { afterAll } from "vitest";
+import { afterEach } from "vitest";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { runSeatLedgerContract } from "~/testing/contracts/seat-ledger.contract";
 import {
@@ -17,8 +17,10 @@ async function freshLedger() {
   );
 }
 
-afterAll(async () => {
-  await Promise.all(created.map((database) => database.drop()));
+afterEach(async () => {
+  for (const database of created.splice(0)) {
+    await database.drop();
+  }
 });
 
 runSeatLedgerContract(freshLedger);

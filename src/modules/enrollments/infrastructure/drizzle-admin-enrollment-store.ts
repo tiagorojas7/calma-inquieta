@@ -241,7 +241,7 @@ export function createDrizzleAdminEnrollmentStore(
               actor: input.actor.email,
               from: "pending_confirmation",
               to: "paid",
-              note: input.note,
+              ...(input.note === undefined ? {} : { note: input.note }),
             });
             return ok({ kind: "confirmed" });
           }),

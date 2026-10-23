@@ -311,7 +311,7 @@ describe("admin enrollment service", () => {
       transitionOrder: () =>
         Promise.reject(new Error("audit persistence failed")),
       auditTrail: (orderId) => orders.auditTrail(orderId),
-      listForAdmin: () => orders.listForAdmin(),
+      listForAdmin: (query) => orders.listForAdmin(query),
     };
     const { service, seats } = await fixture({ repository: failingRepository });
     const before = await orders.findForAdmin(created.value.id);
@@ -737,7 +737,7 @@ describe("admin enrollment service", () => {
       findForAdmin: (orderId) => paid.orders.findForAdmin(orderId),
       transitionOrder: () => Promise.reject(new Error("transition failed")),
       auditTrail: (orderId) => paid.orders.auditTrail(orderId),
-      listForAdmin: () => paid.orders.listForAdmin(),
+      listForAdmin: (query) => paid.orders.listForAdmin(query),
     };
     const service = createAdminEnrollmentService({
       store: new InMemoryAdminEnrollmentStore(failingRepository, seats, {
@@ -777,7 +777,7 @@ describe("admin enrollment service", () => {
       create: (draft) => paid.orders.create(draft),
       findByPublicId: (publicId) => paid.orders.findByPublicId(publicId),
       findForAdmin: (orderId) => paid.orders.findForAdmin(orderId),
-      listForAdmin: () => paid.orders.listForAdmin(),
+      listForAdmin: (query) => paid.orders.listForAdmin(query),
       auditTrail: (orderId) => paid.orders.auditTrail(orderId),
       transitionOrder: async (orderId, to, context) => {
         if (to === "cancelled") {

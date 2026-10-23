@@ -1,11 +1,11 @@
 import { err, type Money, type Result } from "~/modules/_shared";
-import type {
-  IllegalTransition,
-  OrderStatus,
-  TurnoFull,
-} from "../domain/order-core";
+import type { IllegalTransition, TurnoFull } from "../domain/order-core";
 import type { PeriodClosed, PeriodStatus } from "../domain/period-window";
-import type { AuditEntry, StoredOrder } from "./enrollment-repository";
+import type {
+  AuditEntry,
+  OrderRepositoryListQuery,
+  StoredOrder,
+} from "./enrollment-repository";
 
 export type AdminEnrollmentStoreError =
   | { readonly kind: "not-found" }
@@ -20,13 +20,7 @@ export type Confirmed =
   { readonly kind: "confirmed" } | { readonly kind: "already-confirmed" };
 export type Cancelled =
   { readonly kind: "cancelled" } | { readonly kind: "already-cancelled" };
-export type AdminListQuery = {
-  readonly status?: OrderStatus;
-  readonly period?: string;
-  readonly workshopId?: string;
-  readonly text?: string;
-  readonly page?: number;
-};
+export type AdminListQuery = OrderRepositoryListQuery;
 export type AdminListItem = Pick<
   StoredOrder,
   "number" | "workshopName" | "period" | "turnoLabel" | "status" | "total"

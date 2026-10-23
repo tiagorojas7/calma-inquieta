@@ -73,6 +73,17 @@ function plant(files: Record<string, string>): string {
 }
 
 describe("schema ownership", () => {
+  it("keeps the enrollments schema independent of other module schemas", () => {
+    const schema = readFileSync(
+      join(repoRoot, "src", "platform", "db", "schema", "enrollments.ts"),
+      "utf8",
+    );
+
+    expect(schema).not.toMatch(
+      /["']\.\/(?:materials|media|teachers|workshops)["']/,
+    );
+  });
+
   it("lets each module's infrastructure import only its own schema file", () => {
     expect(schemaOwnershipViolations(repoRoot)).toEqual([]);
   });

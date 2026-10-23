@@ -3,9 +3,16 @@ import { runOrderRepositoryContract } from "~/testing/contracts/order-repository
 import { orderDraft } from "./enrollments-builders";
 import { InMemoryOrderRepository } from "./enrollments-order-repository";
 
-runOrderRepositoryContract(() =>
-  Promise.resolve(new InMemoryOrderRepository()),
-);
+runOrderRepositoryContract(() => {
+  const repository = new InMemoryOrderRepository();
+  return {
+    repository,
+    failCreateAfterNumbering: async (draft) => {
+      repository.failNextCreateAfterNumbering();
+      return repository.create(draft);
+    },
+  };
+});
 
 describe("InMemoryOrderRepository rollback", () => {
   it("leaves no order and reuses the number when the create fails after numbering", async () => {

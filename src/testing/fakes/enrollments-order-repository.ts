@@ -14,6 +14,7 @@ import type {
   DuplicateOrder,
   OrderDraft,
   OrderRepository,
+  OrderRepositoryListQuery,
   StoredOrder,
   TransitionContext,
 } from "~/modules/enrollments/application/enrollment-repository";
@@ -113,9 +114,29 @@ export class InMemoryOrderRepository implements OrderRepository {
       this.rows.find(({ order }) => order.id === orderId)?.order ?? null,
     );
   }
-  listForAdmin(): Promise<readonly StoredOrder[]> {
+  listForAdmin(
+    query: OrderRepositoryListQuery,
+  ): Promise<readonly StoredOrder[]> {
     this.reads += 1;
-    return Promise.resolve(this.rows.map(({ order }) => order));
+    const page = Math.max(1, query.page ?? 1);
+    const text = query.text?.toLowerCase();
+    const start = (page - 1) * 50;
+    return Promise.resolve(
+      this.rows
+        .map(({ order }) => order)
+        .filter(
+          (order) =>
+            (!query.status || order.status === query.status) &&
+            (!query.period || order.period === query.period) &&
+            (!query.workshopId || order.workshopId === query.workshopId) &&
+            (!text ||
+              [order.number, order.student.fullName, order.student.email].some(
+                (value) => value.toLowerCase().includes(text),
+              )),
+        )
+        .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime())
+        .slice(start, start + 50),
+    );
   }
   transitionOrder(
     orderId: string,
@@ -327,21 +348,13 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
   }
   async list(query: AdminListQuery) {
     const page = Math.max(1, query.page ?? 1);
-    const text = query.text?.toLowerCase();
-    const rows = (await this.orders.listForAdmin())
-      .filter(
-        (order) =>
-          order.status === (query.status ?? "pending_confirmation") &&
-          (!query.period || order.period === query.period) &&
-          (!query.workshopId || order.workshopId === query.workshopId) &&
-          (!text ||
-            [order.number, order.student.fullName, order.student.email].some(
-              (value) => value.toLowerCase().includes(text),
-            )),
-      )
-      .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+    const rows = await this.orders.listForAdmin({
+      ...query,
+      status: query.status ?? "pending_confirmation",
+      page,
+    });
     return {
-      items: rows.slice((page - 1) * 50, page * 50).map((order) => ({
+      items: rows.map((order) => ({
         number: order.number,
         studentName: order.student.fullName,
         workshopName: order.workshopName,

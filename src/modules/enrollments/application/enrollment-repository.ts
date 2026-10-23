@@ -49,6 +49,15 @@ export interface StoredOrder extends Omit<OrderDraft, "year"> {
 
 export type DuplicateOrder = { readonly kind: "duplicate-order" };
 
+/** Filters one fixed-size page of administrative order reads. */
+export interface OrderRepositoryListQuery {
+  readonly status?: OrderStatus;
+  readonly period?: string;
+  readonly workshopId?: string;
+  readonly text?: string;
+  readonly page?: number;
+}
+
 export interface AuditEntry {
   readonly at: Date;
   /** `public` for creation, the admin email otherwise. */
@@ -78,8 +87,10 @@ export interface OrderRepository {
   findByPublicId(publicId: string): Promise<StoredOrder | null>;
   /** Admin-only lookup; implementations later lock this row with its transition. */
   findForAdmin(orderId: string): Promise<StoredOrder | null>;
-  /** E3 fake read; E4 maps filters and pagination to persistence. */
-  listForAdmin(): Promise<readonly StoredOrder[]>;
+  /** Returns at most 50 filtered orders from the selected newest-first page. */
+  listForAdmin(
+    query: OrderRepositoryListQuery,
+  ): Promise<readonly StoredOrder[]>;
   /** Moves the status along the transitions table and appends one audit row. */
   transitionOrder(
     orderId: string,

@@ -13,7 +13,7 @@ const periods = {
   find: () => Promise.resolve({ status: "open" as const, capacity }),
 };
 
-runAdminEnrollmentStoreContract(async () => {
+runAdminEnrollmentStoreContract(() => {
   const orders = new InMemoryOrderRepository();
   const seats = new InMemorySeatLedger();
   let nextOrder = 0;
@@ -43,18 +43,20 @@ runAdminEnrollmentStoreContract(async () => {
       seats.confirmedSeats(order.periodId, order.turnoId),
     audit: (order: Awaited<ReturnType<typeof createOrder>>) =>
       orders.auditTrail(order.id),
-    failingAfterSeatMutation: async () =>
-      harness({
-        create: (draft) => orders.create(draft),
-        findByPublicId: (publicId) => orders.findByPublicId(publicId),
-        findForAdmin: (orderId) => orders.findForAdmin(orderId),
-        listForAdmin: (query) => orders.listForAdmin(query),
-        auditTrail: (orderId) => orders.auditTrail(orderId),
-        transitionOrder: (orderId, to, context) =>
-          to === "paid"
-            ? Promise.reject(new Error("injected audit persistence failure"))
-            : orders.transitionOrder(orderId, to, context),
-      }),
+    failingAfterSeatMutation: () =>
+      Promise.resolve(
+        harness({
+          create: (draft) => orders.create(draft),
+          findByPublicId: (publicId) => orders.findByPublicId(publicId),
+          findForAdmin: (orderId) => orders.findForAdmin(orderId),
+          listForAdmin: (query) => orders.listForAdmin(query),
+          auditTrail: (orderId) => orders.auditTrail(orderId),
+          transitionOrder: (orderId, to, context) =>
+            to === "paid"
+              ? Promise.reject(new Error("injected audit persistence failure"))
+              : orders.transitionOrder(orderId, to, context),
+        }),
+      ),
   });
 
   return harness();

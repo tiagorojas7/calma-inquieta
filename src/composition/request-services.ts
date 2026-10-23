@@ -27,6 +27,7 @@ import {
 } from "~/modules/teachers";
 import { createDrizzleTeacherRepository } from "~/modules/teachers/infrastructure/drizzle-teacher-repository";
 import {
+  createIntensivesService,
   createMonthlyWorkshopsService,
   createPeriodTurnoUsageLookup,
   createPublicIntensivosReader,
@@ -43,6 +44,7 @@ import {
   type AdminEnrollmentUseCases,
 } from "~/modules/enrollments";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
+import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
 import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infrastructure/drizzle-workshop-period-repository";
@@ -121,9 +123,12 @@ export function createRequestServices(
       cell: isolate.statusProbeMemo,
     },
   );
-  const teachers = createTeacherLookup(
-    createDrizzleTeacherRepository(openSession),
-  );
+  const teacherRepository = createDrizzleTeacherRepository(openSession);
+  const teachers = createTeacherLookup(teacherRepository);
+  const mediaAssets = createDrizzleMediaAssetRepository(openSession);
+  const media = {
+    findAssets: (ids: readonly string[]) => mediaAssets.findByIds(ids),
+  };
   const periodRepository = createDrizzleWorkshopPeriodRepository(openSession);
   return {
     getSystemStatus: createGetSystemStatus({
@@ -141,11 +146,11 @@ export function createRequestServices(
       storage: config.mediaBucket
         ? createR2ImageStorage(config.mediaBucket)
         : createUnavailableImageStorage(),
-      repository: createDrizzleMediaAssetRepository(openSession),
+      repository: mediaAssets,
       clock: systemClock,
     }),
     teachers: createTeachersService({
-      repository: createDrizzleTeacherRepository(openSession),
+      repository: teacherRepository,
       clock: systemClock,
     }),
     monthlyWorkshops: createMonthlyWorkshopsService({
@@ -158,7 +163,12 @@ export function createRequestServices(
       clock: systemClock,
     }),
     workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
-    intensives: createUnavailableService<IntensivesService>(),
+    intensives: createIntensivesService({
+      repository: createDrizzleIntensiveRepository(openSession),
+      teachers,
+      media,
+      clock: systemClock,
+    }),
     suppliers: createUnavailableService<SuppliersService>(),
     materials: createUnavailableService<MaterialsService>(),
     enrollments: createUnavailableAdminEnrollmentService(),

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { IssueCode } from "~/modules/_shared";
 import { findCopyViolations } from "~/modules/site-content";
 import {
+  INTENSIVE_FIELD_MESSAGES,
   ISSUE_MESSAGES,
   TURNO_FIELD_MESSAGES,
   WORKSHOP_FIELD_MESSAGES,
@@ -71,6 +72,31 @@ describe("fieldErrors", () => {
 
   it("is empty when there are no issues", () => {
     expect(fieldErrors([])).toEqual({});
+  });
+});
+
+describe("intensive messages", () => {
+  it("words intensive slug, time range and gallery issues precisely", () => {
+    expect(
+      fieldErrors(
+        [{ field: "slug", code: "duplicate" }],
+        INTENSIVE_FIELD_MESSAGES,
+      ),
+    ).toEqual({ slug: "Ese enlace ya lo usa otro intensivo." });
+    expect(
+      fieldErrors(
+        [{ field: "timeRange", code: "end-before-start" }],
+        INTENSIVE_FIELD_MESSAGES,
+      ),
+    ).toEqual({
+      timeRange: "El horario de fin tiene que ser posterior al de inicio.",
+    });
+    expect(
+      fieldErrors(
+        [{ field: "images", code: "too-many" }],
+        INTENSIVE_FIELD_MESSAGES,
+      ),
+    ).toEqual({ images: "Podés cargar hasta 6 imágenes." });
   });
 });
 

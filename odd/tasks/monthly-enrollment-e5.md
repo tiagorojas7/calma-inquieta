@@ -1,7 +1,7 @@
 # Monthly Enrollment E5 — Atomic Seat Transactions
 
 Branch: `feat/monthly-enrollment-e5-seat-ledger`  
-Base: E4 branch at `27ba9e3` (PR #84, OPEN/CLEAN, CI PASS)  
+Base: E4 branch at `27ba9e3` (PR #84 merged as `802a744`)
 Mode: ODD with strict TDD  
 Risk: high (money state, seat capacity, PostgreSQL concurrency)
 
@@ -45,20 +45,21 @@ Do not edit `src/app/**`, `src/composition/**`, workshops/materials modules, sch
 | T2  | Make fake contracts GREEN and preserve E3 regressions                     | done        | Existing E3 fake already satisfied contract; admin service 27/27       |
 | T3  | Implement and verify `DrizzleSeatLedger`                                  | done        | Fake/Drizzle ledger 12/12; module 192; architecture 17; typecheck pass |
 | T4  | Implement transactional `DrizzleAdminEnrollmentStore`                     | done        | Shared DB contract and full DB file 19/19; atomic rollback verified    |
-| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | in progress | Deterministic concurrency probes pass; required 20-run proof active    |
-| T6  | Run independent verification and all repository gates                     | pending     |                                                                        |
+| T5  | Add and repeat PostgreSQL concurrency/rollback probes                     | done        | Blob evidence: 7 selected probes × 20 repeats = 140/140 PASS           |
+| T6  | Run independent verification and all repository gates                     | in progress |                                                                        |
 | T7  | Commit, publish, and prepare the E5 PR                                    | pending     |                                                                        |
 
 ## Delivery strategy
 
-E5 depends on E4 and remains stacked until PR #84 merges. The forecast is approximately 260 production plus 430 test lines. Tests will not be compressed. The owner approved `size:exception` for one cohesive E5 PR.
+E5 depends on E4; PR #84 is merged and the E5 base is now an ancestor of `origin/main`. The forecast is approximately 260 production plus 430 test lines. Tests will not be compressed. The owner approved `size:exception` for one cohesive E5 PR.
 
 ## Log
 
-- L1 (2026-10-22). E5 worktree created from E4 head `27ba9e3`; PR #84 is OPEN/CLEAN with CI PASS.
+- L1 (2026-10-22). E5 worktree created from E4 head `27ba9e3`; PR #84 later merged as `802a744`, making the E5 base an ancestor of `origin/main`.
 - L2 (2026-10-22). Read-only architecture mapping selected `DrizzleAdminEnrollmentStore` as the production atomic boundary plus a standalone `DrizzleSeatLedger`. Calling independent ledger and repository transactions from the admin service is explicitly rejected.
 - L3 (2026-10-22). The owner explicitly approved `size:exception` for one cohesive E5 PR because the atomic store and its concurrency evidence cannot be separated honestly under 400 lines.
 - L4 (2026-10-22). Shared contract characterization was GREEN because E3 already implemented the fake semantics: seat ledger plus admin store passed 17/17, and admin service regressions passed 27/27. Independent verification found no contract weakness; PostgreSQL lock/CHECK/rollback probes remain deliberately RED work for T3-T5.
 - L5 (2026-10-22). Drizzle ledger RED progressed from missing import to four named behavioral failures. GREEN passed fake/Drizzle ledger 12/12, module 192/192, architecture 17/17 and canonical typecheck. Independent inspection found no ledger SQL defect; its reported FAIL refers only to intentionally pending T4/T5 admin atomicity and concurrency probes.
 - L6 (2026-10-22). Drizzle admin store RED progressed from missing import to 11 named contract failures. GREEN passed the shared contract, then the first expanded DB run exposed two incorrect test expectations and a Windows embedded-PostgreSQL lifecycle crash. Sequential per-test database cleanup eliminated the crash. Corrected serializable cancel/confirm outcomes and nested SQLSTATE assertion brought the full DB file to 17/17.
-- L7 (2026-10-22). Independent audit rejected the weak different-turno probe. The strengthened suite now uses an advisory-lock trigger plus `pg_stat_activity` to prove the second turno commits while the first waits, uses exact capacity 8 with 5 preloaded seats, and proves amount-mismatch/closed-period no-op behavior. Strengthened probes 4/4 and full DB file 19/19 passed; the required 20-run stability proof is active.
+- L7 (2026-10-22). Independent audit rejected the weak different-turno probe. The strengthened suite now uses an advisory-lock trigger plus `pg_stat_activity` to prove the second turno commits while the first waits, uses exact capacity 8 with 5 preloaded seats, and proves amount-mismatch/closed-period no-op behavior. Strengthened probes 4/4 and full DB file 19/19 passed.
+- L8 (2026-10-23). The first 20-run command was invalid because its anchored pattern selected zero tests. The corrected fresh-process proof passed preflight plus four runs (35/35 executions), then the fifth Vitest process crashed with Windows `0xC0000409` before executing probes and without assertion or teardown errors. A single-process `--repeats 19` run then passed all seven selected probes with `repeatCount: 19`, proving 140/140 executions in 661.55s with no worker crash, unhandled error, retry or teardown failure. Machine-readable evidence is `C:/Temp/e5-stability-seven-v1.json`; this isolates the earlier failure to repeated Windows process lifecycle rather than product concurrency behavior.

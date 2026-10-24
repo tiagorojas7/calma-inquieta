@@ -104,8 +104,13 @@ export interface PublicOffer {
   }[];
 }
 
+export type DependencyUnavailable = { readonly kind: "unavailable" };
+
 export type OfferGateError =
-  NotFound | { readonly kind: "enrollments-paused" } | PeriodClosed;
+  | NotFound
+  | { readonly kind: "enrollments-paused" }
+  | PeriodClosed
+  | DependencyUnavailable;
 
 export type RequestEnrollmentError =
   | Invalid<StudentField>
@@ -117,6 +122,8 @@ export type RequestEnrollmentError =
   | { readonly kind: "material-unavailable"; readonly materialId: string }
   | TurnoFull
   | DuplicateOrder;
+
+export type PublicOrderLookupError = NotFound | DependencyUnavailable;
 
 export interface PublicEnrollmentServiceDeps {
   readonly offers: EnrollmentOfferLookup;
@@ -142,13 +149,25 @@ export interface PublicEnrollmentUseCases {
   ): Promise<Result<PublicOrderView, RequestEnrollmentError>>;
   getOrderByPublicId(
     publicId: string,
-  ): Promise<Result<PublicOrderView, NotFound>>;
+  ): Promise<Result<PublicOrderView, PublicOrderLookupError>>;
 }
 
 const phoneDigits = (display: string): string | null => {
   const digits = toWhatsAppDigits(display);
   return digits.ok ? digits.value : null;
 };
+const unavailable: DependencyUnavailable = { kind: "unavailable" };
+
+/** Maps only a rejected dependency promise; synchronous programming errors escape. */
+async function unavailableOnReject<T>(
+  dependency: Promise<T>,
+): Promise<Result<T, DependencyUnavailable>> {
+  try {
+    return ok(await dependency);
+  } catch {
+    return err(unavailable);
+  }
+}
 
 type OpenOffer = {
   readonly workshop: EnrollmentOffer["workshop"];
@@ -211,15 +230,17 @@ function resolveLines(
   const lines: OrderLineDraft[] = [];
   for (const line of cart) {
     const material = offered.find((m) => m.materialId === line.materialId);
-    const variant = material?.variants.find(
+    if (material === undefined)
+      return err({ kind: "material-not-offered", materialId: line.materialId });
+    if (!material.active)
+      return err({ kind: "material-unavailable", materialId: line.materialId });
+    const variant = material.variants.find(
       (v) => v.variantId === line.variantId,
     );
-    if (material === undefined || variant === undefined) {
+    if (variant === undefined)
       return err({ kind: "material-not-offered", materialId: line.materialId });
-    }
-    if (!material.active || !variant.available) {
+    if (!variant.available)
       return err({ kind: "material-unavailable", materialId: line.materialId });
-    }
     lines.push({
       materialId: material.materialId,
       variantId: variant.variantId,
@@ -242,13 +263,16 @@ export function createPublicEnrollmentService(
 
   return {
     async getOffer(query) {
-      const gate = gateOffer(
-        await deps.offers.findOffer(query),
-        deps.clock.now(),
-      );
+      const foundOffer = await unavailableOnReject(deps.offers.findOffer(query));
+      if (!foundOffer.ok) return foundOffer;
+      const gate = gateOffer(foundOffer.value, deps.clock.now());
       if (!gate.ok) return gate;
       const { workshop, period, turnos } = gate.value;
-      const materials = await deps.materials.listForPeriod(period.id);
+      const foundMaterials = await unavailableOnReject(
+        deps.materials.listForPeriod(period.id),
+      );
+      if (!foundMaterials.ok) return foundMaterials;
+      const materials = foundMaterials.value;
       return ok({
         workshopName: workshop.name,
         period: period.period,
@@ -287,10 +311,11 @@ export function createPublicEnrollmentService(
       }
 
       const now = deps.clock.now();
-      const gate = gateOffer(
-        await deps.offers.findOffer({ slug: input.slug, period: input.period }),
-        now,
+      const foundOffer = await unavailableOnReject(
+        deps.offers.findOffer({ slug: input.slug, period: input.period }),
       );
+      if (!foundOffer.ok) return foundOffer;
+      const gate = gateOffer(foundOffer.value, now);
       if (!gate.ok) return gate;
       const { workshop, period, turnos } = gate.value;
 
@@ -299,8 +324,11 @@ export function createPublicEnrollmentService(
 
       const cart = buildCart(input.lines);
       if (!cart.ok) return cart;
-      const offered = await deps.materials.listForPeriod(period.id);
-      const lines = resolveLines(cart.value, offered);
+      const foundMaterials = await unavailableOnReject(
+        deps.materials.listForPeriod(period.id),
+      );
+      if (!foundMaterials.ok) return foundMaterials;
+      const lines = resolveLines(cart.value, foundMaterials.value);
       if (!lines.ok) return lines;
 
       const priced = priceCart({
@@ -310,12 +338,15 @@ export function createPublicEnrollmentService(
       });
       if (!priced.ok) return priced;
 
-      const confirmed = await deps.seats.confirmedSeats(period.id, turno.id);
-      if (availableSeats(turno.capacity, confirmed) === 0) {
+      const foundConfirmed = await unavailableOnReject(
+        deps.seats.confirmedSeats(period.id, turno.id),
+      );
+      if (!foundConfirmed.ok) return foundConfirmed;
+      if (availableSeats(turno.capacity, foundConfirmed.value) === 0) {
         return err({ kind: "turno-full" });
       }
 
-      const created = await deps.orders.create({
+      const created = await unavailableOnReject(deps.orders.create({
         publicId: newPublicId(),
         year: cordobaYearOf(now),
         requestedAt: now,
@@ -334,14 +365,20 @@ export function createPublicEnrollmentService(
         total: priced.value.total,
         policyVersion: deps.policyVersion,
         lines: lines.value,
-      });
-      return created.ok ? ok(toView(created.value)) : created;
+      }));
+      if (!created.ok) return created;
+      return created.value.ok ? ok(toView(created.value.value)) : created.value;
     },
 
     async getOrderByPublicId(publicId) {
       if (!isPublicId(publicId)) return err({ kind: "not-found" });
-      const order = await deps.orders.findByPublicId(publicId);
-      return order === null ? err({ kind: "not-found" }) : ok(toView(order));
+      const foundOrder = await unavailableOnReject(
+        deps.orders.findByPublicId(publicId),
+      );
+      if (!foundOrder.ok) return foundOrder;
+      return foundOrder.value === null
+        ? err({ kind: "not-found" })
+        : ok(toView(foundOrder.value));
     },
   };
 }

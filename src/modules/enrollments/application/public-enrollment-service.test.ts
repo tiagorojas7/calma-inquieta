@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Clock } from "~/modules/_shared";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import {
@@ -11,7 +11,9 @@ import { InMemoryOfferLookup } from "~/testing/fakes/enrollments-offer-lookup";
 import { InMemoryOfferedMaterials } from "~/testing/fakes/enrollments-offered-materials";
 import { InMemoryOrderRepository } from "~/testing/fakes/enrollments-order-repository";
 import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
+import { createOfferedMaterialsAdapter } from "~/composition/offered-materials-adapter";
 import type { EnrollmentOffer } from "./offer-lookup";
+import type { OfferedMaterialsLookup } from "./offered-materials";
 import {
   createPublicEnrollmentService,
   type RequestEnrollmentInput,
@@ -19,11 +21,18 @@ import {
 
 const NOW = new Date("2026-10-20T15:00:00Z");
 
-function setup(options: { offer?: EnrollmentOffer; clock?: Clock } = {}) {
+function setup(
+  options: {
+    offer?: EnrollmentOffer;
+    clock?: Clock;
+    materials?: OfferedMaterialsLookup;
+  } = {},
+) {
   const offers = new InMemoryOfferLookup([options.offer ?? offerFixture()]);
-  const materials = new InMemoryOfferedMaterials({
+  const defaultMaterials = new InMemoryOfferedMaterials({
     "p-1": [materialFixture()],
   });
+  const materials = options.materials ?? defaultMaterials;
   const seats = new InMemorySeatLedger();
   const orders = new InMemoryOrderRepository();
   let counter = 0;
@@ -41,7 +50,7 @@ function setup(options: { offer?: EnrollmentOffer; clock?: Clock } = {}) {
     },
     policyVersion: "2026-10",
   });
-  return { service, offers, materials, seats, orders };
+  return { service, offers, materials: defaultMaterials, seats, orders };
 }
 
 const request = (
@@ -164,13 +173,71 @@ describe("requestEnrollment student validation and honeypot", () => {
   });
 
   it("answers a filled honeypot like a success, before any lookup, storing nothing", async () => {
-    const { service, offers, orders } = setup();
+    const { service, offers, materials, seats, orders } = setup();
+    const materialLookup = vi.spyOn(materials, "listForPeriod");
+    const seatLookup = vi.spyOn(seats, "confirmedSeats");
+    const create = vi.spyOn(orders, "create");
     const result = await service.requestEnrollment(
       request({ student: studentDraft({ honeypot: "http://spam" }) }),
     );
     expect(result.ok).toBe(true);
     expect(offers.lookups).toBe(0);
+    expect(materialLookup).not.toHaveBeenCalled();
+    expect(seatLookup).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
     expect(orders.size()).toBe(0);
+  });
+});
+
+describe("dependency availability", () => {
+  it.each([
+    ["offer lookup", (value: ReturnType<typeof setup>) =>
+      vi.spyOn(value.offers, "findOffer").mockRejectedValue(new Error("offline"))],
+    ["offered-material lookup", (value: ReturnType<typeof setup>) =>
+      vi
+        .spyOn(value.materials, "listForPeriod")
+        .mockRejectedValue(new Error("offline"))],
+  ])(
+    "maps rejected %s calls to unavailable for getOffer and requestEnrollment",
+    async (_name, reject) => {
+      const value = setup();
+      reject(value);
+
+      await expect(
+        value.service.getOffer({ slug: "ceramica-inicial", period: "2026-10" }),
+      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+      await expect(
+        value.service.requestEnrollment(request({ lines: [line("v-1")] })),
+      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+      expect(value.orders.size()).toBe(0);
+    },
+  );
+
+  it.each([
+    ["seat ledger", (value: ReturnType<typeof setup>) =>
+      vi
+        .spyOn(value.seats, "confirmedSeats")
+        .mockRejectedValue(new Error("offline"))],
+    ["order creation", (value: ReturnType<typeof setup>) =>
+      vi.spyOn(value.orders, "create").mockRejectedValue(new Error("offline"))],
+  ])("maps rejected %s calls to unavailable without creating an order", async (_name, reject) => {
+    const value = setup();
+    reject(value);
+
+    await expect(
+      value.service.requestEnrollment(request({ lines: [line("v-1")] })),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(value.orders.size()).toBe(0);
+  });
+
+  it("maps a rejected public order read to unavailable", async () => {
+    const { service, orders } = setup();
+    vi.spyOn(orders, "findByPublicId").mockRejectedValue(new Error("offline"));
+
+    await expect(service.getOrderByPublicId("A".repeat(22))).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
   });
 });
 
@@ -307,7 +374,10 @@ describe("requestEnrollment order number", () => {
   it("reuses the number when the repository fails mid-create", async () => {
     const { service, orders } = setup();
     orders.failNextCreateAfterNumbering();
-    await expect(service.requestEnrollment(request())).rejects.toThrow();
+    await expect(service.requestEnrollment(request())).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
     const retry = await service.requestEnrollment(request());
     expect(retry.ok && retry.value.number).toBe("CI-2026-0001");
   });
@@ -372,6 +442,18 @@ describe("requestEnrollment materials", () => {
     expect(
       await service.requestEnrollment(request({ lines: [line("v-1")] })),
     ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+  });
+
+  it("refuses an inactive offered material before checking its variants", async () => {
+    const { service, materials } = setup();
+    materials.set("p-1", [materialFixture({ active: false, variants: [] })]);
+
+    await expect(
+      service.requestEnrollment(request({ lines: [line("not-current")] })),
+    ).resolves.toEqual({
       ok: false,
       error: { kind: "material-unavailable", materialId: "m-1" },
     });
@@ -458,6 +540,25 @@ describe("getOffer", () => {
     expect(result.value.materialsRequired).toBe(false);
     expect(result.value.turnos.map((t) => t.id)).toEqual(["t-1", "t-2"]);
     expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
+  });
+
+  it("filters disappeared material sentinels from the public offer", async () => {
+    const materials = createOfferedMaterialsAdapter(
+      { listOfferedMaterialIds: async () => ["m-1"] },
+      { findOfferedMaterialSnapshots: async () => new Map() },
+    );
+    const { service } = setup({ materials });
+
+    await expect(
+      service.requestEnrollment(request({ lines: [line("v-1")] })),
+    ).resolves.toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    const result = await service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.materials).toEqual([]);
+    expect(JSON.stringify(result.value)).not.toContain('"supplierId":""');
   });
 
   it("applies the same gates: paused, unpublished and past month", async () => {

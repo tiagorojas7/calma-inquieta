@@ -12,7 +12,9 @@ describe("offered material ids lookup", () => {
       ],
     });
     const lookup = createWorkshopOfferedMaterialIdsLookup({
-      periods: { findById: async (id) => (id === period.id ? period : null) },
+      periods: {
+        findById: (id) => Promise.resolve(id === period.id ? period : null),
+      },
     });
 
     await expect(lookup.listOfferedMaterialIds("period-1")).resolves.toEqual([
@@ -23,7 +25,7 @@ describe("offered material ids lookup", () => {
 
   it("returns ordinary absence when the period does not exist", async () => {
     const lookup = createWorkshopOfferedMaterialIdsLookup({
-      periods: { findById: async () => null },
+      periods: { findById: () => Promise.resolve(null) },
     });
 
     await expect(lookup.listOfferedMaterialIds("missing")).resolves.toEqual([]);

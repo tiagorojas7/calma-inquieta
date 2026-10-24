@@ -191,12 +191,20 @@ describe("requestEnrollment student validation and honeypot", () => {
 
 describe("dependency availability", () => {
   it.each([
-    ["offer lookup", (value: ReturnType<typeof setup>) =>
-      vi.spyOn(value.offers, "findOffer").mockRejectedValue(new Error("offline"))],
-    ["offered-material lookup", (value: ReturnType<typeof setup>) =>
-      vi
-        .spyOn(value.materials, "listForPeriod")
-        .mockRejectedValue(new Error("offline"))],
+    [
+      "offer lookup",
+      (value: ReturnType<typeof setup>) =>
+        vi
+          .spyOn(value.offers, "findOffer")
+          .mockRejectedValue(new Error("offline")),
+    ],
+    [
+      "offered-material lookup",
+      (value: ReturnType<typeof setup>) =>
+        vi
+          .spyOn(value.materials, "listForPeriod")
+          .mockRejectedValue(new Error("offline")),
+    ],
   ])(
     "maps rejected %s calls to unavailable for getOffer and requestEnrollment",
     async (_name, reject) => {
@@ -214,21 +222,32 @@ describe("dependency availability", () => {
   );
 
   it.each([
-    ["seat ledger", (value: ReturnType<typeof setup>) =>
-      vi
-        .spyOn(value.seats, "confirmedSeats")
-        .mockRejectedValue(new Error("offline"))],
-    ["order creation", (value: ReturnType<typeof setup>) =>
-      vi.spyOn(value.orders, "create").mockRejectedValue(new Error("offline"))],
-  ])("maps rejected %s calls to unavailable without creating an order", async (_name, reject) => {
-    const value = setup();
-    reject(value);
+    [
+      "seat ledger",
+      (value: ReturnType<typeof setup>) =>
+        vi
+          .spyOn(value.seats, "confirmedSeats")
+          .mockRejectedValue(new Error("offline")),
+    ],
+    [
+      "order creation",
+      (value: ReturnType<typeof setup>) =>
+        vi
+          .spyOn(value.orders, "create")
+          .mockRejectedValue(new Error("offline")),
+    ],
+  ])(
+    "maps rejected %s calls to unavailable without creating an order",
+    async (_name, reject) => {
+      const value = setup();
+      reject(value);
 
-    await expect(
-      value.service.requestEnrollment(request({ lines: [line("v-1")] })),
-    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
-    expect(value.orders.size()).toBe(0);
-  });
+      await expect(
+        value.service.requestEnrollment(request({ lines: [line("v-1")] })),
+      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+      expect(value.orders.size()).toBe(0);
+    },
+  );
 
   it("maps a rejected public order read to unavailable", async () => {
     const { service, orders } = setup();
@@ -544,8 +563,8 @@ describe("getOffer", () => {
 
   it("filters disappeared material sentinels from the public offer", async () => {
     const materials = createOfferedMaterialsAdapter(
-      { listOfferedMaterialIds: async () => ["m-1"] },
-      { findOfferedMaterialSnapshots: async () => new Map() },
+      { listOfferedMaterialIds: () => Promise.resolve(["m-1"]) },
+      { findOfferedMaterialSnapshots: () => Promise.resolve(new Map()) },
     );
     const { service } = setup({ materials });
 

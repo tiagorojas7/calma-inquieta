@@ -263,7 +263,9 @@ export function createPublicEnrollmentService(
 
   return {
     async getOffer(query) {
-      const foundOffer = await unavailableOnReject(deps.offers.findOffer(query));
+      const foundOffer = await unavailableOnReject(
+        deps.offers.findOffer(query),
+      );
       if (!foundOffer.ok) return foundOffer;
       const gate = gateOffer(foundOffer.value, deps.clock.now());
       if (!gate.ok) return gate;
@@ -346,26 +348,28 @@ export function createPublicEnrollmentService(
         return err({ kind: "turno-full" });
       }
 
-      const created = await unavailableOnReject(deps.orders.create({
-        publicId: newPublicId(),
-        year: cordobaYearOf(now),
-        requestedAt: now,
-        workshopId: workshop.id,
-        workshopName: workshop.name,
-        periodId: period.id,
-        period: period.period,
-        turnoId: turno.id,
-        turnoLabel: turno.label,
-        weekday: turno.weekday,
-        startsAt: turno.startsAt,
-        endsAt: turno.endsAt,
-        student: student.value,
-        fee: period.fee,
-        materialsTotal: priced.value.materialsTotal,
-        total: priced.value.total,
-        policyVersion: deps.policyVersion,
-        lines: lines.value,
-      }));
+      const created = await unavailableOnReject(
+        deps.orders.create({
+          publicId: newPublicId(),
+          year: cordobaYearOf(now),
+          requestedAt: now,
+          workshopId: workshop.id,
+          workshopName: workshop.name,
+          periodId: period.id,
+          period: period.period,
+          turnoId: turno.id,
+          turnoLabel: turno.label,
+          weekday: turno.weekday,
+          startsAt: turno.startsAt,
+          endsAt: turno.endsAt,
+          student: student.value,
+          fee: period.fee,
+          materialsTotal: priced.value.materialsTotal,
+          total: priced.value.total,
+          policyVersion: deps.policyVersion,
+          lines: lines.value,
+        }),
+      );
       if (!created.ok) return created;
       return created.value.ok ? ok(toView(created.value.value)) : created.value;
     },

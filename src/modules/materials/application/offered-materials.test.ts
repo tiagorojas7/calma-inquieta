@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
-import {
-  buildMaterial,
-  buildSupplier,
-} from "~/testing/fakes/admin-builders";
+import { buildMaterial, buildSupplier } from "~/testing/fakes/admin-builders";
 import { createOfferedMaterialSnapshotsLookup } from "./offered-materials";
 
 const unitPrice = (() => {
@@ -42,10 +39,14 @@ const material = buildMaterial({
 describe("offered material snapshots lookup", () => {
   it("exposes current material, supplier, and variant sale facts without an actor", async () => {
     const lookup = createOfferedMaterialSnapshotsLookup({
-      materials: { findByIds: async () => new Map([[material.id, material]]) },
+      materials: {
+        findByIds: () => Promise.resolve(new Map([[material.id, material]])),
+      },
     });
 
-    await expect(lookup.findOfferedMaterialSnapshots([material.id])).resolves.toEqual(
+    await expect(
+      lookup.findOfferedMaterialSnapshots([material.id]),
+    ).resolves.toEqual(
       new Map([
         [
           material.id,

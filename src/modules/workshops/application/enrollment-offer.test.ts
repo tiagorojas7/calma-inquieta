@@ -10,54 +10,60 @@ const fee = (() => {
   return value.value;
 })();
 
-function subject(overrides: {
-  readonly workshop?: object | null;
-  readonly period?: object | null;
-} = {}) {
-  const workshop = overrides.workshop === undefined
-    ? {
-        id: "workshop-1",
-        slug: "ceramica-inicial",
-        name: "Cerámica inicial",
-        status: "published",
-      }
-    : overrides.workshop;
-  const period = overrides.period === undefined
-    ? {
-        id: "period-1",
-        workshopId: "workshop-1",
-        period: "2026-10",
-        fee,
-        materialsRequired: true,
-        status: "open",
-        turnos: [
-          {
-            turnoId: "turno-1",
-            label: "Mañana",
-            weekday: 2,
-            startsAt: "09:00",
-            endsAt: "11:00",
-            turnoActive: true,
-            capacity: 12,
-          },
-          {
-            turnoId: "turno-inactive",
-            label: "Noche",
-            weekday: 4,
-            startsAt: "18:00",
-            endsAt: "20:00",
-            turnoActive: false,
-            capacity: 8,
-          },
-        ],
-      }
-    : overrides.period;
+function subject(
+  overrides: {
+    readonly workshop?: object | null;
+    readonly period?: object | null;
+  } = {},
+) {
+  const workshop =
+    overrides.workshop === undefined
+      ? {
+          id: "workshop-1",
+          slug: "ceramica-inicial",
+          name: "Cerámica inicial",
+          status: "published",
+        }
+      : overrides.workshop;
+  const period =
+    overrides.period === undefined
+      ? {
+          id: "period-1",
+          workshopId: "workshop-1",
+          period: "2026-10",
+          fee,
+          materialsRequired: true,
+          status: "open",
+          turnos: [
+            {
+              turnoId: "turno-1",
+              label: "Mañana",
+              weekday: 2,
+              startsAt: "09:00",
+              endsAt: "11:00",
+              turnoActive: true,
+              capacity: 12,
+            },
+            {
+              turnoId: "turno-inactive",
+              label: "Noche",
+              weekday: 4,
+              startsAt: "18:00",
+              endsAt: "20:00",
+              turnoActive: false,
+              capacity: 8,
+            },
+          ],
+        }
+      : overrides.period;
   return createWorkshopEnrollmentOfferLookup({
     workshops: {
-      findBySlug: () => Promise.resolve(workshop as StoredMonthlyWorkshop | null),
+      findBySlug: () =>
+        Promise.resolve(workshop as StoredMonthlyWorkshop | null),
     },
     periods: {
-      findByWorkshopPeriod: () => Promise.resolve(period as WorkshopPeriod | null),
+      findByWorkshopPeriod: () =>
+        Promise.resolve(period as WorkshopPeriod | null),
     },
     clock: { now: () => new Date("2026-10-15T12:00:00Z") },
   });
@@ -188,27 +194,30 @@ describe("workshop enrollment offer lookup", () => {
         status: "open",
       },
     ],
-  ])("returns ordinary absence when the returned period %s", async (_reason, period) => {
-    await expect(
-      subject({
-        period: {
-          ...period,
-          turnos: [
-            {
-              turnoId: "turno-1",
-              label: "Mañana",
-              weekday: 2,
-              startsAt: "09:00",
-              endsAt: "11:00",
-              turnoActive: true,
-              capacity: 12,
-            },
-          ],
-        },
-      }).findEnrollmentOffer({
-        slug: "ceramica-inicial",
-        period: "2026-10",
-      }),
-    ).resolves.toBeNull();
-  });
+  ])(
+    "returns ordinary absence when the returned period %s",
+    async (_reason, period) => {
+      await expect(
+        subject({
+          period: {
+            ...period,
+            turnos: [
+              {
+                turnoId: "turno-1",
+                label: "Mañana",
+                weekday: 2,
+                startsAt: "09:00",
+                endsAt: "11:00",
+                turnoActive: true,
+                capacity: 12,
+              },
+            ],
+          },
+        }).findEnrollmentOffer({
+          slug: "ceramica-inicial",
+          period: "2026-10",
+        }),
+      ).resolves.toBeNull();
+    },
+  );
 });

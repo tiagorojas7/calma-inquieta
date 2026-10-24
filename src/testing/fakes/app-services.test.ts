@@ -62,14 +62,16 @@ describe("createAdminTestServices", () => {
   it("keeps intensives and materials unavailable while suppliers list is empty", async () => {
     const services = createAdminTestServices();
     const actor = testAdminActor();
-    const [intensive, suppliers, materials] = await Promise.all([
+    const [intensive, suppliers, materials, enrollment] = await Promise.all([
       services.intensives.get(actor, "id"),
       services.suppliers.list(actor),
       services.materials.listSelectable(actor),
+      services.publicEnrollments.getOffer({ slug: "ceramica", period: "2099-01" }),
     ]);
     expect(!intensive.ok && intensive.error).toEqual({ kind: "unavailable" });
     expect(suppliers).toEqual({ ok: true, value: [] });
     expect(!materials.ok && materials.error).toEqual({ kind: "unavailable" });
+    expect(enrollment).toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 
   it("applies defaults and overrides in the intensive, supplier and material builders", () => {

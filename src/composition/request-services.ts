@@ -30,6 +30,8 @@ import {
   createIntensivesService,
   createMonthlyWorkshopsService,
   createPeriodTurnoUsageLookup,
+  createWorkshopEnrollmentOfferLookup,
+  createWorkshopOfferedMaterialIdsLookup,
   createPublicIntensivosReader,
   createPublicTalleresReader,
   createWorkshopPeriodLookup,
@@ -38,19 +40,33 @@ import {
   type IntensivesService,
   type PublicCatalogService,
 } from "~/modules/workshops";
-import type { SuppliersService, MaterialsService } from "~/modules/materials";
 import {
+  createOfferedMaterialSnapshotsLookup,
+  type SuppliersService,
+  type MaterialsService,
+} from "~/modules/materials";
+import {
+  createAdminEnrollmentService,
+  createPublicEnrollmentService,
   createUnavailableAdminEnrollmentService,
   type AdminEnrollmentUseCases,
+  type PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
 import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infrastructure/drizzle-workshop-period-repository";
+import { createDrizzleMaterialRepository } from "~/modules/materials/infrastructure/drizzle-material-repository";
+import { createDrizzleAdminEnrollmentStore } from "~/modules/enrollments/infrastructure/drizzle-admin-enrollment-store";
+import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructure/drizzle-order-repository";
+import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
+import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
+import { createOfferedMaterialsAdapter } from "./offered-materials-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
 import { createUnavailableService } from "./unavailable-service";
+import { err } from "~/modules/_shared";
 
 /** How long `/status` reuses the last database probe (design D12). */
 const STATUS_PROBE_TTL_MS = 60_000;
@@ -74,6 +90,7 @@ export interface AppServices {
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
   readonly enrollments: AdminEnrollmentUseCases;
+  readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly publicCatalog: PublicCatalogService;
 }
 
@@ -99,6 +116,18 @@ export function createIsolateState(): IsolateState {
   return {
     statusProbeMemo: createProbeMemoCell(),
     accessKeys: createAccessKeyCacheCell(),
+  };
+}
+
+function createUnavailablePublicEnrollmentService(): PublicEnrollmentUseCases {
+  const unavailable = () =>
+    Promise.resolve(
+      err({ kind: "unavailable" as const }),
+    );
+  return {
+    getOffer: unavailable,
+    requestEnrollment: unavailable,
+    getOrderByPublicId: unavailable,
   };
 }
 
@@ -130,6 +159,48 @@ export function createRequestServices(
     findAssets: (ids: readonly string[]) => mediaAssets.findByIds(ids),
   };
   const periodRepository = createDrizzleWorkshopPeriodRepository(openSession);
+  const workshopRepository = createDrizzleMonthlyWorkshopRepository(openSession);
+  const materialRepository = createDrizzleMaterialRepository(openSession);
+  const enrollmentServices = config.databaseUrl
+    ? {
+        publicEnrollments: createPublicEnrollmentService({
+          offers: createEnrollmentOfferAdapter(
+            createWorkshopEnrollmentOfferLookup({
+              workshops: workshopRepository,
+              periods: periodRepository,
+              clock: systemClock,
+            }),
+          ),
+          materials: createOfferedMaterialsAdapter(
+            createWorkshopOfferedMaterialIdsLookup({ periods: periodRepository }),
+            createOfferedMaterialSnapshotsLookup({ materials: materialRepository }),
+          ),
+          orders: createDrizzleOrderRepository(openSession),
+          seats: createDrizzleSeatLedger(openSession),
+          clock: systemClock,
+          random: {
+            bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+          },
+          policyVersion: "2026-10",
+        }),
+        enrollments: createAdminEnrollmentService({
+          store: createDrizzleAdminEnrollmentStore(openSession, {
+            async find(periodId, turnoId) {
+              const period = await periodRepository.findById(periodId);
+              if (!period) return null;
+              const turno = period.turnos.find((item) => item.turnoId === turnoId);
+              return turno
+                ? { status: period.status, capacity: turno.capacity }
+                : null;
+            },
+          }),
+          clock: systemClock,
+        }),
+      }
+    : {
+        publicEnrollments: createUnavailablePublicEnrollmentService(),
+        enrollments: createUnavailableAdminEnrollmentService(),
+      };
   return {
     getSystemStatus: createGetSystemStatus({
       probe,
@@ -154,7 +225,7 @@ export function createRequestServices(
       clock: systemClock,
     }),
     monthlyWorkshops: createMonthlyWorkshopsService({
-      repository: createDrizzleMonthlyWorkshopRepository(openSession),
+      repository: workshopRepository,
       teachers,
       media: EMPTY_MEDIA_LOOKUP, // the gallery is not persisted yet (C4-B5)
       turnos: createDrizzleTurnoRepository(openSession),
@@ -171,7 +242,7 @@ export function createRequestServices(
     }),
     suppliers: createUnavailableService<SuppliersService>(),
     materials: createUnavailableService<MaterialsService>(),
-    enrollments: createUnavailableAdminEnrollmentService(),
+    ...enrollmentServices,
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {
       talleres: createPublicTalleresReader({

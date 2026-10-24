@@ -418,6 +418,58 @@ describe("the brand logo", () => {
   });
 });
 
+describe("the curated favicon set", () => {
+  const ICON_192_PATH: `/media/brand/icon-192-192.${string}.png` =
+    "/media/brand/icon-192-192.37f5439a.png";
+  const APPLE_TOUCH_ICON_PATH: `/media/brand/apple-touch-icon-180.${string}.png` =
+    "/media/brand/apple-touch-icon-180.21a05b9a.png";
+  const favicon = assets.find(({ id }) => id === "favicon");
+  const icon = assets.find(({ id }) => id === "icon-192");
+  const appleTouchIcon = assets.find(({ id }) => id === "apple-touch-icon");
+
+  it("registers root, 192 px and Apple icons from the transparent brand logo", () => {
+    expect(favicon).toMatchObject({
+      area: "brand",
+      format: "ico",
+      sourceId: "logo-calma-inquieta",
+      variants: [{ width: 48, height: 48, path: "/favicon.ico" }],
+    });
+    expect(icon).toMatchObject({
+      area: "brand",
+      format: "png",
+      sourceId: "logo-calma-inquieta",
+      variants: [
+        {
+          width: 192,
+          height: 192,
+          path: ICON_192_PATH,
+        },
+      ],
+    });
+    expect(appleTouchIcon).toMatchObject({
+      area: "brand",
+      format: "png",
+      sourceId: "logo-calma-inquieta",
+      variants: [
+        {
+          width: 180,
+          height: 180,
+          path: APPLE_TOUCH_ICON_PATH,
+        },
+      ],
+    });
+    expect(
+      MEDIA_RIGHTS.filter(({ sourceId }) => sourceId === "logo-calma-inquieta"),
+    ).toEqual([
+      {
+        sourceId: "logo-calma-inquieta",
+        people: "none",
+        consent: "not-required",
+      },
+    ]);
+  });
+});
+
 describe("the recipe and the registry", () => {
   interface Job {
     readonly id: string;
@@ -445,11 +497,37 @@ describe("the recipe and the registry", () => {
     }
   });
 
-  it("every registered image has a recipe job", () => {
+  it("every non-root registered image has a recipe job", () => {
     const ids = new Set(jobs.map(({ id }) => id));
-    for (const asset of images) {
+    for (const asset of images.filter(({ id }) => id !== "favicon")) {
       expect(ids.has(asset.id), `${asset.id} has no recipe job`).toBe(true);
     }
+  });
+
+  it("records the transparent-logo source for the two PNG favicon recipe jobs", () => {
+    const faviconJobs = jobs.filter(({ id }) =>
+      ["icon-192", "apple-touch-icon"].includes(id),
+    );
+
+    expect(faviconJobs).toHaveLength(2);
+    expect(faviconJobs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "icon-192",
+          area: "brand",
+          format: "png",
+          widths: [192],
+          source: "Logo Calma Inquieta (Sin fondo).png",
+        }),
+        expect.objectContaining({
+          id: "apple-touch-icon",
+          area: "brand",
+          format: "png",
+          widths: [180],
+          source: "Logo Calma Inquieta (Sin fondo).png",
+        }),
+      ]),
+    );
   });
 });
 

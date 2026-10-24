@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { jpegSize, pngSize } from "~/testing/media/image-size";
+import { jpegSize } from "~/testing/media/image-size";
 import { aboutContent } from "./content/about";
 import { catalogContent } from "./content/catalog";
 import { homeContent } from "./content/home";
@@ -8,8 +8,6 @@ import { STAND_IN_ASSETS } from "./content/stand-in-assets";
 
 const STAND_IN_DIR = "public/media/stand-ins";
 const MEDIA_PREFIX = "/media/stand-ins/";
-const PROFILE_PICTURE = "docs/brand/instagram/ig-profile-picture.jpg";
-
 const mediaRows = STAND_IN_ASSETS.filter((asset) => asset.kind !== "font");
 const fontRows = STAND_IN_ASSETS.filter((asset) => asset.kind === "font");
 const files = readdirSync(STAND_IN_DIR);
@@ -34,10 +32,7 @@ describe("the stand-in manifest and the files, both ways", () => {
         `${asset.id} has no file`,
       ).toBe(true);
     }
-    expect(mediaRows.map((asset) => asset.id)).toEqual([
-      "gallery-01",
-      "favicon",
-    ]);
+    expect(mediaRows.map((asset) => asset.id)).toEqual(["gallery-01"]);
   });
 
   it("shape-checks the seven font rows, whose files arrive with the tokens", () => {
@@ -82,25 +77,12 @@ describe("every manifest entry", () => {
   });
 });
 
-describe("the profile-picture derived assets", () => {
-  const derived = STAND_IN_ASSETS.filter((asset) => asset.kind === "favicon");
+describe("the retired favicon stand-in", () => {
+  it("has neither a manifest row nor a file", () => {
+    const ids: readonly string[] = STAND_IN_ASSETS.map(({ id }) => id);
 
-  it("registers one favicon and no share image", () => {
-    expect(derived.map((asset) => asset.kind)).toEqual(["favicon"]);
-  });
-
-  it("cites the profile picture and notes it is likely the logo mark", () => {
-    for (const asset of derived) {
-      expect(asset.source).toContain(PROFILE_PICTURE);
-      expect(asset.source).toContain("likely the logo mark");
-    }
-  });
-
-  it("ships a 48 px favicon", () => {
-    expect(pngSize(`${STAND_IN_DIR}/favicon.png`)).toEqual({
-      width: 48,
-      height: 48,
-    });
+    expect(ids).not.toContain("favicon");
+    expect(files).not.toContain("favicon.png");
   });
 });
 
@@ -185,6 +167,6 @@ describe("the replaced stand-ins", () => {
         `/media/stand-ins/${id}.`,
       );
     }
-    expect(files.sort()).toEqual(["favicon.png", "gallery-01.jpg"]);
+    expect(files.sort()).toEqual(["gallery-01.jpg"]);
   });
 });

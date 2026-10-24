@@ -264,5 +264,19 @@
     "widths": [360],
     "format": "webp",
     "quality": 60
+  },
+  {
+    "id": "icon-192",
+    "source": "Logo Calma Inquieta (Sin fondo).png",
+    "area": "brand",
+    "widths": [192],
+    "format": "png"
+  },
+  {
+    "id": "apple-touch-icon",
+    "source": "Logo Calma Inquieta (Sin fondo).png",
+    "area": "brand",
+    "widths": [180],
+    "format": "png"
   }
 ]

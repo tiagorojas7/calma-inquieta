@@ -530,6 +530,45 @@ export const MEDIA_ASSETS = [
   },
   {
     kind: "image",
+    id: "favicon",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, icono de marca",
+    format: "ico",
+    variants: [{ width: 48, height: 48, path: "/favicon.ico" }],
+  },
+  {
+    kind: "image",
+    id: "icon-192",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, icono de marca",
+    format: "png",
+    variants: [
+      {
+        width: 192,
+        height: 192,
+        path: "/media/brand/icon-192-192.37f5439a.png",
+      },
+    ],
+  },
+  {
+    kind: "image",
+    id: "apple-touch-icon",
+    sourceId: "logo-calma-inquieta",
+    area: "brand",
+    alt: "Calma Inquieta, icono de marca",
+    format: "png",
+    variants: [
+      {
+        width: 180,
+        height: 180,
+        path: "/media/brand/apple-touch-icon-180.21a05b9a.png",
+      },
+    ],
+  },
+  {
+    kind: "image",
     id: "about-loop-weaving-poster",
     sourceId: "vid-20261014-185243141",
     area: "video",

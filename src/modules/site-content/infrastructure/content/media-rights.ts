@@ -65,7 +65,7 @@ export const MEDIA_RIGHTS: readonly RightsEntry[] = [
   // The mobile hero backdrop. Its published 9:16 crop (left 240, width 731 of the 1200x1600 frame) excludes the seated person's leg at the bottom right of the original.
   noPeople("img-20260718-wa0044"),
   noPeople("img-20260420-wa0049"),
-  // Brand artwork: the studio logo, a drawing with no people.
+  // Brand artwork: the studio logo and derived favicon set, with no people.
   noPeople("logo-calma-inquieta"),
   // Kept although no asset uses it any more: the old backdrop source (replaced by wa0044).
   noPeople("img-20260530-wa0030"),

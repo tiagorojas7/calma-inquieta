@@ -281,7 +281,6 @@ describe("the drafted page content", () => {
 
     expect(standIns.map(({ id }) => id)).toEqual([
       "gallery-01",
-      "favicon",
       "font-cormorant-garamond-400-normal",
       "font-cormorant-garamond-400-italic",
       "font-montserrat-400-normal",
@@ -821,13 +820,10 @@ describe("the brand logos", () => {
 });
 
 describe("the launch gate on the repository content", () => {
-  it("after this PR the image stand-ins are gallery-01 and favicon, the font stand-ins are seven and unpublishedMedia is empty", async () => {
+  it("after this PR gallery-01 is the only image stand-in, the font stand-ins are seven and unpublishedMedia is empty", async () => {
     const gate = await content.getLaunchGate();
 
-    expect(gate.imageStandIns.map(({ id }) => id)).toEqual([
-      "gallery-01",
-      "favicon",
-    ]);
+    expect(gate.imageStandIns.map(({ id }) => id)).toEqual(["gallery-01"]);
     expect(gate.fontStandIns).toHaveLength(7);
     expect(gate.unpublishedMedia).toEqual([]);
   });

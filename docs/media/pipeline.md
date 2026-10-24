@@ -45,6 +45,23 @@ the final bytes: `<id>-<width>.<hash8>.<ext>`. This makes output safe for
 immutable cache headers and requires registry paths to be updated from the
 printed fragment.
 
+## Favicon set
+
+The favicon set is derived from `Logo Calma Inquieta (Sin fondo).png` in the
+external media workspace. The `icon-192` and `apple-touch-icon` recipe jobs
+preserve the source's square transparent canvas, producing the registered PNG
+files in `public/media/brand/`.
+
+Create the root ICO from the same source with 16, 32, and 48 px PNG entries:
+
+```sh
+node --import tsx --input-type=module -e 'import sharp from "sharp"; import { encodeIco } from "./tooling/media/derive.ts"; const root = "../CalmaInquieta-media/Materia visual Calma-Inquieta/Materia visual Calma-Inquieta"; await encodeIco("public/favicon.ico", [16, 32, 48], sharp(`${root}/Logo Calma Inquieta (Sin fondo).png`).rotate());'
+```
+
+After derivation, copy the printed hashed PNG paths into
+`media-assets.ts`. The root icon is registered as `/favicon.ico`; it has no
+hashed path because browser favicon discovery requires the document root.
+
 ## Colour grade
 
 The client photos are phone shots with mixed light. A job with `"grade": "warm"`

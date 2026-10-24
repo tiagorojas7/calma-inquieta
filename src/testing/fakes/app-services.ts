@@ -2,7 +2,7 @@ import type { AppServices } from "~/composition/request-services";
 import { adminAccessFor } from "./admin-actor";
 import { createFakePublicCatalog } from "./fake-public-catalog";
 import { createUnavailableService } from "~/composition/unavailable-service";
-import { ok } from "~/modules/_shared";
+import { err, ok } from "~/modules/_shared";
 import { createSuppliersService } from "~/modules/materials";
 import { createUnavailableAdminEnrollmentService } from "~/modules/enrollments";
 import { createSiteContent } from "~/modules/site-content";
@@ -70,6 +70,13 @@ export function createTestServices(
         import("~/modules/materials").MaterialsService
       >(),
     enrollments: createUnavailableAdminEnrollmentService(),
+    publicEnrollments: {
+      getOffer: () => Promise.resolve(err({ kind: "unavailable" as const })),
+      requestEnrollment: () =>
+        Promise.resolve(err({ kind: "unavailable" as const })),
+      getOrderByPublicId: () =>
+        Promise.resolve(err({ kind: "unavailable" as const })),
+    },
     publicCatalog: createFakePublicCatalog(),
     ...overrides,
   };

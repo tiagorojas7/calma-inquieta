@@ -14,6 +14,7 @@ export default [
     route("talleres/nuevo", "routes/admin/workshop-new.tsx"),
     route("talleres/:id", "routes/admin/workshop-detail.tsx"),
     route("talleres/:id/turnos", "routes/admin/turnos.tsx"),
+    route("talleres/:id/periodos", "routes/admin/workshop-periods.tsx"),
     route("intensivos", "routes/admin/intensives.tsx"),
     route("intensivos/nuevo", "routes/admin/intensive-new.tsx"),
     route("intensivos/:id", "routes/admin/intensive-detail.tsx"),

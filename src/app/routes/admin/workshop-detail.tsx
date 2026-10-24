@@ -100,12 +100,20 @@ export default function AdminWorkshopDetail() {
         error={stateError}
       />
       <div>
-        <AdminButtonLink
-          href={`${LIST}/${workshop.id}/turnos`}
-          variant="outline"
-        >
-          {copy.turnos.manage}
-        </AdminButtonLink>
+        <div className="flex flex-wrap gap-3">
+          <AdminButtonLink
+            href={`${LIST}/${workshop.id}/turnos`}
+            variant="outline"
+          >
+            {copy.turnos.manage}
+          </AdminButtonLink>
+          <AdminButtonLink
+            href={`${LIST}/${workshop.id}/periodos`}
+            variant="outline"
+          >
+            {copy.periods.manage}
+          </AdminButtonLink>
+        </div>
       </div>
       <WorkshopForm
         key={workshop.id}

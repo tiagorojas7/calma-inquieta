@@ -98,15 +98,15 @@ Focused checks first, then:
 
 Strategy: `auto-chain`, `stacked-to-main`. One honest slicing pass produced seven cohesive local branches, each within the 400-line review budget and containing its tests:
 
-| Position | Branch                                             | Head      | Base   | Review budget                     |
-| -------- | -------------------------------------------------- | --------- | ------ | --------------------------------- |
-| 1        | `feat/monthly-enrollment-e6a-offer-api`            | `bf7c896` | `main` | 316                               |
-| 2        | `feat/monthly-enrollment-e6b-offer-adapter`        | `3138148` | E6a    | 96                                |
-| 3        | `feat/monthly-enrollment-e6c-material-ports`       | `a92b86a` | E6b    | 332                               |
-| 4        | `feat/monthly-enrollment-e6d-material-adapter`     | `c2f89ee` | E6c    | 336                               |
-| 5        | `feat/monthly-enrollment-e6e-request-services`     | `4804160` | E6d    | 170                               |
-| 6        | `chore/monthly-enrollment-e6f-application-quality` | `76e1f30` | E6e    | 271                               |
-| 7        | `chore/monthly-enrollment-e6g-composition-quality` | `28ea2ae` | E6f    | 143 before final tracker evidence |
+| Position | Branch                                             | Head      | Base   | Review budget                         |
+| -------- | -------------------------------------------------- | --------- | ------ | ------------------------------------- |
+| 1        | `feat/monthly-enrollment-e6a-offer-api`            | `bf7c896` | `main` | 316                                   |
+| 2        | `feat/monthly-enrollment-e6b-offer-adapter`        | `3138148` | E6a    | 96                                    |
+| 3        | `feat/monthly-enrollment-e6c-material-ports`       | `a92b86a` | E6b    | 332                                   |
+| 4        | `feat/monthly-enrollment-e6d-material-adapter`     | `c2f89ee` | E6c    | 336                                   |
+| 5        | `feat/monthly-enrollment-e6e-request-services`     | `4804160` | E6d    | 170                                   |
+| 6        | `chore/monthly-enrollment-e6f-application-quality` | `76e1f30` | E6e    | 271                                   |
+| 7        | `chore/monthly-enrollment-e6g-composition-quality` | local tip | E6f    | ~190 including final tracker evidence |
 
 Each child PR targets its immediate predecessor until the parent merges, then is retargeted to `main` so GitHub shows only the current slice. Issue #92 exists but lacks the protected `status:approved` label; no branch is pushed and no PR is opened until the owner explicitly authorizes that exact label and the publication batch.
 
@@ -128,8 +128,8 @@ Each child PR targets its immediate predecessor until the parent merges, then is
 - L14 (2026-10-24). Final verification passed focused E6 65/65, full unit 2257/2257, UI 553/553, typecheck, build and diff-check. Lint found 11 `require-await` errors in E6 test doubles and format-check found eight E6/tracker files; bounded remediation is active. The one full DB run used maxWorkers 1 and no file parallelism but timed out after 600 seconds after reporting 20 intensive-repository and 9 public-taller-record assertion failures. Those test/repository paths are unchanged by E6; assertion bodies were not retained, so causality remained uncertain. The full DB command was not rerun.
 - L15 (2026-10-24). Read-only diagnosis found the two failed DB suites use disjoint tables and per-file cloned databases but share one embedded PostgreSQL/template/process lifecycle. One targeted sequential process per file, with maxWorkers 1, no file parallelism, verbose output and no retry, passed: intensive repository 43/43 in 283.38s and public taller records 28/28 in 152.06s, both with clean setup/teardown. This localizes the earlier full-project failures to combined Windows DB process sequencing/environment rather than E6 assertions. The lint/format worker later timed out without a report, but inspection found changes confined to its ten authorized E6 files and no remaining relevant process.
 - L16 (2026-10-24). Lint/format remediation changed only no-await test doubles to equivalent `Promise.resolve` returns plus Prettier layout. Replacement verification passed E6 focused 65/65, lint, typecheck and diff-check; one file still failed format, was formatted once, and a final bounded verifier passed repository format-check and diff-check. Final local evidence is focused 65, full unit 2257, UI 553, targeted DB 43 + 28, architecture 17, typecheck, lint, format, build and diff-check. The combined Windows DB project remains a documented environmental failure; Linux CI is still mandatory after authorized publication.
-- L17 (2026-10-24). Local delivery preparation rebuilt the verified tree into seven stacked branches with exact immediate-parent diffs of 316, 96, 332, 336, 170, 271 and 143 lines. This split keeps behavior with tests and avoids both `size:exception` and review compression. The final delivery tree differs from verified development head only by this pending tracker evidence before the closing cherry-pick.
+- L17 (2026-10-24). Local delivery preparation rebuilt the verified tree into seven stacked branches with exact immediate-parent diffs of 316, 96, 332, 336, 170, 271 and about 190 lines after final tracker evidence. This split keeps behavior with tests and avoids both `size:exception` and review compression. The final delivery branch and verified development head have identical Git trees; only commit topology differs.
 
 ## Next step
 
-Commit and project this final tracker evidence onto the last delivery branch, then request one owner decision authorizing `status:approved` on issue #92 plus push/opening the seven-PR publication batch.
+Request one owner decision authorizing `status:approved` on issue #92 plus push/opening the seven-PR publication batch. Linux CI remains required before E6 is deliverable.

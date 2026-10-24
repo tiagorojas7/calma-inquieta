@@ -261,6 +261,36 @@ export interface PeriodSummary {
   readonly fee: Money;
   readonly totalCapacity: number;
 }
+export interface WorkshopEnrollmentOffer {
+  readonly workshop: {
+    readonly id: string;
+    readonly name: string;
+  };
+  readonly period: {
+    readonly id: string;
+    readonly period: PeriodKey;
+    readonly fee: Money;
+    readonly materialsRequired: boolean;
+  };
+  readonly turnos: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly weekday: Weekday;
+    readonly startsAt: LocalTime;
+    readonly endsAt: LocalTime;
+    readonly capacity: number;
+  }[];
+}
+export interface WorkshopEnrollmentOfferQuery {
+  readonly slug: string;
+  readonly period: string;
+}
+/** Actorless public enrollment read; it exposes only eligible workshop offers. */
+export interface WorkshopEnrollmentOfferLookup {
+  findEnrollmentOffer(
+    query: WorkshopEnrollmentOfferQuery,
+  ): Promise<WorkshopEnrollmentOffer | null>;
+}
 export interface WorkshopPeriod {
   readonly id: string;
   readonly workshopId: string;

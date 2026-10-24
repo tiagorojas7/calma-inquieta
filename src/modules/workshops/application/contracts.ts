@@ -261,6 +261,10 @@ export interface PeriodSummary {
   readonly fee: Money;
   readonly totalCapacity: number;
 }
+/** Actorless B9 offer membership read; order follows the persisted period offers. */
+export interface WorkshopOfferedMaterialIdsLookup {
+  listOfferedMaterialIds(periodId: string): Promise<readonly string[]>;
+}
 export interface WorkshopEnrollmentOffer {
   readonly workshop: {
     readonly id: string;

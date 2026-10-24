@@ -121,9 +121,7 @@ export function createIsolateState(): IsolateState {
 
 function createUnavailablePublicEnrollmentService(): PublicEnrollmentUseCases {
   const unavailable = () =>
-    Promise.resolve(
-      err({ kind: "unavailable" as const }),
-    );
+    Promise.resolve(err({ kind: "unavailable" as const }));
   return {
     getOffer: unavailable,
     requestEnrollment: unavailable,
@@ -159,7 +157,8 @@ export function createRequestServices(
     findAssets: (ids: readonly string[]) => mediaAssets.findByIds(ids),
   };
   const periodRepository = createDrizzleWorkshopPeriodRepository(openSession);
-  const workshopRepository = createDrizzleMonthlyWorkshopRepository(openSession);
+  const workshopRepository =
+    createDrizzleMonthlyWorkshopRepository(openSession);
   const materialRepository = createDrizzleMaterialRepository(openSession);
   const enrollmentServices = config.databaseUrl
     ? {
@@ -172,8 +171,12 @@ export function createRequestServices(
             }),
           ),
           materials: createOfferedMaterialsAdapter(
-            createWorkshopOfferedMaterialIdsLookup({ periods: periodRepository }),
-            createOfferedMaterialSnapshotsLookup({ materials: materialRepository }),
+            createWorkshopOfferedMaterialIdsLookup({
+              periods: periodRepository,
+            }),
+            createOfferedMaterialSnapshotsLookup({
+              materials: materialRepository,
+            }),
           ),
           orders: createDrizzleOrderRepository(openSession),
           seats: createDrizzleSeatLedger(openSession),
@@ -188,7 +191,9 @@ export function createRequestServices(
             async find(periodId, turnoId) {
               const period = await periodRepository.findById(periodId);
               if (!period) return null;
-              const turno = period.turnos.find((item) => item.turnoId === turnoId);
+              const turno = period.turnos.find(
+                (item) => item.turnoId === turnoId,
+              );
               return turno
                 ? { status: period.status, capacity: turno.capacity }
                 : null;

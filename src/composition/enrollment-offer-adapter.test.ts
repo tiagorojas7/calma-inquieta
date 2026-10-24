@@ -10,25 +10,26 @@ const fee = (() => {
 
 describe("enrollment offer adapter", () => {
   it("adapts the workshop-owned actorless enrollment offer to the enrollment port", async () => {
-    const findEnrollmentOffer = async () => ({
-      workshop: { id: "workshop-1", name: "Cerámica inicial" },
-      period: {
-        id: "period-1",
-        period: "2026-10",
-        fee,
-        materialsRequired: true,
-      },
-      turnos: [
-        {
-          id: "turno-1",
-          label: "Mañana",
-          weekday: 2 as const,
-          startsAt: "09:00",
-          endsAt: "11:00",
-          capacity: 12,
+    const findEnrollmentOffer = () =>
+      Promise.resolve({
+        workshop: { id: "workshop-1", name: "Cerámica inicial" },
+        period: {
+          id: "period-1",
+          period: "2026-10",
+          fee,
+          materialsRequired: true,
         },
-      ],
-    });
+        turnos: [
+          {
+            id: "turno-1",
+            label: "Mañana",
+            weekday: 2 as const,
+            startsAt: "09:00",
+            endsAt: "11:00",
+            capacity: 12,
+          },
+        ],
+      });
     const subject = createEnrollmentOfferAdapter({ findEnrollmentOffer });
 
     await expect(
@@ -62,7 +63,7 @@ describe("enrollment offer adapter", () => {
 
   it("preserves ordinary absence", async () => {
     const subject = createEnrollmentOfferAdapter({
-      findEnrollmentOffer: async () => null,
+      findEnrollmentOffer: () => Promise.resolve(null),
     });
 
     await expect(

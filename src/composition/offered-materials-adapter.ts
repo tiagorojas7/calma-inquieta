@@ -13,7 +13,8 @@ export function createOfferedMaterialsAdapter(
   return {
     async listForPeriod(periodId) {
       const offeredIds = await workshopOffers.listOfferedMaterialIds(periodId);
-      const snapshots = await materials.findOfferedMaterialSnapshots(offeredIds);
+      const snapshots =
+        await materials.findOfferedMaterialSnapshots(offeredIds);
       return offeredIds.map((materialId) => {
         const material = snapshots.get(materialId);
         if (!material)

@@ -66,7 +66,10 @@ describe("createAdminTestServices", () => {
       services.intensives.get(actor, "id"),
       services.suppliers.list(actor),
       services.materials.listSelectable(actor),
-      services.publicEnrollments.getOffer({ slug: "ceramica", period: "2099-01" }),
+      services.publicEnrollments.getOffer({
+        slug: "ceramica",
+        period: "2099-01",
+      }),
     ]);
     expect(!intensive.ok && intensive.error).toEqual({ kind: "unavailable" });
     expect(suppliers).toEqual({ ok: true, value: [] });

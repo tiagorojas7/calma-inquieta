@@ -67,14 +67,14 @@ Do not edit routes, UI, schemas, migrations, generic design components, supplier
 
 ## Tasks
 
-| ID | Work unit | Status | Evidence |
-| --- | --- | --- | --- |
-| ME-E6-T1 | Characterize and expose the workshop enrollment-offer read boundary with strict RED → GREEN → REFACTOR | done | `54151e1`; RED missing modules; corrected GREEN 212 tests; architecture 17; typecheck; independent PASS |
-| ME-E6-T2 | Characterize and expose offered-material snapshots through module APIs with strict RED → GREEN → REFACTOR | in progress | Issue #92; strict RED delegated |
-| ME-E6-T3 | Add composition adapters and explicit unavailable semantics with strict RED → GREEN → REFACTOR | pending | Mapping completed; RED not started |
-| ME-E6-T4 | Wire public/admin enrollment request services and prove unavailable adapters fail closed | pending | Mapping completed; RED not started |
-| ME-E6-T5 | Run independent verification and repository gates | pending | Not started |
-| ME-E6-T6 | Commit cohesive work units and prepare the issue-first chained delivery structure | pending | Not started |
+| ID       | Work unit                                                                                                 | Status | Evidence                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| ME-E6-T1 | Characterize and expose the workshop enrollment-offer read boundary with strict RED → GREEN → REFACTOR    | done   | `54151e1`; RED missing modules; corrected GREEN 212 tests; architecture 17; typecheck; independent PASS |
+| ME-E6-T2 | Characterize and expose offered-material snapshots through module APIs with strict RED → GREEN → REFACTOR | done   | `f81070f`; module APIs 237; architecture 17; typecheck; independent PASS                                |
+| ME-E6-T3 | Add composition adapters and explicit unavailable semantics with strict RED → GREEN → REFACTOR            | done   | `e0d3ca6`, `f77f5b6`; focused 37; architecture 17; typecheck; independent PASS                          |
+| ME-E6-T4 | Wire public/admin enrollment request services and prove unavailable adapters fail closed                  | done   | `349d585`; focused 13 + regressions 3; architecture 17; typecheck; independent PASS                     |
+| ME-E6-T5 | Run independent verification and repository gates                                                         | done   | Focused 65; unit 2257; UI 553; DB targets 43+28; type/lint/format/build/diff pass                       |
+| ME-E6-T6 | Commit cohesive work units and prepare the issue-first chained delivery structure                         | done   | Seven local slices prepared; issue #92 approval and publication authorization pending                   |
 
 ## Verification
 
@@ -96,12 +96,19 @@ Focused checks first, then:
 
 ## Delivery strategy
 
-Strategy: `auto-chain`, with `stacked-to-main` when the two work units remain independently reviewable. Forecast: approximately 200 production plus 260 test lines, around 460 authored lines. The honest slicing pass is:
+Strategy: `auto-chain`, `stacked-to-main`. One honest slicing pass produced seven cohesive local branches, each within the 400-line review budget and containing its tests:
 
-1. Workshop enrollment-offer boundary and adapter.
-2. Offered-material boundary, explicit unavailable behavior, and request-service wiring.
+| Position | Branch                                             | Head      | Base   | Review budget                     |
+| -------- | -------------------------------------------------- | --------- | ------ | --------------------------------- |
+| 1        | `feat/monthly-enrollment-e6a-offer-api`            | `bf7c896` | `main` | 316                               |
+| 2        | `feat/monthly-enrollment-e6b-offer-adapter`        | `3138148` | E6a    | 96                                |
+| 3        | `feat/monthly-enrollment-e6c-material-ports`       | `a92b86a` | E6b    | 332                               |
+| 4        | `feat/monthly-enrollment-e6d-material-adapter`     | `c2f89ee` | E6c    | 336                               |
+| 5        | `feat/monthly-enrollment-e6e-request-services`     | `4804160` | E6d    | 170                               |
+| 6        | `chore/monthly-enrollment-e6f-application-quality` | `76e1f30` | E6e    | 271                               |
+| 7        | `chore/monthly-enrollment-e6g-composition-quality` | `28ea2ae` | E6f    | 143 before final tracker evidence |
 
-Tests remain with their behavior. If the second unit cannot work without the first, it will be prepared as a stacked child. No push or PR creation occurs without owner authorization.
+Each child PR targets its immediate predecessor until the parent merges, then is retargeted to `main` so GitHub shows only the current slice. Issue #92 exists but lacks the protected `status:approved` label; no branch is pushed and no PR is opened until the owner explicitly authorizes that exact label and the publication batch.
 
 ## Progress log
 
@@ -112,7 +119,17 @@ Tests remain with their behavior. If the second unit cannot work without the fir
 - L5 (2026-10-23). The first issue script stopped before mutation because two protected output files had not been created before `chmod`; delegated incident diagnosis proved `no_write`. The corrected one-attempt flow performed a fresh duplicate search, privacy scan, creation, and readback. Issue #92 is OPEN with `type:feature`; no protected approval label was inferred or added.
 - L6 (2026-10-23). ME-E6-T1 RED failed because `enrollment-offer` and its adapter did not exist. GREEN/refactor passed 210 focused tests, architecture 17, typecheck, and diff-check. Independent verification rejected the first candidate because it trusted repository results without checking `period.workshopId` and the exact requested period.
 - L7 (2026-10-23). A bounded second RED proved both identity defects, then the two guards brought the focused set to 212/212. Independent re-verification passed focused tests, architecture 17, typecheck, and diff-check. Commit `54151e1` contains 124 production and 288 test lines (412 authored lines); the slight overage is one cohesive, already honestly sliced offer-boundary unit and no tests were compressed. Native risk assessment was unassessable because untracked tracker state required declaration; inspect then stopped on `managed_assets_outdated`, and the exact sync continuation failed because `pi-mcp-adapter/index.ts` is missing. The independent high-risk verifier is therefore the review evidence.
+- L8 (2026-10-23). ME-E6-T2 RED failed because the workshop offer-ID boundary, material snapshot boundary, and composition adapter did not exist. GREEN passed 239 focused tests, architecture 17, typecheck after correcting incomplete test fixtures, and diff-check. Independent verification rejected the first candidate: dropping a B9-offered ID whose current material disappeared incorrectly produced `material-not-offered`, and inactive material validation occurred after variant lookup. A bounded correction preserved B9 membership as an unavailable sentinel and made material availability precede variant resolution; all checks passed.
+- L9 (2026-10-23). Re-verification accepted the corrected semantics but rejected task scope because the composition adapter and public-service integration belong to ME-E6-T3, while ME-E6-T2 is the module-API boundary. The honest split kept the eight workshop/material API and test files in T2 and held the adapter plus enrollment integration uncommitted for T3. This preserves behavior and reviewability without deleting or compressing tests.
+- L10 (2026-10-23). The first staged T2 verifier process exited before `agent_settled` with Windows `0xC0000409`, without a test or assertion result. One bounded replacement verifier passed: 3 focused tests, 237 module tests, architecture 17, typecheck, and staged diff-check. Commit `f81070f` contains 93 production and 109 test lines (202 authored). Native assessment remained unassessable because of untracked selection and inspect again stopped on the already-proven missing managed asset; independent high-risk verification is the review evidence.
+- L11 (2026-10-24). The adapter/sentinel staged candidate passed 34 focused tests, architecture 17, typecheck, diff-check and semantic inspection. A broad enrollment command improperly included DB tests without `maxWorkers 1`; it reached 207/213 before an unrelated DB worker exited Windows `0xC0000409` without assertion failure. One corrected non-DB unit command then timed out without assertions and was not retried again. Commit `e0d3ca6` contains 46 production additions/5 deletions and 142 test additions/3 deletions.
+- L12 (2026-10-24). Explicit rejected-dependency guards went RED with five promise rejections escaping as `Error: offline`; GREEN returned typed `unavailable` without order creation or infrastructure detail. Focused tests passed 37/37, architecture 17, typecheck and diff-check. Independent verification passed and confirmed synchronous/domain logic remains unswallowed. Commit `f77f5b6` contains production +54/-19 and tests +64/-3. The known broad unit-run timeout remains environmental evidence for final slice verification, not a focused assertion failure.
+- L13 (2026-10-24). ME-E6-T4 RED found `publicEnrollments` undefined in three request-service tests. GREEN composed request-scoped public/admin Drizzle dependencies and fail-closed no-DB placeholders. The first verifier caught two fallback assertions accidentally using an unreachable configured database; the correction switched them to empty config, removing local-network dependence. Final focused tests passed 13/13 plus 3 unrelated composition regressions, architecture 17, typecheck and diff-check. Independent verification passed. Commit `349d585` contains production +74/-3 and test/support +87/-7.
+- L14 (2026-10-24). Final verification passed focused E6 65/65, full unit 2257/2257, UI 553/553, typecheck, build and diff-check. Lint found 11 `require-await` errors in E6 test doubles and format-check found eight E6/tracker files; bounded remediation is active. The one full DB run used maxWorkers 1 and no file parallelism but timed out after 600 seconds after reporting 20 intensive-repository and 9 public-taller-record assertion failures. Those test/repository paths are unchanged by E6; assertion bodies were not retained, so causality remained uncertain. The full DB command was not rerun.
+- L15 (2026-10-24). Read-only diagnosis found the two failed DB suites use disjoint tables and per-file cloned databases but share one embedded PostgreSQL/template/process lifecycle. One targeted sequential process per file, with maxWorkers 1, no file parallelism, verbose output and no retry, passed: intensive repository 43/43 in 283.38s and public taller records 28/28 in 152.06s, both with clean setup/teardown. This localizes the earlier full-project failures to combined Windows DB process sequencing/environment rather than E6 assertions. The lint/format worker later timed out without a report, but inspection found changes confined to its ten authorized E6 files and no remaining relevant process.
+- L16 (2026-10-24). Lint/format remediation changed only no-await test doubles to equivalent `Promise.resolve` returns plus Prettier layout. Replacement verification passed E6 focused 65/65, lint, typecheck and diff-check; one file still failed format, was formatted once, and a final bounded verifier passed repository format-check and diff-check. Final local evidence is focused 65, full unit 2257, UI 553, targeted DB 43 + 28, architecture 17, typecheck, lint, format, build and diff-check. The combined Windows DB project remains a documented environmental failure; Linux CI is still mandatory after authorized publication.
+- L17 (2026-10-24). Local delivery preparation rebuilt the verified tree into seven stacked branches with exact immediate-parent diffs of 316, 96, 332, 336, 170, 271 and 143 lines. This split keeps behavior with tests and avoids both `size:exception` and review compression. The final delivery tree differs from verified development head only by this pending tracker evidence before the closing cherry-pick.
 
 ## Next step
 
-Implement ME-E6-T2 offered-material snapshots with strict RED → GREEN → REFACTOR.
+Commit and project this final tracker evidence onto the last delivery branch, then request one owner decision authorizing `status:approved` on issue #92 plus push/opening the seven-PR publication batch.

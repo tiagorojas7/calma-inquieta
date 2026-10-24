@@ -91,4 +91,6 @@ The material editor and gallery remain F5b. Tests stay with behavior; no compres
 - Read-only reconciliation and exact F5a/F5b boundary completed on base `702a79e`.
 - Owner selected the read-only historical material summary for F5a.
 - Terminal A released the shared composition surfaces and was notified of F5a-1's exact paths before any composition edit.
-- F5a-1 changed 153 authored lines including the new tracker and test (151 additions, 2 deletions). Rollback restores the `workshopPeriods` unavailable placeholder and removes the dedicated composition test; Enrollment is unaffected.
+- F5a-1 work-unit commit: `bb85b54` (`feat(composition): wire workshop period service`), 154 authored changed lines (152 additions, 2 deletions). Rollback restores the `workshopPeriods` unavailable placeholder and removes the dedicated composition test; Enrollment is unaffected.
+- Independent verification passed focused 2/2, composition 52/52, typecheck, lint, format check, build, and `git diff --check`; no candidate-caused finding remained.
+- Native review could not start: INSPECT stopped on `managed_assets_outdated`, and the exact provider sync continuation failed because the Pi MCP adapter entrypoint is missing. No lineage, authority, or review mutation was created. The independent verifier remains the review evidence for this work unit.

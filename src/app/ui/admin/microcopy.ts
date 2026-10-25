@@ -134,6 +134,13 @@ export const adminMicrocopy = {
         title: "Todavía no hay períodos",
         message: "Los períodos que abras se organizan acá.",
       },
+      form: {
+        title: "Abrir mes",
+        period: "Mes",
+        submit: "Abrir mes",
+        saveFailed: "Revisá el mes para abrir el período.",
+        conflict: "Ya existe un período para ese mes.",
+      },
     },
     turnos: {
       manage: "Administrar turnos",

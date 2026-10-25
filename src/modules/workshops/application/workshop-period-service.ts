@@ -25,6 +25,7 @@ import type { TurnoRepository } from "./turno-repository";
 import type { WorkshopPeriodRepository } from "./workshop-period-repository";
 import { parsePercentage } from "./contracts";
 import type {
+  ConfirmedSeatsLookup,
   EnabledMaterial,
   OpenMonthRule,
   PeriodField,
@@ -66,6 +67,7 @@ export interface WorkshopPeriodServiceDeps {
   readonly turnos: TurnoRepository;
   readonly teachers: TeacherLookup;
   readonly materials: MaterialLookup;
+  readonly confirmedSeats: ConfirmedSeatsLookup;
   readonly clock: Clock;
   readonly newId?: () => string;
 }
@@ -358,6 +360,23 @@ export function createWorkshopPeriodsService(
           Number(capacity.capacity),
         ]),
       );
+      const currentCapacities = new Map(
+        loaded.value.value.turnos.map((turno) => [
+          turno.turnoId,
+          turno.capacity,
+        ]),
+      );
+      for (const [turnoId, capacity] of capacities) {
+        if (capacity === currentCapacities.get(turnoId)) continue;
+        let confirmed: number;
+        try {
+          confirmed = await deps.confirmedSeats.confirmedSeats(id, turnoId);
+        } catch {
+          return err({ kind: "unavailable" });
+        }
+        if (capacity < confirmed)
+          return err({ kind: "capacity-below-confirmed" });
+      }
       const value: WorkshopPeriod = {
         ...loaded.value.value,
         fee: fee.value,

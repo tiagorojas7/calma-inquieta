@@ -5,6 +5,10 @@ export * from "./domain/student-input";
 export * from "./domain/whatsapp-message";
 export { buildOrderWhatsAppLink } from "./application/order-whatsapp-link";
 export {
+  createAvailabilityReader,
+  type EnrollmentAvailabilityReader,
+} from "./application/availability";
+export {
   createAdminEnrollmentService,
   createUnavailableAdminEnrollmentService,
   type AdminEnrollmentServiceDeps,

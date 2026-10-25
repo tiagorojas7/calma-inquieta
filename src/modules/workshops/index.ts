@@ -23,6 +23,10 @@ export type {
   WorkshopPeriodRepository,
 } from "./application/workshop-period-repository";
 export {
+  createWorkshopEnrollmentOfferLookup,
+  type WorkshopEnrollmentOfferLookupDeps,
+} from "./application/enrollment-offer";
+export {
   createPeriodTurnoUsageLookup,
   createWorkshopPeriodLookup,
   createWorkshopPeriodsService,

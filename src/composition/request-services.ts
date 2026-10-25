@@ -30,6 +30,7 @@ import {
   createIntensivesService,
   createMonthlyWorkshopsService,
   createPeriodTurnoUsageLookup,
+  createWorkshopPeriodsService,
   createWorkshopEnrollmentOfferLookup,
   createWorkshopOfferedMaterialIdsLookup,
   createPublicIntensivosReader,
@@ -160,6 +161,17 @@ export function createRequestServices(
   const workshopRepository =
     createDrizzleMonthlyWorkshopRepository(openSession);
   const materialRepository = createDrizzleMaterialRepository(openSession);
+  const turnoRepository = createDrizzleTurnoRepository(openSession);
+  const workshopPeriods = config.databaseUrl
+    ? createWorkshopPeriodsService({
+        repository: periodRepository,
+        workshops: workshopRepository,
+        turnos: turnoRepository,
+        teachers,
+        materials: materialRepository,
+        clock: systemClock,
+      })
+    : createUnavailableService<WorkshopPeriodsService>();
   const enrollmentServices = config.databaseUrl
     ? {
         publicEnrollments: createPublicEnrollmentService({
@@ -233,12 +245,12 @@ export function createRequestServices(
       repository: workshopRepository,
       teachers,
       media: EMPTY_MEDIA_LOOKUP, // the gallery is not persisted yet (C4-B5)
-      turnos: createDrizzleTurnoRepository(openSession),
+      turnos: turnoRepository,
       turnoUsage: createPeriodTurnoUsageLookup(periodRepository),
       periods: createWorkshopPeriodLookup(periodRepository),
       clock: systemClock,
     }),
-    workshopPeriods: createUnavailableService<WorkshopPeriodsService>(),
+    workshopPeriods,
     intensives: createIntensivesService({
       repository: createDrizzleIntensiveRepository(openSession),
       teachers,

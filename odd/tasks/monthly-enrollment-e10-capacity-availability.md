@@ -59,12 +59,12 @@ Out of scope:
 
 ## Tasks
 
-| ID        | Work unit                                                                       | Status      | Evidence                                                                                                        |
-| --------- | ------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| ME-E10-T1 | Add the workshop-owned capacity-floor port and update guard with strict TDD     | done        | `a4f4e83`; RED 22/25; corrected GREEN 25/25; architecture 17; typecheck and diff-check PASS                     |
-| ME-E10-T2 | Expose the enrollment availability reader with strict TDD                       | done        | `accc917`; missing-module RED; GREEN 6/6; architecture 17; typecheck and diff-check PASS                        |
-| ME-E10-T3 | Add composition adapters and request-scoped wiring with fail-closed semantics   | done        | `874d7b8`; RED; corrected GREEN 5/5; architecture 17; typecheck and diff-check PASS                             |
-| ME-E10-T4 | Run independent verification, repository gates, and prepare reviewable delivery | in_progress | Code slice `cd4d3c8` (346 lines); tracker slice pending; issue/publication/Linux CI require owner authorization |
+| ID        | Work unit                                                                       | Status | Evidence                                                                                    |
+| --------- | ------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| ME-E10-T1 | Add the workshop-owned capacity-floor port and update guard with strict TDD     | done   | `a4f4e83`; RED 22/25; corrected GREEN 25/25; architecture 17; typecheck and diff-check PASS |
+| ME-E10-T2 | Expose the enrollment availability reader with strict TDD                       | done   | `accc917`; missing-module RED; GREEN 6/6; architecture 17; typecheck and diff-check PASS    |
+| ME-E10-T3 | Add composition adapters and request-scoped wiring with fail-closed semantics   | done   | `874d7b8`; RED; corrected GREEN 5/5; architecture 17; typecheck and diff-check PASS         |
+| ME-E10-T4 | Run independent verification, repository gates, and prepare reviewable delivery | done   | Issues #107/#108 approved; PRs #109–#111 OPEN/MERGEABLE; exact heads passed Linux CI        |
 
 ## Delivery strategy
 
@@ -121,8 +121,10 @@ Focused first:
 - 2026-10-25: Accumulated E10 diff against prerequisite `9dbd584` is 452 lines including 110 tracker lines and 342 code/test lines. Delivery must separate tracker documentation from code or preserve the three verified work units as review slices; no size exception or test compression is needed.
 - 2026-10-25: Prettier normalized the four rejected files. Bounded independent verification then passed focused E10 36/36, repository format-check, branch and working-tree diff-check, and the unchanged UI harness 9/9. The earlier full-UI worker exit did not reproduce and touched no E10 path; its exact cause remains indeterminate, so local evidence records full UI as unavailable rather than PASS. Unit 2273/2273, architecture 17/17, typecheck, lint, and build remain PASS from the same normalized candidate except for layout-only test/tracker formatting; Linux CI is mandatory.
 - 2026-10-25: Final formatting/evidence was committed on the development branch as `735307d`. The reviewable code/tests tree was rebuilt once from prerequisite `9dbd584` as branch `feat/monthly-enrollment-e10-capacity-availability-code`, commit `cd4d3c8`, with 341 additions and 5 deletions (346 lines).
-- 2026-10-25: Tracker-only child branch `docs/monthly-enrollment-e10-delivery-evidence` restored this document in initial commit `de126b2` (127 lines before this final evidence update). Its tree matched development head `2eeca8c`; the final evidence update is projected to both branches and rechecked before publication.
+- 2026-10-25: Tracker-only child branch `docs/monthly-enrollment-e10-delivery-evidence` restored this document in initial commit `de126b2` (127 lines before this final evidence update). Its tree matched development head `2eeca8c`.
+- 2026-10-25: The owner authorized one coordinated issue-first publication batch without merges. Approved issues #107 (F5a composition prerequisite) and #108 (E10) were created. PR #109 targets the E6 final branch with prerequisite head `9dbd584`; PR #110 targets #109's branch with E10 code head `cd4d3c8`; PR #111 targets #110's branch with tracker head `ddce2ce`. All three are OPEN, MERGEABLE, and below 400 lines.
+- 2026-10-25: Linux `ci/verify` passed on all exact published heads: run 40215465512 for `9dbd584`, 40215473450 for `cd4d3c8`, and 40215482791 for `ddce2ce`. This final tracker-only evidence update changes no behavior; its child-branch CI is rechecked after projection. No merge is authorized.
 
 ## Next step
 
-Verify final development/delivery tree identity, then request one owner decision for issue creation/approval and two-PR publication. Linux CI remains required before E10 is deliverable.
+Human review and explicit merge decisions for PRs #109–#111 in dependency order. After each parent merge, retarget the child to the merged base and verify its diff and Linux CI again.

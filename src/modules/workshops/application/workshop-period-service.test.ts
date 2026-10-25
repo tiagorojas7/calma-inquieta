@@ -21,7 +21,12 @@ const fee = (() => {
   return value.value;
 })();
 
-async function setup(now = "2026-10-15T12:00:00Z") {
+async function setup(
+  now = "2026-10-15T12:00:00Z",
+  confirmedSeatsLookup: {
+    confirmedSeats(periodId: string, turnoId: string): Promise<number>;
+  } = { confirmedSeats: () => Promise.resolve(0) },
+) {
   const workshops = new InMemoryMonthlyWorkshopRepository();
   const turnos = new InMemoryTurnoRepository();
   const teachers = new InMemoryTeacherRepository();
@@ -95,6 +100,7 @@ async function setup(now = "2026-10-15T12:00:00Z") {
         let sequence = 0;
         return () => (sequence++ === 0 ? "p" : `p-${sequence.toString()}`);
       })(),
+      confirmedSeats: confirmedSeatsLookup,
     }),
   };
 }
@@ -475,6 +481,150 @@ describe("WorkshopPeriodsService", () => {
         },
       },
     });
+  });
+
+  it("rejects capacity below confirmed seats without mutating the period", async () => {
+    const calls: [string, string][] = [];
+    const { service, periods } = await setup(undefined, {
+      confirmedSeats(periodId, turnoId) {
+        calls.push([periodId, turnoId]);
+        return Promise.resolve(6);
+      },
+    });
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const before = periods.items.get("p");
+
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        capacities: [{ turnoId: "t", capacity: "5" }],
+      }),
+    ).toEqual({
+      ok: false,
+      error: { kind: "capacity-below-confirmed" },
+    });
+    expect(calls).toEqual([["p", "t"]]);
+    expect(periods.items.get("p")).toEqual(before);
+  });
+
+  it("allows capacity equal to or above confirmed seats", async () => {
+    const { service } = await setup(undefined, {
+      confirmedSeats: () => Promise.resolve(6),
+    });
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        capacities: [{ turnoId: "t", capacity: "6" }],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { turnos: [{ capacity: 6 }] },
+    });
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        capacities: [{ turnoId: "t", capacity: "8" }],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { turnos: [{ capacity: 8 }] },
+    });
+  });
+
+  it("fails closed when confirmed seat lookup is unavailable", async () => {
+    const { service, periods } = await setup(undefined, {
+      confirmedSeats: () => Promise.reject(new Error("unavailable")),
+    });
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const before = periods.items.get("p");
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        capacities: [{ turnoId: "t", capacity: "5" }],
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(periods.items.get("p")).toEqual(before);
+  });
+
+  it("looks up changed capacities by period and turno independently", async () => {
+    const calls: [string, string][] = [];
+    const { service, periods } = await setup(undefined, {
+      confirmedSeats(periodId, turnoId) {
+        calls.push([periodId, turnoId]);
+        return Promise.resolve(0);
+      },
+    });
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "other-period",
+        workshopId: "w",
+        period: "2026-11",
+        fee,
+        turnos: [
+          {
+            turnoId: "other-turno",
+            label: "Evening",
+            weekday: 2,
+            startsAt: "18:00",
+            endsAt: "20:00",
+            turnoActive: true,
+            capacity: 8,
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        capacities: [{ turnoId: "t", capacity: "7" }],
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(
+      service.update(testAdminActor(), "other-period", {
+        ...draft,
+        snapshotPercentage: "",
+        capacities: [{ turnoId: "other-turno", capacity: "7" }],
+      }),
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(calls).toEqual([
+      ["p", "t"],
+      ["other-period", "other-turno"],
+    ]);
+  });
+
+  it("does not look up seats when only non-capacity fields change", async () => {
+    let calls = 0;
+    const { service } = await setup(undefined, {
+      confirmedSeats: () => {
+        calls += 1;
+        return Promise.resolve(6);
+      },
+    });
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const existing = await service.get(testAdminActor(), "w", "2026-10");
+    if (!existing.ok) throw new Error("expected opened period");
+    const existingCapacity = existing.value.turnos[0]?.capacity;
+    if (existingCapacity === undefined)
+      throw new Error("expected offered turno");
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        fee: "42000",
+        materialsRequired: true,
+        projectTitle: "New project",
+        projectDescription: "New description",
+        snapshotPercentage: "25",
+        capacities: [{ turnoId: "t", capacity: existingCapacity.toString() }],
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(calls).toBe(0);
   });
 
   it("aggregates fee, capacity, and percentage failures without changing audit data", async () => {

@@ -62,6 +62,7 @@ import { createDrizzleMaterialRepository } from "~/modules/materials/infrastruct
 import { createDrizzleAdminEnrollmentStore } from "~/modules/enrollments/infrastructure/drizzle-admin-enrollment-store";
 import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructure/drizzle-order-repository";
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
+import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createOfferedMaterialsAdapter } from "./offered-materials-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
@@ -162,17 +163,21 @@ export function createRequestServices(
     createDrizzleMonthlyWorkshopRepository(openSession);
   const materialRepository = createDrizzleMaterialRepository(openSession);
   const turnoRepository = createDrizzleTurnoRepository(openSession);
-  const workshopPeriods = config.databaseUrl
+  const seats = config.databaseUrl
+    ? createDrizzleSeatLedger(openSession)
+    : null;
+  const workshopPeriods = seats
     ? createWorkshopPeriodsService({
         repository: periodRepository,
         workshops: workshopRepository,
         turnos: turnoRepository,
         teachers,
         materials: materialRepository,
+        confirmedSeats: createConfirmedSeatsAdapter(seats),
         clock: systemClock,
       })
     : createUnavailableService<WorkshopPeriodsService>();
-  const enrollmentServices = config.databaseUrl
+  const enrollmentServices = seats
     ? {
         publicEnrollments: createPublicEnrollmentService({
           offers: createEnrollmentOfferAdapter(
@@ -191,7 +196,7 @@ export function createRequestServices(
             }),
           ),
           orders: createDrizzleOrderRepository(openSession),
-          seats: createDrizzleSeatLedger(openSession),
+          seats,
           clock: systemClock,
           random: {
             bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),

@@ -456,6 +456,11 @@ export interface IntensivesService {
   ): R<IntensiveWorkshop, Invalid<"eventDate" | "timeRange">>;
 }
 
+/** Confirmed enrollment seats per period turno; infrastructure failures reject. */
+export interface ConfirmedSeatsLookup {
+  confirmedSeats(periodId: string, turnoId: string): Promise<number>;
+}
+
 export interface WorkshopPeriodsService {
   list(
     a: AdminActor,
@@ -484,7 +489,9 @@ export interface WorkshopPeriodsService {
     d: WorkshopPeriodDraft,
   ): R<
     WorkshopPeriod,
-    Invalid<PeriodField> | { readonly kind: "period-closed" }
+    | Invalid<PeriodField>
+    | { readonly kind: "period-closed" }
+    | { readonly kind: "capacity-below-confirmed" }
   >;
   publish(
     a: AdminActor,

@@ -77,6 +77,10 @@ describe("root document", () => {
 });
 
 describe("root links", () => {
+  const ICON_192_HREF: `/media/brand/icon-192-192.${string}.png` =
+    "/media/brand/icon-192-192.37f5439a.png";
+  const APPLE_TOUCH_ICON_HREF: `/media/brand/apple-touch-icon-180.${string}.png` =
+    "/media/brand/apple-touch-icon-180.21a05b9a.png";
   const entries = () => links();
 
   it("preloads the three above-the-fold fonts anonymously: the 400 and 500 display weights and the body", () => {
@@ -107,11 +111,26 @@ describe("root links", () => {
     expect(sheets[0]).toMatchObject({ href: "/assets/app.css" });
   });
 
-  it("includes the stand-in favicon", () => {
-    expect(entries()).toContainEqual({
-      rel: "icon",
-      href: "/media/stand-ins/favicon.png",
-    });
+  it("links the registered favicon set from the document root", () => {
+    expect(entries()).toEqual(
+      expect.arrayContaining([
+        { rel: "icon", href: "/favicon.ico", sizes: "any" },
+        {
+          rel: "icon",
+          type: "image/png",
+          sizes: "192x192",
+          href: ICON_192_HREF,
+        },
+        {
+          rel: "apple-touch-icon",
+          sizes: "180x180",
+          href: APPLE_TOUCH_ICON_HREF,
+        },
+      ]),
+    );
+    expect(entries()).not.toContainEqual(
+      expect.objectContaining({ href: "/media/stand-ins/favicon.png" }),
+    );
   });
 
   it("only points at same-origin urls", () => {

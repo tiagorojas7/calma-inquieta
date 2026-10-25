@@ -27,7 +27,18 @@ export const links: Route.LinksFunction = () => [
   preloadFont("cormorant-garamond-latin-500-normal.woff2"),
   preloadFont("montserrat-latin-400-normal.woff2"),
   { rel: "stylesheet", href: appCss },
-  { rel: "icon", href: "/media/stand-ins/favicon.png" },
+  { rel: "icon", href: "/favicon.ico", sizes: "any" },
+  {
+    rel: "icon",
+    type: "image/png",
+    sizes: "192x192",
+    href: "/media/brand/icon-192-192.37f5439a.png",
+  },
+  {
+    rel: "apple-touch-icon",
+    sizes: "180x180",
+    href: "/media/brand/apple-touch-icon-180.21a05b9a.png",
+  },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

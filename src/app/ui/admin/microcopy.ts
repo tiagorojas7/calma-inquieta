@@ -141,7 +141,37 @@ export const adminMicrocopy = {
         saveFailed: "Revisá el mes para abrir el período.",
         conflict: "Ya existe un período para ese mes.",
       },
+      detail: {
+        title: (period: string) => `Período ${period}`,
+        status: "Estado",
+        fee: "Arancel mensual",
+        materialsRequired: "Requiere materiales",
+        yes: "Sí",
+        no: "No",
+        project: "Proyecto",
+        projectTitle: "Título",
+        projectDescription: "Descripción",
+        capacities: "Cupos por turno",
+        capacity: (label: string, amount: string) => `${label}: ${amount}`,
+        history: "Historial del período",
+        teacher: "Docente al abrir",
+        modality: "Modalidad al abrir",
+        modalities: { own: "Propia", third_party: "De terceros" },
+        percentage: "Porcentaje al abrir",
+        updatedBy: "Actualizado por",
+        updatedAt: "Última actualización",
+        materials: "Materiales históricos",
+        images: "Imágenes históricas",
+        notApplicable: "No corresponde",
+        material: (item: {
+          name: string;
+          active: boolean;
+          available: boolean;
+        }) =>
+          `${item.name} (${item.active ? "activo" : "inactivo"}, ${item.available ? "disponible" : "no disponible"})`,
+      },
     },
+
     turnos: {
       manage: "Administrar turnos",
       title: (workshop: string) => `Turnos de ${workshop}`,

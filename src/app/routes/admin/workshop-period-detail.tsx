@@ -1,5 +1,10 @@
-import { data, useLoaderData } from "react-router";
+import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { failureResponse } from "~/app/admin/failure-response";
+import { fieldErrors } from "~/app/admin/issue-messages";
+import {
+  parsePeriodDraft,
+  parsePeriodEditIntent,
+} from "~/app/admin/workshop-period-form-data";
 import {
   formatPercentage,
   formatWholePesos,
@@ -7,7 +12,12 @@ import {
 import { servicesContext } from "~/app/context";
 import { Heading } from "~/app/ui/atoms/heading";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
-import { parsePeriodKey } from "~/modules/workshops";
+import { WorkshopPeriodForm } from "~/app/ui/admin/workshop-period-form";
+import {
+  parsePeriodKey,
+  type WorkshopPeriod,
+  type WorkshopPeriodDraft,
+} from "~/modules/workshops";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/workshop-period-detail";
 
@@ -33,23 +43,32 @@ export function meta() {
   return [{ title: "Período | Panel | Calma Inquieta" }];
 }
 
+function formValues(period: WorkshopPeriod, draft?: WorkshopPeriodDraft) {
+  const capacities = new Map(
+    draft?.capacities.map(({ turnoId, capacity }) => [turnoId, capacity]),
+  );
+  return {
+    fee: draft?.fee ?? formatWholePesos(period.fee),
+    materialsRequired: draft?.materialsRequired ?? period.materialsRequired,
+    projectTitle: draft?.projectTitle ?? period.project.title,
+    projectDescription: draft?.projectDescription ?? period.project.description,
+    capacities: period.turnos.map((turno) => ({
+      turnoId: turno.turnoId,
+      label: turno.label,
+      capacity: capacities.get(turno.turnoId) ?? String(turno.capacity),
+    })),
+    snapshotPercentage:
+      draft?.snapshotPercentage ?? formatPercentage(period.snapshot.percentage),
+  };
+}
+
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const period = await getPeriod(actor, context, params.id, params.period);
   return {
     period: period.period,
     status: period.status,
-    values: {
-      fee: formatWholePesos(period.fee),
-      materialsRequired: period.materialsRequired,
-      projectTitle: period.project.title,
-      projectDescription: period.project.description,
-      capacities: period.turnos.map((turno) => ({
-        turnoId: turno.turnoId,
-        label: turno.label,
-        capacity: String(turno.capacity),
-      })),
-    },
+    values: formValues(period),
     images: period.project.images.map((image) => ({ alt: image.alt })),
     materials: period.materials,
     snapshot: {
@@ -68,11 +87,42 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   };
 }
 
+export async function action({ request, context, params }: Route.ActionArgs) {
+  const actor = requireAdmin(request, context);
+  const form = await request.formData();
+  if (parsePeriodEditIntent(form) === null) throw data(null, { status: 400 });
+  const period = await getPeriod(actor, context, params.id, params.period);
+  const draft = parsePeriodDraft(form, period);
+  const saved = await context
+    .get(servicesContext)
+    .workshopPeriods.update(actor, period.id, draft);
+  if (saved.ok)
+    return redirect(`/admin/talleres/${params.id}/periodos/${period.period}`);
+  const values = formValues(period, draft);
+  if (saved.error.kind === "invalid")
+    return data(
+      { values, errors: fieldErrors(saved.error.issues), formError: undefined },
+      { status: 422 },
+    );
+  if (saved.error.kind === "period-closed")
+    return data(
+      { values, errors: {}, formError: copy.periodClosed },
+      { status: 422 },
+    );
+  throw failureResponse(saved.error);
+}
+
 export default function AdminWorkshopPeriodDetail() {
   const screen = useLoaderData<typeof loader>();
+  const rejected = useActionData<typeof action>();
   return (
     <section className="flex max-w-prose flex-col gap-6">
       <Heading level={1}>{copy.title(screen.period)}</Heading>
+      <WorkshopPeriodForm
+        values={rejected?.values ?? screen.values}
+        errors={rejected?.errors ?? {}}
+        formError={rejected?.formError}
+      />
       <dl className="grid gap-3 sm:grid-cols-2">
         <div>
           <dt className="font-semibold">{copy.status}</dt>

@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { err, ok } from "~/modules/_shared";
 import type { WorkshopPeriodsService } from "~/modules/workshops";
 import {
   adminContext,
   getRequest,
+  postRequest,
   thrownStatus,
   withOverrides,
 } from "~/testing/admin/route-kit";
@@ -40,16 +41,35 @@ function service(overrides: Partial<WorkshopPeriodsService>) {
   );
 }
 
-function load(
+const path = "/admin/talleres/w1/periodos/2026-11";
+function args(
   periods: WorkshopPeriodsService,
-  periodKey = "2026-11",
+  request: Request,
+  admin = true,
+  period = "2026-11",
+) {
+  return {
+    request,
+    params: { id: "w1", period },
+    context: adminContext({ workshopPeriods: periods }, { admin }),
+  } as never;
+}
+function load(periods: WorkshopPeriodsService, periodKey = "2026-11") {
+  return route.loader(
+    args(
+      periods,
+      getRequest(`/admin/talleres/w1/periodos/${periodKey}`),
+      true,
+      periodKey,
+    ),
+  );
+}
+function submit(
+  periods: WorkshopPeriodsService,
+  fields: Record<string, string>,
   admin = true,
 ) {
-  return route.loader({
-    request: getRequest(`/admin/talleres/w1/periodos/${periodKey}`),
-    params: { id: "w1", period: periodKey },
-    context: adminContext({ workshopPeriods: periods }, { admin }),
-  } as never);
+  return route.action(args(periods, postRequest(path, fields), admin));
 }
 
 describe("admin workshop period detail", () => {
@@ -89,24 +109,77 @@ describe("admin workshop period detail", () => {
 
   it("denies a non-admin before accessing the service", async () => {
     let calls = 0;
+    const periods = service({
+      get: () => {
+        calls += 1;
+        return Promise.resolve(ok(period));
+      },
+    });
     expect(
       await thrownStatus(() =>
-        load(
-          service({
-            get: () => {
-              calls += 1;
-              return Promise.resolve(ok(period));
-            },
-          }),
-          "2026-11",
-          false,
-        ),
+        route.loader(args(periods, getRequest(path), false)),
       ),
+    ).toBe(403);
+    expect(
+      await thrownStatus(() => submit(periods, { intent: "save" }, false)),
     ).toBe(403);
     expect(calls).toBe(0);
   });
 
-  it("exports no mutation action", () => {
-    expect("action" in route).toBe(false);
+  it("updates editable fields while preserving historical selections", async () => {
+    const update = vi.fn(() => Promise.resolve(ok(period)));
+    const response = await submit(
+      service({ get: () => Promise.resolve(ok(period)), update }),
+      {
+        intent: "save",
+        fee: "42000",
+        materialsRequired: "on",
+        projectTitle: "Tazas",
+        projectDescription: "Esmaltes",
+        "capacity-t1": "9",
+        snapshotPercentage: "35",
+      },
+    );
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "period-1",
+      expect.objectContaining({
+        fee: "42000",
+        capacities: [{ turnoId: "t1", capacity: "9" }],
+        materialIds: ["m1"],
+      }),
+    );
+    expect((response as Response).headers.get("Location")).toBe(path);
+  });
+
+  it("preserves rejected values and maps closed periods", async () => {
+    const invalid = service({
+      get: () => Promise.resolve(ok(period)),
+      update: () =>
+        Promise.resolve(
+          err({
+            kind: "invalid",
+            issues: [{ field: "fee", code: "required" }],
+          }),
+        ),
+    });
+    await expect(
+      submit(invalid, { intent: "save", fee: "" }),
+    ).resolves.toMatchObject({
+      init: { status: 422 },
+      data: { values: { fee: "" }, errors: { fee: "Completá este campo." } },
+    });
+    await expect(
+      submit(
+        service({
+          get: () => Promise.resolve(ok(period)),
+          update: () => Promise.resolve(err({ kind: "period-closed" })),
+        }),
+        { intent: "save" },
+      ),
+    ).resolves.toMatchObject({
+      init: { status: 422 },
+      data: { formError: "Este período está cerrado y no se puede editar." },
+    });
   });
 });

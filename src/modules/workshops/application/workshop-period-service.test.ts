@@ -788,6 +788,25 @@ describe("WorkshopPeriodsService", () => {
     expect(periods.items.get("p")?.status).toBe("closed");
   });
 
+  it("preserves unchanged historical materials without revalidating them", async () => {
+    const { service, periods, materialLookupCalls } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const opened = await periods.findById("p");
+    if (!opened) throw new Error("missing period fixture");
+    const historical = [
+      { id: "legacy", name: "Retired clay", active: false, available: false },
+    ];
+    await periods.update({ ...opened, materials: historical });
+
+    expect(
+      await service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["legacy"],
+      }),
+    ).toMatchObject({ ok: true, value: { materials: historical } });
+    expect(materialLookupCalls).toEqual([]);
+  });
+
   it("rejects duplicate, unknown, inactive, and unavailable material selections without mutation", async () => {
     const { service, periods, materialLookupCalls } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");

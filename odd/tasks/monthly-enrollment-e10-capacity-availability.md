@@ -70,11 +70,11 @@ Out of scope:
 
 Strategy: `auto-chain`, `stacked-to-main`, with the shared F5a composition prerequisite as the immediate local base.
 
-| Position     | Branch                                                   | Head      | Base          | Review budget                     |
-| ------------ | -------------------------------------------------------- | --------- | ------------- | --------------------------------- |
-| prerequisite | `feat/admin-catalog-f5a-composition-prereq`              | `9dbd584` | E6 final head | independently verified F5a wiring |
-| 1            | `feat/monthly-enrollment-e10-capacity-availability-code` | `cd4d3c8` | prerequisite  | 346                               |
-| 2            | `docs/monthly-enrollment-e10-delivery-evidence`          | local tip | E10 code      | tracker only, about 120           |
+| Position     | Branch                                                   | Head      | Base          | Review budget                                  |
+| ------------ | -------------------------------------------------------- | --------- | ------------- | ---------------------------------------------- |
+| prerequisite | `feat/admin-catalog-f5a-composition-prereq`              | `9dbd584` | E6 final head | independently verified F5a wiring              |
+| 1            | `feat/monthly-enrollment-e10-capacity-availability-code` | `cd4d3c8` | prerequisite  | 346                                            |
+| 2            | `docs/monthly-enrollment-e10-delivery-evidence`          | local tip | E10 code      | tracker only, 127 before final evidence update |
 
 The code slice keeps all behavior with its tests below 400 changed lines. The documentation follow-up contains only this ODD recovery/evidence tracker. Neither branch is published; issue creation, protected approval status, pushes, PRs, and merges remain owner decisions.
 
@@ -120,8 +120,9 @@ Focused first:
 - 2026-10-25: First T4 verifier passed focused 36/36, unit 2273/2273, architecture 17/17, typecheck, lint, build, and diff-check. Format-check rejected four E10 tracker/test files. The UI project exited from an unchanged `src/testing/ui/harness.ui.test.tsx` worker without an assertion or test summary after canvas warnings; retained evidence cannot establish candidate causality, so the result is unknown rather than a product failure. No DB project was run because E10 changes no DB adapter/schema/query.
 - 2026-10-25: Accumulated E10 diff against prerequisite `9dbd584` is 452 lines including 110 tracker lines and 342 code/test lines. Delivery must separate tracker documentation from code or preserve the three verified work units as review slices; no size exception or test compression is needed.
 - 2026-10-25: Prettier normalized the four rejected files. Bounded independent verification then passed focused E10 36/36, repository format-check, branch and working-tree diff-check, and the unchanged UI harness 9/9. The earlier full-UI worker exit did not reproduce and touched no E10 path; its exact cause remains indeterminate, so local evidence records full UI as unavailable rather than PASS. Unit 2273/2273, architecture 17/17, typecheck, lint, and build remain PASS from the same normalized candidate except for layout-only test/tracker formatting; Linux CI is mandatory.
-- 2026-10-25: Final formatting/evidence was committed on the development branch as `735307d`. The reviewable code/tests tree was rebuilt once from prerequisite `9dbd584` as branch `feat/monthly-enrollment-e10-capacity-availability-code`, commit `cd4d3c8`, with 341 additions and 5 deletions (346 lines). A tracker-only child branch will restore this document while preserving final tree identity.
+- 2026-10-25: Final formatting/evidence was committed on the development branch as `735307d`. The reviewable code/tests tree was rebuilt once from prerequisite `9dbd584` as branch `feat/monthly-enrollment-e10-capacity-availability-code`, commit `cd4d3c8`, with 341 additions and 5 deletions (346 lines).
+- 2026-10-25: Tracker-only child branch `docs/monthly-enrollment-e10-delivery-evidence` restored this document in initial commit `de126b2` (127 lines before this final evidence update). Its tree matched development head `2eeca8c`; the final evidence update is projected to both branches and rechecked before publication.
 
 ## Next step
 
-Create the tracker-only child branch, verify its tree matches development head, then request one owner decision for issue creation/approval and two-PR publication. Linux CI remains required before E10 is deliverable.
+Verify final development/delivery tree identity, then request one owner decision for issue creation/approval and two-PR publication. Linux CI remains required before E10 is deliverable.

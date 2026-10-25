@@ -27,6 +27,10 @@ export {
   type WorkshopEnrollmentOfferLookupDeps,
 } from "./application/enrollment-offer";
 export {
+  createWorkshopOfferedMaterialIdsLookup,
+  type WorkshopOfferedMaterialIdsLookupDeps,
+} from "./application/offered-materials";
+export {
   createPeriodTurnoUsageLookup,
   createWorkshopPeriodLookup,
   createWorkshopPeriodsService,

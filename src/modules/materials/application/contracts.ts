@@ -87,6 +87,26 @@ export type MaterialError =
 export interface MaterialLookup {
   findByIds(ids: readonly string[]): Promise<ReadonlyMap<string, Material>>;
 }
+export interface OfferedMaterialSnapshot {
+  readonly materialId: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly available: boolean;
+  readonly supplierId: string;
+  readonly supplierName: string;
+  readonly variants: readonly {
+    readonly variantId: string;
+    readonly label: string;
+    readonly unitPrice: import("~/modules/_shared").Money;
+    readonly available: boolean;
+  }[];
+}
+/** Actorless current-sale read for enrollment composition. */
+export interface OfferedMaterialSnapshotsLookup {
+  findOfferedMaterialSnapshots(
+    materialIds: readonly string[],
+  ): Promise<ReadonlyMap<string, OfferedMaterialSnapshot>>;
+}
 export interface MaterialsService {
   list(
     a: AdminActor,

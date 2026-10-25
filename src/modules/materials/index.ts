@@ -16,6 +16,10 @@ export {
   createMaterialLookup,
   createMaterialsService,
 } from "./application/material-service";
+export {
+  createOfferedMaterialSnapshotsLookup,
+  type OfferedMaterialSnapshotsLookupDeps,
+} from "./application/offered-materials";
 export type {
   MaterialLookupDeps,
   MaterialServiceDeps,

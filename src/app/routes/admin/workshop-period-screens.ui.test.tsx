@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import AdminWorkshopPeriods from "./workshop-periods";
 
-function stub(
+function stub({
   rows = [
     {
       id: "p1",
@@ -14,7 +14,21 @@ function stub(
       totalCapacity: 14,
     },
   ],
-) {
+  actionData,
+}: {
+  rows?: {
+    id: string;
+    period: string;
+    status: "open";
+    fee: string;
+    totalCapacity: number;
+  }[];
+  actionData?: {
+    values: { period: string };
+    errors: { period?: string };
+    formError: string;
+  };
+} = {}) {
   const Stub = createRoutesStub([
     {
       path: "/admin/talleres/:id/periodos",
@@ -31,8 +45,10 @@ function stub(
             workshopId: "w1",
             workshopName: "Cerámica Creativa",
             periods: rows,
+            suggestedNext: "2026-11",
           },
         },
+        ...(actionData ? { actionData: { periods: actionData } } : {}),
       }}
     />
   );
@@ -54,16 +70,35 @@ describe("workshop periods admin screen", () => {
     expect(
       screen.getByRole("link", { name: "Volver al taller" }),
     ).toHaveAttribute("href", "/admin/talleres/w1");
-    expect(
-      screen.queryByRole("heading", { name: "Abrir mes" }),
-    ).not.toBeInTheDocument();
-    expect(container.querySelector("form")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Abrir mes" })).toBeVisible();
+    expect(screen.getByLabelText("Mes")).toHaveValue("2026-11");
+    expect(screen.getByRole("button", { name: "Abrir mes" })).toBeVisible();
+    expect(container.querySelector("form")).toHaveAttribute("method", "post");
     await expectNoAxeViolations(container);
   });
 
   it("shows an accessible empty state", async () => {
-    const { container } = render(stub([]));
+    const { container } = render(stub({ rows: [] }));
     expect(await screen.findByText("Todavía no hay períodos")).toBeVisible();
     await expectNoAxeViolations(container);
+  });
+
+  it("preserves the rejected submitted month and explains the conflict", async () => {
+    render(
+      stub({
+        actionData: {
+          values: { period: "2026-13" },
+          errors: { period: "Ya existe un período para ese mes." },
+          formError: "Revisá el mes para abrir el período.",
+        },
+      }),
+    );
+    expect(await screen.findByLabelText("Mes")).toHaveValue("2026-13");
+    expect(
+      screen.getByText("Ya existe un período para ese mes."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Revisá el mes para abrir el período."),
+    ).toBeVisible();
   });
 });

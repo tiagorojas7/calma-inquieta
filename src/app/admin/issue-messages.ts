@@ -127,6 +127,21 @@ export function intensiveDeleteRuleMessage(): string {
   return "Solo se puede eliminar un borrador.";
 }
 
+const OPEN_MONTH_RULE_MESSAGES = {
+  "workshop-status": "un taller publicado o pausado",
+  teacher: "un profesor activo",
+  percentage: "un porcentaje acordado válido",
+  "active-turno": "al menos un turno activo",
+} as const;
+
+export function openMonthRulesMessage(
+  rules: readonly (keyof typeof OPEN_MONTH_RULE_MESSAGES)[],
+): string {
+  return `No se puede abrir el mes porque falta: ${rules
+    .map((rule) => OPEN_MONTH_RULE_MESSAGES[rule])
+    .join(", ")}.`;
+}
+
 export function transitionRefusedMessage(
   from: WorkshopStatus | IntensiveStatus,
   to: WorkshopStatus | IntensiveStatus,

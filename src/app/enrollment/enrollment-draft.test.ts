@@ -4,6 +4,7 @@ import {
   addDraftLine,
   loadEnrollmentDraft,
   saveEnrollmentDraft,
+  selectEnrollmentDraft,
   type EnrollmentDraft,
 } from "./enrollment-draft";
 
@@ -52,6 +53,13 @@ describe("enrollment draft", () => {
     expect(loadEnrollmentDraft(session, "ceramica")).toBeNull();
   });
 
+  it("binds an in-memory draft to the current workshop and offer period", () => {
+    const stored = { slug: "ceramica", draft };
+    expect(selectEnrollmentDraft(stored, "ceramica", "2026-11")).toEqual(draft);
+    expect(selectEnrollmentDraft(stored, "ceramica", "2026-12")).toBeNull();
+    expect(selectEnrollmentDraft(stored, "otro-taller", "2026-11")).toBeNull();
+  });
+
   it("merges variants and consumes the domain quantity and line limits", () => {
     const merged = addDraftLine(draft, {
       materialId: "arcilla",
@@ -77,8 +85,8 @@ describe("enrollment draft", () => {
     const full: EnrollmentDraft = {
       ...draft,
       lines: Array.from({ length: MAX_CART_LINES }, (_, index) => ({
-        materialId: `material-${index}`,
-        variantId: `variant-${index}`,
+        materialId: `material-${String(index)}`,
+        variantId: `variant-${String(index)}`,
         quantity: 1,
       })),
     };

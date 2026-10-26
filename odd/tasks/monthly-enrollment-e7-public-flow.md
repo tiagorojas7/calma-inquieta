@@ -73,7 +73,7 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 
 - [x] **E7-2 — Client draft and materials cart UI.** Strict RED failed because both production modules were absent. GREEN/REFACTOR adds slug-scoped `sessionStorage` serialization with corrupt/missing/domain-invalid fallback, reuses the public cart API for merge and limits, and provides a structural required/optional materials selector with a sticky summary. The submitted payload contains only material ID, variant ID, and quantity; client totals remain display-only. Focused tests passed (2 files, 5 tests), typecheck and targeted Prettier passed, `git diff --check` passed, and independent read-only code verification found no issues. ESLint remained unavailable due the recorded Node OOM; native review remained unavailable due the missing `pi-mcp-adapter`. Commit: `6014886` (385 lines).
 
-- [ ] **E7-3 — Materials route and final submission.** RED loader/action tests for current-offer reload, whole-draft parsing, tampered material/variant/quantity refusal, server-owned prices and totals, required-material errors, unavailable fail-closed behavior, and redirect to `/pedido/:publicId`. GREEN `src/app/routes/enrollment-materials.tsx`; reuse the E7-2 helper/UI and `requestEnrollment`. Route: delegated multi-file writer. Expected surfaces: `src/app/routes/enrollment-materials.tsx`, `src/app/routes/enrollment-materials.test.tsx`, with only narrowly justified adjustments to E7-2 files. Forecast: 250–350 lines. Commit: pending.
+- [x] **E7-3 — Materials route and final submission.** Delivered in three work units: draft hand-off from the student form (`76feed6`), materials action with whole-payload revalidation and server-owned totals (`312e5c0`), and materials loader (`8917517`). A follow-up correction binds the session draft to the displayed offer period, refuses a draft from another period, maps every `RequestEnrollmentError` to actionable copy, and renders a recovery link when the draft is missing (`9c5f26d`). Focused tests passed (6 files, 31 tests), typecheck, targeted Prettier, and `git diff --check` passed. ESLint ran for the first time with `NODE_OPTIONS=--max-old-space-size=8192` on every E7 source file and reported 15 mechanical errors in E7-1/E7-2 code; they were fixed in `ca7744b` and the rerun is clean.
 
 - [ ] **E7-4 — Public order summary and WhatsApp hand-off.** RED route/UI tests for allowlisted summary, `noindex`, invalid/unknown public-id 404, no email/phone/internal IDs, pending payment steps, paid thank-you state, decoded WhatsApp contract, and hidden link for an invalid profile number. GREEN `src/app/routes/order.tsx` and structural `src/app/ui/templates/order-page.tsx`, consuming `getOrderByPublicId` and `buildOrderWhatsAppLink`. Route: delegated multi-file writer. Expected surfaces: `src/app/routes/order.tsx`, `src/app/routes/order.test.tsx`, `src/app/routes/order.ui.test.tsx`, `src/app/ui/templates/order-page.tsx`. Forecast: 280–370 lines. Commit: pending.
 
@@ -96,7 +96,7 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 - Isolated worktree created and registered.
 - Terminal B confirmed no overlap outside `src/app/routes.ts` and potential shared atoms/composites, then explicitly released `src/app/routes.ts` after F5a-3a.
 - Managed Cloudflare rate limiting selected by the owner.
-- E7-1 and E7-2 are complete; E7-3 has not started.
+- E7-1, E7-2, and E7-3 are complete.
 - E7-0 closed by this work-unit commit (`docs(odd): plan E7 public enrollment flow`); `.codegraph/` remained untracked and excluded.
 - The first E7-1 `gentle-ai-worker` process crashed before `agent_settled` with Windows/Node/V8 `0x80000003`. It produced no source changes and no TDD evidence; the worktree remained at the planning commit with only this tracker update and excluded `.codegraph/` untracked. The crash was recorded once and was not retried until green.
 - The preferred independent Pi-session fallback could not launch because Herdr 0.7.5+ is unavailable on this host. No pane or writer was created. One controlled foreground `gentle-ai-worker` recovery was permitted.
@@ -110,4 +110,4 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 
 ## Next step
 
-Start E7-3 with strict RED for the materials loader/action, whole-draft server revalidation, and redirect to `/pedido/:publicId`. Keep the review unit below 400 authored lines and exclude `.codegraph/`.
+Start E7-4 with strict RED for the public order summary and WhatsApp hand-off. Run ESLint with `NODE_OPTIONS=--max-old-space-size=8192`.

@@ -22,6 +22,11 @@ export interface EnrollmentDraft {
   readonly lines: readonly CartLine[];
 }
 
+export interface StoredEnrollmentDraft {
+  readonly slug: string;
+  readonly draft: EnrollmentDraft;
+}
+
 interface DraftStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -80,6 +85,16 @@ export function saveEnrollmentDraft(
   draft: EnrollmentDraft,
 ): void {
   storage.setItem(keyFor(slug), JSON.stringify(draft));
+}
+
+export function selectEnrollmentDraft(
+  stored: StoredEnrollmentDraft | null,
+  slug: string,
+  period: string,
+): EnrollmentDraft | null {
+  return stored?.slug === slug && stored.draft.student.period === period
+    ? stored.draft
+    : null;
 }
 
 export function addDraftLine(

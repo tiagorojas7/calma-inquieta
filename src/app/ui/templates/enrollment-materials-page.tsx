@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "../atoms/button";
+import { Button, ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { Text } from "../atoms/text";
 
@@ -25,6 +25,10 @@ export interface EnrollmentMaterialsPageProps {
     lineTotal: string;
   }[];
   total: string;
+  studentJson?: string;
+  formError?: string | undefined;
+  draftState?: "loading" | "missing" | "ready";
+  recoveryHref?: string;
   onAdd(materialId: string, variantId: string, quantity: number): void;
 }
 
@@ -36,16 +40,40 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   if (props.materialsRequired) materialsLabel = "Materiales requeridos";
   else if (emptyOptional) materialsLabel = "Ya tengo mis materiales";
 
+  const header = (
+    <header className="flex flex-col gap-2">
+      <Heading level={1}>{props.workshopName}</Heading>
+      <Text>{props.period}</Text>
+      <Text>Cuota: {props.fee}</Text>
+      <Text tone="accent">{materialsLabel}</Text>
+    </header>
+  );
+  if (props.draftState === "loading") {
+    return (
+      <main className="flex flex-col gap-6 py-section">
+        {header}
+        <Text>Cargando tu inscripción…</Text>
+      </main>
+    );
+  }
+  if (props.draftState === "missing") {
+    return (
+      <main className="flex flex-col gap-6 py-section">
+        {header}
+        <Text>Volvé a completar tus datos para continuar.</Text>
+        <ButtonLink href={props.recoveryHref ?? "/talleres"}>
+          Volver a la inscripción
+        </ButtonLink>
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-col gap-6 py-section">
-      <header className="flex flex-col gap-2">
-        <Heading level={1}>{props.workshopName}</Heading>
-        <Text>{props.period}</Text>
-        <Text>Cuota: {props.fee}</Text>
-        <Text tone="accent">{materialsLabel}</Text>
-      </header>
-
+      {header}
+      {props.formError ? <p role="alert">{props.formError}</p> : null}
       <form className="grid gap-6 lg:grid-cols-[1fr_20rem]" method="post">
+        <input name="student" type="hidden" value={props.studentJson ?? ""} />
         <div className="flex flex-col gap-6">
           {props.materials.map((material) => (
             <fieldset className="flex flex-col gap-3" key={material.materialId}>
@@ -65,24 +93,24 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                         className="w-20"
                         max={20}
                         min={1}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setQuantities((current) => ({
                             ...current,
                             [variant.variantId]: Number(event.target.value),
-                          }))
-                        }
+                          }));
+                        }}
                         type="number"
                         value={quantity}
                       />
                     </label>
                     <Button
-                      onClick={() =>
+                      onClick={() => {
                         props.onAdd(
                           material.materialId,
                           variant.variantId,
                           quantity,
-                        )
-                      }
+                        );
+                      }}
                       type="button"
                       variant="outline"
                     >
@@ -100,7 +128,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           {props.lines.map((line) => (
             <Text
               key={line.variantId}
-            >{`${line.label} ×${line.quantity}: ${line.lineTotal}`}</Text>
+            >{`${line.label} ×${String(line.quantity)}: ${line.lineTotal}`}</Text>
           ))}
           <Text>Total</Text>
           <strong>{props.total}</strong>

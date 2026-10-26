@@ -53,7 +53,7 @@ describe("enrollment route", () => {
         getOffer: vi.fn().mockResolvedValue(ok(offer)),
         requestEnrollment: vi.fn(),
         getOrderByPublicId: vi.fn(),
-      } as never,
+      },
     });
     const result = await loader(args(services));
     expect(result).toMatchObject({
@@ -79,7 +79,7 @@ describe("enrollment route", () => {
           getOffer: vi.fn().mockResolvedValue(err(error)),
           requestEnrollment: vi.fn(),
           getOrderByPublicId: vi.fn(),
-        } as never,
+        },
       });
       await expect(loader(args(services))).rejects.toMatchObject({
         data: null,
@@ -96,7 +96,7 @@ describe("enrollment route", () => {
           .mockResolvedValue(err({ kind: "enrollments-paused" })),
         requestEnrollment: vi.fn(),
         getOrderByPublicId: vi.fn(),
-      } as never,
+      },
     });
     await expect(loader(args(services))).resolves.toEqual({ paused: true });
   });
@@ -118,7 +118,7 @@ describe("enrollment route", () => {
         getOffer: vi.fn(),
         requestEnrollment,
         getOrderByPublicId: vi.fn(),
-      } as never,
+      },
     });
     const result = await action({
       ...args(services),
@@ -175,7 +175,7 @@ describe("enrollment route", () => {
         getOffer: vi.fn(),
         requestEnrollment,
         getOrderByPublicId: vi.fn(),
-      } as never,
+      },
     });
     const result = await action({
       ...args(services),
@@ -198,8 +198,8 @@ describe("enrollment route", () => {
     expect(result.headers.get("Location")).toBe("/pedido/public-123");
     expect(requestEnrollment).toHaveBeenCalledWith(
       expect.not.objectContaining({
-        total: expect.anything(),
-        materialName: expect.anything(),
+        total: expect.anything() as unknown,
+        materialName: expect.anything() as unknown,
       }),
     );
   });

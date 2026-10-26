@@ -40,6 +40,13 @@ function service(overrides: Partial<WorkshopPeriodsService>) {
     overrides,
   );
 }
+const found = () => Promise.resolve(ok(period));
+type UpdateError = Extract<
+  Awaited<ReturnType<WorkshopPeriodsService["update"]>>,
+  { ok: false }
+>["error"];
+const rejecting = (error: UpdateError) =>
+  service({ get: found, update: () => Promise.resolve(err(error)) });
 
 const path = "/admin/talleres/w1/periodos/2026-11";
 function args(
@@ -55,14 +62,8 @@ function args(
   } as never;
 }
 function load(periods: WorkshopPeriodsService, periodKey = "2026-11") {
-  return route.loader(
-    args(
-      periods,
-      getRequest(`/admin/talleres/w1/periodos/${periodKey}`),
-      true,
-      periodKey,
-    ),
-  );
+  const request = getRequest(`/admin/talleres/w1/periodos/${periodKey}`);
+  return route.loader(args(periods, request, true, periodKey));
 }
 function submit(
   periods: WorkshopPeriodsService,
@@ -74,9 +75,7 @@ function submit(
 
 describe("admin workshop period detail", () => {
   it("loads a valid period with immutable image and material summaries", async () => {
-    const loaded = await load(
-      service({ get: () => Promise.resolve(ok(period)) }),
-    );
+    const loaded = await load(service({ get: found }));
     expect(loaded).toMatchObject({
       period: "2026-11",
       values: { fee: "1", capacities: [{ turnoId: "t1", capacity: "8" }] },
@@ -128,18 +127,15 @@ describe("admin workshop period detail", () => {
 
   it("updates editable fields while preserving historical selections", async () => {
     const update = vi.fn(() => Promise.resolve(ok(period)));
-    const response = await submit(
-      service({ get: () => Promise.resolve(ok(period)), update }),
-      {
-        intent: "save",
-        fee: "42000",
-        materialsRequired: "on",
-        projectTitle: "Tazas",
-        projectDescription: "Esmaltes",
-        "capacity-t1": "9",
-        snapshotPercentage: "35",
-      },
-    );
+    const response = await submit(service({ get: found, update }), {
+      intent: "save",
+      fee: "42000",
+      materialsRequired: "on",
+      projectTitle: "Tazas",
+      projectDescription: "Esmaltes",
+      "capacity-t1": "9",
+      snapshotPercentage: "35",
+    });
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@x.test" }),
       "period-1",
@@ -153,15 +149,9 @@ describe("admin workshop period detail", () => {
   });
 
   it("preserves rejected values and maps closed periods", async () => {
-    const invalid = service({
-      get: () => Promise.resolve(ok(period)),
-      update: () =>
-        Promise.resolve(
-          err({
-            kind: "invalid",
-            issues: [{ field: "fee", code: "required" }],
-          }),
-        ),
+    const invalid = rejecting({
+      kind: "invalid",
+      issues: [{ field: "fee", code: "required" }],
     });
     await expect(
       submit(invalid, { intent: "save", fee: "" }),
@@ -170,16 +160,23 @@ describe("admin workshop period detail", () => {
       data: { values: { fee: "" }, errors: { fee: "Completá este campo." } },
     });
     await expect(
-      submit(
-        service({
-          get: () => Promise.resolve(ok(period)),
-          update: () => Promise.resolve(err({ kind: "period-closed" })),
-        }),
-        { intent: "save" },
-      ),
+      submit(rejecting({ kind: "period-closed" }), { intent: "save" }),
     ).resolves.toMatchObject({
       init: { status: 422 },
       data: { formError: "Este período está cerrado y no se puede editar." },
+    });
+    await expect(
+      submit(rejecting({ kind: "capacity-below-confirmed" }), {
+        intent: "save",
+      }),
+    ).resolves.toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          capacities:
+            "No podés bajar el cupo debajo de las inscripciones confirmadas.",
+        },
+      },
     });
   });
 });

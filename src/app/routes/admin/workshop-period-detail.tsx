@@ -109,6 +109,15 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       { values, errors: {}, formError: copy.periodClosed },
       { status: 422 },
     );
+  if (saved.error.kind === "capacity-below-confirmed")
+    return data(
+      {
+        values,
+        errors: { capacities: copy.capacityBelowConfirmed },
+        formError: undefined,
+      },
+      { status: 422 },
+    );
   throw failureResponse(saved.error);
 }
 

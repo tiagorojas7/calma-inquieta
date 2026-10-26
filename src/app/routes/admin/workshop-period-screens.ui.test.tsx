@@ -106,7 +106,7 @@ describe("workshop periods admin screen", () => {
   });
 });
 
-function detailStub() {
+function detailStub(status: "draft" | "open" | "closed" = "draft") {
   const Stub = createRoutesStub([
     {
       path: "/admin/talleres/:id/periodos/:period",
@@ -121,7 +121,7 @@ function detailStub() {
         loaderData: {
           "period-detail": {
             period: "2026-11",
-            status: "draft",
+            status,
             values: {
               fee: "40000",
               materialsRequired: true,
@@ -149,7 +149,7 @@ function detailStub() {
 }
 
 describe("workshop period detail admin screen", () => {
-  it("renders an accessible read-only historical summary without a form", async () => {
+  it("renders draft editing plus native publish and confirmed delete controls", async () => {
     const { container } = render(detailStub());
     expect(
       await screen.findByRole("heading", { name: "Período 2026-11" }),
@@ -170,12 +170,49 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("button", { name: "Guardar cambios" }),
     ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Publicar período" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Eliminar borrador" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Acciones del período" })
+        .nextElementSibling,
+    ).toHaveClass("flex-wrap");
     expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
     expect(screen.getByText("Taza terminada")).toBeVisible();
     expect(screen.getByText("Docente al abrir:")).toBeVisible();
     expect(screen.getByText("Cami")).toBeVisible();
     expect(screen.getByText("Modalidad al abrir:")).toBeVisible();
     expect(screen.getByText("De terceros")).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders an editable open period with a confirmed close control", async () => {
+    const { container } = render(detailStub("open"));
+    expect(
+      await screen.findByRole("button", { name: "Cerrar período" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Arancel mensual" }),
+    ).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
+  it("renders an axe-clean closed historical summary without mutation controls", async () => {
+    const { container } = render(detailStub("closed"));
+    expect(await screen.findByText("Cerrado")).toBeVisible();
+    expect(
+      screen.queryByRole("textbox", { name: "Arancel mensual" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: /Guardar|Publicar|Cerrar|Eliminar/,
+      }),
+    ).toBeNull();
+    expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
+    expect(screen.getByText("Docente al abrir:")).toBeVisible();
     await expectNoAxeViolations(container);
   });
 });

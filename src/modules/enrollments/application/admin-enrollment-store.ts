@@ -23,7 +23,13 @@ export type Cancelled =
 export type AdminListQuery = OrderRepositoryListQuery;
 export type AdminListItem = Pick<
   StoredOrder,
-  "id" | "number" | "workshopName" | "period" | "turnoLabel" | "status" | "total"
+  | "id"
+  | "number"
+  | "workshopName"
+  | "period"
+  | "turnoLabel"
+  | "status"
+  | "total"
 > & {
   readonly studentName: string;
   readonly requestedOn: string;

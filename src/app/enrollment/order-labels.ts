@@ -34,6 +34,16 @@ export function monthLabel(period: string): string {
     : `${month} ${match[1] ?? ""}`;
 }
 
+const CORDOBA_OFFSET_MS = 10_800_000;
+
+/** An instant as "31/10/2026 12:30", on the Córdoba wall clock. */
+export function dateTimeLabel(instant: Date): string {
+  const local = new Date(instant.getTime() - CORDOBA_OFFSET_MS)
+    .toISOString()
+    .slice(0, 16);
+  return `${dateLabel(local.slice(0, 10))} ${local.slice(11)}`;
+}
+
 /** "2026-10-31" as "31/10/2026". */
 export function dateLabel(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");

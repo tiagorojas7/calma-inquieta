@@ -18,6 +18,7 @@ export default [
     route("intensivos/nuevo", "routes/admin/intensive-new.tsx"),
     route("intensivos/:id", "routes/admin/intensive-detail.tsx"),
     route("inscripciones", "routes/admin/enrollments.tsx"),
+    route("inscripciones/:id", "routes/admin/enrollment-detail.tsx"),
     route("profesores", "routes/admin/teachers.tsx"),
     route("profesores/nuevo", "routes/admin/teacher-new.tsx"),
     route("profesores/:id", "routes/admin/teacher-detail.tsx"),

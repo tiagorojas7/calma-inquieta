@@ -2,6 +2,7 @@ import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { enrollmentRefusalMessage } from "~/app/admin/enrollment-action-data";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
+import { isUuid } from "~/app/admin/enrollment-ids";
 import { monthLabel } from "~/app/enrollment/order-labels";
 import { EnrollmentConsolidation } from "~/app/ui/admin/enrollment-consolidation";
 import { formatPesos } from "~/modules/enrollments";
@@ -58,7 +59,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
-  const form = await request.formData();
+  const form = await request.formData().catch(() => null);
+  if (form === null) throw data(null, { status: 400 });
   if (form.get("intent") !== "mark-requested")
     throw data(null, { status: 400 });
   const period = periodOf(
@@ -68,7 +70,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     ...new Set(
       form
         .getAll("orderId")
-        .filter((id): id is string => typeof id === "string" && id !== ""),
+        .filter((id): id is string => typeof id === "string" && isUuid(id)),
     ),
   ].slice(0, MAX_ORDERS);
   if (orderIds.length === 0)

@@ -180,11 +180,14 @@ describe("admin supplier consolidation action", () => {
     const result = await submit(bulk, [
       ["intent", "mark-requested"],
       ["mes", "2026-11"],
-      ["orderId", "o1"],
-      ["orderId", "o2"],
+      ["orderId", "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b"],
+      ["orderId", "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c"],
     ]);
 
-    expect(bulk).toHaveBeenCalledWith(expect.anything(), ["o1", "o2"]);
+    expect(bulk).toHaveBeenCalledWith(expect.anything(), [
+      "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c",
+    ]);
     expect((result as Response).headers.get("Location")).toBe(
       "/admin/inscripciones/materiales?mes=2026-11&solicitados=2",
     );
@@ -207,8 +210,8 @@ describe("admin supplier consolidation action", () => {
     const result = await submit(bulk, [
       ["intent", "mark-requested"],
       ["mes", "2026-11"],
-      ["orderId", "o1"],
-      ["orderId", "o2"],
+      ["orderId", "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b"],
+      ["orderId", "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c"],
     ]);
 
     expect(result).toMatchObject({
@@ -218,6 +221,36 @@ describe("admin supplier consolidation action", () => {
           "Se marcaron 1 de 2 pedidos. Esa acción no está disponible para el estado actual del pedido.",
       },
     });
+  });
+
+  it("drops ids that are not uuids before marking anything", async () => {
+    const bulk = vi.fn<Bulk>((_, ids) => Promise.resolve(allOk(ids)));
+    await submit(bulk, [
+      ["intent", "mark-requested"],
+      ["mes", "2026-11"],
+      ["orderId", "not-a-uuid"],
+      ["orderId", "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b"],
+    ]);
+
+    expect(bulk).toHaveBeenCalledWith(expect.anything(), [
+      "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+    ]);
+  });
+
+  it("answers 400 to a post whose body is not a form", async () => {
+    const result = await thrownStatus(() =>
+      action({
+        request: new Request(`${ORIGIN}/admin/inscripciones/materiales`, {
+          method: "POST",
+          headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+          body: "{}",
+        }),
+        params: {},
+        context: adminContext(services({ bulk: vi.fn<Bulk>() })),
+      } as never),
+    );
+
+    expect(result).toBe(400);
   });
 
   it("asks for at least one order", async () => {
@@ -239,7 +272,7 @@ describe("admin supplier consolidation action", () => {
     const fields: [string, string][] = [
       ["intent", "mark-requested"],
       ["mes", "2026-11"],
-      ["orderId", "o1"],
+      ["orderId", "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b"],
     ];
 
     expect(

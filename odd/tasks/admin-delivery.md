@@ -1,7 +1,7 @@
 # Admin delivery slices (change 3 admin-catalog, FRONT)
 
 - Objective: deliver the FRONT slices F0a, F1, F2, F3, F4, F6, F8, F7, F5 of change 3 `admin-catalog` (F0b merged).
-- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current in this lane: `feat/admin-catalog-f8-suppliers`, rebased onto `origin/main` `18b355d`; F7 follows from the merged F8 boundary.
+- Branch chain: `feat/admin-catalog-<slice>` per slice, each from `origin/main`; strategy `stacked-to-main`. Current in this lane: `feat/admin-catalog-f7-materials`, stacked on rebased F8 supplier head `1b95658` over `origin/main` `556d440`; F7 will rebase to main after F8 merges.
 - TDD strict (`AGENTS.md`); runner `corepack pnpm test <path>`.
 
 ## Specs
@@ -24,8 +24,18 @@
 - F3: S-F3 (monthly workshops admin screens) | inline | merged in PR #79 | commit: see PR
 - F4: S-F4 (turnos admin screens) | delegated recovery of Claude's partial work | PR #81 CLEAN/MERGEABLE, CI verify passed | commit: `1e2cc1f`
 - F6: S-F6 (intensivos admin screens and real request-service wiring) | delegated isolated writers with an owner-approved cohesive F6a exception | in progress in `CalmaInquieta-f6` | wiring: `db6712a`; F6a list/create: `fc69482`; F6b edit/audit: `6a4b23b`; F6c lifecycle/reschedule: `a58f0f8`
-- F8: S-F8 (suppliers admin screens) | delegated conflict recovery and independent verification | rebased, PR pending | commit: `d1eb8e5`
-- F7, F5: pending in this lane.
+- F8: S-F8 (suppliers admin screens) | delegated conflict recovery and independent verification | rebased, PR pending | behavior commit: `aaae104`; evidence commit: `1b95658`
+- F7: S-F7 (materials and variants admin screens) | delegated direct, strict TDD | in progress on `feat/admin-catalog-f7-materials`; stacked on F8 | tasks F7-1 through F7-4 below
+- F5: owned by Terminal B; period-material selection and project gallery are out of scope for F7.
+
+### F7 execution tasks
+
+- [ ] **F7-1 — wire the real materials service.** RED a focused composition test proving `services.materials` is no longer the unavailable placeholder; GREEN `createMaterialsService` over the existing Drizzle material/supplier repositories, media lookup and system clock; REFACTOR without changing other service wiring. Route: delegated writer because the change spans production and test files. Rollback: restore only the materials placeholder.
+- [ ] **F7-2 — deliver the material list.** RED actor-first loader, state/category/supplier filters, order/empty/failure behavior, native links and accessible responsive UI; GREEN `/admin/materiales`, list presentation, route registration and the minimum F7 copy. Keep supplier navigation intact. Route: delegated writer because the coherent behavior spans route, parser/UI, tests and hot files.
+- [ ] **F7-3 — create materials with variants and image.** RED field preservation and errors for required name/category/supplier, default `Única` variant, option variants, positive whole-peso prices, case-insensitive duplicate labels, swatches, availability, image alt, dangling image fallback and native document submission; GREEN `/admin/materiales/nuevo` with existing `ImageField` conventions. Route: delegated writer. Rollback: remove only new-material delivery paths.
+- [ ] **F7-4 — edit and lifecycle materials/variants.** RED detail hydration, audit, supplier continuity, reorder/update variants, used-variant unavailability, last-variant refusal, material availability, deactivate/reactivate confirmation and actor-first errors; GREEN `/admin/materiales/:id`. Route: delegated writer. Rollback: remove only detail/lifecycle delivery paths.
+
+F7 acceptance checks: focused RED → GREEN → REFACTOR per task; applicable UI axe/native-navigation coverage; `NODE_OPTIONS=--max-old-space-size=8192 corepack pnpm lint`; same environment for `typecheck`; focused tests per task; full `corepack pnpm test` once at slice closure with the documented Windows DB limitation; `format:check`; `git diff --check`. Delivery strategy remains `stacked-to-main`; forecast is 1,600–2,400 authored changed lines across four cohesive work units, so each work unit gets its own commit and may become its own PR slice. Period offers are backend B9 and Terminal B's F5 selector concern; F7 consumes neither enrollment nor period-edit surfaces.
 
 ## Log
 
@@ -68,5 +78,5 @@
 - F8: no new `IssueCode` was needed, the supplier fields reuse `required`, `too-long`, `invalid-format` and `duplicate`, which F2 already maps in `issue-messages.ts` (no edit there; the supplier routes pin the Spanish messages per field). Copy lives in a new `suppliers` block of `microcopy.ts`.
 - F8: `createRequestServices` had `suppliers` as the unavailable placeholder (every supplier screen would have answered 503); it now wires `createSuppliersService` over `createDrizzleSupplierRepository`, pinned by `request-services.suppliers.test.ts`.
 - F8: layer 1 rule honoured: native `<form method="post" noValidate>` and plain anchors only, no fetcher or `Form`; pinned in `supplier-screens.ui.test.tsx` (submit not prevented, method post, novalidate). Archive has no confirm dialog and no material-usage warning (the suppliers service exposes no usage lookup; archive is reversible).
-- F8 integration: rebased onto `origin/main` `18b355d` as `d1eb8e5`. Conflicts were resolved by preserving newer F3/F4/F6 delivery evidence, workshop/intensive copy, and real workshop/period/intensive/enrollment composition, then adding only suppliers. `routes.ts` auto-merged with all existing admin routes intact. Rollback boundary: revert `d1eb8e5`.
-- F8 verification after rebase: `lint`, `typecheck`, `format:check`, and `git diff --check origin/main...HEAD` PASS with `NODE_OPTIONS=--max-old-space-size=8192`. The full test command ran once and failed because the local C: volume had only 147 MiB free; embedded PostgreSQL reported disk exhaustion, recovery, and connection resets. It was not retried and is not reported as passing; GitHub CI is the DB/full-suite gate. Native review stopped before lineage because managed-assets sync requires the missing local `pi-mcp-adapter`; no native approval exists. Engram mirror is pending because the local Engram server timed out.
+- F8 integration: rebased again onto `origin/main` `556d440` as `aaae104`; the second rebase was conflict-free and preserved merged enrollment consolidation. The earlier conflict resolution preserved newer F3/F4/F6 delivery evidence, workshop/intensive copy, and real workshop/period/intensive/enrollment composition, then added only suppliers. `routes.ts` retained all existing admin routes. Rollback boundary: revert `aaae104`.
+- F8 verification after rebase: `lint`, `typecheck`, `format:check`, and `git diff --check origin/main...HEAD` PASS with `NODE_OPTIONS=--max-old-space-size=8192`. The full test command ran once and failed because the local C: volume had only 147 MiB free; embedded PostgreSQL reported disk exhaustion, recovery, and connection resets. It was not retried and is not reported as passing; GitHub CI is the DB/full-suite gate. Native review stopped before lineage because managed-assets sync requires the missing local `pi-mcp-adapter`; no native approval exists. The Engram recovery mirror is synchronized under `odd/admin-delivery/tasks`.

@@ -107,6 +107,15 @@ function sectionOf(
   };
 }
 
+export function createUnavailableSupplierConsolidationService(): SupplierConsolidationUseCases {
+  return {
+    consolidate: (actor) => {
+      const admin = requireAdminActor(actor);
+      return Promise.resolve(admin.ok ? err({ kind: "unavailable" }) : admin);
+    },
+  };
+}
+
 export function createSupplierConsolidationService(deps: {
   readonly store: Pick<AdminEnrollmentStore, "consolidationLines">;
 }): SupplierConsolidationUseCases {

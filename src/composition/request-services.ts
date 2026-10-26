@@ -49,9 +49,12 @@ import {
 import {
   createAdminEnrollmentService,
   createPublicEnrollmentService,
+  createSupplierConsolidationService,
   createUnavailableAdminEnrollmentService,
+  createUnavailableSupplierConsolidationService,
   type AdminEnrollmentUseCases,
   type PublicEnrollmentUseCases,
+  type SupplierConsolidationUseCases,
 } from "~/modules/enrollments";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
@@ -92,6 +95,7 @@ export interface AppServices {
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
   readonly enrollments: AdminEnrollmentUseCases;
+  readonly consolidation: SupplierConsolidationUseCases;
   readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly publicCatalog: PublicCatalogService;
 }
@@ -177,6 +181,14 @@ export function createRequestServices(
         clock: systemClock,
       })
     : createUnavailableService<WorkshopPeriodsService>();
+  const adminEnrollmentStore = createDrizzleAdminEnrollmentStore(openSession, {
+    async find(periodId, turnoId) {
+      const period = await periodRepository.findById(periodId);
+      if (!period) return null;
+      const turno = period.turnos.find((item) => item.turnoId === turnoId);
+      return turno ? { status: period.status, capacity: turno.capacity } : null;
+    },
+  });
   const enrollmentServices = seats
     ? {
         publicEnrollments: createPublicEnrollmentService({
@@ -204,24 +216,17 @@ export function createRequestServices(
           policyVersion: "2026-10",
         }),
         enrollments: createAdminEnrollmentService({
-          store: createDrizzleAdminEnrollmentStore(openSession, {
-            async find(periodId, turnoId) {
-              const period = await periodRepository.findById(periodId);
-              if (!period) return null;
-              const turno = period.turnos.find(
-                (item) => item.turnoId === turnoId,
-              );
-              return turno
-                ? { status: period.status, capacity: turno.capacity }
-                : null;
-            },
-          }),
+          store: adminEnrollmentStore,
           clock: systemClock,
+        }),
+        consolidation: createSupplierConsolidationService({
+          store: adminEnrollmentStore,
         }),
       }
     : {
         publicEnrollments: createUnavailablePublicEnrollmentService(),
         enrollments: createUnavailableAdminEnrollmentService(),
+        consolidation: createUnavailableSupplierConsolidationService(),
       };
   return {
     getSystemStatus: createGetSystemStatus({

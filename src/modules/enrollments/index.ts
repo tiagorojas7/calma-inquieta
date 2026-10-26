@@ -26,6 +26,7 @@ export type {
 } from "./application/admin-enrollment-store";
 export {
   createSupplierConsolidationService,
+  createUnavailableSupplierConsolidationService,
   type ConsolidatedMaterial,
   type ConsolidationError,
   type SupplierConsolidation,

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { Money } from "~/modules/_shared";
 import type { ConsolidationLine } from "./admin-enrollment-store";
-import { createSupplierConsolidationService } from "./supplier-consolidation";
+import {
+  createSupplierConsolidationService,
+  createUnavailableSupplierConsolidationService,
+} from "./supplier-consolidation";
 
 const pesos = (amount: number) => {
   const money = Money.fromCentavos(amount * 100);
@@ -184,6 +187,19 @@ describe("supplier consolidation", () => {
     await expect(service.consolidate(admin, "2026-11")).resolves.toEqual({
       ok: false,
       error: { kind: "unavailable" },
+    });
+  });
+
+  it("fails closed from the placeholder service, still denying non-admins first", async () => {
+    const placeholder = createUnavailableSupplierConsolidationService();
+
+    await expect(placeholder.consolidate(admin, "2026-11")).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+    await expect(placeholder.consolidate(null, "2026-11")).resolves.toEqual({
+      ok: false,
+      error: { kind: "denied" },
     });
   });
 });

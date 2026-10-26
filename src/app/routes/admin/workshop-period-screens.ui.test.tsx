@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -63,7 +63,17 @@ describe("workshop periods admin screen", () => {
     const table = await screen.findByRole("table", {
       name: "Períodos del taller",
     });
-    expect(within(table).getByText("2026-10")).toBeVisible();
+    const periodLink = within(table).getByRole("link", { name: "2026-10" });
+    expect(periodLink).toBeVisible();
+    const seen = { prevented: false };
+    const observe = (event: Event) => {
+      seen.prevented = event.defaultPrevented;
+      event.preventDefault();
+    };
+    document.addEventListener("click", observe);
+    fireEvent.click(periodLink);
+    document.removeEventListener("click", observe);
+    expect(seen.prevented).toBe(false);
     expect(within(table).getByText("Abierto")).toBeVisible();
     expect(within(table).getByText("40000")).toBeVisible();
     expect(within(table).getByText("14")).toBeVisible();

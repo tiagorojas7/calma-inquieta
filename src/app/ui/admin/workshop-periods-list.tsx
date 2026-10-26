@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
@@ -37,7 +36,7 @@ export function WorkshopPeriodsList({
     {
       key: "period",
       header: copy.columns.month,
-      cell: (row) => <Link to={row.href}>{row.period}</Link>,
+      cell: (row) => <a href={row.href}>{row.period}</a>,
     },
     {
       key: "status",

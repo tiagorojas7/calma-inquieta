@@ -500,6 +500,37 @@ export const adminMicrocopy = {
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",
     },
   },
+  materials: {
+    title: "Materiales",
+    newAction: "Nuevo material",
+    suppliersLink: "Proveedores",
+    filterLabel: "Mostrar materiales",
+    filters: {
+      activos: "Activos",
+      inactivos: "Inactivos",
+      todos: "Todos",
+    },
+    refine: {
+      label: "Filtrar materiales",
+      category: "Categoría",
+      allCategories: "Todas las categorías",
+      supplier: "Proveedor",
+      allSuppliers: "Todos los proveedores",
+      apply: "Filtrar",
+    },
+    columns: {
+      name: "Nombre",
+      category: "Categoría",
+      supplier: "Proveedor",
+      variants: "Variantes",
+      state: "Estado",
+    },
+    unavailable: "No disponible",
+    empty: {
+      title: "No hay materiales con estos filtros",
+      message: "Probá con otros filtros o cargá un material nuevo.",
+    },
+  },
   suppliers: {
     title: "Proveedores",
     newTitle: "Nuevo proveedor",

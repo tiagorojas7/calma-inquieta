@@ -1,5 +1,6 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
+import { isUuid } from "~/app/admin/enrollment-ids";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import {
   enrollmentFieldErrors,
@@ -32,6 +33,7 @@ function lineTotal(unit: Money, quantity: number): string {
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
+  if (!isUuid(params.id)) throw data(null, { status: 404 });
   const found = await context
     .get(servicesContext)
     .enrollments.detail(actor, params.id);
@@ -90,7 +92,9 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 export async function action({ request, context, params }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
-  const form = await request.formData();
+  if (!isUuid(params.id)) throw data(null, { status: 404 });
+  const form = await request.formData().catch(() => null);
+  if (form === null) throw data(null, { status: 400 });
   const intent = parseEnrollmentIntent(form);
   if (intent === null) throw data(null, { status: 400 });
   const enrollments = context.get(servicesContext).enrollments;

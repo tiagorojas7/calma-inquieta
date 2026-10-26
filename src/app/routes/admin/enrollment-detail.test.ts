@@ -22,7 +22,7 @@ function pesos(value: number): Money {
 }
 
 const detail: AdminEnrollmentDetail = {
-  id: "o1",
+  id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
   publicId: "public-123",
   number: "CI-2026-0007",
   status: "pending_confirmation",
@@ -84,8 +84,10 @@ function services(overrides: Overrides) {
 
 function load(overrides: Overrides, admin = true) {
   return loader({
-    request: getRequest("/admin/inscripciones/o1"),
-    params: { id: "o1" },
+    request: getRequest(
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+    ),
+    params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
     context: adminContext(services(overrides), { admin }),
   } as never);
 }
@@ -97,11 +99,11 @@ function submit(
 ) {
   return action({
     request: postRequest(
-      "/admin/inscripciones/o1",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
       fields,
       options.headers ?? { Origin: ORIGIN },
     ),
-    params: { id: "o1" },
+    params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
     context: adminContext(services(overrides), {
       ...(options.admin === undefined ? {} : { admin: options.admin }),
     }),
@@ -120,7 +122,7 @@ describe("admin enrollment detail loader", () => {
     const result = await load({ detail: () => Promise.resolve(ok(detail)) });
 
     expect(result).toMatchObject({
-      id: "o1",
+      id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
       number: "CI-2026-0007",
       status: "pending_confirmation",
       statusLabel: "Pendiente de confirmación",
@@ -222,6 +224,55 @@ describe("admin enrollment detail loader", () => {
   });
 });
 
+describe("admin enrollment ids and bodies", () => {
+  it("answers 404 to an id that is not a uuid, without reading the order", async () => {
+    const read = vi.fn(() => Promise.resolve(ok(detail)));
+    const result = await thrownStatus(() =>
+      loader({
+        request: getRequest("/admin/inscripciones/not-a-uuid"),
+        params: { id: "not-a-uuid" },
+        context: adminContext(services({ detail: read })),
+      } as never),
+    );
+
+    expect(result).toBe(404);
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 to a post on an id that is not a uuid, without mutating", async () => {
+    const confirmPayment = vi.fn();
+    const result = await thrownStatus(() =>
+      action({
+        request: postRequest("/admin/inscripciones/x", confirmFields),
+        params: { id: "x" },
+        context: adminContext(services({ confirmPayment })),
+      } as never),
+    );
+
+    expect(result).toBe(404);
+    expect(confirmPayment).not.toHaveBeenCalled();
+  });
+
+  it("answers 400 to a post whose body is not a form", async () => {
+    const result = await thrownStatus(() =>
+      action({
+        request: new Request(
+          `${ORIGIN}/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b`,
+          {
+            method: "POST",
+            headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+            body: "{}",
+          },
+        ),
+        params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
+        context: adminContext(services({})),
+      } as never),
+    );
+
+    expect(result).toBe(400);
+  });
+});
+
 describe("admin enrollment detail action", () => {
   it("confirms the payment and goes back to the detail", async () => {
     const confirmPayment = vi.fn(() =>
@@ -230,14 +281,14 @@ describe("admin enrollment detail action", () => {
     const result = await submit({ confirmPayment }, confirmFields);
 
     expect(confirmPayment).toHaveBeenCalledWith(expect.anything(), {
-      orderId: "o1",
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
       amount: "58000",
       paidOn: "2026-10-31",
       note: "Transferencia",
     });
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/o1",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
     );
   });
 
@@ -248,7 +299,7 @@ describe("admin enrollment detail action", () => {
     await submit({ confirmPayment }, { ...confirmFields, note: "  " });
 
     expect(confirmPayment).toHaveBeenCalledWith(expect.anything(), {
-      orderId: "o1",
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
       amount: "58000",
       paidOn: "2026-10-31",
     });
@@ -337,11 +388,11 @@ describe("admin enrollment detail action", () => {
     );
 
     expect(cancel).toHaveBeenCalledWith(expect.anything(), {
-      orderId: "o1",
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
       reason: "Pidió la baja",
     });
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/o1",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
     );
   });
 
@@ -371,9 +422,12 @@ describe("admin enrollment detail action", () => {
     const mark = vi.fn(() => Promise.resolve(ok(undefined)));
     const result = await submit({ [method]: mark }, { intent });
 
-    expect(mark).toHaveBeenCalledWith(expect.anything(), "o1");
+    expect(mark).toHaveBeenCalledWith(
+      expect.anything(),
+      "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+    );
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/o1",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
     );
   });
 

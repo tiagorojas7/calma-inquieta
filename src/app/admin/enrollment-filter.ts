@@ -1,4 +1,5 @@
 import { ORDER_STATUSES, type AdminListQuery } from "~/modules/enrollments";
+import { isUuid } from "./enrollment-ids";
 
 const DEFAULT_STATUS = "pending_confirmation";
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -27,7 +28,8 @@ export function parseEnrollmentFilter(params: URLSearchParams): {
     DEFAULT_STATUS;
   const monthParam = params.get("mes") ?? "";
   const mes = MONTH_KEY.test(monthParam) ? monthParam : "";
-  const taller = (params.get("taller") ?? "").trim();
+  const tallerParam = (params.get("taller") ?? "").trim();
+  const taller = isUuid(tallerParam) ? tallerParam : "";
   const q = (params.get("q") ?? "").trim().slice(0, TEXT_MAX);
   const pageParam = Number(params.get("page"));
   const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;

@@ -93,13 +93,13 @@ describe("admin enrollments list route", () => {
       .mockResolvedValue(ok({ items: full, page: 2, pageSize: 50 as const }));
     const result = await load(
       list,
-      "/admin/inscripciones?estado=paid&mes=2026-11&taller=w1&q=ana%40&page=2",
+      "/admin/inscripciones?estado=paid&mes=2026-11&taller=7a1d2e3f-5b4c-4d6e-8f9a-0b1c2d3e4f50&q=ana%40&page=2",
     );
 
     expect(list).toHaveBeenCalledWith(expect.anything(), {
       status: "paid",
       period: "2026-11",
-      workshopId: "w1",
+      workshopId: "7a1d2e3f-5b4c-4d6e-8f9a-0b1c2d3e4f50",
       text: "ana@",
       page: 2,
     });

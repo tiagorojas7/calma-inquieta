@@ -2,15 +2,18 @@ import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { failureResponse } from "~/app/admin/failure-response";
 import { fieldErrors } from "~/app/admin/issue-messages";
 import {
+  parsePeriodDetailIntent,
   parsePeriodDraft,
-  parsePeriodEditIntent,
 } from "~/app/admin/workshop-period-form-data";
 import {
   formatPercentage,
   formatWholePesos,
 } from "~/app/admin/workshop-form-data";
 import { servicesContext } from "~/app/context";
+import { Button } from "~/app/ui/atoms/button";
 import { Heading } from "~/app/ui/atoms/heading";
+import { ConfirmedSubmit } from "~/app/ui/admin/confirmed-submit";
+import { FormError } from "~/app/ui/admin/form-fields";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { WorkshopPeriodForm } from "~/app/ui/admin/workshop-period-form";
 import {
@@ -23,6 +26,10 @@ import type { Route } from "./+types/workshop-period-detail";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 const statuses = adminMicrocopy.workshops.periods.statuses;
+const transitionMessage = (
+  from: keyof typeof statuses,
+  to: keyof typeof statuses,
+) => `No se puede pasar de ${statuses[from]} a ${statuses[to]}.`;
 
 async function getPeriod(
   actor: ReturnType<typeof requireAdmin>,
@@ -90,44 +97,106 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 export async function action({ request, context, params }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData();
-  if (parsePeriodEditIntent(form) === null) throw data(null, { status: 400 });
+  const intent = parsePeriodDetailIntent(form);
+  if (intent === null) throw data(null, { status: 400 });
   const period = await getPeriod(actor, context, params.id, params.period);
-  const draft = parsePeriodDraft(form, period);
   const periods = context.get(servicesContext).workshopPeriods;
-  const saved = await periods.update(actor, period.id, draft);
-  if (saved.ok)
-    return redirect(`/admin/talleres/${params.id}/periodos/${period.period}`);
-  const values = formValues(period, draft);
-  const rejected = { values, formError: undefined };
-  if (saved.error.kind === "invalid")
+  if (intent === "save") {
+    const draft = parsePeriodDraft(form, period);
+    const saved = await periods.update(actor, period.id, draft);
+    if (saved.ok)
+      return redirect(`/admin/talleres/${params.id}/periodos/${period.period}`);
+    const values = formValues(period, draft);
+    const rejected = { values, formError: undefined };
+    if (saved.error.kind === "invalid")
+      return data(
+        { ...rejected, errors: fieldErrors(saved.error.issues) },
+        { status: 422 },
+      );
+    if (saved.error.kind === "period-closed")
+      return data(
+        { values, errors: {}, formError: copy.periodClosed },
+        { status: 422 },
+      );
+    if (saved.error.kind === "capacity-below-confirmed")
+      return data(
+        { ...rejected, errors: { capacities: copy.capacityFloor } },
+        { status: 422 },
+      );
+    throw failureResponse(saved.error);
+  }
+  const transitioned = await periods[intent](actor, period.id);
+  if (transitioned.ok)
+    return redirect(
+      intent === "delete"
+        ? `/admin/talleres/${params.id}/periodos`
+        : `/admin/talleres/${params.id}/periodos/${period.period}`,
+    );
+  if (transitioned.error.kind === "transition-refused")
     return data(
-      { ...rejected, errors: fieldErrors(saved.error.issues) },
+      {
+        stateError: transitionMessage(
+          transitioned.error.from,
+          transitioned.error.to,
+        ),
+      },
       { status: 422 },
     );
-  if (saved.error.kind === "period-closed")
-    return data(
-      { values, errors: {}, formError: copy.periodClosed },
-      { status: 422 },
-    );
-  if (saved.error.kind === "capacity-below-confirmed")
-    return data(
-      { ...rejected, errors: { capacities: copy.capacityFloor } },
-      { status: 422 },
-    );
-  throw failureResponse(saved.error);
+  throw failureResponse(transitioned.error);
 }
 
 export default function AdminWorkshopPeriodDetail() {
   const screen = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
+  const formRejected = rejected && "values" in rejected ? rejected : undefined;
+  const stateError =
+    rejected && "stateError" in rejected ? rejected.stateError : undefined;
   return (
     <section className="flex max-w-prose flex-col gap-6">
       <Heading level={1}>{copy.title(screen.period)}</Heading>
-      <WorkshopPeriodForm
-        values={rejected?.values ?? screen.values}
-        errors={rejected?.errors ?? {}}
-        formError={rejected?.formError}
-      />
+      {screen.status !== "closed" && (
+        <WorkshopPeriodForm
+          values={formRejected?.values ?? screen.values}
+          errors={formRejected?.errors ?? {}}
+          formError={formRejected?.formError}
+        />
+      )}
+      {screen.status !== "closed" && (
+        <section
+          aria-labelledby="period-actions-title"
+          className="flex flex-col gap-3"
+        >
+          <Heading level={2} id="period-actions-title">
+            {copy.actions}
+          </Heading>
+          <FormError message={stateError} />
+          <div className="flex flex-wrap gap-3">
+            {screen.status === "draft" && (
+              <form method="post">
+                <input type="hidden" name="intent" value="publish" />
+                <Button type="submit">{copy.publish}</Button>
+              </form>
+            )}
+            {screen.status === "open" && (
+              <ConfirmedSubmit
+                intent="close"
+                label={copy.close}
+                title={copy.confirm.close.title}
+                message={copy.confirm.close.message}
+              />
+            )}
+            {screen.status === "draft" && (
+              <ConfirmedSubmit
+                intent="delete"
+                label={copy.delete}
+                title={copy.confirm.delete.title}
+                message={copy.confirm.delete.message}
+                tone="destructive"
+              />
+            )}
+          </div>
+        </section>
+      )}
       <dl className="grid gap-3 sm:grid-cols-2">
         <div>
           <dt className="font-semibold">{copy.status}</dt>

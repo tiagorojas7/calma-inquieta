@@ -160,6 +160,20 @@ export const adminMicrocopy = {
         percentage: "Porcentaje al abrir",
         snapshotPercentage: "Porcentaje acordado",
         save: "Guardar cambios",
+        publish: "Publicar período",
+        close: "Cerrar período",
+        delete: "Eliminar borrador",
+        actions: "Acciones del período",
+        confirm: {
+          close: {
+            title: "¿Cerrar el período?",
+            message: "No vas a poder volver a editarlo.",
+          },
+          delete: {
+            title: "¿Eliminar el borrador?",
+            message: "Se elimina para siempre. No se puede deshacer.",
+          },
+        },
         periodClosed: "Este período está cerrado y no se puede editar.",
         capacityFloor: "No bajes el cupo debajo de los lugares confirmados.",
         updatedBy: "Actualizado por",

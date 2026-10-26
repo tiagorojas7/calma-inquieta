@@ -10,8 +10,16 @@ export function parseOpenMonthIntent(form: FormData): "open-month" | null {
   return text(form, "intent") === "open-month" ? "open-month" : null;
 }
 
-export function parsePeriodEditIntent(form: FormData): "save" | null {
-  return text(form, "intent") === "save" ? "save" : null;
+export function parsePeriodDetailIntent(
+  form: FormData,
+): "save" | "publish" | "close" | "delete" | null {
+  const intent = text(form, "intent");
+  return intent === "save" ||
+    intent === "publish" ||
+    intent === "close" ||
+    intent === "delete"
+    ? intent
+    : null;
 }
 
 export function parsePeriodDraft(

@@ -75,9 +75,14 @@ function submit(
 
 describe("admin workshop period detail", () => {
   it("loads a valid period with immutable image and material summaries", async () => {
-    const loaded = await load(service({ get: found }));
+    const loaded = await load(
+      service({
+        get: () => Promise.resolve(ok({ ...period, status: "closed" })),
+      }),
+    );
     expect(loaded).toMatchObject({
       period: "2026-11",
+      status: "closed",
       values: { fee: "1", capacities: [{ turnoId: "t1", capacity: "8" }] },
       materials: [{ name: "Arcilla", active: false, available: false }],
       snapshot: { teacherName: "Cami", percentage: "35" },
@@ -146,6 +151,50 @@ describe("admin workshop period detail", () => {
       }),
     );
     expect((response as Response).headers.get("Location")).toBe(path);
+  });
+
+  it("runs only known lifecycle intents and redirects each success", async () => {
+    const publish = vi.fn(() => Promise.resolve(ok(period)));
+    const close = vi.fn(() => Promise.resolve(ok(period)));
+    const remove = vi.fn(() => Promise.resolve(ok(undefined)));
+    const periods = service({
+      get: () => Promise.resolve(ok(period)),
+      publish,
+      close,
+      delete: remove,
+    });
+    const published = (await submit(periods, {
+      intent: "publish",
+    })) as Response;
+    expect(published.headers.get("Location")).toBe(path);
+    expect(publish).toHaveBeenCalledWith(expect.anything(), "period-1");
+    const closed = (await submit(periods, { intent: "close" })) as Response;
+    expect(closed.headers.get("Location")).toBe(path);
+    expect(close).toHaveBeenCalledWith(expect.anything(), "period-1");
+    const deleted = (await submit(periods, { intent: "delete" })) as Response;
+    expect(remove).toHaveBeenCalledWith(expect.anything(), "period-1");
+    expect(deleted.headers.get("Location")).toBe("/admin/talleres/w1/periodos");
+    expect(
+      await thrownStatus(() => submit(periods, { intent: "open-month" })),
+    ).toBe(400);
+    expect(await thrownStatus(() => submit(periods, {}))).toBe(400);
+  });
+
+  it("maps refused lifecycle transitions to a form error", async () => {
+    const result = await submit(
+      service({
+        get: () => Promise.resolve(ok(period)),
+        publish: () =>
+          Promise.resolve(
+            err({ kind: "transition-refused", from: "draft", to: "open" }),
+          ),
+      }),
+      { intent: "publish" },
+    );
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: { stateError: "No se puede pasar de Borrador a Abierto." },
+    });
   });
 
   it("preserves rejected values and maps closed periods", async () => {

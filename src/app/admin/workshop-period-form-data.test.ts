@@ -4,7 +4,7 @@ import {
   isExactPeriodValue,
   parseOpenMonthIntent,
   parsePeriodDraft,
-  parsePeriodEditIntent,
+  parsePeriodDetailIntent,
   parsePeriodValue,
 } from "./workshop-period-form-data";
 
@@ -33,7 +33,7 @@ describe("workshop period form data", () => {
     expect(isExactPeriodValue("2026/11")).toBe(false);
   });
 
-  it("parses only save and preserves hidden historical selections", () => {
+  it("accepts only detail lifecycle intents and preserves hidden historical selections", () => {
     const period = buildWorkshopPeriod({
       turnos: [{ turnoId: "t1", capacity: 8 } as never],
       materials: [{ id: "m1", name: "Clay", active: false, available: false }],
@@ -47,7 +47,7 @@ describe("workshop period form data", () => {
       "capacity-t1": " 9 ",
       snapshotPercentage: " 35 ",
     });
-    expect(parsePeriodEditIntent(submitted)).toBe("save");
+    expect(parsePeriodDetailIntent(submitted)).toBe("save");
     expect(parsePeriodDraft(submitted, period)).toEqual({
       fee: "42000",
       materialsRequired: true,
@@ -58,6 +58,12 @@ describe("workshop period form data", () => {
       snapshotPercentage: "35",
       materialIds: ["m1"],
     });
-    expect(parsePeriodEditIntent(form({ intent: "delete" }))).toBeNull();
+    expect(parsePeriodDetailIntent(form({ intent: "publish" }))).toBe(
+      "publish",
+    );
+    expect(parsePeriodDetailIntent(form({ intent: "close" }))).toBe("close");
+    expect(parsePeriodDetailIntent(form({ intent: "delete" }))).toBe("delete");
+    expect(parsePeriodDetailIntent(form({}))).toBeNull();
+    expect(parsePeriodDetailIntent(form({ intent: "open-month" }))).toBeNull();
   });
 });

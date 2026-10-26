@@ -27,19 +27,19 @@ The deployed site still shows the baseline design and stand-in media. The approv
 - Coordinate full gates through `C:/Temp/calma-gate.lock`.
 - Conventional commits only, without AI attribution.
 - Owner merges; this orchestrator may commit, push, and open PRs.
-- The missing source logo raster blocks only DA-7.
+- The missing source logo raster blocked only DA-7; the favicon set landed in PR #94.
 
 ## Tasks
 
 - [x] P0 — Commit the planning artifacts and this recovery tracker, verify formatting, push `docs/design-adjustments-planning`, and open the docs PR to `main`.
-- [x] DA-1 — Add the minimal crop/hash/JPEG/ICO derive tooling with strict RED/GREEN/REFACTOR evidence and pipeline documentation. PR #56 is open, CI passed, and owner merge is pending.
-- [ ] DA-2 — Add the media registry, rights ledger, validation, curated responsive assets, parity tests, and immutable cache rules; apply the declared DA-2a/DA-2b split if production exceeds 400 lines. Domain and gate-wiring work units complete; the 2.6 parity test is next.
-- [ ] DA-3 — Add `Picture`, art-directed preload support, and the mobile-first hero.
-- [ ] DA-4 — Publish the curated gallery, teaser and Contacto media, registered share image, launch gate, and retired stand-ins.
-- [ ] DA-5 — Add and wire the accessible ambient loop with reduced-motion and Save-Data behavior.
+- [x] DA-1 — Add the minimal crop/hash/JPEG/ICO derive tooling with strict RED/GREEN/REFACTOR evidence and pipeline documentation. PR #56 merged.
+- [x] DA-2 — Add the media registry, rights ledger, validation, curated responsive assets, parity tests, and immutable cache rules; apply the declared DA-2a/DA-2b split if production exceeds 400 lines. Domain and gate-wiring work units complete; the 2.6 parity test is next. Merged as DA-2a (#60) and DA-2b (#59).
+- [x] DA-3 — Add `Picture`, art-directed preload support, and the mobile-first hero. PR #61 merged.
+- [x] DA-4 — Publish the curated gallery, teaser and Contacto media, registered share image, launch gate, and retired stand-ins. PR #62 merged.
+- [x] DA-5 — Add and wire the accessible ambient loop with reduced-motion and Save-Data behavior. PR #65 merged.
 - [ ] DA-5R — Only if the authorized preview range check returns 200, add the Worker range fallback.
-- [ ] DA-6 — Add cord dividers and the butterfly motif with reduced-motion behavior.
-- [ ] DA-7 — Add icons, TrustRow fidelity, favicon assets, launch-gate closure, and deviation documentation; wait only for the missing physical logo raster where required.
+- [x] DA-6 — Add cord dividers and the butterfly motif with reduced-motion behavior. PR #63 merged.
+- [x] DA-7 — Add icons, TrustRow fidelity, favicon assets, launch-gate closure, and deviation documentation; wait only for the missing physical logo raster where required. Icons: PR #64 merged; favicon set: PR #94 merged.
 
 ## Acceptance criteria and checks
 

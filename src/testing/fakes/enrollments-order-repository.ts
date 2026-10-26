@@ -355,6 +355,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
     });
     return {
       items: rows.map((order) => ({
+        id: order.id,
         number: order.number,
         studentName: order.student.fullName,
         workshopName: order.workshopName,

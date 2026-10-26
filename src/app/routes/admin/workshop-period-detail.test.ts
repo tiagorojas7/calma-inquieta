@@ -165,16 +165,14 @@ describe("admin workshop period detail", () => {
       init: { status: 422 },
       data: { formError: "Este período está cerrado y no se puede editar." },
     });
-    await expect(
-      submit(rejecting({ kind: "capacity-below-confirmed" }), {
-        intent: "save",
-      }),
-    ).resolves.toMatchObject({
+    const capacity = submit(rejecting({ kind: "capacity-below-confirmed" }), {
+      intent: "save",
+    });
+    await expect(capacity).resolves.toMatchObject({
       init: { status: 422 },
       data: {
         errors: {
-          capacities:
-            "No podés bajar el cupo debajo de las inscripciones confirmadas.",
+          capacities: "No bajes el cupo debajo de los lugares confirmados.",
         },
       },
     });

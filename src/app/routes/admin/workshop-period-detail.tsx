@@ -93,15 +93,15 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (parsePeriodEditIntent(form) === null) throw data(null, { status: 400 });
   const period = await getPeriod(actor, context, params.id, params.period);
   const draft = parsePeriodDraft(form, period);
-  const saved = await context
-    .get(servicesContext)
-    .workshopPeriods.update(actor, period.id, draft);
+  const periods = context.get(servicesContext).workshopPeriods;
+  const saved = await periods.update(actor, period.id, draft);
   if (saved.ok)
     return redirect(`/admin/talleres/${params.id}/periodos/${period.period}`);
   const values = formValues(period, draft);
+  const rejected = { values, formError: undefined };
   if (saved.error.kind === "invalid")
     return data(
-      { values, errors: fieldErrors(saved.error.issues), formError: undefined },
+      { ...rejected, errors: fieldErrors(saved.error.issues) },
       { status: 422 },
     );
   if (saved.error.kind === "period-closed")
@@ -111,11 +111,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
   if (saved.error.kind === "capacity-below-confirmed")
     return data(
-      {
-        values,
-        errors: { capacities: copy.capacityBelowConfirmed },
-        formError: undefined,
-      },
+      { ...rejected, errors: { capacities: copy.capacityFloor } },
       { status: 422 },
     );
   throw failureResponse(saved.error);

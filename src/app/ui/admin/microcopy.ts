@@ -161,8 +161,7 @@ export const adminMicrocopy = {
         snapshotPercentage: "Porcentaje acordado",
         save: "Guardar cambios",
         periodClosed: "Este período está cerrado y no se puede editar.",
-        capacityBelowConfirmed:
-          "No podés bajar el cupo debajo de las inscripciones confirmadas.",
+        capacityFloor: "No bajes el cupo debajo de los lugares confirmados.",
         updatedBy: "Actualizado por",
         updatedAt: "Última actualización",
         materials: "Materiales históricos",

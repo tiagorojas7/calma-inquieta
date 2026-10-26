@@ -41,6 +41,18 @@ export type AdminEnrollmentDetail = StoredOrder & {
   readonly audit: readonly AuditEntry[];
 };
 
+/** One order line that counts toward what the owner must buy for a month. */
+export interface ConsolidationLine {
+  readonly orderId: string;
+  readonly status: "paid" | "materials_requested";
+  readonly supplierId: string;
+  readonly supplierName: string;
+  readonly materialName: string;
+  readonly variantLabel: string;
+  readonly quantity: number;
+  readonly unitPrice: Money;
+}
+
 /** Transaction boundary for all admin mutations; E4/E5 map it to one Drizzle transaction. */
 export interface AdminEnrollmentStore {
   confirm(input: {
@@ -71,6 +83,15 @@ export interface AdminEnrollmentStore {
   detail(
     orderId: string,
   ): Promise<Result<AdminEnrollmentDetail, AdminEnrollmentStoreError>>;
+  /**
+   * Lines of `paid` and `materials_requested` orders whose stored period is
+   * `period`, plus how many orders still await confirmation. Never carries
+   * student data.
+   */
+  consolidationLines(period: string): Promise<{
+    readonly lines: readonly ConsolidationLine[];
+    readonly pendingOrders: number;
+  }>;
 }
 
 export type AdminEnrollmentPeriodLookup = {

@@ -823,6 +823,7 @@ describe("admin enrollment service", () => {
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       cancel: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
+      consolidationLines: () => Promise.reject(new Error("read failed")),
       markMaterials: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       list: () => Promise.reject(new Error("read failed")),

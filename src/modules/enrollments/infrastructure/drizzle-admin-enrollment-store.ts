@@ -1,4 +1,14 @@
-import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { err, Money, ok, type Result } from "~/modules/_shared";
 import type { DbSessionFactory } from "~/platform/db/session";
 import {
@@ -24,6 +34,7 @@ import type {
   AdminListQuery,
   Cancelled,
   Confirmed,
+  ConsolidationLine,
 } from "../application/admin-enrollment-store";
 import type {
   AuditEntry,
@@ -352,6 +363,51 @@ export function createDrizzleAdminEnrollmentStore(
       } catch {
         return err({ kind: "unavailable" });
       }
+    },
+
+    async consolidationLines(period: string) {
+      return withSession(async (db) => {
+        const rows = await db
+          .select({
+            orderId: orderLine.orderId,
+            status: enrollmentOrder.status,
+            supplierId: orderLine.supplierId,
+            supplierName: orderLine.supplierName,
+            materialName: orderLine.materialName,
+            variantLabel: orderLine.variantLabel,
+            quantity: orderLine.quantity,
+            unitPriceCentavos: orderLine.unitPriceCentavos,
+          })
+          .from(orderLine)
+          .innerJoin(enrollmentOrder, eq(orderLine.orderId, enrollmentOrder.id))
+          .where(
+            and(
+              eq(enrollmentOrder.period, period),
+              inArray(enrollmentOrder.status, ["paid", "materials_requested"]),
+            ),
+          )
+          .orderBy(asc(orderLine.orderId), asc(orderLine.position));
+        const [pending] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(enrollmentOrder)
+          .where(
+            and(
+              eq(enrollmentOrder.period, period),
+              eq(enrollmentOrder.status, "pending_confirmation"),
+            ),
+          );
+        const lines: readonly ConsolidationLine[] = rows.map((row) => ({
+          orderId: row.orderId,
+          status: row.status as ConsolidationLine["status"],
+          supplierId: row.supplierId,
+          supplierName: row.supplierName,
+          materialName: row.materialName,
+          variantLabel: row.variantLabel,
+          quantity: row.quantity,
+          unitPrice: money(row.unitPriceCentavos),
+        }));
+        return { lines, pendingOrders: pending?.count ?? 0 };
+      });
     },
 
     async list(query: AdminListQuery) {

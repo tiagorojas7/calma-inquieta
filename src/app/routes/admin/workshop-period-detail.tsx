@@ -66,17 +66,46 @@ function formValues(period: WorkshopPeriod, draft?: WorkshopPeriodDraft) {
     })),
     snapshotPercentage:
       draft?.snapshotPercentage ?? formatPercentage(period.snapshot.percentage),
+    materialIds:
+      draft?.materialIds ?? period.materials.map((material) => material.id),
   };
 }
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const period = await getPeriod(actor, context, params.id, params.period);
+  const historicalOptions = period.materials.map((material) => ({
+    ...material,
+    historical: true,
+  }));
+  let materialOptions = historicalOptions;
+  if (period.status !== "closed") {
+    const selectable = await context
+      .get(servicesContext)
+      .materials.listSelectable(actor);
+    if (!selectable.ok) throw failureResponse(selectable.error);
+    const selectableIds = new Set(
+      selectable.value.map((material) => material.id),
+    );
+    materialOptions = [
+      ...selectable.value.map((material) => ({
+        id: material.id,
+        name: material.name,
+        active: material.active,
+        available: material.available,
+        historical: false,
+      })),
+      ...historicalOptions.filter(
+        (material) => !selectableIds.has(material.id),
+      ),
+    ];
+  }
   return {
     period: period.period,
     status: period.status,
     values: formValues(period),
     images: period.project.images.map((image) => ({ alt: image.alt })),
+    materialOptions,
     materials: period.materials,
     snapshot: {
       teacherName: period.snapshot.teacher.name,
@@ -110,7 +139,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     const rejected = { values, formError: undefined };
     if (saved.error.kind === "invalid")
       return data(
-        { ...rejected, errors: fieldErrors(saved.error.issues) },
+        {
+          ...rejected,
+          errors: fieldErrors(saved.error.issues, {
+            materialIds: { duplicate: copy.duplicateMaterial },
+          }),
+        },
         { status: 422 },
       );
     if (saved.error.kind === "period-closed")
@@ -157,6 +191,7 @@ export default function AdminWorkshopPeriodDetail() {
       {screen.status !== "closed" && (
         <WorkshopPeriodForm
           values={formRejected?.values ?? screen.values}
+          materialOptions={screen.materialOptions}
           errors={formRejected?.errors ?? {}}
           formError={formRejected?.formError}
         />
@@ -276,7 +311,7 @@ export default function AdminWorkshopPeriodDetail() {
         <div className="flex flex-col gap-4">
           <section aria-labelledby="period-materials-title">
             <Heading level={2} id="period-materials-title">
-              {copy.materials}
+              {copy.historicalMaterials}
             </Heading>
             <ul className="mt-3 flex flex-col gap-1">
               {screen.materials.map((material) => (

@@ -172,8 +172,17 @@ describe("tallerToDetail", () => {
     expect(detail.turnosHeading).toBe("Días y horarios");
     expect(detail.fee?.label).toBe("Cuota mensual");
     expect(normalize(detail.fee?.amount ?? "")).toBe("$ 58.000");
-    expect(detail.action).toEqual({ kind: "inquiry", ...link });
+    expect(detail.action).toEqual({
+      kind: "enrollment",
+      href: "/talleres/taller-demo/inscripcion?period=2026-11",
+      label: "Inscribirme",
+    });
     expect(JSON.parse(JSON.stringify(detail))).toEqual(detail);
+  });
+
+  it("keeps the inquiry action when the offering has no turno to enroll in", () => {
+    const detail = detailOf({ turnos: [] });
+    expect(detail.action).toEqual({ kind: "inquiry", ...link });
   });
 
   it("derives the class length per turno and links each turno to its message", () => {

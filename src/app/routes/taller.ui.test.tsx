@@ -145,12 +145,17 @@ describe("Taller detail", { timeout: 60_000 }, () => {
     expectNoSkippedLevels(headingLevels());
   });
 
-  it("shows the page link and one link per turno when open", async () => {
+  it("shows the enrollment link and one WhatsApp link per turno when open", async () => {
     await renderDetail([full]);
+    expect(
+      (await screen.findByRole("link", { name: "Inscribirme" })).getAttribute(
+        "href",
+      ),
+    ).toMatch(/^\/talleres\/[^/]+\/inscripcion\?period=2026-11$/u);
     const links = await screen.findAllByRole("link", {
       name: /Consultá por WhatsApp/u,
     });
-    expect(links).toHaveLength(3);
+    expect(links).toHaveLength(2);
     for (const link of links) {
       expect(link.getAttribute("href")).toMatch(/^https:\/\/wa\.me\//u);
     }

@@ -145,8 +145,12 @@ export function intensivoToCard(
   };
 }
 
+/** Public microcopy of the enrollment call to action (es-AR, voseo). */
+const ENROLLMENT_LABEL = "Inscribirme";
+
 type DetailAction =
   | { kind: "inquiry"; href: string; label: string }
+  | { kind: "enrollment"; href: string; label: string }
   | {
       kind: "paused";
       text: string;
@@ -289,14 +293,24 @@ export function tallerToDetail(
     seatsIndicator(display).kind === "limited"
       ? content.shared.seatsLimited
       : undefined;
-  const action: DetailAction =
-    display === "paused"
-      ? {
-          kind: "paused",
-          text: content.shared.paused,
-          link: { href: links.main.href, label: links.main.label },
-        }
-      : { kind: "inquiry", href: links.main.href, label: links.main.label };
+  let action: DetailAction = {
+    kind: "inquiry",
+    href: links.main.href,
+    label: links.main.label,
+  };
+  if (display === "paused") {
+    action = {
+      kind: "paused",
+      text: content.shared.paused,
+      link: { href: links.main.href, label: links.main.label },
+    };
+  } else if (taller.offering && taller.turnos.length > 0) {
+    action = {
+      kind: "enrollment",
+      href: `/talleres/${taller.slug}/inscripcion?period=${taller.offering.period}`,
+      label: ENROLLMENT_LABEL,
+    };
+  }
   return {
     breadcrumb: {
       label: content.shared.breadcrumbLabel,

@@ -75,9 +75,9 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 
 - [x] **E7-3 — Materials route and final submission.** Delivered in three work units: draft hand-off from the student form (`76feed6`), materials action with whole-payload revalidation and server-owned totals (`312e5c0`), and materials loader (`8917517`). A follow-up correction binds the session draft to the displayed offer period, refuses a draft from another period, maps every `RequestEnrollmentError` to actionable copy, and renders a recovery link when the draft is missing (`9c5f26d`). Focused tests passed (6 files, 31 tests), typecheck, targeted Prettier, and `git diff --check` passed. ESLint ran for the first time with `NODE_OPTIONS=--max-old-space-size=8192` on every E7 source file and reported 15 mechanical errors in E7-1/E7-2 code; they were fixed in `ca7744b` and the rerun is clean.
 
-- [ ] **E7-4 — Public order summary and WhatsApp hand-off.** RED route/UI tests for allowlisted summary, `noindex`, invalid/unknown public-id 404, no email/phone/internal IDs, pending payment steps, paid thank-you state, decoded WhatsApp contract, and hidden link for an invalid profile number. GREEN `src/app/routes/order.tsx` and structural `src/app/ui/templates/order-page.tsx`, consuming `getOrderByPublicId` and `buildOrderWhatsAppLink`. Route: delegated multi-file writer. Expected surfaces: `src/app/routes/order.tsx`, `src/app/routes/order.test.tsx`, `src/app/routes/order.ui.test.tsx`, `src/app/ui/templates/order-page.tsx`. Forecast: 280–370 lines. Commit: pending.
+- [x] **E7-4 — Public order summary and WhatsApp hand-off.** Strict RED failed because `order.tsx` and `order-page.tsx` did not exist. GREEN covers the allowlisted summary (no email, phone, or internal ID serialized), `noindex`/`no-store` headers and meta, 404 for an unknown or malformed public ID, 503 when the store is unavailable, four payment steps while pending, a thank-you state once settled, and the `wa.me` link built with `buildOrderWhatsAppLink` (hidden for an invalid profile number or a non-pending order). Focused tests passed (2 files, 11 tests); typecheck, ESLint, and Prettier passed. Commits: `ec86bda` (page, 158 lines) and `5d34167` (loader, 289 lines).
 
-- [ ] **E7-5 — Register routes and integrate the workshop CTA.** Terminal B released `src/app/routes.ts` after F5a-3a. RED regression tests proving enrollment CTA only for an open current/future offer and unchanged paused, closed, unpublished, and offerless behavior. GREEN register all three routes and minimally extend the workshop detail mapper/route/UI contract. Route: delegated multi-file writer. Expected surfaces: `src/app/routes.ts`, `src/app/routes/taller.tsx`, `src/app/routes/taller.test.tsx`, `src/app/catalog/mappers.ts` and its existing test if required, `src/app/ui/templates/taller-detail-page.tsx` and its existing test only if the discriminated action contract requires it. Forecast: 150–280 lines. Commit: pending.
+- [x] **E7-5 — Register routes and integrate the workshop CTA.** Strict RED failed on the new enrollment action. GREEN registers the three public routes in `src/app/routes.ts` and adds an `enrollment` detail action ("Inscribirme", `/talleres/:slug/inscripcion?period=YYYY-MM`) only for an open taller with a current offering and at least one turno. Paused, offerless, and turnoless tallers keep their previous action. Existing taller tests that asserted the inquiry action for an open offered taller were updated to the approved CTA rule. Focused tests passed (9 files, 101 tests). Commit: `c7a6749` (54 insertions, 13 deletions).
 
 ## Acceptance criteria
 
@@ -96,7 +96,7 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 - Isolated worktree created and registered.
 - Terminal B confirmed no overlap outside `src/app/routes.ts` and potential shared atoms/composites, then explicitly released `src/app/routes.ts` after F5a-3a.
 - Managed Cloudflare rate limiting selected by the owner.
-- E7-1, E7-2, and E7-3 are complete.
+- E7-1 through E7-5 are complete.
 - E7-0 closed by this work-unit commit (`docs(odd): plan E7 public enrollment flow`); `.codegraph/` remained untracked and excluded.
 - The first E7-1 `gentle-ai-worker` process crashed before `agent_settled` with Windows/Node/V8 `0x80000003`. It produced no source changes and no TDD evidence; the worktree remained at the planning commit with only this tracker update and excluded `.codegraph/` untracked. The crash was recorded once and was not retried until green.
 - The preferred independent Pi-session fallback could not launch because Herdr 0.7.5+ is unavailable on this host. No pane or writer was created. One controlled foreground `gentle-ai-worker` recovery was permitted.
@@ -108,6 +108,12 @@ The public workshop catalog still hands visitors to an interim WhatsApp inquiry.
 - Native review inspect stopped on outdated managed assets. The exact provider sync continuation failed because `pi-mcp-adapter/index.ts` is absent; no review lineage was created or approved.
 - E7-2 strict RED was observed with both production modules missing. GREEN/REFACTOR passed 2 focused files and 5 tests, typecheck, targeted Prettier, and `git diff --check`. The 385-line candidate stayed below budget. An independent read-only review found no blocker or non-blocker findings; native review remained unavailable for the already-recorded managed-assets failure. Commit: `6014886`.
 
+- Closure checks: `vitest run --project unit --project ui` passed (254 files, 2868 tests); `pnpm typecheck`, full `eslint .` (with `NODE_OPTIONS=--max-old-space-size=8192`), `pnpm format:check`, and `pnpm build` passed. The `db` project (embedded PostgreSQL) failed broadly in this environment; E7 touches no schema or repository code, so it is recorded as an environmental failure and was not retried.
+
+## Operational requirement: rate limiting
+
+Order creation (`POST /talleres/:slug/inscripcion` and `/inscripcion/materiales`) must sit behind a managed Cloudflare per-IP rate-limit rule. The Worker adds no in-memory limiter because it would not be durable across isolates.
+
 ## Next step
 
-Start E7-4 with strict RED for the public order summary and WhatsApp hand-off. Run ESLint with `NODE_OPTIONS=--max-old-space-size=8192`.
+Manual 360px preview of the public flow, then owner decision on pushing and opening stacked PRs.

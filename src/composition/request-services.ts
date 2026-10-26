@@ -43,6 +43,7 @@ import {
 } from "~/modules/workshops";
 import {
   createOfferedMaterialSnapshotsLookup,
+  createMaterialsService,
   createSuppliersService,
   type SuppliersService,
   type MaterialsService,
@@ -273,7 +274,12 @@ export function createRequestServices(
       repository: createDrizzleSupplierRepository(openSession),
       clock: systemClock,
     }),
-    materials: createUnavailableService<MaterialsService>(),
+    materials: createMaterialsService({
+      repository: materialRepository,
+      suppliers: createDrizzleSupplierRepository(openSession),
+      media,
+      clock: systemClock,
+    }),
     ...enrollmentServices,
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {

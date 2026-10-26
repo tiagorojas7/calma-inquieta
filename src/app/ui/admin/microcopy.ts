@@ -46,6 +46,28 @@ export const adminMicrocopy = {
       message: "Probá con otro estado, mes o búsqueda.",
       action: "Ver pendientes",
     },
+    consolidationLink: "Materiales a pedir",
+    consolidation: {
+      title: (month: string) => `Materiales a pedir: ${month}`,
+      month: "Mes",
+      apply: "Ver mes",
+      pending: (count: number) =>
+        count === 1
+          ? "1 pedido a confirmar (no entra en los totales)."
+          : `${String(count)} pedidos a confirmar (no entran en los totales).`,
+      requested: (count: number) =>
+        count === 1
+          ? "Se marcó 1 pedido como solicitado."
+          : `Se marcaron ${String(count)} pedidos como solicitados.`,
+      columns: { material: "Material", quantity: "Cantidad", total: "Total" },
+      supplierTotal: "Total del proveedor",
+      grandTotal: "Total general",
+      summaryLabel: (supplier: string) => `Resumen para ${supplier}`,
+      copy: "Copiar resumen",
+      copied: "Resumen copiado.",
+      markRequested: "Marcar como solicitado",
+      empty: "No hay materiales para pedir este mes",
+    },
     detail: {
       title: (number: string) => `Pedido ${number}`,
       back: "Volver a inscripciones",

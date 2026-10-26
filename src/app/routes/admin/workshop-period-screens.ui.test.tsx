@@ -128,6 +128,7 @@ function detailStub() {
               projectTitle: "Tazas",
               projectDescription: "Esmaltes",
               capacities: [{ turnoId: "t1", label: "Mañana", capacity: "8" }],
+              snapshotPercentage: "35",
             },
             images: [{ alt: "Taza terminada" }],
             materials: [{ name: "Arcilla", active: false, available: false }],
@@ -153,17 +154,28 @@ describe("workshop period detail admin screen", () => {
     expect(
       await screen.findByRole("heading", { name: "Período 2026-11" }),
     ).toBeVisible();
-    expect(screen.getByText("40000")).toBeVisible();
-    expect(screen.getByText("Tazas")).toBeVisible();
-    expect(screen.getByText("Esmaltes")).toBeVisible();
-    expect(screen.getByText("Mañana: 8")).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Arancel mensual" }),
+    ).toHaveValue("40000");
+    expect(
+      screen.getByRole("checkbox", { name: "Requiere materiales" }),
+    ).toBeChecked();
+    expect(screen.getByRole("textbox", { name: "Título" })).toHaveValue(
+      "Tazas",
+    );
+    expect(screen.getByRole("textbox", { name: "Descripción" })).toHaveValue(
+      "Esmaltes",
+    );
+    expect(screen.getByRole("textbox", { name: "Mañana" })).toHaveValue("8");
+    expect(
+      screen.getByRole("button", { name: "Guardar cambios" }),
+    ).toBeVisible();
     expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
     expect(screen.getByText("Taza terminada")).toBeVisible();
     expect(screen.getByText("Docente al abrir:")).toBeVisible();
     expect(screen.getByText("Cami")).toBeVisible();
     expect(screen.getByText("Modalidad al abrir:")).toBeVisible();
     expect(screen.getByText("De terceros")).toBeVisible();
-    expect(container.querySelector("form")).toBeNull();
     await expectNoAxeViolations(container);
   });
 });

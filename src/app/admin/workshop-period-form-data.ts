@@ -1,3 +1,5 @@
+import type { WorkshopPeriod, WorkshopPeriodDraft } from "~/modules/workshops";
+
 function text(form: FormData, key: string): string {
   const value = form.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -6,6 +8,29 @@ function text(form: FormData, key: string): string {
 /** The only native action this screen accepts. */
 export function parseOpenMonthIntent(form: FormData): "open-month" | null {
   return text(form, "intent") === "open-month" ? "open-month" : null;
+}
+
+export function parsePeriodEditIntent(form: FormData): "save" | null {
+  return text(form, "intent") === "save" ? "save" : null;
+}
+
+export function parsePeriodDraft(
+  form: FormData,
+  period: WorkshopPeriod,
+): WorkshopPeriodDraft {
+  return {
+    fee: text(form, "fee"),
+    materialsRequired: form.get("materialsRequired") === "on",
+    projectTitle: text(form, "projectTitle"),
+    projectDescription: text(form, "projectDescription"),
+    projectImages: [],
+    capacities: period.turnos.map((turno) => ({
+      turnoId: turno.turnoId,
+      capacity: text(form, `capacity-${turno.turnoId}`),
+    })),
+    snapshotPercentage: text(form, "snapshotPercentage"),
+    materialIds: period.materials.map((material) => material.id),
+  };
 }
 
 /** Keep the entered month intact; the service owns calendar and range validation. */

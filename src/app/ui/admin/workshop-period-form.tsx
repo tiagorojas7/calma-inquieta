@@ -8,12 +8,6 @@ import {
 import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.workshops.periods.detail;
-type Field =
-  | "fee"
-  | "projectTitle"
-  | "projectDescription"
-  | "capacities"
-  | "snapshotPercentage";
 type Values = {
   readonly fee: string;
   readonly materialsRequired: boolean;
@@ -33,7 +27,7 @@ export function WorkshopPeriodForm({
   formError,
 }: {
   values: Values;
-  errors: Readonly<Partial<Record<Field, string>>>;
+  errors: Readonly<Partial<Record<keyof Values, string>>>;
   formError?: string | undefined;
 }) {
   return (

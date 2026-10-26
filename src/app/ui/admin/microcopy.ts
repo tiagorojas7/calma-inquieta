@@ -114,6 +114,27 @@ export const adminMicrocopy = {
       turnos: "Turnos activos",
     },
     noTeacher: "Sin profesor",
+    periods: {
+      manage: "Administrar períodos",
+      title: (workshop: string) => `Períodos de ${workshop}`,
+      back: "Volver al taller",
+      listLabel: "Períodos del taller",
+      statuses: {
+        draft: "Borrador",
+        open: "Abierto",
+        closed: "Cerrado",
+      },
+      columns: {
+        month: "Mes",
+        status: "Estado",
+        fee: "Arancel",
+        capacity: "Cupos totales",
+      },
+      empty: {
+        title: "Todavía no hay períodos",
+        message: "Los períodos que abras se organizan acá.",
+      },
+    },
     turnos: {
       manage: "Administrar turnos",
       title: (workshop: string) => `Turnos de ${workshop}`,

@@ -27,9 +27,10 @@ Merged Git history is stronger than stale OpenSpec checkboxes:
 | Work unit | Behavior                                                                                  | Forecast production | Forecast tests/docs | Forecast total | Delivery |
 | --------- | ----------------------------------------------------------------------------------------- | ------------------: | ------------------: | -------------: | -------- |
 | F5a-1     | Wire the real `WorkshopPeriodsService` in request composition                             |               15–30 |               25–50 |          40–80 | PR 1     |
-| F5a-2     | Period list and open-next-month route/UI                                                  |             150–190 |             100–150 |        250–340 | PR 2     |
-| F5a-3     | Period detail/edit: fee, capacities, project fields, snapshot, read-only material summary |             180–230 |             130–160 |        310–390 | PR 3     |
-| F5a-4     | Lifecycle controls, closed read-only state, accessibility and 360px hardening             |             100–140 |             140–190 |        260–330 | PR 4     |
+| F5a-2a    | Period list/navigation route and presentational table                                     |             100–130 |              80–100 |        180–230 | PR 2     |
+| F5a-2b    | Open-next-month form/action/parser and conflict feedback                                  |              90–120 |              75–100 |        165–220 | PR 3     |
+| F5a-3     | Period detail/edit: fee, capacities, project fields, snapshot, read-only material summary |             180–230 |             130–160 |        310–390 | PR 4     |
+| F5a-4     | Lifecycle controls, closed read-only state, accessibility and 360px hardening             |             100–140 |             140–190 |        260–330 | PR 5     |
 
 The material editor and gallery remain F5b. Tests stay with behavior; no compression or omission is allowed to meet the line budget.
 
@@ -41,7 +42,7 @@ The material editor and gallery remain F5b. Tests stay with behavior; no compres
 - `src/composition/request-services.ts`
 - `src/composition/request-services.workshop-periods.test.ts`
 
-### F5a-2 to F5a-4 (reserved; narrow before each writer)
+### F5a-2a to F5a-4 (reserved; narrow before each writer)
 
 - `odd/tasks/admin-f5a-periods.md`
 - `openspec/changes/admin-catalog/tasks.md`
@@ -69,7 +70,8 @@ The material editor and gallery remain F5b. Tests stay with behavior; no compres
       actor validation. GREEN/REFACTOR: dedicated composition test passes 2/2. Independent
       verification passed the 52-test composition suite, typecheck, lint, format check,
       build, and `git diff --check`. Commit one wiring work unit.
-- [ ] F5a-2 — RED/GREEN/REFACTOR period list and open-next-month routes/UI, including authorization-first, duplicate conflict, unavailable state, native forms, empty state, axe, and 360px table containment. Commit one list/open work unit.
+- [x] F5a-2a — RED/GREEN/REFACTOR list/navigation only: register the list route, link it from workshop detail, authorize before any service access, and render the accessible responsive period table with empty, missing, and unavailable states. No form or action. Commit one independently shippable list work unit.
+- [ ] F5a-2b — RED/GREEN/REFACTOR open-next-month native form/action/parser, validation, conflict feedback, and detail redirect. Starts after F5a-2a; keep it out of the list candidate. Commit one independently shippable open-month work unit.
 - [ ] F5a-3 — RED/GREEN/REFACTOR period detail/edit for fee, capacities, project fields, snapshot, audit data, and read-only historical material summary. Preserve submitted values and field/form errors. Commit one detail/edit work unit.
 - [ ] F5a-4 — RED/GREEN/REFACTOR publish/close/delete controls, closed-period read-only behavior, history visibility, responsive action wrapping, keyboard access, and final accessibility coverage. Commit one lifecycle/hardening work unit.
 - [ ] F5a-5 — Run final independent verification, reconcile native review, prepare issue-first chained delivery evidence, and stop for owner publication authorization.
@@ -77,8 +79,8 @@ The material editor and gallery remain F5b. Tests stay with behavior; no compres
 ## Acceptance criteria and checks
 
 - Every loader/action calls `requireAdmin` before service access; denial performs no dependency work.
-- Unavailable services return the established `503` state and never render partial success.
-- Duplicate opening and validation conflicts preserve existing periods and submitted values.
+- F5a-2a's loader returns the established `503` state without partial success; its list route has no action.
+- F5a-2b handles duplicate opening and validation conflicts while preserving existing periods and submitted values.
 - Closed periods remain readable and expose no mutation controls.
 - Existing enabled materials are visible but not editable until F5b.
 - Native document forms preserve the admin gate; no `.data` mutation navigation.
@@ -94,3 +96,8 @@ The material editor and gallery remain F5b. Tests stay with behavior; no compres
 - F5a-1 work-unit commit: `bb85b54` (`feat(composition): wire workshop period service`), 154 authored changed lines (152 additions, 2 deletions). Rollback restores the `workshopPeriods` unavailable placeholder and removes the dedicated composition test; Enrollment is unaffected.
 - Independent verification passed focused 2/2, composition 52/52, typecheck, lint, format check, build, and `git diff --check`; no candidate-caused finding remained.
 - Native review could not start: INSPECT stopped on `managed_assets_outdated`, and the exact provider sync continuation failed because the Pi MCP adapter entrypoint is missing. No lineage, authority, or review mutation was created. The independent verifier remains the review evidence for this work unit.
+- F5a-2 originally reached 534 formatted authored lines, so the required single slicing pass separated F5a-2a list/navigation from F5a-2b open-month behavior without compressing tests.
+- F5a-2a strict TDD: RED proved the combined route still exported an action; GREEN/REFACTOR passed 19/19 focused tests. Writer gates passed typecheck, lint, targeted format checks, build, and `git diff --check`.
+- Independent verification confirmed the loader-only route, actor-first access, 403/404/503 states, no form/action, axe-clean list/empty states, labelled contained scrolling, and exact separation from the three deferred F5a-2b paths. A false-positive formatter finding was corrected: `formatWholePesos` resolves to the unchanged base helper, not the deferred period parser.
+- F5a-2a work-unit commit: `a54e24b` (`feat(admin): list workshop periods`), 328 authored changed lines (315 additions, 13 deletions), below the 400-line budget. Rollback removes the list route/navigation/screen and their tests without touching composition or backend APIs.
+- Native assessment remained unassessable because deferred F5a-2b helpers and `.codegraph/` are untracked; native review is explicitly unavailable from the missing Pi MCP adapter. The writer and independent verifier evidence therefore satisfy the returned high-risk fallback plan.

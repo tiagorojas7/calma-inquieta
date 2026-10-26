@@ -52,10 +52,8 @@ describe("admin workshop periods route", () => {
       params: { id },
       context: context(periodService({ openMonth }), fixture.service),
     } as never);
-    expect(result).toMatchObject({
-      status: 302,
-      headers: expect.any(Headers),
-    });
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(302);
     expect((result as Response).headers.get("Location")).toBe(
       `/admin/talleres/${id}/periodos`,
     );

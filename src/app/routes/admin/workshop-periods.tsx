@@ -19,6 +19,7 @@ import type { Route } from "./+types/workshop-periods";
 
 const LIST = "/admin/talleres";
 const copy = adminMicrocopy.workshops.periods;
+const emptyPeriodErrors = (): Partial<Record<"period", string>> => ({});
 
 export function meta() {
   return [{ title: "Períodos | Panel | Calma Inquieta" }];
@@ -78,7 +79,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     return data(
       {
         values: { period },
-        errors: {} as Partial<Record<"period", string>>,
+        errors: emptyPeriodErrors(),
         formError: openMonthRulesMessage(opened.error.rules),
       },
       { status: 422 },

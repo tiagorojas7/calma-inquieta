@@ -49,13 +49,19 @@ describe("taller loader", () => {
       args(servicesWith([{ slug: "demo", name: "Demo" }]), "demo"),
     );
     expect(result.detail.name).toBe("Demo");
-    expect(result.detail.action.kind).toBe("inquiry");
+    expect(result.detail.action).toMatchObject({
+      kind: "enrollment",
+      href: "/talleres/demo/inscripcion?period=2026-11",
+    });
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
   });
 
   it("builds the page link from the profile with the taller name", async () => {
     const result = await loader(
-      args(servicesWith([{ name: "Taller Demo" }]), "taller-demo"),
+      args(
+        servicesWith([{ name: "Taller Demo", offering: null }]),
+        "taller-demo",
+      ),
     );
     const action = result.detail.action;
     if (action.kind !== "inquiry")

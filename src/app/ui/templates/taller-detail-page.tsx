@@ -33,6 +33,7 @@ export interface TallerDetailProps {
   notice?: string;
   action:
     | { kind: "inquiry"; href: string; label: string }
+    | { kind: "enrollment"; href: string; label: string }
     | {
         kind: "paused";
         text: string;

@@ -8,6 +8,7 @@ const EXPECTED = [
   ["Talleres", "/admin/talleres"],
   ["Intensivos", "/admin/intensivos"],
   ["Profesores", "/admin/profesores"],
+  ["Inscripciones", "/admin/inscripciones"],
   ["Materiales", "/admin/materiales"],
 ];
 

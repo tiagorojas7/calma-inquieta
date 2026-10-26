@@ -14,6 +14,39 @@ export const adminMicrocopy = {
   confirm: {
     cancel: "Cancelar",
   },
+  enrollments: {
+    title: "Inscripciones",
+    filterLabel: "Filtrar inscripciones",
+    filters: {
+      status: "Estado",
+      month: "Mes",
+      workshop: "Taller",
+      anyWorkshop: "Todos los talleres",
+      search: "Buscar",
+      searchHint: "Número de pedido, nombre o email.",
+      apply: "Filtrar",
+    },
+    columns: {
+      number: "Pedido",
+      student: "Alumno",
+      workshop: "Taller",
+      month: "Mes",
+      turno: "Turno",
+      status: "Estado",
+      total: "Total",
+      requestedOn: "Solicitado",
+    },
+    pagination: {
+      label: "Paginación",
+      previous: "Anterior",
+      next: "Siguiente",
+    },
+    empty: {
+      title: "No hay inscripciones para este filtro",
+      message: "Probá con otro estado, mes o búsqueda.",
+      action: "Ver pendientes",
+    },
+  },
   rowEditor: {
     moveUp: "Subir",
     moveDown: "Bajar",

@@ -31,7 +31,7 @@ describe("AdminLanding", () => {
     const { container } = render(<AdminLanding email="agus@example.com" />);
     expect(screen.getByText("Hola, agus@example.com")).toBeInTheDocument();
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["Talleres", "Intensivos", "Profesores", "Materiales"],
+      ["Talleres", "Intensivos", "Profesores", "Inscripciones", "Materiales"],
     );
     expect(screen.queryByRole("table")).toBeNull();
     await expectNoAxeViolations(container);

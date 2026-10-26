@@ -1,36 +1,15 @@
 import { data, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
-import { CATALOG_FORMAT_TEXT, formatTimeRange } from "~/app/catalog/format";
+import { formatTimeRange } from "~/app/catalog/format";
+import { monthLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
 import { OrderPage } from "~/app/ui/templates/order-page";
 import type { AppServices } from "~/composition/request-services";
-import {
-  buildOrderWhatsAppLink,
-  formatPesos,
-  type OrderStatus,
-} from "~/modules/enrollments";
+import { buildOrderWhatsAppLink, formatPesos } from "~/modules/enrollments";
 
 type RouteArgs = {
   params: { publicId?: string };
   context: { get(key: typeof servicesContext): AppServices };
 };
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending_confirmation: "Pendiente de confirmación",
-  paid: "Cobrado",
-  materials_requested: "Solicitado al proveedor",
-  materials_received: "Recibido",
-  cancelled: "Cancelado",
-};
-
-const PERIOD_KEY = /^(\d{4})-(\d{2})$/;
-
-function monthLabel(period: string): string {
-  const match = PERIOD_KEY.exec(period);
-  const month = CATALOG_FORMAT_TEXT.monthNames[Number(match?.[2]) - 1];
-  return match === null || month === undefined
-    ? period
-    : `${month} ${match[1] ?? ""}`;
-}
 
 export async function loader({ context, params }: RouteArgs) {
   const services = context.get(servicesContext);
@@ -48,7 +27,7 @@ export async function loader({ context, params }: RouteArgs) {
   return {
     number: order.number,
     status: order.status,
-    statusLabel: STATUS_LABELS[order.status],
+    statusLabel: ORDER_STATUS_LABELS[order.status],
     workshopName: order.workshopName,
     month: monthLabel(order.period),
     turno: `${order.turnoLabel} · ${formatTimeRange(order.startsAt, order.endsAt)}`,

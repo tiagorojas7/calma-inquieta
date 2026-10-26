@@ -39,6 +39,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     periods: listed.value.periods.map((period) => ({
       id: period.id,
       period: period.period,
+      href: `${LIST}/${params.id}/periodos/${period.period}`,
       status: period.status,
       fee: formatWholePesos(period.fee),
       totalCapacity: period.totalCapacity,

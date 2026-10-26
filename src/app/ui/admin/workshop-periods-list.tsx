@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
@@ -8,6 +9,7 @@ import { adminMicrocopy } from "./microcopy";
 export interface WorkshopPeriodRow {
   readonly id: string;
   readonly period: string;
+  readonly href: string;
   readonly status: keyof typeof copy.statuses;
   readonly fee: string;
   readonly totalCapacity: number;
@@ -32,7 +34,11 @@ export function WorkshopPeriodsList({
   };
 }) {
   const columns: readonly DataTableColumn<WorkshopPeriodRow>[] = [
-    { key: "period", header: copy.columns.month, cell: (row) => row.period },
+    {
+      key: "period",
+      header: copy.columns.month,
+      cell: (row) => <Link to={row.href}>{row.period}</Link>,
+    },
     {
       key: "status",
       header: copy.columns.status,

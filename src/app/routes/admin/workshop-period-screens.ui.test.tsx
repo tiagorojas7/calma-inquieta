@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import AdminWorkshopPeriodDetail from "./workshop-period-detail";
 import AdminWorkshopPeriods from "./workshop-periods";
 
 function stub({
@@ -9,6 +10,7 @@ function stub({
     {
       id: "p1",
       period: "2026-10",
+      href: "/admin/talleres/w1/periodos/2026-10",
       status: "open",
       fee: "40000",
       totalCapacity: 14,
@@ -19,6 +21,7 @@ function stub({
   rows?: {
     id: string;
     period: string;
+    href: string;
     status: "open";
     fee: string;
     totalCapacity: number;
@@ -100,5 +103,67 @@ describe("workshop periods admin screen", () => {
     expect(
       screen.getByText("Revisá el mes para abrir el período."),
     ).toBeVisible();
+  });
+});
+
+function detailStub() {
+  const Stub = createRoutesStub([
+    {
+      path: "/admin/talleres/:id/periodos/:period",
+      Component: AdminWorkshopPeriodDetail,
+      id: "period-detail",
+    },
+  ]);
+  return (
+    <Stub
+      initialEntries={["/admin/talleres/w1/periodos/2026-11"]}
+      hydrationData={{
+        loaderData: {
+          "period-detail": {
+            period: "2026-11",
+            status: "draft",
+            values: {
+              fee: "40000",
+              materialsRequired: true,
+              projectTitle: "Tazas",
+              projectDescription: "Esmaltes",
+              capacities: [{ turnoId: "t1", label: "Mañana", capacity: "8" }],
+            },
+            images: [{ alt: "Taza terminada" }],
+            materials: [{ name: "Arcilla", active: false, available: false }],
+            snapshot: {
+              teacherName: "Cami",
+              modality: "third_party",
+              percentage: "35",
+            },
+            audit: {
+              updatedBy: "admin@example.test",
+              updatedAt: "5 oct 2026, 09:00",
+            },
+          },
+        },
+      }}
+    />
+  );
+}
+
+describe("workshop period detail admin screen", () => {
+  it("renders an accessible read-only historical summary without a form", async () => {
+    const { container } = render(detailStub());
+    expect(
+      await screen.findByRole("heading", { name: "Período 2026-11" }),
+    ).toBeVisible();
+    expect(screen.getByText("40000")).toBeVisible();
+    expect(screen.getByText("Tazas")).toBeVisible();
+    expect(screen.getByText("Esmaltes")).toBeVisible();
+    expect(screen.getByText("Mañana: 8")).toBeVisible();
+    expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
+    expect(screen.getByText("Taza terminada")).toBeVisible();
+    expect(screen.getByText("Docente al abrir:")).toBeVisible();
+    expect(screen.getByText("Cami")).toBeVisible();
+    expect(screen.getByText("Modalidad al abrir:")).toBeVisible();
+    expect(screen.getByText("De terceros")).toBeVisible();
+    expect(container.querySelector("form")).toBeNull();
+    await expectNoAxeViolations(container);
   });
 });

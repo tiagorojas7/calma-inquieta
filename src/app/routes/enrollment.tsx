@@ -1,5 +1,13 @@
-import { data, redirect, useActionData, useLoaderData } from "react-router";
+import {
+  data,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { servicesContext } from "~/app/context";
+import { saveEnrollmentDraft } from "~/app/enrollment/enrollment-draft";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 import type { AppServices } from "~/composition/request-services";
 import type { RequestEnrollmentError } from "~/modules/enrollments";
@@ -171,15 +179,37 @@ export async function action({ request, context, params }: RouteArgs) {
 export default function EnrollmentRoute() {
   const loaded = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
-  if ("paused" in loaded) return <EnrollmentPage state="paused" />;
+  const navigate = useNavigate();
+  const { slug = "" } = useParams();
+  const offer = loaded.offer;
+  if (offer === undefined) return <EnrollmentPage state="paused" />;
+  const period = offer.period;
+
+  function continueToMaterials() {
+    if (!rejected?.needsMaterials) return;
+    saveEnrollmentDraft(window.sessionStorage, slug, {
+      student: {
+        ...rejected.values,
+        period,
+        policyAccepted: true,
+      },
+      lines: [],
+    });
+    navigate(
+      `/talleres/${slug}/inscripcion/materiales?period=${encodeURIComponent(period)}`,
+    );
+  }
+
   return (
     <EnrollmentPage
       state="open"
-      offer={loaded.offer}
+      offer={offer}
       values={rejected?.values ?? EMPTY_VALUES}
       errors={rejected?.errors ?? {}}
       {...(rejected?.formError ? { formError: rejected.formError } : {})}
-      {...(rejected?.needsMaterials ? { needsMaterials: true } : {})}
+      {...(rejected?.needsMaterials
+        ? { needsMaterials: true, onContinueToMaterials: continueToMaterials }
+        : {})}
     />
   );
 }

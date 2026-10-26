@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 
 describe("EnrollmentPage", () => {
@@ -66,6 +66,33 @@ describe("EnrollmentPage", () => {
     ])
       expect(screen.getByText(message)).toBeVisible();
     expect(screen.getByLabelText("Nombre completo")).toHaveValue("Ana");
+  });
+
+  it("continues a valid student draft to the materials step", () => {
+    const onContinueToMaterials = vi.fn();
+    render(
+      <EnrollmentPage
+        errors={{}}
+        needsMaterials
+        offer={{
+          workshopName: "Cerámica",
+          period: "2026-11",
+          fee: "$ 58.000",
+          materialsRequired: true,
+          turnos: [{ id: "a", label: "Martes" }],
+        }}
+        onContinueToMaterials={onContinueToMaterials}
+        state="open"
+        values={{
+          fullName: "Ana",
+          email: "ana@example.test",
+          phone: "3515550000",
+          turnoId: "a",
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Elegir materiales" }));
+    expect(onContinueToMaterials).toHaveBeenCalledOnce();
   });
 
   it("shows paused enrollment with no form or unsupported contact path", () => {

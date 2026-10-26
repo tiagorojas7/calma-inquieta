@@ -25,6 +25,8 @@ export interface EnrollmentMaterialsPageProps {
     lineTotal: string;
   }[];
   total: string;
+  studentJson?: string;
+  formError?: string | undefined;
   onAdd(materialId: string, variantId: string, quantity: number): void;
 }
 
@@ -45,7 +47,9 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
         <Text tone="accent">{materialsLabel}</Text>
       </header>
 
+      {props.formError ? <p role="alert">{props.formError}</p> : null}
       <form className="grid gap-6 lg:grid-cols-[1fr_20rem]" method="post">
+        <input name="student" type="hidden" value={props.studentJson ?? ""} />
         <div className="flex flex-col gap-6">
           {props.materials.map((material) => (
             <fieldset className="flex flex-col gap-3" key={material.materialId}>

@@ -85,8 +85,8 @@ describe("enrollment draft", () => {
     const full: EnrollmentDraft = {
       ...draft,
       lines: Array.from({ length: MAX_CART_LINES }, (_, index) => ({
-        materialId: `material-${index}`,
-        variantId: `variant-${index}`,
+        materialId: `material-${String(index)}`,
+        variantId: `variant-${String(index)}`,
         quantity: 1,
       })),
     };

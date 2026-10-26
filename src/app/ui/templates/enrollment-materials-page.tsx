@@ -93,24 +93,24 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                         className="w-20"
                         max={20}
                         min={1}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setQuantities((current) => ({
                             ...current,
                             [variant.variantId]: Number(event.target.value),
-                          }))
-                        }
+                          }));
+                        }}
                         type="number"
                         value={quantity}
                       />
                     </label>
                     <Button
-                      onClick={() =>
+                      onClick={() => {
                         props.onAdd(
                           material.materialId,
                           variant.variantId,
                           quantity,
-                        )
-                      }
+                        );
+                      }}
                       type="button"
                       variant="outline"
                     >
@@ -128,7 +128,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           {props.lines.map((line) => (
             <Text
               key={line.variantId}
-            >{`${line.label} ×${line.quantity}: ${line.lineTotal}`}</Text>
+            >{`${line.label} ×${String(line.quantity)}: ${line.lineTotal}`}</Text>
           ))}
           <Text>Total</Text>
           <strong>{props.total}</strong>

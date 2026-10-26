@@ -138,6 +138,11 @@ export async function loader({ context, params, request }: RouteArgs) {
   };
 }
 
+function textField(form: FormData, name: string): string {
+  const value = form.get(name);
+  return typeof value === "string" ? value : "";
+}
+
 export async function action({ request, context, params }: RouteArgs) {
   const form = await request.formData();
   const values = valuesFrom(form);
@@ -145,20 +150,14 @@ export async function action({ request, context, params }: RouteArgs) {
     .get(servicesContext)
     .publicEnrollments.requestEnrollment({
       slug: params.slug ?? "",
-      period:
-        typeof form.get("period") === "string"
-          ? String(form.get("period"))
-          : "",
+      period: textField(form, "period"),
       turnoId: values.turnoId,
       student: {
         fullName: values.fullName,
         email: values.email,
         phone: values.phone,
         policyAccepted: form.get("policy") === "on",
-        honeypot:
-          typeof form.get("honeypot") === "string"
-            ? String(form.get("honeypot"))
-            : "",
+        honeypot: textField(form, "honeypot"),
       },
       lines: [],
     });
@@ -195,7 +194,7 @@ export default function EnrollmentRoute() {
       },
       lines: [],
     });
-    navigate(
+    void navigate(
       `/talleres/${slug}/inscripcion/materiales?period=${encodeURIComponent(period)}`,
     );
   }

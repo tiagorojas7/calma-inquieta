@@ -342,6 +342,104 @@ export function runAdminEnrollmentStoreContract(
       });
     });
 
+    it("lists consolidation lines of paid and requested orders by stored period", async () => {
+      const harness = await setup();
+      const materialLine = (materialName: string, quantity: number) => ({
+        materialId: "m-1",
+        variantId: "v-1",
+        materialName,
+        variantLabel: "Grande",
+        unitPrice: pesos(1_000),
+        quantity,
+        supplierId: "supplier-1",
+        supplierName: "Papelería Sur",
+      });
+      const withLines = (
+        period: string,
+        materialName: string,
+        quantity: number,
+        overrides: Partial<OrderDraft> = {},
+      ) => {
+        const materialsTotal = pesos(1_000 * quantity);
+        return harness.createOrder({
+          period,
+          lines: [materialLine(materialName, quantity)],
+          materialsTotal,
+          total: pesos(58_000 + 1_000 * quantity),
+          ...overrides,
+        });
+      };
+      const paid = await withLines("2026-11", "Arcilla", 2);
+      const requested = await withLines("2026-11", "Esmalte", 1, {
+        turnoId: "t-2",
+      });
+      const received = await withLines("2026-11", "Pincel", 1, {
+        turnoId: "t-2",
+      });
+      await withLines("2026-11", "Torno", 1);
+      const cancelled = await withLines("2026-11", "Horno", 1);
+      const otherPeriod = await withLines("2026-10", "Arcilla", 5, {
+        requestedAt: new Date("2026-11-01T01:00:00Z"),
+      });
+      for (const order of [paid, requested, received, otherPeriod])
+        await confirm(harness.store, order);
+      for (const [order, to] of [
+        [requested, "materials_requested"],
+        [received, "materials_requested"],
+        [received, "materials_received"],
+      ] as const)
+        await harness.store.markMaterials({
+          orderId: order.id,
+          to,
+          actor,
+          now,
+        });
+      await cancel(harness.store, cancelled);
+
+      const november = await harness.store.consolidationLines("2026-11");
+
+      expect(
+        november.lines
+          .map((item) => ({
+            orderId: item.orderId,
+            status: item.status,
+            supplierName: item.supplierName,
+            materialName: item.materialName,
+            variantLabel: item.variantLabel,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice.toCentavos(),
+          }))
+          .sort((a, b) => a.materialName.localeCompare(b.materialName)),
+      ).toEqual([
+        {
+          orderId: paid.id,
+          status: "paid",
+          supplierName: "Papelería Sur",
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 2,
+          unitPrice: 100_000,
+        },
+        {
+          orderId: requested.id,
+          status: "materials_requested",
+          supplierName: "Papelería Sur",
+          materialName: "Esmalte",
+          variantLabel: "Grande",
+          quantity: 1,
+          unitPrice: 100_000,
+        },
+      ]);
+      expect(november.pendingOrders).toBe(1);
+      const october = await harness.store.consolidationLines("2026-10");
+      expect(october.lines.map((item) => item.orderId)).toEqual([
+        otherPeriod.id,
+      ]);
+      await expect(
+        harness.store.consolidationLines("2026-12"),
+      ).resolves.toEqual({ lines: [], pendingOrders: 0 });
+    });
+
     it("allows different turnos to progress independently", async () => {
       const harness = await setup();
       const first = await harness.createOrder();

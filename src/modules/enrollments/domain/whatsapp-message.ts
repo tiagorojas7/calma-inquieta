@@ -36,7 +36,7 @@ const MONTHS = [
 
 const PERIOD_KEY = /^(\d{4})-(\d{2})$/;
 
-function monthLabel(periodKey: string): string {
+export function monthLabel(periodKey: string): string {
   const match = PERIOD_KEY.exec(periodKey);
   const month = MONTHS[Number(match?.[2]) - 1];
   return match === null || month === undefined

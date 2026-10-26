@@ -21,8 +21,18 @@ export type {
   AdminEnrollmentPeriodLookup,
   AdminEnrollmentStore,
   AdminListItem,
+  ConsolidationLine,
   AdminListQuery,
 } from "./application/admin-enrollment-store";
+export {
+  createSupplierConsolidationService,
+  createUnavailableSupplierConsolidationService,
+  type ConsolidatedMaterial,
+  type ConsolidationError,
+  type SupplierConsolidation,
+  type SupplierConsolidationUseCases,
+  type SupplierSection,
+} from "./application/supplier-consolidation";
 export {
   createPublicEnrollmentService,
   type OfferGateError,

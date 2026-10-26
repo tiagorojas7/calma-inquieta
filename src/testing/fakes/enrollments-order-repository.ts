@@ -7,6 +7,7 @@ import {
   type AdminEnrollmentStoreError,
   type AdminListQuery,
   type Cancelled,
+  type ConsolidationLine,
   type Confirmed,
 } from "~/modules/enrollments/application/admin-enrollment-store";
 import type {
@@ -368,6 +369,38 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
       page,
       pageSize: 50 as const,
     };
+  }
+  async consolidationLines(period: string) {
+    const lines: ConsolidationLine[] = [];
+    for (const status of ["paid", "materials_requested"] as const) {
+      for (let page = 1; ; page += 1) {
+        const rows = await this.orders.listForAdmin({ status, period, page });
+        for (const order of rows)
+          for (const line of order.lines)
+            lines.push({
+              orderId: order.id,
+              status,
+              supplierId: line.supplierId,
+              supplierName: line.supplierName,
+              materialName: line.materialName,
+              variantLabel: line.variantLabel,
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+            });
+        if (rows.length < 50) break;
+      }
+    }
+    let pendingOrders = 0;
+    for (let page = 1; ; page += 1) {
+      const rows = await this.orders.listForAdmin({
+        status: "pending_confirmation",
+        period,
+        page,
+      });
+      pendingOrders += rows.length;
+      if (rows.length < 50) break;
+    }
+    return { lines, pendingOrders };
   }
   async detail(
     orderId: string,

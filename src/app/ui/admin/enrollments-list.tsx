@@ -100,7 +100,15 @@ export function EnrollmentsList({
 }: EnrollmentsListProps) {
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{copy.title}</Heading>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Heading level={1}>{copy.title}</Heading>
+        <AdminButtonLink
+          variant="outline"
+          href="/admin/inscripciones/materiales"
+        >
+          {copy.consolidationLink}
+        </AdminButtonLink>
+      </div>
       <form
         role="search"
         method="get"

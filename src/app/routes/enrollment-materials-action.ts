@@ -10,6 +10,14 @@ type ActionArgs = {
   context: { get(key: typeof servicesContext): AppServices };
 };
 
+function requestedPeriod(request: Request): string {
+  try {
+    return new URL(request.url).searchParams.get("period") ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function parseJson(value: FormDataEntryValue | null): unknown {
   if (typeof value !== "string") return null;
   try {
@@ -72,8 +80,22 @@ function actionMessage(error: RequestEnrollmentError): string {
     case "invalid-quantity":
     case "too-many-lines":
       return "Revisá las cantidades seleccionadas.";
-    default:
-      return "No pudimos confirmar la oferta actual.";
+    case "turno-full":
+    case "turno-not-offered":
+      return "Ese turno ya no está disponible. Volvé a elegirlo.";
+    case "duplicate-order":
+      return "Ya tenés una inscripción activa para este taller.";
+    case "invalid":
+      return "Revisá tus datos antes de continuar.";
+    case "not-found":
+    case "period-closed":
+    case "enrollments-paused":
+      return "La inscripción cambió. Volvé al taller para empezar de nuevo.";
+    case "invalid-price":
+    case "invalid-fee":
+    case "invalid-total":
+    case "unavailable":
+      return "Actualizá la página y probá de nuevo.";
   }
 }
 
@@ -81,7 +103,12 @@ export async function action({ context, params, request }: ActionArgs) {
   const form = await request.formData();
   const student = parseStudent(parseJson(form.get("student")));
   const cart = parseLines(parseJson(form.get("lines")));
-  if (student === null || cart === null || !cart.ok) {
+  if (
+    student === null ||
+    student.period !== requestedPeriod(request) ||
+    cart === null ||
+    !cart.ok
+  ) {
     return data(
       { formError: "Revisá los datos de tu inscripción." },
       { status: 422 },

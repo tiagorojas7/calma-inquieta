@@ -21,13 +21,14 @@ function post(
   studentValue: unknown,
   lines: unknown,
   extra: Record<string, string> = {},
+  requestPeriod = "2026-11",
 ) {
   const form = new FormData();
   form.set("student", JSON.stringify(studentValue));
   form.set("lines", JSON.stringify(lines));
   for (const [key, value] of Object.entries(extra)) form.set(key, value);
   return new Request(
-    "http://localhost/talleres/ceramica/inscripcion/materiales",
+    `http://localhost/talleres/ceramica/inscripcion/materiales?period=${requestPeriod}`,
     {
       method: "POST",
       body: form,
@@ -54,6 +55,18 @@ describe("enrollment materials action", () => {
       request: post(student, [
         { materialId: "arcilla", variantId: "grande", quantity: 21 },
       ]),
+    });
+
+    expect(result).toMatchObject({ init: { status: 422 } });
+    expect(requestEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("refuses a persisted student draft from a different displayed period", async () => {
+    const requestEnrollment = vi.fn();
+    const services = servicesWith(requestEnrollment);
+    const result = await action({
+      ...args(services),
+      request: post({ ...student, period: "2026-10" }, [], {}, "2026-11"),
     });
 
     expect(result).toMatchObject({ init: { status: 422 } });
@@ -104,7 +117,24 @@ describe("enrollment materials action", () => {
       { kind: "invalid-quantity", variantId: "grande" },
       "Revisá las cantidades seleccionadas.",
     ],
-    [{ kind: "unavailable" }, "No pudimos confirmar la oferta actual."],
+    [
+      { kind: "turno-full" },
+      "Ese turno ya no está disponible. Volvé a elegirlo.",
+    ],
+    [
+      { kind: "turno-not-offered" },
+      "Ese turno ya no está disponible. Volvé a elegirlo.",
+    ],
+    [
+      { kind: "duplicate-order" },
+      "Ya tenés una inscripción activa para este taller.",
+    ],
+    [{ kind: "invalid", issues: [] }, "Revisá tus datos antes de continuar."],
+    [
+      { kind: "period-closed" },
+      "La inscripción cambió. Volvé al taller para empezar de nuevo.",
+    ],
+    [{ kind: "unavailable" }, "Actualizá la página y probá de nuevo."],
   ])("maps %o to actionable fail-closed feedback", async (failure, message) => {
     const services = servicesWith(vi.fn().mockResolvedValue(err(failure)));
     const result = await action({

@@ -5,7 +5,8 @@ import {
   addDraftLine,
   loadEnrollmentDraft,
   saveEnrollmentDraft,
-  type EnrollmentDraft,
+  selectEnrollmentDraft,
+  type StoredEnrollmentDraft,
 } from "~/app/enrollment/enrollment-draft";
 import { EnrollmentMaterialsPage } from "~/app/ui/templates/enrollment-materials-page";
 import type { AppServices } from "~/composition/request-services";
@@ -66,11 +67,16 @@ export async function loader({ context, params, request }: RouteArgs) {
 export default function EnrollmentMaterialsRoute() {
   const loaded = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
-  const [draft, setDraft] = useState<EnrollmentDraft | null>(null);
+  const [stored, setStored] = useState<StoredEnrollmentDraft | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+  const currentKey = `${loaded.slug}:${loaded.offer.period}`;
+  const draft = selectEnrollmentDraft(stored, loaded.slug, loaded.offer.period);
 
   useEffect(() => {
-    setDraft(loadEnrollmentDraft(window.sessionStorage, loaded.slug));
-  }, [loaded.slug]);
+    const next = loadEnrollmentDraft(window.sessionStorage, loaded.slug);
+    setStored(next === null ? null : { slug: loaded.slug, draft: next });
+    setResolvedKey(currentKey);
+  }, [currentKey, loaded.slug]);
 
   const lines = useMemo(
     () =>
@@ -105,11 +111,18 @@ export default function EnrollmentMaterialsRoute() {
     const next = addDraftLine(draft, { materialId, variantId, quantity });
     if (!next.ok) return;
     saveEnrollmentDraft(window.sessionStorage, loaded.slug, next.value);
-    setDraft(next.value);
+    setStored({ slug: loaded.slug, draft: next.value });
   }
 
   return (
     <EnrollmentMaterialsPage
+      draftState={
+        resolvedKey !== currentKey
+          ? "loading"
+          : draft === null
+            ? "missing"
+            : "ready"
+      }
       fee={loaded.offer.fee}
       formError={rejected?.formError}
       lines={lines}
@@ -117,6 +130,7 @@ export default function EnrollmentMaterialsRoute() {
       materialsRequired={loaded.offer.materialsRequired}
       onAdd={onAdd}
       period={loaded.offer.period}
+      recoveryHref={`/talleres/${loaded.slug}/inscripcion?period=${encodeURIComponent(loaded.offer.period)}`}
       studentJson={draft === null ? "" : JSON.stringify(draft.student)}
       total={formatPesos(total)}
       workshopName={loaded.offer.workshopName}

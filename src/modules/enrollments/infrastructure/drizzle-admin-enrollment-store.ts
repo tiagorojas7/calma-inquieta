@@ -382,6 +382,7 @@ export function createDrizzleAdminEnrollmentStore(
           .offset((page - 1) * 50),
       );
       const items: readonly AdminListItem[] = rows.map((row) => ({
+        id: row.id,
         number: row.number,
         studentName: row.studentName,
         workshopName: row.workshopName,

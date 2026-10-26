@@ -572,7 +572,7 @@ describe("admin enrollment service", () => {
       ok: true,
       value: {
         items: [
-          { number: newer.number, requestedOn: "2026-10-31" },
+          { id: newer.id, number: newer.number, requestedOn: "2026-10-31" },
           { number: older.number, status: "pending_confirmation" },
           { number: order.number, status: "pending_confirmation" },
         ],

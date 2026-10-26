@@ -70,7 +70,10 @@ describe("EnrollmentConsolidation", () => {
     render(
       <EnrollmentConsolidation
         {...base}
-        suppliers={[{ ...base.suppliers[0]!, orderIds: [] }]}
+        suppliers={base.suppliers.map((supplier) => ({
+          ...supplier,
+          orderIds: [],
+        }))}
       />,
     );
 

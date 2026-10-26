@@ -807,6 +807,79 @@ describe("WorkshopPeriodsService", () => {
     expect(materialLookupCalls).toEqual([]);
   });
 
+  it("preserves an existing material that later becomes unselectable while saving other fields", async () => {
+    const { service, periods, materialLookupCalls } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const opened = await periods.findById("p");
+    if (!opened) throw new Error("missing period fixture");
+    const historical = {
+      id: "material-2",
+      name: "Original paint",
+      active: true,
+      available: true,
+    };
+    await periods.update({ ...opened, materials: [historical] });
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        fee: "42000",
+        materialIds: ["material-2", "material-4"],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        materials: [
+          historical,
+          { id: "material-4", name: "Ink", active: true, available: true },
+        ],
+      },
+    });
+    expect(materialLookupCalls).toEqual([["material-4"]]);
+
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-4", "material-2"],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { materials: [{ id: "material-4" }, historical] },
+    });
+    await expect(
+      service.update(testAdminActor(), "p", {
+        ...draft,
+        materialIds: ["material-2"],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { materials: [historical] },
+    });
+    expect(materialLookupCalls).toEqual([["material-4"]]);
+  });
+
+  it("refuses a newly added inactive or unavailable material", async () => {
+    const { service, periods } = await setup();
+    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const before = await periods.findById("p");
+
+    for (const materialId of ["material-2", "material-3"]) {
+      await expect(
+        service.update(testAdminActor(), "p", {
+          ...draft,
+          materialIds: [materialId],
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "materialIds", code: "not-selectable" }],
+        },
+      });
+    }
+    expect(await periods.findById("p")).toEqual(before);
+  });
+
   it("rejects duplicate, unknown, inactive, and unavailable material selections without mutation", async () => {
     const { service, periods, materialLookupCalls } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");

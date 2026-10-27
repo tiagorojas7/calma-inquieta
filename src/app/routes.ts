@@ -32,6 +32,7 @@ export default [
     route("profesores/nuevo", "routes/admin/teacher-new.tsx"),
     route("profesores/:id", "routes/admin/teacher-detail.tsx"),
     route("materiales", "routes/admin/materials.tsx"),
+    route("materiales/:id", "routes/admin/material-detail.tsx"),
     route("materiales/proveedores", "routes/admin/suppliers.tsx"),
     route("materiales/proveedores/nuevo", "routes/admin/supplier-new.tsx"),
     route("materiales/proveedores/:id", "routes/admin/supplier-detail.tsx"),

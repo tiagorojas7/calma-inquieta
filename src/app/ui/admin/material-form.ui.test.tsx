@@ -103,8 +103,20 @@ describe("MaterialForm", () => {
       values: {
         ...empty,
         variants: [
-          { label: "Chica", price: "1000", swatch: "", available: true },
-          { label: "Grande", price: "2000", swatch: "", available: true },
+          {
+            id: "variant-small",
+            label: "Chica",
+            price: "1000",
+            swatch: "",
+            available: true,
+          },
+          {
+            id: "variant-large",
+            label: "Grande",
+            price: "2000",
+            swatch: "",
+            available: true,
+          },
         ],
       },
     });
@@ -120,6 +132,11 @@ describe("MaterialForm", () => {
     const reordered = screen.getAllByLabelText("Variante")[1];
     if (!reordered) throw new Error("missing reordered variant");
     expect(reordered).toHaveValue("Chica editada");
+    expect(
+      Array.from(document.querySelectorAll('input[name="variantId"]')).map(
+        (input) => input.getAttribute("value"),
+      ),
+    ).toEqual(["variant-large", "variant-small"]);
     const remove = screen.getAllByRole("button", {
       name: "Quitar variante",
     })[1];

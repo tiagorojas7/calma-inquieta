@@ -11,6 +11,7 @@ export {
 export type {
   MaterialFilter,
   MaterialRepository,
+  VariantUsageLookup,
 } from "./application/material-repository";
 export {
   createMaterialLookup,

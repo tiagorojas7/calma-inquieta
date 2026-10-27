@@ -12,6 +12,13 @@ export class MaterialNameConflictError extends Error {}
 /** Duplicate normalized labels inside one material rejected by persistence. */
 export class MaterialVariantLabelConflictError extends Error {}
 
+/** Read-only cross-module seam for historical variant references. */
+export interface VariantUsageLookup {
+  findUsedVariantIds(
+    variantIds: readonly string[],
+  ): Promise<ReadonlySet<string>>;
+}
+
 export interface MaterialRepository {
   /** Inserts the root and every variant atomically. */
   insert(material: Material): Promise<void>;

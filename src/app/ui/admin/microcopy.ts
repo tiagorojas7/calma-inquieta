@@ -531,6 +531,50 @@ export const adminMicrocopy = {
       message: "Probá con otros filtros o cargá un material nuevo.",
     },
   },
+  materialDetail: {
+    back: "Volver a materiales",
+    edit: {
+      title: "Editar material",
+      save: "Guardar cambios",
+      saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+      variantRequired: "Agregá al menos una variante para guardar el material.",
+      variantInUse:
+        "No se pudo guardar porque una variante usada no puede eliminarse. Conservá las variantes existentes e intentá de nuevo.",
+    },
+    category: "Categoría",
+    state: "Estado",
+    availability: "Disponibilidad",
+    available: "Disponible",
+    unavailable: "No disponible",
+    supplier: "Proveedor",
+    noSupplier: "Sin proveedor",
+    image: "Imagen",
+    imageUnavailable: "La imagen ya no está disponible.",
+    variants: "Variantes",
+    price: (value: string) => `$${value}`,
+    used: "Usada",
+    swatch: "Muestra de color",
+    audit: {
+      title: "Última actualización",
+      by: "Actualizado por",
+      at: "Fecha y hora",
+    },
+    lifecycle: {
+      title: "Acciones",
+      deactivate: "Desactivar",
+      reactivate: "Reactivar",
+      failed: "No se pudo actualizar el estado del material. Probá de nuevo.",
+      confirmDeactivate: {
+        title: "¿Desactivar este material?",
+        message:
+          "Deja de estar disponible para materiales nuevos. Podés reactivarlo cuando quieras.",
+      },
+      confirmReactivate: {
+        title: "¿Reactivar este material?",
+        message: "Vuelve a estar disponible según sus variantes activas.",
+      },
+    },
+  },
   materialForm: {
     name: "Nombre",
     description: "Descripción",

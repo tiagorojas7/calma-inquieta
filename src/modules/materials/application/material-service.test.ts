@@ -265,6 +265,100 @@ describe("material service", () => {
     });
   });
 
+  it("preserves omitted used variants as unavailable while allowing unused variants to be removed", async () => {
+    const { repository, service } = await setup();
+    const created = valueOf(
+      await service.create(
+        actor,
+        draft({
+          variants: [
+            { label: "Used", price: "12500", available: true, swatch: "" },
+            { label: "Unused", price: "15000", available: true, swatch: "" },
+          ],
+        }),
+      ),
+    );
+    const [used, unused] = created.variants;
+    if (!used || !unused) throw new Error("expected variants");
+    repository.materials.set(created.id, {
+      ...created,
+      variants: [{ ...used, used: true }, unused],
+    });
+
+    const updated = valueOf(
+      await service.update(
+        other,
+        created.id,
+        draft({
+          variants: [
+            {
+              id: unused.id,
+              label: "Unused",
+              price: "15000",
+              available: true,
+              swatch: "",
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(updated.variants).toEqual([
+      expect.objectContaining({ id: unused.id, used: false, available: true }),
+      expect.objectContaining({ id: used.id, used: true, available: false }),
+    ]);
+  });
+
+  it("keeps an empty update as the minimum-one-variant validation failure", async () => {
+    const { repository, service } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    repository.materials.set(created.id, {
+      ...created,
+      variants: [{ ...created.variants[0]!, used: true }],
+    });
+
+    expect(
+      await service.update(actor, created.id, draft({ variants: [] })),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "variants", code: "required" }],
+      },
+    });
+  });
+
+  it("retains its archived supplier but refuses a changed archived supplier", async () => {
+    const { suppliers, service } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    await suppliers.update({ ...supplier, active: false });
+
+    expect(await service.update(actor, created.id, draft())).toMatchObject({
+      ok: true,
+      value: { supplier: { id: supplier.id, active: false } },
+    });
+
+    const archivedOther = buildSupplier({
+      id: "supplier-2",
+      name: "Archived other",
+      active: false,
+    });
+    await suppliers.insert(archivedOther);
+    expect(
+      await service.update(
+        actor,
+        created.id,
+        draft({ supplierId: archivedOther.id }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "supplierId", code: "not-selectable" }],
+      },
+    });
+  });
+
   it("maps active-name prechecks and write races to a name duplicate issue", async () => {
     const { repository, service } = await setup();
     await service.create(actor, draft());

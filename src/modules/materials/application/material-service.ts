@@ -124,7 +124,10 @@ export function createMaterialsService(
     return holder !== null && holder.id !== selfId;
   }
 
-  async function validateReferences(valid: ValidMaterialDraft): Promise<{
+  async function validateReferences(
+    valid: ValidMaterialDraft,
+    current: Material | null,
+  ): Promise<{
     readonly supplier: Material["supplier"] | null;
     readonly imageAsset: MediaAsset | null;
     readonly issues: readonly FieldIssue<MaterialField>[];
@@ -132,7 +135,7 @@ export function createMaterialsService(
     const issues: FieldIssue<MaterialField>[] = [];
     const supplier = await suppliers.findById(valid.supplierId);
     if (!supplier) issues.push(issue("supplierId", "unknown-reference"));
-    else if (!supplier.active)
+    else if (!supplier.active && supplier.id !== current?.supplier.id)
       issues.push(issue("supplierId", "not-selectable"));
 
     let imageAsset: MediaAsset | null = null;
@@ -150,17 +153,31 @@ export function createMaterialsService(
     valid: ValidMaterialDraft,
     current: Material | null,
   ): readonly MaterialVariant[] {
-    const currentIds = new Set(current?.variants.map((variant) => variant.id));
-    return valid.variants.map((variant) => ({
-      id:
-        variant.id && currentIds.has(variant.id) ? variant.id : newVariantId(),
-      label: variant.label,
-      price: variant.price,
-      available: variant.available,
-      used: false,
-      position: variant.position,
-      swatch: variant.swatch,
-    }));
+    const currentById = new Map(
+      current?.variants.map((variant) => [variant.id, variant]),
+    );
+    const submittedIds = new Set(
+      valid.variants.flatMap((variant) => (variant.id ? [variant.id] : [])),
+    );
+    const submitted = valid.variants.map((variant) => {
+      const existing = variant.id ? currentById.get(variant.id) : undefined;
+      return {
+        id: existing ? existing.id : newVariantId(),
+        label: variant.label,
+        price: variant.price,
+        available: variant.available,
+        used: existing?.used ?? false,
+        position: variant.position,
+        swatch: variant.swatch,
+      };
+    });
+    const retained = (current?.variants ?? []).filter(
+      (variant) => variant.used && !submittedIds.has(variant.id),
+    );
+    return [
+      ...submitted,
+      ...retained.map((variant) => ({ ...variant, available: false })),
+    ];
   }
 
   async function buildMaterial(
@@ -168,7 +185,7 @@ export function createMaterialsService(
     valid: ValidMaterialDraft,
     current: Material | null,
   ): Promise<Result<Material, MaterialError>> {
-    const references = await validateReferences(valid);
+    const references = await validateReferences(valid, current);
     if (references.issues.length > 0)
       return err({ kind: "invalid", issues: references.issues });
     if (!references.supplier)

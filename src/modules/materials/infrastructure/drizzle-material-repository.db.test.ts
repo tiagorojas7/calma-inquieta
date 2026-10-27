@@ -6,6 +6,7 @@ import {
   type MaterialRepository,
 } from "~/modules/materials";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { enrollmentOrder, orderLine } from "~/platform/db/schema/enrollments";
 import { supplier } from "~/platform/db/schema/materials";
 import {
   buildStoredMaterial,
@@ -174,6 +175,57 @@ describe("createDrizzleMaterialRepository", () => {
         }),
       ),
     ).rejects.toThrow();
+  });
+
+  it("marks variants referenced by historical order lines as used", async () => {
+    const { openSession, repository } = await freshRepository();
+    const stored = buildStoredMaterial();
+    await repository.insert(stored);
+    const session = await openSession();
+    try {
+      await session.db.insert(enrollmentOrder).values({
+        id: "00000000-0000-4000-8000-000000000501",
+        publicId: "historical-order",
+        number: "CI-2026-0001",
+        status: "pending_confirmation",
+        source: "public",
+        workshopId: "00000000-0000-4000-8000-000000000502",
+        periodId: "00000000-0000-4000-8000-000000000503",
+        period: "2026-10",
+        turnoId: "00000000-0000-4000-8000-000000000504",
+        workshopName: "Workshop",
+        turnoLabel: "Morning",
+        weekday: 1,
+        startsAt: "09:00:00",
+        endsAt: "10:00:00",
+        studentName: "Student",
+        studentEmail: "student@example.com",
+        studentPhoneDigits: "3515555555",
+        feeCentavos: 10_000,
+        materialsCentavos: 12_500,
+        totalCentavos: 22_500,
+        policyVersion: "v1",
+        requestedAt: new Date("2026-10-20T12:00:00.000Z"),
+      });
+      await session.db.insert(orderLine).values({
+        orderId: "00000000-0000-4000-8000-000000000501",
+        position: 0,
+        materialId: stored.id,
+        variantId: stored.variants[0]!.id,
+        materialName: stored.name,
+        variantLabel: stored.variants[0]!.label,
+        unitPriceCentavos: stored.variants[0]!.price.toCentavos(),
+        quantity: 1,
+        supplierId: stored.supplier.id,
+        supplierName: stored.supplier.name,
+      });
+    } finally {
+      await session.close();
+    }
+
+    expect(await repository.findById(stored.id)).toMatchObject({
+      variants: [{ id: stored.variants[0]!.id, used: true }],
+    });
   });
 
   it("keeps materials readable through their live archived supplier", async () => {

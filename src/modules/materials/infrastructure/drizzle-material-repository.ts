@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
+import { orderLine } from "~/platform/db/schema/enrollments";
 import {
   material,
   materialVariant,
@@ -54,7 +55,21 @@ function toVariant(row: VariantRow): MaterialVariant {
   };
 }
 
-function toMaterial(row: JoinedRow, variants: readonly VariantRow[]): Material {
+export function markUsedVariants(
+  variants: readonly MaterialVariant[],
+  usedVariantIds: ReadonlySet<string>,
+): readonly MaterialVariant[] {
+  return variants.map((variant) => ({
+    ...variant,
+    used: usedVariantIds.has(variant.id),
+  }));
+}
+
+function toMaterial(
+  row: JoinedRow,
+  variants: readonly VariantRow[],
+  usedVariantIds: ReadonlySet<string>,
+): Material {
   return {
     id: row.material.id,
     name: row.material.name,
@@ -71,7 +86,7 @@ function toMaterial(row: JoinedRow, variants: readonly VariantRow[]): Material {
             asset: null,
           }
         : null,
-    variants: variants.map(toVariant),
+    variants: markUsedVariants(variants.map(toVariant), usedVariantIds),
     audit: {
       updatedBy: row.material.updatedBy,
       updatedAt: row.material.updatedAt,
@@ -139,6 +154,23 @@ function mapMaterialConflict(error: unknown): never {
   throw error;
 }
 
+async function loadUsedVariantIds(
+  db: Db,
+  variants: readonly VariantRow[],
+): Promise<ReadonlySet<string>> {
+  if (variants.length === 0) return new Set();
+  const rows = await db
+    .select({ variantId: orderLine.variantId })
+    .from(orderLine)
+    .where(
+      inArray(
+        orderLine.variantId,
+        variants.map((variant) => variant.id),
+      ),
+    );
+  return new Set(rows.map((row) => row.variantId));
+}
+
 async function loadMaterials(
   db: Db,
   condition: SQL | undefined,
@@ -160,6 +192,7 @@ async function loadMaterials(
       asc(materialVariant.position),
       asc(materialVariant.id),
     );
+  const usedVariantIds = await loadUsedVariantIds(db, variants);
   const byMaterial = new Map<string, VariantRow[]>();
   for (const variant of variants) {
     const values = byMaterial.get(variant.materialId) ?? [];
@@ -167,7 +200,7 @@ async function loadMaterials(
     byMaterial.set(variant.materialId, values);
   }
   return roots.map((row) =>
-    toMaterial(row, byMaterial.get(row.material.id) ?? []),
+    toMaterial(row, byMaterial.get(row.material.id) ?? [], usedVariantIds),
   );
 }
 

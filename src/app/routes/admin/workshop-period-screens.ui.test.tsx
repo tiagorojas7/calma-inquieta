@@ -139,7 +139,24 @@ function detailStub(status: "draft" | "open" | "closed" = "draft") {
               projectDescription: "Esmaltes",
               capacities: [{ turnoId: "t1", label: "Mañana", capacity: "8" }],
               snapshotPercentage: "35",
+              materialIds: ["m1"],
             },
+            materialOptions: [
+              {
+                id: "m2",
+                name: "Esmalte",
+                active: true,
+                available: true,
+                historical: false,
+              },
+              {
+                id: "m1",
+                name: "Arcilla",
+                active: false,
+                available: false,
+                historical: true,
+              },
+            ],
             images: [{ alt: "Taza terminada" }],
             materials: [{ name: "Arcilla", active: false, available: false }],
             snapshot: {
@@ -180,6 +197,15 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("button", { name: "Guardar cambios" }),
     ).toBeVisible();
+    const materialChoices = screen.getByRole("group", { name: "Materiales" });
+    expect(
+      within(materialChoices).getByRole("checkbox", { name: "Esmalte" }),
+    ).not.toBeChecked();
+    expect(
+      within(materialChoices).getByRole("checkbox", {
+        name: /Arcilla.*histórico/,
+      }),
+    ).toBeChecked();
     expect(
       screen.getByRole("button", { name: "Publicar período" }),
     ).toBeVisible();
@@ -207,6 +233,7 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("textbox", { name: "Arancel mensual" }),
     ).toBeVisible();
+    expect(screen.getByRole("group", { name: "Materiales" })).toBeVisible();
     await expectNoAxeViolations(container);
   });
 
@@ -216,6 +243,7 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.queryByRole("textbox", { name: "Arancel mensual" }),
     ).toBeNull();
+    expect(screen.queryByRole("group", { name: "Materiales" })).toBeNull();
     expect(
       screen.queryByRole("button", {
         name: /Guardar|Publicar|Cerrar|Eliminar/,

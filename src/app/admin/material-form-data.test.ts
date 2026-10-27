@@ -53,6 +53,25 @@ describe("parseMaterialDraft", () => {
     });
   });
 
+  it("keeps a persisted ID aligned after a new row", () => {
+    expect(
+      parseMaterialDraft(
+        formOf({
+          variantId: ["", "variant-existing"],
+          variantLabel: ["Nueva", "Existente"],
+          variantPrice: ["100", "200"],
+          variantSwatch: ["", ""],
+          variantAvailable: ["0", "1"],
+        }),
+      ),
+    ).toMatchObject({
+      variants: [
+        { label: "Nueva" },
+        { id: "variant-existing", label: "Existente" },
+      ],
+    });
+  });
+
   it("uses one Única row by default and turns absent or file parts into safe values", () => {
     expect(
       parseMaterialDraft(formOf({ name: new File(["x"], "x.txt") })),

@@ -149,6 +149,34 @@ describe("MaterialForm", () => {
     expect(screen.getByLabelText("Variante")).toHaveValue("Grande");
   });
 
+  it("keeps empty IDs aligned when a new variant moves before an existing one", async () => {
+    renderForm({
+      values: {
+        ...empty,
+        variants: [
+          {
+            id: "variant-existing",
+            label: "Existente",
+            price: "1000",
+            swatch: "",
+            available: true,
+          },
+        ],
+      },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Agregar variante" }),
+    );
+    const moveUp = screen.getAllByRole("button", { name: "Subir variante" })[1];
+    if (!moveUp) throw new Error("missing second move-up button");
+    fireEvent.click(moveUp);
+    expect(
+      Array.from(document.querySelectorAll('input[name="variantId"]')).map(
+        (input) => input.getAttribute("value"),
+      ),
+    ).toEqual(["", "variant-existing"]);
+  });
+
   it("maps label, price and swatch errors to the affected variant row", async () => {
     renderForm({
       values: {

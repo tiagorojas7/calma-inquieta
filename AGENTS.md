@@ -47,6 +47,7 @@ Conventional Commits only. Never add `Co-Authored-By` lines or any AI attributio
 ## Commands
 
 - `pnpm test`, `pnpm test:coverage`: Vitest (coverage thresholds 90 % lines and branches on the kernel, domain and application code)
+- `pnpm test:db`: the embedded-PostgreSQL project on the threads pool. On Windows the default fork pool crashes the worker (exit code 3221226505); CI keeps running it through `pnpm test`.
 - `pnpm lint`: generates the Worker and route types, then ESLint, including the dependency rule (type-aware rules need the generated types, so run it this way on a fresh clone)
 - `pnpm format:check`, `pnpm format`: Prettier
 - `pnpm typecheck`: generates Worker and route types, then TypeScript (`tsc -b`: `tsconfig.node.json` for tooling and tests, `tsconfig.cloudflare.json` for Worker code)

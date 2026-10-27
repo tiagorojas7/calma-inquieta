@@ -500,6 +500,42 @@ export const adminMicrocopy = {
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",
     },
   },
+  suppliers: {
+    title: "Proveedores",
+    newTitle: "Nuevo proveedor",
+    editTitle: "Editar proveedor",
+    newAction: "Nuevo proveedor",
+    back: "Volver a materiales",
+    filterLabel: "Mostrar proveedores",
+    filters: {
+      activos: "Activos",
+      archivados: "Archivados",
+      todos: "Todos",
+    },
+    columns: { name: "Nombre", phone: "Teléfono", state: "Estado" },
+    noPhone: "Sin teléfono",
+    empty: {
+      title: "Todavía no hay proveedores",
+      message: "Cargá el primero para poder asignarlo a un material.",
+    },
+    form: {
+      name: "Nombre",
+      phone: "Teléfono",
+      email: "Correo electrónico",
+      notes: "Notas",
+      notesHint: "Solo las ve el equipo.",
+      save: "Guardar",
+      cancel: "Cancelar",
+      saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    state: {
+      archive: "Archivar",
+      reactivate: "Reactivar",
+      archivedNotice: "Este proveedor está archivado.",
+      archivedHint:
+        "No se puede elegir para materiales nuevos. Los materiales que ya lo tienen lo siguen mostrando. Podés reactivarlo cuando quieras.",
+    },
+  },
   errors: {
     generic: {
       title: "Algo salió mal",

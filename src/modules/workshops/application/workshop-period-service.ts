@@ -333,18 +333,22 @@ export function createWorkshopPeriodsService(
           field: "snapshotPercentage",
           code: "percentage-not-applicable",
         });
-      const historical = loaded.value.value.materials;
-      const materialsUnchanged =
-        draft.materialIds.length === historical.length &&
-        draft.materialIds.every((id, index) => id === historical[index]?.id);
-      const selectedMaterials: ReadonlyMap<string, Material> =
-        draft.materialIds.length && !materialsUnchanged
-          ? await deps.materials.findByIds(draft.materialIds)
-          : new Map<string, Material>();
-      const materials: EnabledMaterial[] = materialsUnchanged
-        ? [...historical]
-        : [];
-      for (const id of materialsUnchanged ? [] : draft.materialIds) {
+      const historicalById = new Map(
+        loaded.value.value.materials.map((material) => [material.id, material]),
+      );
+      const addedIds = draft.materialIds.filter(
+        (materialId) => !historicalById.has(materialId),
+      );
+      const selectedMaterials: ReadonlyMap<string, Material> = addedIds.length
+        ? await deps.materials.findByIds(addedIds)
+        : new Map<string, Material>();
+      const materials: EnabledMaterial[] = [];
+      for (const id of draft.materialIds) {
+        const historical = historicalById.get(id);
+        if (historical) {
+          materials.push(historical);
+          continue;
+        }
         const material = selectedMaterials.get(id);
         if (!material)
           issues.push({ field: "materialIds", code: "unknown-reference" });

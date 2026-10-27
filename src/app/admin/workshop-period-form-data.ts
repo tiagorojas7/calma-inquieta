@@ -37,7 +37,11 @@ export function parsePeriodDraft(
       capacity: text(form, `capacity-${turno.turnoId}`),
     })),
     snapshotPercentage: text(form, "snapshotPercentage"),
-    materialIds: period.materials.map((material) => material.id),
+    materialIds: form
+      .getAll("materialIds")
+      .filter(
+        (materialId): materialId is string => typeof materialId === "string",
+      ),
   };
 }
 

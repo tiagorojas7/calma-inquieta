@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -63,7 +63,17 @@ describe("workshop periods admin screen", () => {
     const table = await screen.findByRole("table", {
       name: "Períodos del taller",
     });
-    expect(within(table).getByText("2026-10")).toBeVisible();
+    const periodLink = within(table).getByRole("link", { name: "2026-10" });
+    expect(periodLink).toBeVisible();
+    const seen = { prevented: false };
+    const observe = (event: Event) => {
+      seen.prevented = event.defaultPrevented;
+      event.preventDefault();
+    };
+    document.addEventListener("click", observe);
+    fireEvent.click(periodLink);
+    document.removeEventListener("click", observe);
+    expect(seen.prevented).toBe(false);
     expect(within(table).getByText("Abierto")).toBeVisible();
     expect(within(table).getByText("40000")).toBeVisible();
     expect(within(table).getByText("14")).toBeVisible();
@@ -129,7 +139,24 @@ function detailStub(status: "draft" | "open" | "closed" = "draft") {
               projectDescription: "Esmaltes",
               capacities: [{ turnoId: "t1", label: "Mañana", capacity: "8" }],
               snapshotPercentage: "35",
+              materialIds: ["m1"],
             },
+            materialOptions: [
+              {
+                id: "m2",
+                name: "Esmalte",
+                active: true,
+                available: true,
+                historical: false,
+              },
+              {
+                id: "m1",
+                name: "Arcilla",
+                active: false,
+                available: false,
+                historical: true,
+              },
+            ],
             images: [{ alt: "Taza terminada" }],
             materials: [{ name: "Arcilla", active: false, available: false }],
             snapshot: {
@@ -170,6 +197,15 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("button", { name: "Guardar cambios" }),
     ).toBeVisible();
+    const materialChoices = screen.getByRole("group", { name: "Materiales" });
+    expect(
+      within(materialChoices).getByRole("checkbox", { name: "Esmalte" }),
+    ).not.toBeChecked();
+    expect(
+      within(materialChoices).getByRole("checkbox", {
+        name: /Arcilla.*histórico/,
+      }),
+    ).toBeChecked();
     expect(
       screen.getByRole("button", { name: "Publicar período" }),
     ).toBeVisible();
@@ -197,6 +233,7 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("textbox", { name: "Arancel mensual" }),
     ).toBeVisible();
+    expect(screen.getByRole("group", { name: "Materiales" })).toBeVisible();
     await expectNoAxeViolations(container);
   });
 
@@ -206,6 +243,7 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.queryByRole("textbox", { name: "Arancel mensual" }),
     ).toBeNull();
+    expect(screen.queryByRole("group", { name: "Materiales" })).toBeNull();
     expect(
       screen.queryByRole("button", {
         name: /Guardar|Publicar|Cerrar|Eliminar/,

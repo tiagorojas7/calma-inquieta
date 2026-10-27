@@ -2,6 +2,12 @@
  * Admin primitive strings (es-AR, voseo). F0a extends this file with the
  * layout and navigation copy; the same copy rule scans both.
  */
+function materialAvailability(active: boolean, available: boolean): string {
+  const state = active ? "activo" : "inactivo";
+  const availability = available ? "disponible" : "no disponible";
+  return `${state}, ${availability}`;
+}
+
 export const adminMicrocopy = {
   status: {
     draft: "Borrador",
@@ -301,7 +307,18 @@ export const adminMicrocopy = {
         capacityFloor: "No bajes el cupo debajo de los lugares confirmados.",
         updatedBy: "Actualizado por",
         updatedAt: "Última actualización",
-        materials: "Materiales históricos",
+        materials: "Materiales",
+        historicalMaterials: "Materiales históricos",
+        duplicateMaterial: "No repitas materiales en el período.",
+        materialOption: (item: {
+          name: string;
+          active: boolean;
+          available: boolean;
+          historical: boolean;
+        }) =>
+          item.historical
+            ? `${item.name} (histórico: ${materialAvailability(item.active, item.available)})`
+            : item.name,
         images: "Imágenes históricas",
         notApplicable: "No corresponde",
         material: (item: {
@@ -309,7 +326,7 @@ export const adminMicrocopy = {
           active: boolean;
           available: boolean;
         }) =>
-          `${item.name} (${item.active ? "activo" : "inactivo"}, ${item.available ? "disponible" : "no disponible"})`,
+          `${item.name} (${materialAvailability(item.active, item.available)})`,
       },
     },
 

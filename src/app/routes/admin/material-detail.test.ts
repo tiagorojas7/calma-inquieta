@@ -73,6 +73,7 @@ function context(
     get?: MaterialsService["get"];
     deactivate?: MaterialsService["deactivate"];
     reactivate?: MaterialsService["reactivate"];
+    update?: MaterialsService["update"];
     list?: SuppliersService["list"];
   } = {},
 ) {
@@ -82,6 +83,7 @@ function context(
         ...(options.get ? { get: options.get } : {}),
         ...(options.deactivate ? { deactivate: options.deactivate } : {}),
         ...(options.reactivate ? { reactivate: options.reactivate } : {}),
+        ...(options.update ? { update: options.update } : {}),
       }),
       suppliers: withOverrides(createUnavailableService<SuppliersService>(), {
         ...(options.list ? { list: options.list } : {}),
@@ -105,6 +107,117 @@ function submit(intent: string, options = {}, id = ID) {
     context: context(options),
   } as never);
 }
+
+function save(fields: [string, string][], options = {}, id = ID) {
+  const body = new URLSearchParams(fields);
+  return action({
+    request: new Request(`https://panel.example.test/admin/materiales/${id}`, {
+      method: "POST",
+      headers: {
+        Origin: "https://panel.example.test",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    }),
+    params: { id },
+    context: context(options),
+  } as never);
+}
+
+type SaveValidationResponse = {
+  data: {
+    formError?: string;
+    values: {
+      image: { assetId: string; alt: string } | null;
+      variants: readonly { id?: string; label: string }[];
+    };
+    errors: {
+      name?: string;
+      variants?: { rows?: readonly { price?: string }[] };
+    };
+  };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSaveValidationResponse(
+  value: unknown,
+): value is SaveValidationResponse {
+  if (!isRecord(value)) return false;
+
+  const data: unknown = value.data;
+  if (!isRecord(data)) return false;
+  const errors: unknown = data["errors"];
+  const values: unknown = data["values"];
+  if (
+    !isRecord(errors) ||
+    !isRecord(values) ||
+    !Array.isArray(values.variants)
+  ) {
+    return false;
+  }
+  if (data.formError !== undefined && typeof data.formError !== "string") {
+    return false;
+  }
+  if (
+    values.image !== null &&
+    (!isRecord(values.image) ||
+      typeof values.image.assetId !== "string" ||
+      typeof values.image.alt !== "string")
+  ) {
+    return false;
+  }
+  if (
+    !values.variants.every(
+      (variant) =>
+        isRecord(variant) &&
+        (variant.id === undefined || typeof variant.id === "string") &&
+        typeof variant.label === "string",
+    )
+  ) {
+    return false;
+  }
+  if (errors.name !== undefined && typeof errors.name !== "string")
+    return false;
+  if (errors.variants === undefined) return true;
+  if (!isRecord(errors.variants)) return false;
+  if (errors.variants.rows === undefined) return true;
+  return (
+    Array.isArray(errors.variants.rows) &&
+    errors.variants.rows.every(
+      (row) =>
+        isRecord(row) &&
+        (row.price === undefined || typeof row.price === "string"),
+    )
+  );
+}
+
+const saveFields: [string, string][] = [
+  ["intent", "save"],
+  ["name", "Pincel editado"],
+  ["description", "Para óleo."],
+  ["category", "Pinceles"],
+  ["supplierId", SUPPLIER_ID],
+  ["available", "on"],
+  ["imageAssetId", "image-1"],
+  ["imageAlt", "Un pincel editado"],
+  ["variantId", "v2"],
+  ["variantLabel", "Grande"],
+  ["variantPrice", "3000"],
+  ["variantSwatch", "#222222"],
+  ["variantAvailable", "0"],
+  ["variantId", "v1"],
+  ["variantLabel", "Chico"],
+  ["variantPrice", "2500"],
+  ["variantSwatch", "#111111"],
+  ["variantAvailable", "1"],
+  ["variantLabel", "Nuevo"],
+  ["variantPrice", "1200"],
+  ["variantSwatch", ""],
+  ["variantAvailable", "2"],
+];
 
 describe("admin material detail loader", () => {
   it("hydrates the detail, active supplier choices with its archived supplier, variants, image and Córdoba audit", async () => {
@@ -212,7 +325,7 @@ describe("admin material detail action", () => {
   });
 
   it("rejects unknown intents and maps lifecycle failures", async () => {
-    await expect(thrownStatus(() => submit("save"))).resolves.toBe(400);
+    await expect(thrownStatus(() => submit("unknown"))).resolves.toBe(400);
     for (const [kind, status] of [
       ["denied", 403],
       ["not-found", 404],
@@ -245,5 +358,147 @@ describe("admin material detail action", () => {
       data: { stateError: "Ya existe uno activo con el mismo nombre." },
       init: { status: 422 },
     });
+  });
+
+  it("saves reordered identified variants and new variants, then redirects back", async () => {
+    const update = vi.fn<MaterialsService["update"]>();
+    update.mockResolvedValue({ ok: true as const, value: material } as never);
+
+    const response = await save(saveFields, { update });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      ID,
+      expect.objectContaining({
+        name: "Pincel editado",
+        image: { assetId: "image-1", alt: "Un pincel editado" },
+        variants: [
+          expect.objectContaining({ id: "v2", label: "Grande", price: "3000" }),
+          expect.objectContaining({ id: "v1", label: "Chico", price: "2500" }),
+          expect.objectContaining({ label: "Nuevo", price: "1200" }),
+        ],
+      }),
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      `/admin/materiales/${ID}`,
+    );
+  });
+
+  it("keeps a new first variant unidentifed while retaining the reordered existing variant id", async () => {
+    const update = vi.fn<MaterialsService["update"]>();
+    update.mockResolvedValue({ ok: true as const, value: material } as never);
+
+    await save(
+      [
+        ["intent", "save"],
+        ["name", "Pincel editado"],
+        ["description", "Para óleo."],
+        ["category", "Pinceles"],
+        ["supplierId", SUPPLIER_ID],
+        ["available", "on"],
+        ["imageAssetId", "image-1"],
+        ["imageAlt", "Un pincel editado"],
+        ["variantId", ""],
+        ["variantLabel", "Nuevo primero"],
+        ["variantPrice", "1200"],
+        ["variantSwatch", ""],
+        ["variantAvailable", "0"],
+        ["variantId", "v2"],
+        ["variantLabel", "Grande"],
+        ["variantPrice", "3000"],
+        ["variantSwatch", "#222222"],
+        ["variantAvailable", "1"],
+      ],
+      { update },
+    );
+
+    const submitted = update.mock.calls[0]?.[2];
+    expect(submitted).toMatchObject({
+      variants: [
+        {
+          label: "Nuevo primero",
+          price: "1200",
+          available: true,
+        },
+        {
+          id: "v2",
+          label: "Grande",
+          price: "3000",
+          available: true,
+        },
+      ],
+    });
+    expect(submitted?.variants[0]?.id).toBeUndefined();
+  });
+
+  it("rejects zero variants before update and preserves submitted fields on validation", async () => {
+    const update = vi.fn();
+    const noVariants = saveFields.filter(([key]) => !key.startsWith("variant"));
+    const emptyResponse = await save(noVariants, { update });
+    expect(emptyResponse).toMatchObject({ init: { status: 422 } });
+    expect(update).not.toHaveBeenCalled();
+
+    const invalidResponse = await save(saveFields, {
+      update: () =>
+        Promise.resolve({
+          ok: false as const,
+          error: {
+            kind: "invalid" as const,
+            issues: [
+              { field: "name" as const, code: "required" as const },
+              {
+                field: "variants.1.price" as const,
+                code: "not-whole-pesos" as const,
+              },
+            ],
+          },
+        }),
+    });
+    expect(invalidResponse).toMatchObject({ init: { status: 422 } });
+    if (!isSaveValidationResponse(invalidResponse)) {
+      throw new Error("expected validation route data");
+    }
+    expect(invalidResponse.data.values.image).toMatchObject({
+      assetId: "image-1",
+      alt: "Un pincel editado",
+    });
+    expect(
+      invalidResponse.data.values.variants.map((variant) => variant.id),
+    ).toEqual(["v2", "v1", undefined]);
+    expect(invalidResponse.data.errors.name).toEqual(expect.any(String));
+    expect(invalidResponse.data.errors.variants?.rows?.[1]?.price).toEqual(
+      expect.any(String),
+    );
+  });
+
+  it("maps save failures and reports variant usage without losing the edit", async () => {
+    const variantInUse = await save(saveFields, {
+      update: () =>
+        Promise.resolve({
+          ok: false as const,
+          error: { kind: "variant-in-use" as const },
+        }),
+    });
+    expect(variantInUse).toMatchObject({ init: { status: 422 } });
+    if (!isSaveValidationResponse(variantInUse)) {
+      throw new Error("expected variant-in-use validation route data");
+    }
+    expect(variantInUse.data.formError).toContain("usada");
+    expect(variantInUse.data.values.variants).toHaveLength(3);
+
+    for (const [kind, status] of [
+      ["denied", 403],
+      ["not-found", 404],
+      ["unavailable", 503],
+    ] as const) {
+      await expect(
+        thrownStatus(() =>
+          save(saveFields, {
+            update: () =>
+              Promise.resolve({ ok: false as const, error: { kind } }),
+          }),
+        ),
+      ).resolves.toBe(status);
+    }
   });
 });

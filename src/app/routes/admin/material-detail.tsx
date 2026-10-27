@@ -1,5 +1,9 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { failureResponse } from "~/app/admin/failure-response";
+import {
+  materialFormErrors,
+  parseMaterialDraft,
+} from "~/app/admin/material-form-data";
 import { issueMessage } from "~/app/admin/issue-messages";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { servicesContext } from "~/app/context";
@@ -53,8 +57,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     })),
     image: image
       ? image.asset?.src === undefined
-        ? { alt: image.alt }
-        : { alt: image.alt, src: image.asset.src }
+        ? { assetId: image.assetId, alt: image.alt }
+        : { assetId: image.assetId, alt: image.alt, src: image.asset.src }
       : null,
     variants: material.variants.map((variant) => ({
       id: variant.id,
@@ -77,27 +81,63 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
   const form = await request.formData();
   const intent = form.get("intent");
-  if (intent !== "deactivate" && intent !== "reactivate")
-    throw data(null, { status: 400 });
-
   const materials = context.get(servicesContext).materials;
-  const changed =
-    intent === "deactivate"
-      ? await materials.deactivate(actor, params.id)
-      : await materials.reactivate(actor, params.id);
-  if (!changed.ok) {
-    if (changed.error.kind === "invalid") {
-      const [first] = changed.error.issues;
-      return data(
-        {
-          stateError: first ? issueMessage(first.code) : copy.lifecycle.failed,
-        },
-        { status: 422 },
-      );
+
+  if (intent === "deactivate" || intent === "reactivate") {
+    const changed =
+      intent === "deactivate"
+        ? await materials.deactivate(actor, params.id)
+        : await materials.reactivate(actor, params.id);
+    if (!changed.ok) {
+      if (changed.error.kind === "invalid") {
+        const [first] = changed.error.issues;
+        return data(
+          {
+            stateError: first
+              ? issueMessage(first.code)
+              : copy.lifecycle.failed,
+          },
+          { status: 422 },
+        );
+      }
+      throw failureResponse(changed.error);
     }
-    throw failureResponse(changed.error);
+    return redirect(`${LIST}/${params.id}`);
   }
-  return redirect(`${LIST}/${params.id}`);
+
+  if (intent !== null && intent !== "save") throw data(null, { status: 400 });
+  const draft = parseMaterialDraft(form);
+  const values = {
+    ...draft,
+    image: draft.image ? { ...draft.image, src: "" } : null,
+  };
+  if (form.getAll("variantLabel").length === 0)
+    return data(
+      {
+        values,
+        errors: { variants: { form: copy.edit.variantRequired } },
+        formError: copy.edit.saveFailed,
+      },
+      { status: 422 },
+    );
+
+  const changed = await materials.update(actor, params.id, draft);
+  if (changed.ok) return redirect(`${LIST}/${params.id}`);
+  if (changed.error.kind === "invalid")
+    return data(
+      {
+        values,
+        errors: materialFormErrors(changed.error.issues),
+        formError: copy.edit.saveFailed,
+      },
+      { status: 422 },
+    );
+  if (changed.error.kind === "variant-in-use")
+    return data(
+      { values, errors: {}, formError: copy.edit.variantInUse },
+      { status: 422 },
+    );
+  throw failureResponse(changed.error);
 }
 
 export default function AdminMaterialDetail() {
@@ -105,5 +145,14 @@ export default function AdminMaterialDetail() {
   const rejected = useActionData<typeof action>();
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
-  return <MaterialDetail {...material} stateError={stateError} />;
+  const edit = rejected && "values" in rejected ? rejected : undefined;
+  return (
+    <MaterialDetail
+      {...material}
+      values={edit?.values ?? material}
+      errors={edit?.errors ?? {}}
+      formError={edit?.formError}
+      stateError={stateError}
+    />
+  );
 }

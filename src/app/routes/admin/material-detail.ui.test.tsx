@@ -21,7 +21,11 @@ const detail = {
       name: "Casa archivada (archivado)",
     },
   ],
-  image: { src: "/imagenes/pincel.webp", alt: "Un pincel" },
+  image: {
+    assetId: "image-1",
+    src: "/imagenes/pincel.webp",
+    alt: "Un pincel",
+  },
   variants: [
     {
       id: "v1",
@@ -49,6 +53,7 @@ function stub(data = detail, action: () => unknown = () => null) {
       path: "/admin/materiales/:id",
       Component: AdminMaterialDetail,
       loader: () => data,
+      HydrateFallback: () => null,
       action,
     },
   ]);
@@ -56,15 +61,20 @@ function stub(data = detail, action: () => unknown = () => null) {
 
 describe("material detail screen", () => {
   it("renders identity, availability, archived supplier continuity, used variant, audit and a plain back anchor accessibly", async () => {
-    const Stub = stub();
     const { container } = render(
-      <Stub initialEntries={[`/admin/materiales/${ID}`]} />,
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
     );
     expect(
       await screen.findByRole("heading", { name: "Pincel plano" }),
     ).toBeVisible();
     expect(screen.getAllByText("No disponible")).toHaveLength(2);
-    expect(screen.getByText("Casa archivada (archivado)")).toBeVisible();
+    expect(screen.getAllByText("Casa archivada (archivado)")).toHaveLength(2);
     expect(screen.getByText("Grande")).toBeVisible();
     expect(screen.getByText("Usada")).toBeVisible();
     expect(
@@ -81,10 +91,46 @@ describe("material detail screen", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("hydrates a native edit form with the material identity and preserves accessible save feedback", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        errors={{
+          variants: { rows: [{}, { price: "El precio no es válido." }] },
+        }}
+        formError="Revisá los campos marcados e intentá de nuevo."
+        values={{
+          ...detail,
+          image: {
+            assetId: "image-1",
+            src: "/imagenes/pincel.webp",
+            alt: "Un pincel",
+          },
+        }}
+        stateError={undefined}
+      />,
+    );
+
+    const save = screen.getByRole("button", { name: "Guardar cambios" });
+    const form = save.closest("form");
+    expect(form).toHaveAttribute("method", "post");
+    expect(form?.querySelector("input[name=intent] ")).toHaveValue("save");
+    expect(form?.querySelectorAll("input[name=variantId]")).toHaveLength(2);
+    expect(screen.getByDisplayValue("Pincel plano")).toBeVisible();
+    expect(screen.getByDisplayValue("Grande")).toBeVisible();
+    expect(
+      screen.getByText("Revisá los campos marcados e intentá de nuevo."),
+    ).toHaveAttribute("role", "alert");
+    expect(screen.getByText("El precio no es válido.")).toBeVisible();
+  });
+
   it("announces lifecycle feedback accessibly", () => {
     render(
       <MaterialDetail
         {...detail}
+        errors={{}}
+        formError={undefined}
+        values={detail}
         stateError="Ya existe uno activo con el mismo nombre."
       />,
     );
@@ -94,31 +140,28 @@ describe("material detail screen", () => {
     );
   });
 
-  it("uses ConfirmedSubmit native document forms for deactivate and reactivate", async () => {
+  it("uses a ConfirmedSubmit native document form to deactivate an active material", async () => {
     const Active = stub();
-    const { unmount } = render(
-      <Active initialEntries={[`/admin/materiales/${ID}`]} />,
-    );
+    render(<Active initialEntries={[`/admin/materiales/${ID}`]} />);
+
     const deactivate = await screen.findByRole("button", {
       name: "Desactivar",
     });
-    const activeForm = deactivate.closest("form");
-    expect(activeForm).toHaveAttribute("method", "post");
-    expect(activeForm?.querySelector("input[name=intent]")).toHaveValue(
-      "deactivate",
-    );
+    const form = deactivate.closest("form");
+    expect(form).toHaveAttribute("method", "post");
+    expect(form?.querySelector("input[name=intent]")).toHaveValue("deactivate");
     fireEvent.click(deactivate);
     expect(await screen.findByRole("dialog")).toBeVisible();
-    unmount();
+  });
 
-    const Archived = stub({ ...detail, active: false });
-    render(<Archived initialEntries={[`/admin/materiales/${ID}`]} />);
+  it("uses a ConfirmedSubmit native document form to reactivate an inactive material", async () => {
+    const Inactive = stub({ ...detail, active: false });
+    render(<Inactive initialEntries={[`/admin/materiales/${ID}`]} />);
+
     const reactivate = await screen.findByRole("button", { name: "Reactivar" });
-    const archivedForm = reactivate.closest("form");
-    expect(archivedForm).toHaveAttribute("method", "post");
-    expect(archivedForm?.querySelector("input[name=intent]")).toHaveValue(
-      "reactivate",
-    );
+    const form = reactivate.closest("form");
+    expect(form).toHaveAttribute("method", "post");
+    expect(form?.querySelector("input[name=intent]")).toHaveValue("reactivate");
     fireEvent.click(reactivate);
     expect(await screen.findByRole("dialog")).toBeVisible();
   });

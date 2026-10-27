@@ -312,9 +312,11 @@ describe("material service", () => {
   it("keeps an empty update as the minimum-one-variant validation failure", async () => {
     const { repository, service } = await setup();
     const created = valueOf(await service.create(actor, draft()));
+    const [firstVariant] = created.variants;
+    if (!firstVariant) throw new Error("expected created material variant");
     repository.materials.set(created.id, {
       ...created,
-      variants: [{ ...created.variants[0]!, used: true }],
+      variants: [{ ...firstVariant, used: true }],
     });
 
     expect(

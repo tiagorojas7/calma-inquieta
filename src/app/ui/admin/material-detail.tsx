@@ -1,10 +1,36 @@
 import { Heading, Text } from "../atoms/heading";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError } from "./form-fields";
+import { MaterialForm, type MaterialFormErrors } from "./material-form";
+import type { ImageFieldFailure } from "./image-field";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge } from "./status-badge";
 
 const copy = adminMicrocopy.materialDetail;
+
+async function upload(file: File) {
+  try {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch("/admin/imagenes", { method: "POST", body });
+    if (!response.ok)
+      return {
+        ok: false as const,
+        error:
+          response.status === 413
+            ? "too-large"
+            : response.status === 503
+              ? "unavailable"
+              : ("failed" as ImageFieldFailure),
+      };
+    return {
+      ok: true as const,
+      image: (await response.json()) as { id: string; src: string },
+    };
+  } catch {
+    return { ok: false as const, error: "failed" as ImageFieldFailure };
+  }
+}
 
 export function MaterialDetail({
   name,
@@ -17,6 +43,9 @@ export function MaterialDetail({
   image,
   variants,
   audit,
+  values,
+  errors,
+  formError,
   stateError,
 }: {
   name: string;
@@ -26,7 +55,7 @@ export function MaterialDetail({
   available: boolean;
   supplierId: string;
   suppliers: readonly { id: string; name: string }[];
-  image: { alt: string; src?: string } | null;
+  image: { assetId: string; alt: string; src?: string } | null;
   variants: readonly {
     id: string;
     label: string;
@@ -36,9 +65,36 @@ export function MaterialDetail({
     swatch: string | null;
   }[];
   audit: { updatedBy: string; updatedAt: string };
+  values: {
+    name: string;
+    description: string;
+    category: string;
+    supplierId: string;
+    available: boolean;
+    image: { assetId: string; alt: string; src?: string } | null;
+    variants: readonly {
+      id?: string;
+      label: string;
+      price: string;
+      swatch: string | null;
+      available: boolean;
+    }[];
+  };
+  errors: MaterialFormErrors;
+  formError: string | undefined;
   stateError: string | undefined;
 }) {
   const supplier = suppliers.find((choice) => choice.id === supplierId);
+  const formValues = {
+    ...values,
+    image: values.image
+      ? { ...values.image, src: values.image.src ?? "" }
+      : null,
+    variants: values.variants.map((variant) => ({
+      ...variant,
+      swatch: variant.swatch ?? "",
+    })),
+  };
   return (
     <section className="flex max-w-3xl flex-col gap-6">
       <a
@@ -133,6 +189,23 @@ export function MaterialDetail({
             <dd>{audit.updatedAt}</dd>
           </div>
         </dl>
+      </section>
+
+      <section aria-labelledby="material-edit-title">
+        <Heading level={2} id="material-edit-title">
+          {copy.edit.title}
+        </Heading>
+        <div className="mt-2">
+          <MaterialForm
+            values={formValues}
+            errors={errors}
+            formError={formError}
+            suppliers={suppliers}
+            upload={upload}
+            submitLabel={copy.edit.save}
+            cancelHref="/admin/materiales"
+          />
+        </div>
       </section>
 
       <section aria-labelledby="material-lifecycle-title">

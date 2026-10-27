@@ -533,6 +533,14 @@ export const adminMicrocopy = {
   },
   materialDetail: {
     back: "Volver a materiales",
+    edit: {
+      title: "Editar material",
+      save: "Guardar cambios",
+      saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+      variantRequired: "Agregá al menos una variante para guardar el material.",
+      variantInUse:
+        "No se pudo guardar porque una variante usada no puede eliminarse. Conservá las variantes existentes e intentá de nuevo.",
+    },
     category: "Categoría",
     state: "Estado",
     availability: "Disponibilidad",

@@ -180,6 +180,8 @@ describe("createDrizzleMaterialRepository", () => {
   it("marks variants referenced by historical order lines as used", async () => {
     const { openSession, repository } = await freshRepository();
     const stored = buildStoredMaterial();
+    const [firstVariant] = stored.variants;
+    if (!firstVariant) throw new Error("expected stored material variant");
     await repository.insert(stored);
     const session = await openSession();
     try {
@@ -211,10 +213,10 @@ describe("createDrizzleMaterialRepository", () => {
         orderId: "00000000-0000-4000-8000-000000000501",
         position: 0,
         materialId: stored.id,
-        variantId: stored.variants[0]!.id,
+        variantId: firstVariant.id,
         materialName: stored.name,
-        variantLabel: stored.variants[0]!.label,
-        unitPriceCentavos: stored.variants[0]!.price.toCentavos(),
+        variantLabel: firstVariant.label,
+        unitPriceCentavos: firstVariant.price.toCentavos(),
         quantity: 1,
         supplierId: stored.supplier.id,
         supplierName: stored.supplier.name,
@@ -224,7 +226,7 @@ describe("createDrizzleMaterialRepository", () => {
     }
 
     expect(await repository.findById(stored.id)).toMatchObject({
-      variants: [{ id: stored.variants[0]!.id, used: true }],
+      variants: [{ id: firstVariant.id, used: true }],
     });
   });
 

@@ -253,7 +253,9 @@ describe("admin material create route", () => {
 
   it("persists a material as unavailable when its availability checkbox is absent", async () => {
     const fixture = await materialsFixture();
-    const { available: _available, ...withoutAvailability } = VALID;
+    const withoutAvailability = Object.fromEntries(
+      Object.entries(VALID).filter(([key]) => key !== "available"),
+    );
     await submit(
       { materials: fixture.service, suppliers: fixture.suppliersService },
       withoutAvailability,

@@ -51,6 +51,9 @@ describe("MaterialForm", () => {
       expect(await screen.findByLabelText(label)).toBeVisible();
     }
     expect(screen.getByLabelText("Variante")).toHaveValue("Única");
+    expect(
+      screen.queryByRole("button", { name: "Quitar variante" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
       "href",
       "/admin/materiales",

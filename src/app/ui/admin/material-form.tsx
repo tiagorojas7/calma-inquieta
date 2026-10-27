@@ -248,17 +248,19 @@ export function MaterialForm({
                 >
                   {copy.moveVariantDown}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setVariants((current) =>
-                      current.filter((_, rowIndex) => rowIndex !== index),
-                    );
-                  }}
-                >
-                  {copy.removeVariant}
-                </Button>
+                {variants.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setVariants((current) =>
+                        current.filter((_, rowIndex) => rowIndex !== index),
+                      );
+                    }}
+                  >
+                    {copy.removeVariant}
+                  </Button>
+                )}
               </div>
             </div>
           );

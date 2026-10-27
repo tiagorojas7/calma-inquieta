@@ -33,7 +33,7 @@ describe("workshop period form data", () => {
     expect(isExactPeriodValue("2026/11")).toBe(false);
   });
 
-  it("accepts only detail lifecycle intents and preserves hidden historical selections", () => {
+  it("accepts only detail lifecycle intents and sends submitted material selections", () => {
     const period = buildWorkshopPeriod({
       turnos: [{ turnoId: "t1", capacity: 8 } as never],
       materials: [{ id: "m1", name: "Clay", active: false, available: false }],
@@ -46,7 +46,9 @@ describe("workshop period form data", () => {
       projectDescription: " Glaze ",
       "capacity-t1": " 9 ",
       snapshotPercentage: " 35 ",
+      materialIds: "m2",
     });
+    submitted.append("materialIds", "m3");
     expect(parsePeriodDetailIntent(submitted)).toBe("save");
     expect(parsePeriodDraft(submitted, period)).toEqual({
       fee: "42000",
@@ -56,7 +58,7 @@ describe("workshop period form data", () => {
       projectImages: [],
       capacities: [{ turnoId: "t1", capacity: "9" }],
       snapshotPercentage: "35",
-      materialIds: ["m1"],
+      materialIds: ["m2", "m3"],
     });
     expect(parsePeriodDetailIntent(form({ intent: "publish" }))).toBe(
       "publish",

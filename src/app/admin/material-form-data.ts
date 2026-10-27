@@ -87,11 +87,18 @@ export function materialFormErrors(
  * Service validation deliberately owns all validation and normalization.
  */
 export function parseMaterialDraft(form: FormData): MaterialDraft {
+  const ids = texts(form, "variantId");
   const labels = texts(form, "variantLabel");
   const prices = texts(form, "variantPrice");
   const swatches = texts(form, "variantSwatch");
   const availableVariants = new Set(texts(form, "variantAvailable"));
-  const rowCount = Math.max(labels.length, prices.length, swatches.length, 1);
+  const rowCount = Math.max(
+    ids.length,
+    labels.length,
+    prices.length,
+    swatches.length,
+    1,
+  );
   const imageAssetId = text(form, "imageAssetId");
 
   return {
@@ -104,6 +111,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
       ? { assetId: imageAssetId, alt: text(form, "imageAlt") }
       : null,
     variants: Array.from({ length: rowCount }, (_, index) => ({
+      ...(ids[index] ? { id: ids[index] } : {}),
       label: labels[index] ?? (index === 0 ? DEFAULT_VARIANT_LABEL : ""),
       price: prices[index] ?? "",
       swatch: swatches[index] ?? "",

@@ -12,6 +12,7 @@ import {
 import { adminMicrocopy } from "./microcopy";
 
 export interface MaterialFormVariant {
+  readonly id?: string | undefined;
   readonly label: string;
   readonly price: string;
   readonly swatch: string;
@@ -185,6 +186,9 @@ export function MaterialForm({
               key={variant.key}
               className="grid gap-4 rounded-sm border border-clay-600 p-3"
             >
+              {variant.id && (
+                <input type="hidden" name="variantId" value={variant.id} />
+              )}
               <TextField
                 label={copy.variant}
                 name="variantLabel"

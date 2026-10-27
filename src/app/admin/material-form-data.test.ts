@@ -26,6 +26,7 @@ describe("parseMaterialDraft", () => {
           available: "on",
           imageAssetId: "image-1",
           imageAlt: "Pote azul",
+          variantId: ["variant-1", ""],
           variantLabel: ["Única", "Grande"],
           variantPrice: ["1200", "2500"],
           variantSwatch: ["#112233", "#abcdef"],
@@ -40,7 +41,13 @@ describe("parseMaterialDraft", () => {
       available: true,
       image: { assetId: "image-1", alt: "Pote azul" },
       variants: [
-        { label: "Única", price: "1200", swatch: "#112233", available: true },
+        {
+          id: "variant-1",
+          label: "Única",
+          price: "1200",
+          swatch: "#112233",
+          available: true,
+        },
         { label: "Grande", price: "2500", swatch: "#abcdef", available: true },
       ],
     });

@@ -43,6 +43,7 @@ import {
 } from "~/modules/workshops";
 import {
   createOfferedMaterialSnapshotsLookup,
+  createMaterialsService,
   createSuppliersService,
   type SuppliersService,
   type MaterialsService,
@@ -66,6 +67,7 @@ import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infra
 import { createDrizzleMaterialRepository } from "~/modules/materials/infrastructure/drizzle-material-repository";
 import { createDrizzleAdminEnrollmentStore } from "~/modules/enrollments/infrastructure/drizzle-admin-enrollment-store";
 import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructure/drizzle-order-repository";
+import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrastructure/drizzle-order-line-usage-lookup";
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
@@ -167,7 +169,10 @@ export function createRequestServices(
   const periodRepository = createDrizzleWorkshopPeriodRepository(openSession);
   const workshopRepository =
     createDrizzleMonthlyWorkshopRepository(openSession);
-  const materialRepository = createDrizzleMaterialRepository(openSession);
+  const materialRepository = createDrizzleMaterialRepository(
+    openSession,
+    createDrizzleOrderLineUsageLookup(openSession),
+  );
   const turnoRepository = createDrizzleTurnoRepository(openSession);
   const seats = config.databaseUrl
     ? createDrizzleSeatLedger(openSession)
@@ -273,7 +278,12 @@ export function createRequestServices(
       repository: createDrizzleSupplierRepository(openSession),
       clock: systemClock,
     }),
-    materials: createUnavailableService<MaterialsService>(),
+    materials: createMaterialsService({
+      repository: materialRepository,
+      suppliers: createDrizzleSupplierRepository(openSession),
+      media,
+      clock: systemClock,
+    }),
     ...enrollmentServices,
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {

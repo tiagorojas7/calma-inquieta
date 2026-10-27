@@ -1,5 +1,4 @@
 import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
-import { orderLine } from "~/platform/db/schema/enrollments";
 import {
   material,
   materialVariant,
@@ -17,6 +16,7 @@ import {
   MaterialVariantLabelConflictError,
   type MaterialFilter,
   type MaterialRepository,
+  type VariantUsageLookup,
 } from "../application/material-repository";
 import { materialNameKey, variantLabelKey } from "../domain/material-core";
 
@@ -154,26 +154,10 @@ function mapMaterialConflict(error: unknown): never {
   throw error;
 }
 
-async function loadUsedVariantIds(
-  db: Db,
-  variants: readonly VariantRow[],
-): Promise<ReadonlySet<string>> {
-  if (variants.length === 0) return new Set();
-  const rows = await db
-    .select({ variantId: orderLine.variantId })
-    .from(orderLine)
-    .where(
-      inArray(
-        orderLine.variantId,
-        variants.map((variant) => variant.id),
-      ),
-    );
-  return new Set(rows.map((row) => row.variantId));
-}
-
 async function loadMaterials(
   db: Db,
   condition: SQL | undefined,
+  variantUsage: VariantUsageLookup,
 ): Promise<readonly Material[]> {
   const roots = await db
     .select({ material, supplier })
@@ -192,7 +176,9 @@ async function loadMaterials(
       asc(materialVariant.position),
       asc(materialVariant.id),
     );
-  const usedVariantIds = await loadUsedVariantIds(db, variants);
+  const usedVariantIds = await variantUsage.findUsedVariantIds(
+    variants.map((variant) => variant.id),
+  );
   const byMaterial = new Map<string, VariantRow[]>();
   for (const variant of variants) {
     const values = byMaterial.get(variant.materialId) ?? [];
@@ -207,6 +193,7 @@ async function loadMaterials(
 /** Short-lived sessions and transactional root+variant replacement. */
 export function createDrizzleMaterialRepository(
   openSession: DbSessionFactory,
+  variantUsage: VariantUsageLookup,
 ): MaterialRepository {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -256,7 +243,11 @@ export function createDrizzleMaterialRepository(
 
     findById: (id) =>
       withSession(async (db) => {
-        const values = await loadMaterials(db, eq(material.id, id));
+        const values = await loadMaterials(
+          db,
+          eq(material.id, id),
+          variantUsage,
+        );
         return values[0] ?? null;
       }),
 
@@ -268,6 +259,7 @@ export function createDrizzleMaterialRepository(
             eq(material.active, true),
             eq(material.nameKey, materialNameKey(name)),
           ),
+          variantUsage,
         );
         return values[0] ?? null;
       }),
@@ -278,6 +270,7 @@ export function createDrizzleMaterialRepository(
         const values = await loadMaterials(
           db,
           inArray(material.id, [...new Set(ids)]),
+          variantUsage,
         );
         const byId = new Map(values.map((value) => [value.id, value]));
         const ordered = new Map<string, Material>();
@@ -302,6 +295,7 @@ export function createDrizzleMaterialRepository(
         return loadMaterials(
           db,
           conditions.length > 0 ? and(...conditions) : undefined,
+          variantUsage,
         );
       }),
   };

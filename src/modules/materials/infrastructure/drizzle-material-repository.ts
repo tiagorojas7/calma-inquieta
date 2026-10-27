@@ -16,6 +16,7 @@ import {
   MaterialVariantLabelConflictError,
   type MaterialFilter,
   type MaterialRepository,
+  type VariantUsageLookup,
 } from "../application/material-repository";
 import { materialNameKey, variantLabelKey } from "../domain/material-core";
 
@@ -54,7 +55,21 @@ function toVariant(row: VariantRow): MaterialVariant {
   };
 }
 
-function toMaterial(row: JoinedRow, variants: readonly VariantRow[]): Material {
+export function markUsedVariants(
+  variants: readonly MaterialVariant[],
+  usedVariantIds: ReadonlySet<string>,
+): readonly MaterialVariant[] {
+  return variants.map((variant) => ({
+    ...variant,
+    used: usedVariantIds.has(variant.id),
+  }));
+}
+
+function toMaterial(
+  row: JoinedRow,
+  variants: readonly VariantRow[],
+  usedVariantIds: ReadonlySet<string>,
+): Material {
   return {
     id: row.material.id,
     name: row.material.name,
@@ -71,7 +86,7 @@ function toMaterial(row: JoinedRow, variants: readonly VariantRow[]): Material {
             asset: null,
           }
         : null,
-    variants: variants.map(toVariant),
+    variants: markUsedVariants(variants.map(toVariant), usedVariantIds),
     audit: {
       updatedBy: row.material.updatedBy,
       updatedAt: row.material.updatedAt,
@@ -142,6 +157,7 @@ function mapMaterialConflict(error: unknown): never {
 async function loadMaterials(
   db: Db,
   condition: SQL | undefined,
+  variantUsage: VariantUsageLookup,
 ): Promise<readonly Material[]> {
   const roots = await db
     .select({ material, supplier })
@@ -160,6 +176,9 @@ async function loadMaterials(
       asc(materialVariant.position),
       asc(materialVariant.id),
     );
+  const usedVariantIds = await variantUsage.findUsedVariantIds(
+    variants.map((variant) => variant.id),
+  );
   const byMaterial = new Map<string, VariantRow[]>();
   for (const variant of variants) {
     const values = byMaterial.get(variant.materialId) ?? [];
@@ -167,13 +186,14 @@ async function loadMaterials(
     byMaterial.set(variant.materialId, values);
   }
   return roots.map((row) =>
-    toMaterial(row, byMaterial.get(row.material.id) ?? []),
+    toMaterial(row, byMaterial.get(row.material.id) ?? [], usedVariantIds),
   );
 }
 
 /** Short-lived sessions and transactional root+variant replacement. */
 export function createDrizzleMaterialRepository(
   openSession: DbSessionFactory,
+  variantUsage: VariantUsageLookup,
 ): MaterialRepository {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -223,7 +243,11 @@ export function createDrizzleMaterialRepository(
 
     findById: (id) =>
       withSession(async (db) => {
-        const values = await loadMaterials(db, eq(material.id, id));
+        const values = await loadMaterials(
+          db,
+          eq(material.id, id),
+          variantUsage,
+        );
         return values[0] ?? null;
       }),
 
@@ -235,6 +259,7 @@ export function createDrizzleMaterialRepository(
             eq(material.active, true),
             eq(material.nameKey, materialNameKey(name)),
           ),
+          variantUsage,
         );
         return values[0] ?? null;
       }),
@@ -245,6 +270,7 @@ export function createDrizzleMaterialRepository(
         const values = await loadMaterials(
           db,
           inArray(material.id, [...new Set(ids)]),
+          variantUsage,
         );
         const byId = new Map(values.map((value) => [value.id, value]));
         const ordered = new Map<string, Material>();
@@ -269,6 +295,7 @@ export function createDrizzleMaterialRepository(
         return loadMaterials(
           db,
           conditions.length > 0 ? and(...conditions) : undefined,
+          variantUsage,
         );
       }),
   };

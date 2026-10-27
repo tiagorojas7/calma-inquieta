@@ -23,6 +23,10 @@ import { createDrizzleMaterialRepository } from "./drizzle-material-repository";
 
 const SECOND_SUPPLIER_ID = "00000000-0000-4000-8000-000000000302";
 const created: TestDatabase[] = [];
+const unusedVariants = {
+  findUsedVariantIds: (): Promise<ReadonlySet<string>> =>
+    Promise.resolve(new Set()),
+};
 
 afterAll(async () => {
   await Promise.all(created.map((database) => database.drop()));
@@ -73,7 +77,7 @@ async function freshRepository() {
   return {
     database,
     openSession,
-    repository: createDrizzleMaterialRepository(openSession),
+    repository: createDrizzleMaterialRepository(openSession, unusedVariants),
   };
 }
 
@@ -176,6 +180,24 @@ describe("createDrizzleMaterialRepository", () => {
     ).rejects.toThrow();
   });
 
+  it("hydrates historical usage through the injected lookup", async () => {
+    const stored = buildStoredMaterial();
+    const [firstVariant] = stored.variants;
+    if (!firstVariant) throw new Error("expected stored material variant");
+    const { openSession } = await freshRepository();
+    const repository = createDrizzleMaterialRepository(openSession, {
+      findUsedVariantIds: (variantIds) =>
+        Promise.resolve(
+          new Set(variantIds.filter((id) => id === firstVariant.id)),
+        ),
+    });
+    await repository.insert(stored);
+
+    expect(await repository.findById(stored.id)).toMatchObject({
+      variants: [{ id: firstVariant.id, used: true }],
+    });
+  });
+
   it("keeps materials readable through their live archived supplier", async () => {
     const { openSession, repository } = await freshRepository();
     const stored = buildStoredMaterial();
@@ -230,7 +252,7 @@ describe("createDrizzleMaterialRepository", () => {
           return session.close();
         },
       };
-    });
+    }, unusedVariants);
 
     await repository.insert(buildStoredMaterial());
     await repository.update(buildStoredMaterial());

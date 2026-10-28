@@ -52,9 +52,12 @@ export function parseWholePesos(
   Money,
   "required" | "invalid-format" | "not-whole-pesos" | "out-of-range"
 > {
-  if (text.trim() === "") return err("required");
-  if (!/^\d+$/.test(text.trim())) return err("invalid-format");
-  const pesos = Number(text);
+  const trimmed = text.trim();
+  if (trimmed === "") return err("required");
+  // Written prices may carry a "$" and "." thousands separators: "$ 12.500".
+  const digits = trimmed.replace(/^\$\s*/, "");
+  if (!/^(\d+|\d{1,3}(\.\d{3})+)$/.test(digits)) return err("invalid-format");
+  const pesos = Number(digits.replaceAll(".", ""));
   if (!Number.isSafeInteger(pesos)) return err("out-of-range");
   const money = Money.fromCentavos(pesos * 100);
   return money.ok ? money : err("out-of-range");

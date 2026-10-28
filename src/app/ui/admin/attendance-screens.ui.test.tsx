@@ -205,16 +205,19 @@ describe("AttendanceSheet", () => {
     });
 
     it("shows the scheduled state instead of a form", () => {
-      const [ana, caro] = sheet.rows;
+      const [ana, caro] = sheet.rows as [
+        AttendanceSheetProps["rows"][number],
+        AttendanceSheetProps["rows"][number],
+      ];
       render(
         <AttendanceSheet
           {...sheet}
           rows={[
             {
-              ...ana!,
+              ...ana,
               makeUp: { status: "pending", label: "Recuperación pendiente" },
             },
-            caro!,
+            caro,
           ]}
         />,
       );

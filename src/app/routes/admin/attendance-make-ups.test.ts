@@ -80,7 +80,7 @@ describe("admin attendance make-ups route", () => {
     const { post, load, repository } = await setup();
     const id = [...repository.makeUps.keys()][0] ?? "";
 
-    const response = (await post({ intent: "complete", id })) as Response;
+    const response = await post({ intent: "complete", id });
 
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe(PATH);

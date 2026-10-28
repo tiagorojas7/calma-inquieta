@@ -70,6 +70,11 @@ export type {
 } from "./application/order-history";
 export type { RandomBytes } from "./application/random-bytes";
 export type { SeatLedger } from "./application/seat-ledger";
+export {
+  rosterFeePaid,
+  type TurnoRosterEntry,
+  type TurnoRosterReader,
+} from "./application/turno-roster";
 export type {
   EnrollmentInsightsReader,
   ConfirmedSeatsRow,

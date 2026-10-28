@@ -50,6 +50,12 @@ export {
 } from "./application/intensive-seat-offer";
 export { createPublicIntensivosReader } from "./application/public-intensivos-reader";
 export { createPublicTalleresReader } from "./application/public-talleres-reader";
+export {
+  createWorkshopScheduleLookup,
+  type WorkshopScheduleLookup,
+  type WorkshopScheduleLookupDeps,
+  type WorkshopScheduleTurno,
+} from "./application/attendance-schedule";
 export type {
   InsightsPeriodStatus,
   PeriodCapacityRow,

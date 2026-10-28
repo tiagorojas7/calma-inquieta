@@ -113,6 +113,8 @@ describe("runMigrations", () => {
     );
 
     expect(tables).toEqual([
+      { table_name: "attendance_make_up" },
+      { table_name: "attendance_mark" },
       { table_name: "enrollment_order" },
       { table_name: "intensive_image" },
       { table_name: "intensive_seat_request" },

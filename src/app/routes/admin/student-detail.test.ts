@@ -5,6 +5,12 @@ import {
   postRequest,
   thrownStatus,
 } from "~/testing/admin/route-kit";
+import {
+  ATT_MONDAY,
+  ATT_PERIOD,
+  ATT_WEDNESDAY,
+  attendanceFixture,
+} from "~/testing/admin/attendance-kit";
 import { studentsFixture } from "~/testing/admin/student-kit";
 import { studentOrder } from "~/testing/fakes/student-builders";
 import { action, loader } from "./student-detail";
@@ -146,5 +152,61 @@ describe("admin student detail route", () => {
         } as never),
       ),
     ).toBe(400);
+  });
+});
+
+describe("admin student detail attendance summary", () => {
+  const actor = { kind: "admin-actor" as const, email: "a@x.test" };
+
+  it("counts presences, absences and make-ups across her classes", async () => {
+    const base = studentsFixture();
+    base.orders.orders.push(
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+      }),
+    );
+    const attendance = attendanceFixture();
+    const sessions = [
+      ["2026-10-05", "absent"],
+      ["2026-10-12", "present"],
+      ["2026-10-19", "present"],
+    ] as const;
+    for (const [date, status] of sessions)
+      await attendance.service.recordSession(
+        actor,
+        ATT_PERIOD,
+        ATT_MONDAY,
+        date,
+        [{ email: "ana@example.com", status }],
+      );
+    await attendance.service.scheduleMakeUp(actor, {
+      email: "ana@example.com",
+      periodId: ATT_PERIOD,
+      turnoId: ATT_MONDAY,
+      date: "2026-10-05",
+      makeUpPeriodId: ATT_PERIOD,
+      makeUpTurnoId: ATT_WEDNESDAY,
+      makeUpDate: "2026-10-14",
+    });
+    const context = adminContext({
+      students: base.service,
+      attendance: attendance.service,
+    });
+
+    const result = await loader(loadArgs(context, "ana@example.com"));
+
+    expect(result.attendance).toEqual({
+      present: "2",
+      absent: "1",
+      makeUpsPending: "1",
+      makeUpsDone: "0",
+    });
+  });
+
+  it("leaves the summary out when attendance is unavailable", async () => {
+    const { context } = setup();
+    const result = await loader(loadArgs(context, "ana@example.com"));
+    expect(result.attendance).toBeNull();
   });
 });

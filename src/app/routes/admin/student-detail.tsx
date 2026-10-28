@@ -31,9 +31,11 @@ function emailParam(value: string | undefined): string {
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const email = emailParam(params.email);
-  const found = await context
-    .get(servicesContext)
-    .students.detail(actor, email);
+  const services = context.get(servicesContext);
+  const [found, summary] = await Promise.all([
+    services.students.detail(actor, email),
+    services.attendance.studentSummary(actor, email),
+  ]);
   if (!found.ok) throw enrollmentFailureResponse(found.error);
   const student = found.value;
   return {
@@ -63,6 +65,15 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
           )
         : null,
     })),
+    // Attendance is optional here: the student file still opens without it.
+    attendance: summary.ok
+      ? {
+          present: String(summary.value.present),
+          absent: String(summary.value.absent),
+          makeUpsPending: String(summary.value.makeUpsPending),
+          makeUpsDone: String(summary.value.makeUpsDone),
+        }
+      : null,
     note: {
       text: student.note?.text ?? "",
       meta: student.note

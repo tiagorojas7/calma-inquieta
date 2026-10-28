@@ -34,6 +34,15 @@ export interface StudentDetailProps {
     readonly activities: readonly StudentActivityRow[];
     readonly orders: readonly StudentOrderRow[];
     readonly note: { readonly text: string; readonly meta: string | null };
+    readonly attendance?:
+      | {
+          readonly present: string;
+          readonly absent: string;
+          readonly makeUpsPending: string;
+          readonly makeUpsDone: string;
+        }
+      | null
+      | undefined;
   };
   readonly form?: {
     readonly error?: string | undefined;
@@ -42,6 +51,7 @@ export interface StudentDetailProps {
 }
 
 const copy = adminMicrocopy.students.detail;
+const attendanceCopy = adminMicrocopy.attendance.summary;
 
 const linkClasses =
   "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
@@ -154,6 +164,29 @@ export function StudentDetail({ student, form }: StudentDetailProps) {
           }}
         />
       </section>
+
+      {student.attendance ? (
+        <section
+          aria-label={attendanceCopy.title}
+          className="flex flex-col gap-3"
+        >
+          <Heading level={2}>{attendanceCopy.title}</Heading>
+          <dl className="grid gap-4 md:grid-cols-4">
+            <Fact label={attendanceCopy.present}>
+              {student.attendance.present}
+            </Fact>
+            <Fact label={attendanceCopy.absent}>
+              {student.attendance.absent}
+            </Fact>
+            <Fact label={attendanceCopy.makeUpsPending}>
+              {student.attendance.makeUpsPending}
+            </Fact>
+            <Fact label={attendanceCopy.makeUpsDone}>
+              {student.attendance.makeUpsDone}
+            </Fact>
+          </dl>
+        </section>
+      ) : null}
 
       <form
         method="post"

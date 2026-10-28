@@ -11,6 +11,7 @@ import {
 import { createUnavailableInsightsService } from "~/modules/insights";
 import { createUnavailableRemindersService } from "~/modules/reminders";
 import { createUnavailableStudentsService } from "~/modules/students";
+import { createUnavailableAttendanceService } from "~/modules/attendance";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
 import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
@@ -81,6 +82,7 @@ export function createTestServices(
     enrollments: createUnavailableAdminEnrollmentService(),
     consolidation: createUnavailableSupplierConsolidationService(),
     students: createUnavailableStudentsService(),
+    attendance: createUnavailableAttendanceService(),
     insights: createUnavailableInsightsService(),
     reminders: createUnavailableRemindersService(),
     publicEnrollments: {

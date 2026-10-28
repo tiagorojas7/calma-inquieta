@@ -9,6 +9,7 @@ import {
   TextAreaField,
   TextField,
 } from "./form-fields";
+import { DEFAULT_SWATCH } from "./material-swatch";
 import { adminMicrocopy } from "./microcopy";
 
 export interface MaterialFormVariant {
@@ -207,15 +208,32 @@ export function MaterialForm({
                   updateVariant(index, "price", event.target.value);
                 }}
               />
-              <TextField
-                label={copy.color}
-                name="variantSwatch"
-                value={variant.swatch}
-                error={rowErrors?.swatch}
+              <CheckboxField
+                label={copy.useSwatch}
+                checked={variant.swatch !== ""}
+                error={variant.swatch === "" ? rowErrors?.swatch : undefined}
                 onChange={(event) => {
-                  updateVariant(index, "swatch", event.target.value);
+                  updateVariant(
+                    index,
+                    "swatch",
+                    event.target.checked ? DEFAULT_SWATCH : "",
+                  );
                 }}
               />
+              {variant.swatch === "" ? (
+                <input type="hidden" name="variantSwatch" value="" />
+              ) : (
+                <TextField
+                  label={copy.color}
+                  type="color"
+                  name="variantSwatch"
+                  value={variant.swatch}
+                  error={rowErrors?.swatch}
+                  onChange={(event) => {
+                    updateVariant(index, "swatch", event.target.value);
+                  }}
+                />
+              )}
               <CheckboxField
                 label={copy.variantAvailable}
                 name="variantAvailable"

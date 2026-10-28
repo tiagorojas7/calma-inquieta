@@ -8,7 +8,23 @@ describe("parseWholePesos", () => {
   });
 
   it.each([
+    ["12.500", 1250000],
+    ["$ 12.500", 1250000],
+    ["$12500", 1250000],
+    ["  1.250.000  ", 125000000],
+    ["12500", 1250000],
+  ] as const)("accepts the es-AR written price %s", (text, centavos) => {
+    const result = parseWholePesos(text);
+    expect(result.ok && result.value.toCentavos()).toBe(centavos);
+  });
+
+  it.each([
     ["", "required"],
+    ["$", "invalid-format"],
+    ["12.5", "invalid-format"],
+    ["1.25.000", "invalid-format"],
+    ["12.5000", "invalid-format"],
+    [".500", "invalid-format"],
     ["12.50", "invalid-format"],
     ["12,50", "invalid-format"],
     ["-1", "invalid-format"],

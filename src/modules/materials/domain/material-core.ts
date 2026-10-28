@@ -5,8 +5,17 @@ import {
   type Result,
 } from "~/modules/_shared";
 
+export type MaterialVariantField = "label" | "price" | "swatch";
+
+/** `variants` alone means the list itself; indexed fields point at one row. */
 export type MaterialField =
-  "name" | "description" | "category" | "supplierId" | "image" | "variants";
+  | "name"
+  | "description"
+  | "category"
+  | "supplierId"
+  | "image"
+  | "variants"
+  | `variants.${number}.${MaterialVariantField}`;
 
 export interface MaterialDraft {
   readonly name: string;
@@ -51,6 +60,23 @@ export const materialNameKey = (value: string): string =>
 export const variantLabelKey = (value: string): string =>
   normalize(value).toLocaleLowerCase("es");
 
+type Swatch =
+  { readonly ok: true; readonly value: string | null } | { readonly ok: false };
+
+/** `#rrggbb` (a short `#rgb` is expanded) or `null` when empty. */
+function normalizeSwatch(text: string): Swatch {
+  const value = text.trim().toLocaleLowerCase("en");
+  if (!value) return { ok: true, value: null };
+  if (/^#[0-9a-f]{6}$/.test(value)) return { ok: true, value };
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(value);
+  if (!short) return { ok: false };
+  const expanded = short
+    .slice(1)
+    .map((digit) => digit + digit)
+    .join("");
+  return { ok: true, value: `#${expanded}` };
+}
+
 export function validateMaterialDraft(
   draft: MaterialDraft,
 ): Result<ValidMaterialDraft, readonly FieldIssue<MaterialField>[]> {
@@ -72,21 +98,22 @@ export function validateMaterialDraft(
   for (const [position, variant] of draft.variants.entries()) {
     const label = normalize(variant.label);
     const key = variantLabelKey(label);
-    if (!label) issues.push({ field: "variants", code: "required" });
+    const row = (field: MaterialVariantField): MaterialField =>
+      `variants.${String(position)}.${field}` as MaterialField;
+    if (!label) issues.push({ field: row("label"), code: "required" });
     else if (seenLabels.has(key))
-      issues.push({ field: "variants", code: "duplicate" });
+      issues.push({ field: row("label"), code: "duplicate" });
     else seenLabels.add(key);
 
     const parsedPrice = parseWholePesos(variant.price);
     if (!parsedPrice.ok)
-      issues.push({ field: "variants", code: parsedPrice.error });
+      issues.push({ field: row("price"), code: parsedPrice.error });
     else if (parsedPrice.value.isZero())
-      issues.push({ field: "variants", code: "out-of-range" });
+      issues.push({ field: row("price"), code: "out-of-range" });
 
-    const swatchText = variant.swatch.trim();
-    const swatch = swatchText ? swatchText.toLocaleLowerCase("en") : null;
-    if (swatch !== null && !/^#[0-9a-f]{6}$/.test(swatch))
-      issues.push({ field: "variants", code: "invalid-format" });
+    const swatch = normalizeSwatch(variant.swatch);
+    if (!swatch.ok)
+      issues.push({ field: row("swatch"), code: "invalid-format" });
 
     if (label && parsedPrice.ok && !parsedPrice.value.isZero()) {
       variants.push({
@@ -94,7 +121,7 @@ export function validateMaterialDraft(
         label,
         price: parsedPrice.value,
         available: variant.available,
-        swatch,
+        swatch: swatch.ok ? swatch.value : null,
         position,
       });
     }

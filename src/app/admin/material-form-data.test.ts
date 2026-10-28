@@ -116,10 +116,26 @@ describe("materialFormErrors", () => {
         rows: [
           {},
           {
-            label: "Ya existe uno activo con el mismo nombre.",
+            label: "Ya hay otra variante con ese nombre.",
             price: "Ingresá un monto en pesos enteros.",
-            swatch: "El formato no es válido. Revisalo.",
+            swatch: "Elegí un color con el selector.",
           },
+        ],
+      },
+    });
+  });
+
+  it("words price format problems with an example the owner can follow", () => {
+    expect(
+      materialFormErrors([
+        { field: "variants.0.price", code: "invalid-format" },
+        { field: "variants.1.price", code: "out-of-range" },
+      ]),
+    ).toEqual({
+      variants: {
+        rows: [
+          { price: "Ingresá solo números, por ejemplo 12500 o 12.500." },
+          { price: "Ingresá un precio mayor a cero." },
         ],
       },
     });

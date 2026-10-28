@@ -4,14 +4,27 @@ import {
   type MaterialDraft,
   type MaterialField,
 } from "~/modules/materials";
-import { fieldErrors } from "./issue-messages";
+import { fieldErrors, type FieldMessages } from "./issue-messages";
 
 export type MaterialVariantField = "label" | "price" | "swatch";
-export type MaterialIssueField =
-  MaterialField | `variants.${number}.${MaterialVariantField}`;
+export type MaterialIssueField = MaterialField;
+type MaterialScalarField = Exclude<
+  MaterialField,
+  "variants" | `variants.${number}.${MaterialVariantField}`
+>;
+
+/** Variant row wording the generic issue text would leave too vague. */
+const VARIANT_FIELD_MESSAGES = {
+  label: { duplicate: "Ya hay otra variante con ese nombre." },
+  price: {
+    "invalid-format": "Ingresá solo números, por ejemplo 12500 o 12.500.",
+    "out-of-range": "Ingresá un precio mayor a cero.",
+  },
+  swatch: { "invalid-format": "Elegí un color con el selector." },
+} as const satisfies FieldMessages<MaterialVariantField>;
 
 export type MaterialFormErrors = Partial<
-  Record<Exclude<MaterialField, "variants">, string>
+  Record<MaterialScalarField, string>
 > & {
   readonly variants?: {
     readonly form?: string | undefined;
@@ -47,7 +60,7 @@ export function materialFormErrors(
 ): MaterialFormErrors {
   const scalar = fieldErrors(
     issues.filter(
-      (issue): issue is FieldIssue<Exclude<MaterialField, "variants">> =>
+      (issue): issue is FieldIssue<MaterialScalarField> =>
         issue.field !== "variants" && !indexedVariantField(issue.field),
     ),
   );
@@ -57,9 +70,10 @@ export function materialFormErrors(
     const indexed = indexedVariantField(issue.field);
     if (!indexed) continue;
     while (variants.length <= indexed.index) variants.push({});
-    const message = fieldErrors<MaterialVariantField>([
-      { field: indexed.field, code: issue.code },
-    ])[indexed.field];
+    const message = fieldErrors<MaterialVariantField>(
+      [{ field: indexed.field, code: issue.code }],
+      VARIANT_FIELD_MESSAGES,
+    )[indexed.field];
     if (!message || variants[indexed.index]?.[indexed.field]) continue;
     variants[indexed.index] = {
       ...variants[indexed.index],

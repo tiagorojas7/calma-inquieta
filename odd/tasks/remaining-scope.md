@@ -31,7 +31,7 @@ Quoted from `docs/client-proposal/proposal.md` (contract). Each S# gets its own 
 | R6  | S8, S2 | Claude, inline | R2         | pending: teacher settlement estimate from period snapshots                                                                                                                               |
 | R7  | S9     | Claude, inline | R1         | pending: student selection and prepared WhatsApp messages                                                                                                                                |
 | R8  | S10    | Claude + owner | R1-R7      | pending: domain, Access re-scope, rate limit, smoke test, initial load, training notes                                                                                                   |
-| R9  | S11    | owner decision | —          | blocked: confirm whether email is in scope                                                                                                                                               |
+| R9  | S11    | Claude, inline | R1, R8     | pending: email notifications through a port with a Resend adapter in composition; off until the domain and API key exist                                                                 |
 
 Admin screens for R1-R7 reuse the admin primitives that Terminal B delivers first (buttons, breadcrumbs, empty states); public forms reuse Terminal A's primitives.
 

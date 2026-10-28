@@ -218,7 +218,9 @@ describe("parseEnv with the worker schema", () => {
     expect(Object.keys(workerEnvSchema.shape).sort()).toEqual([
       "BUILD_COMMIT",
       "DEV_ADMIN_EMAIL",
+      "EMAIL_FROM",
       "HYPERDRIVE",
+      "RESEND_API_KEY",
       "SITE_INDEXING",
       "SITE_URL",
     ]);
@@ -418,5 +420,29 @@ describe("readWorkerEnv", () => {
     );
 
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("parseEnv with the email configuration", () => {
+  it("leaves both email variables undefined when they are absent or blank", () => {
+    for (const extra of [{}, { RESEND_API_KEY: " ", EMAIL_FROM: "" }]) {
+      const result = parseEnv(workerEnvSchema, workerSource(extra));
+      expect(result.ok && result.value.RESEND_API_KEY).toBeUndefined();
+      expect(result.ok && result.value.EMAIL_FROM).toBeUndefined();
+    }
+  });
+
+  it("reads both email variables when they are set", () => {
+    const result = parseEnv(
+      workerEnvSchema,
+      workerSource({
+        RESEND_API_KEY: "re_key",
+        EMAIL_FROM: "Calma <hola@calma.example.test>",
+      }),
+    );
+    expect(result.ok && result.value.RESEND_API_KEY).toBe("re_key");
+    expect(result.ok && result.value.EMAIL_FROM).toBe(
+      "Calma <hola@calma.example.test>",
+    );
   });
 });

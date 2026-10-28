@@ -37,6 +37,8 @@ export interface RemindersScreenProps {
     readonly actividad?: string | undefined;
     readonly texto?: string | undefined;
   };
+  /** Whether the automatic emails are configured (read-only here). */
+  readonly emailEnabled: boolean;
   readonly result: {
     readonly preview: string;
     readonly recipients: readonly ReminderRecipientRow[];
@@ -62,6 +64,7 @@ export function RemindersScreen({
   statuses,
   errors,
   result,
+  emailEnabled,
 }: RemindersScreenProps) {
   const [copied, setCopied] = useState(false);
   const columns: readonly DataTableColumn<ReminderRecipientRow>[] = [
@@ -108,6 +111,9 @@ export function RemindersScreen({
     <section className="flex flex-col gap-4">
       <Heading level={1}>{copy.title}</Heading>
       <p className="text-ink-700">{copy.intro}</p>
+      <p className="text-ink-700">
+        {emailEnabled ? copy.emailStatus.on : copy.emailStatus.off}
+      </p>
       <form
         role="search"
         method="get"

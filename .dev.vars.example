@@ -10,3 +10,6 @@
 # ACCESS_TEAM_DOMAIN=
 # ACCESS_AUD=
 # ADMIN_EMAILS=
+# Automatic emails stay off unless both are set (see docs/runbooks/email-notifications.md).
+# RESEND_API_KEY=
+# EMAIL_FROM=

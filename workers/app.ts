@@ -92,6 +92,52 @@ function createServices(
   };
 }
 
+/**
+ * The daily cron: sends the class and pending-fee reminders. It reads the
+ * database only when automatic email is configured, so it is inert until launch.
+ * Resolves with the counts, or null when email is off or the environment is invalid.
+ */
+export async function handleScheduled(
+  env: object,
+  runtime: WorkerContext,
+  isolate: IsolateState,
+  mode: string,
+): Promise<{
+  readonly classes: number;
+  readonly fees: number;
+  readonly failed: number;
+} | null> {
+  const parsed = readWorkerEnv(env, { mode });
+  if (!parsed.ok) {
+    console.error(formatEnvError(parsed.error));
+    return null;
+  }
+  const { RESEND_API_KEY: apiKey, EMAIL_FROM: from } = parsed.value;
+  if (apiKey === undefined || from === undefined) return null;
+
+  const services = createRequestServices(
+    {
+      databaseUrl: parsed.value.HYPERDRIVE.connectionString,
+      buildCommit: parsed.value.BUILD_COMMIT,
+      siteUrl: parsed.value.SITE_URL,
+      indexingEnabled: parsed.value.SITE_INDEXING,
+      mediaBucket: null,
+      email: { apiKey, from },
+    },
+    {
+      defer: (pending) => {
+        runtime.waitUntil(pending);
+      },
+    },
+    isolate,
+  );
+  const summary = await services.notifications.runDailyReminders();
+  console.log(
+    `Daily email reminders: classes=${String(summary.classes)} fees=${String(summary.fees)} failed=${String(summary.failed)}`,
+  );
+  return summary;
+}
+
 export async function handleRequest(
   request: Request,
   env: object,
@@ -115,6 +161,11 @@ export async function handleRequest(
     siteUrl: parsed.value.SITE_URL,
     indexingEnabled: parsed.value.SITE_INDEXING,
     mediaBucket,
+    email:
+      parsed.value.RESEND_API_KEY !== undefined &&
+      parsed.value.EMAIL_FROM !== undefined
+        ? { apiKey: parsed.value.RESEND_API_KEY, from: parsed.value.EMAIL_FROM }
+        : null,
   };
   const url = requestUrl(request);
   if (!url) return unavailableResponse();
@@ -189,6 +240,16 @@ export default {
       isolate,
       handler,
       import.meta.env.MODE,
+    );
+  },
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(
+      handleScheduled(env, ctx, isolate, import.meta.env.MODE).then(
+        () => undefined,
+        () => {
+          console.error("Daily email reminders failed.");
+        },
+      ),
     );
   },
 } satisfies ExportedHandler<Env>;

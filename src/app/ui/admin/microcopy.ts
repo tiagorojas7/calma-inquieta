@@ -146,7 +146,11 @@ export const adminMicrocopy = {
   reminders: {
     title: "Recordatorios",
     intro:
-      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. No se manda nada automáticamente.",
+      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. Los emails automáticos (inscripción, pago, clase y cuota) salen solos cuando están activados.",
+    emailStatus: {
+      on: "Emails automáticos: activados",
+      off: "Emails automáticos: desactivados (falta configurar el dominio)",
+    },
     formLabel: "Preparar mensajes",
     fields: {
       message: "Mensaje",

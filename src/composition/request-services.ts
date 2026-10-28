@@ -109,6 +109,18 @@ import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createOfferedMaterialsAdapter } from "./offered-materials-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
+import {
+  createDisabledEmailSender,
+  createNotificationService,
+  type NotificationService,
+} from "~/modules/notifications";
+import { createDrizzleOrderAudienceReader } from "~/modules/enrollments/infrastructure/drizzle-order-audience-reader";
+import { createResendSender } from "~/platform/resend-email";
+import {
+  withEnrollmentEmails,
+  withPaymentEmails,
+  withPrivateEventEmails,
+} from "./notifying-services";
 import { createUnavailableService } from "./unavailable-service";
 import { err } from "~/modules/_shared";
 
@@ -142,6 +154,9 @@ export interface AppServices {
   readonly reminders: ReminderUseCases;
   readonly publicCatalog: PublicCatalogService;
   readonly privateEvents: PrivateEventUseCases;
+  readonly notifications: NotificationService;
+  /** True only when both the Resend key and the sender address are configured. */
+  readonly emailEnabled: boolean;
   readonly intensiveRequests: IntensiveRequestUseCases;
 }
 
@@ -152,6 +167,14 @@ export interface RuntimeConfig {
   readonly indexingEnabled: boolean;
   /** `null` when the `MEDIA` binding is absent: images degrade, pages do not. */
   readonly mediaBucket: R2BucketLike | null;
+  /** Absent or null keeps automatic email off (no key or no verified sender). */
+  readonly email?: EmailConfig | null;
+}
+
+export interface EmailConfig {
+  readonly apiKey: string;
+  /** `Name <address>` of a domain verified in Resend. */
+  readonly from: string;
 }
 
 // Static data with no connection to open: one reader serves every request (DS4).
@@ -277,6 +300,29 @@ export function createRequestServices(
         enrollments: createUnavailableAdminEnrollmentService(),
         consolidation: createUnavailableSupplierConsolidationService(),
       };
+  const defer = (pending: Promise<unknown>) => {
+    if (runtime.defer) runtime.defer(pending);
+    else void pending;
+  };
+  const emailEnabled = Boolean(config.email);
+  const notifications = createNotificationService({
+    enabled: emailEnabled,
+    sender: config.email
+      ? createResendSender({
+          apiKey: config.email.apiKey,
+          from: config.email.from,
+        })
+      : createDisabledEmailSender(),
+    audience: createDrizzleOrderAudienceReader(openSession),
+    clock: systemClock,
+    siteUrl: config.siteUrl,
+    studioEmail: async () =>
+      (await siteContent.getBusinessProfile()).email ?? null,
+    // Names only: never a key, an address or a body.
+    onFailure: (name) => {
+      console.warn(`Email notification failed: ${name}`);
+    },
+  });
   return {
     getSystemStatus: createGetSystemStatus({
       probe,
@@ -327,6 +373,18 @@ export function createRequestServices(
       clock: systemClock,
     }),
     ...enrollmentServices,
+    publicEnrollments: withEnrollmentEmails(
+      enrollmentServices.publicEnrollments,
+      notifications,
+      defer,
+    ),
+    enrollments: withPaymentEmails(
+      enrollmentServices.enrollments,
+      notifications,
+      defer,
+    ),
+    notifications,
+    emailEnabled,
     students: createStudentsService({
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
@@ -362,10 +420,14 @@ export function createRequestServices(
       workshops: createDrizzleWorkshopInsightsReader(openSession),
       clock: systemClock,
     }),
-    privateEvents: createPrivateEventService({
-      repository: createDrizzlePrivateEventRepository(openSession),
-      clock: systemClock,
-    }),
+    privateEvents: withPrivateEventEmails(
+      createPrivateEventService({
+        repository: createDrizzlePrivateEventRepository(openSession),
+        clock: systemClock,
+      }),
+      notifications,
+      defer,
+    ),
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {
       talleres: createPublicTalleresReader({

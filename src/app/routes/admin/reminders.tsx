@@ -43,6 +43,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 
   return {
+    emailEnabled: services.emailEnabled,
     values,
     errors,
     kinds: REMINDER_KINDS.map((value) => ({

@@ -5,6 +5,8 @@
   "compatibility_date": "2026-10-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Daily email reminders: 12:00 UTC is 09:00 in Córdoba. Inert until the email secret and sender are configured.
+  "triggers": { "crons": ["0 12 * * *"] },
   "workers_dev": true,
   "preview_urls": false,
   "vars": {

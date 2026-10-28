@@ -14,7 +14,11 @@ import { loader } from "./reminders";
 
 const WORKSHOP = "00000000-0000-4000-8000-000000000002";
 
-function load(path = "/admin/recordatorios", admin = true) {
+function load(
+  path = "/admin/recordatorios",
+  admin = true,
+  extra: Parameters<typeof adminContext>[0] = {},
+) {
   const { orders, service } = remindersFixture();
   orders.push(
     studentOrder(1, {
@@ -36,6 +40,7 @@ function load(path = "/admin/recordatorios", admin = true) {
     params: {},
     context: adminContext(
       {
+        ...extra,
         reminders: service,
         monthlyWorkshops: withOverrides(
           createUnavailableService<MonthlyWorkshopsService>(),
@@ -53,6 +58,14 @@ function load(path = "/admin/recordatorios", admin = true) {
 }
 
 describe("admin reminders route", () => {
+  it("tells whether automatic emails are on", async () => {
+    expect((await load()).emailEnabled).toBe(false);
+    expect(
+      (await load("/admin/recordatorios", true, { emailEnabled: true }))
+        .emailEnabled,
+    ).toBe(true);
+  });
+
   it("shows the form and the filter options without preparing anything", async () => {
     const result = await load();
 

@@ -37,6 +37,7 @@ import {
   createPublicIntensivosReader,
   createPublicTalleresReader,
   createWorkshopPeriodLookup,
+  createWorkshopScheduleLookup,
   type MonthlyWorkshopsService,
   type WorkshopPeriodsService,
   type IntensivesService,
@@ -64,6 +65,12 @@ import {
   createStudentsService,
   type StudentUseCases,
 } from "~/modules/students";
+import {
+  createAttendanceService,
+  type AttendanceUseCases,
+} from "~/modules/attendance";
+import { createDrizzleAttendanceRepository } from "~/modules/attendance/infrastructure/drizzle-attendance-repository";
+import { createDrizzleTurnoRosterReader } from "~/modules/enrollments/infrastructure/drizzle-turno-roster-reader";
 import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
 import {
@@ -120,6 +127,7 @@ export interface AppServices {
   readonly consolidation: SupplierConsolidationUseCases;
   readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly students: StudentUseCases;
+  readonly attendance: AttendanceUseCases;
   readonly publicCatalog: PublicCatalogService;
   readonly privateEvents: PrivateEventUseCases;
   readonly intensiveRequests: IntensiveRequestUseCases;
@@ -310,6 +318,15 @@ export function createRequestServices(
     students: createStudentsService({
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
+      clock: systemClock,
+    }),
+    attendance: createAttendanceService({
+      schedule: createWorkshopScheduleLookup({
+        workshops: workshopRepository,
+        periods: periodRepository,
+      }),
+      roster: createDrizzleTurnoRosterReader(openSession),
+      repository: createDrizzleAttendanceRepository(openSession),
       clock: systemClock,
     }),
     intensiveRequests: config.databaseUrl

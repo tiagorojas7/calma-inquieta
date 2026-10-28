@@ -44,3 +44,9 @@ export {
 } from "./application/intensive-service";
 export { createPublicIntensivosReader } from "./application/public-intensivos-reader";
 export { createPublicTalleresReader } from "./application/public-talleres-reader";
+export type {
+  InsightsPeriodStatus,
+  PeriodCapacityRow,
+  PublishedWorkshopRow,
+  WorkshopInsightsReader,
+} from "./application/insights-reader";

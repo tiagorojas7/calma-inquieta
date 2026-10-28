@@ -42,14 +42,30 @@ The top bar MUST show the signed-in admin's email and a "Salir" control (target 
 
 ### Requirement: Landing
 
-`/admin` MUST render a landing with a greeting that includes the signed-in email and shortcuts to the four areas. It MUST NOT show metrics or a dashboard (change 8). (Source: proposal Approach 3; baseline deviation A9)
+`/admin` MUST render the Panel general: a greeting that includes the signed-in email, a summary of the current month (occupancy, pending requests, payments confirmed, registered income, materials to order), the pending alerts and shortcuts to every area, including Estadísticas. Each summary card and alert MUST link to the screen where it is handled. (Source: contract "Panel general"; supersedes the earlier rule that the landing MUST NOT show metrics, which deferred them to change 8.)
 
-#### Scenario: Shortcuts
+#### Scenario: Summary and shortcuts
 
 - GIVEN an admin on `/admin`
 - WHEN the page renders
-- THEN links to Talleres, Intensivos, Profesores and Materiales are present
-- AND no metric widgets are present
+- THEN the month summary cards and the pending alerts are present
+- AND links to Talleres, Intensivos, Profesores, Inscripciones, Alumnas, Materiales, Eventos privados and Estadísticas are present
+
+#### Scenario: Nothing pending
+
+- GIVEN no overdue request, no workshop without an open period next month and no material left to order
+- WHEN the page renders
+- THEN it says there are no pending alerts
+
+### Requirement: Statistics
+
+`/admin/estadisticas` MUST show, for a month chosen with a GET form (default: the current Córdoba month), tables for occupancy (enrolled, free seats and percentage by workshop and turno), conversion (requests received, pending and confirmed), registered income (fees and materials by workshop), students (participants and recurrence) and materials (orders by status, workshop, project and supplier). A malformed month MUST fall back to the current one. Attendance, absences and make-up classes arrive with the attendance change. (Source: contract "Indicadores")
+
+#### Scenario: Month filter
+
+- GIVEN an admin on `/admin/estadisticas?mes=2026-09`
+- WHEN the page renders
+- THEN every table shows September 2026 data
 
 ### Requirement: Access-denied page
 

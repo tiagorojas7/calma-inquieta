@@ -70,3 +70,14 @@ export type {
 } from "./application/order-history";
 export type { RandomBytes } from "./application/random-bytes";
 export type { SeatLedger } from "./application/seat-ledger";
+export type {
+  EnrollmentInsightsReader,
+  ConfirmedSeatsRow,
+  IncomeFilter,
+  IncomeRow,
+  InsightsPeriodFilter,
+  MaterialRow,
+  OrderCountRow,
+  ParticipationRow,
+  PendingSummary,
+} from "./application/insights-reader";

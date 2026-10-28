@@ -19,8 +19,22 @@ export interface PublishedWorkshopRow {
   readonly periodStatus: InsightsPeriodStatus | null;
 }
 
+/** The teacher snapshot a monthly period froze when it was opened (D2). */
+export interface PeriodTeacherRow {
+  readonly periodId: string;
+  readonly workshopId: string;
+  readonly workshopName: string;
+  readonly teacherId: string;
+  readonly teacherName: string;
+  readonly modality: "own" | "third_party";
+  /** Basis points; only a third-party assignment carries one. */
+  readonly percentageBp: number | null;
+}
+
 /** Aggregations other modules read for statistics and the admin panel. */
 export interface WorkshopInsightsReader {
   capacity(period: string): Promise<readonly PeriodCapacityRow[]>;
   publishedWorkshops(period: string): Promise<readonly PublishedWorkshopRow[]>;
+  /** The teacher snapshot of every period of a month, drafts included. */
+  periodTeachers(period: string): Promise<readonly PeriodTeacherRow[]>;
 }

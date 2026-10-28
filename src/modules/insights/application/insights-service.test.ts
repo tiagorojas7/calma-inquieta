@@ -3,8 +3,9 @@ import type {
   IncomeRow,
   MaterialRow,
   OrderCountRow,
+  PeriodRegistrationRow,
 } from "~/modules/enrollments";
-import type { PeriodCapacityRow } from "~/modules/workshops";
+import type { PeriodCapacityRow, PeriodTeacherRow } from "~/modules/workshops";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import {
   InMemoryEnrollmentInsightsReader,
@@ -409,6 +410,178 @@ describe("insights statistics", () => {
   });
 });
 
+describe("insights settlements", () => {
+  const teacher = (
+    overrides: Partial<PeriodTeacherRow & { period: string }>,
+  ): PeriodTeacherRow & { period: string } => ({
+    period: "2026-10",
+    periodId: "p1",
+    workshopId: "w1",
+    workshopName: "Ceramica",
+    teacherId: "t1",
+    teacherName: "Ana Gomez",
+    modality: "third_party",
+    percentageBp: 3_000,
+    ...overrides,
+  });
+  const registration = (
+    overrides: Partial<PeriodRegistrationRow & { period: string }>,
+  ): PeriodRegistrationRow & { period: string } => ({
+    period: "2026-10",
+    periodId: "p1",
+    orders: 1,
+    feeCentavos: 100_000_00,
+    studentEmails: ["a@x.test"],
+    ...overrides,
+  });
+
+  it("estimates the share of the fee income at the percentage the period froze", async () => {
+    const { orders, workshops, service } = fixture();
+    workshops.teacherRows = [teacher({})];
+    orders.registrationRows = [
+      registration({
+        orders: 2,
+        feeCentavos: 200_000_00,
+        studentEmails: ["a@x.test", "b@x.test"],
+      }),
+    ];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.period).toBe("2026-10");
+    const [row] = result.value.rows;
+    expect(row).toMatchObject({
+      teacherId: "t1",
+      teacherName: "Ana Gomez",
+      modality: "third_party",
+      percentagesBp: [3_000],
+      activities: ["Ceramica"],
+      orders: 2,
+      students: 2,
+    });
+    expect(row?.fee.toCentavos()).toBe(200_000_00);
+    expect(row?.estimate?.toCentavos()).toBe(60_000_00);
+    expect(result.value.totals.estimate.toCentavos()).toBe(60_000_00);
+  });
+
+  it("uses the current month when none is asked for", async () => {
+    const { workshops, service } = fixture();
+    workshops.teacherRows = [teacher({ period: "2026-10" })];
+
+    const result = await service.settlements(actor, {});
+
+    expect(result.ok && result.value.period).toBe("2026-10");
+    expect(result.ok && result.value.rows).toHaveLength(1);
+  });
+
+  it("rounds half a centavo up per period before adding the periods up", async () => {
+    const { orders, workshops, service } = fixture();
+    workshops.teacherRows = [
+      teacher({ periodId: "p1" }),
+      teacher({ periodId: "p2", workshopId: "w2", workshopName: "Acuarela" }),
+    ];
+    // 50 % of 1 centavo is half a centavo: each period rounds up to 1.
+    workshops.teacherRows = workshops.teacherRows.map((row) => ({
+      ...row,
+      percentageBp: 5_000,
+    }));
+    orders.registrationRows = [
+      registration({ periodId: "p1", feeCentavos: 1 }),
+      registration({ periodId: "p2", feeCentavos: 1 }),
+    ];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.rows[0]?.estimate?.toCentavos()).toBe(2);
+  });
+
+  it("counts a student once for a teacher across her periods", async () => {
+    const { orders, workshops, service } = fixture();
+    workshops.teacherRows = [
+      teacher({ periodId: "p1" }),
+      teacher({ periodId: "p2", workshopId: "w2", workshopName: "Acuarela" }),
+    ];
+    orders.registrationRows = [
+      registration({ periodId: "p1", studentEmails: ["a@x.test", "b@x.test"] }),
+      registration({ periodId: "p2", studentEmails: ["b@x.test", "c@x.test"] }),
+    ];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.rows[0]?.students).toBe(3);
+    expect(result.value.rows[0]?.activities).toEqual(["Acuarela", "Ceramica"]);
+  });
+
+  it("keeps the income of an own-modality teacher but estimates nothing", async () => {
+    const { orders, workshops, service } = fixture();
+    workshops.teacherRows = [
+      teacher({ modality: "own", percentageBp: null, teacherName: "Dueña" }),
+    ];
+    orders.registrationRows = [registration({ feeCentavos: 50_000_00 })];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    const [row] = result.value.rows;
+    expect(row?.modality).toBe("own");
+    expect(row?.percentagesBp).toEqual([]);
+    expect(row?.estimate).toBeNull();
+    expect(row?.fee.toCentavos()).toBe(50_000_00);
+    expect(result.value.totals.estimate.toCentavos()).toBe(0);
+  });
+
+  it("lists a teacher with a period but no payments at zero", async () => {
+    const { workshops, service } = fixture();
+    workshops.teacherRows = [teacher({})];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.rows[0]).toMatchObject({ orders: 0, students: 0 });
+    expect(result.value.rows[0]?.estimate?.toCentavos()).toBe(0);
+  });
+
+  it("keeps each period's own percentage when the agreement changed between periods", async () => {
+    const { orders, workshops, service } = fixture();
+    workshops.teacherRows = [
+      teacher({ periodId: "p1", percentageBp: 2_000 }),
+      teacher({
+        periodId: "p2",
+        workshopId: "w2",
+        workshopName: "Acuarela",
+        percentageBp: 4_000,
+      }),
+    ];
+    orders.registrationRows = [
+      registration({ periodId: "p1", feeCentavos: 100_00 }),
+      registration({ periodId: "p2", feeCentavos: 100_00 }),
+    ];
+
+    const result = await service.settlements(actor, { period: "2026-10" });
+
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.rows[0]?.percentagesBp).toEqual([2_000, 4_000]);
+    expect(result.value.rows[0]?.estimate?.toCentavos()).toBe(60_00);
+  });
+
+  it("rejects a malformed month and an actor that is not an admin", async () => {
+    const { service } = fixture();
+
+    expect(await service.settlements(actor, { period: "nope" })).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "period", code: "invalid-format" }],
+      },
+    });
+    const denied = await service.settlements(null, {});
+    expect(denied.ok).toBe(false);
+  });
+});
+
 describe("unavailable insights service", () => {
   it("denies without an actor and fails closed for an admin", async () => {
     const service = createUnavailableInsightsService();
@@ -420,6 +593,14 @@ describe("unavailable insights service", () => {
     await expect(service.statistics(actor, {})).resolves.toEqual({
       ok: false,
       error: { kind: "unavailable" },
+    });
+    await expect(service.settlements(actor, {})).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+    await expect(service.settlements(null, {})).resolves.toEqual({
+      ok: false,
+      error: { kind: "denied" },
     });
   });
 });

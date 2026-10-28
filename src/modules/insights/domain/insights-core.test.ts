@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isPeriod, nextPeriod, percentOf, periodBounds } from "./insights-core";
+import {
+  isPeriod,
+  nextPeriod,
+  percentOf,
+  periodBounds,
+  settlementCentavos,
+} from "./insights-core";
 
 describe("isPeriod", () => {
   it.each(["2026-11", "2026-01", "2030-12"])("accepts %s", (value) => {
@@ -45,5 +51,23 @@ describe("percentOf", () => {
   it("is zero when there is nothing to divide by", () => {
     expect(percentOf(0, 0)).toBe(0);
     expect(percentOf(3, 0)).toBe(0);
+  });
+});
+
+describe("settlementCentavos", () => {
+  it("applies the agreed basis points to the fee income", () => {
+    expect(settlementCentavos(10_000_000, 2_500)).toBe(2_500_000);
+    expect(settlementCentavos(0, 3_000)).toBe(0);
+  });
+
+  it("rounds half a centavo up, never down or to even", () => {
+    expect(settlementCentavos(1, 5_000)).toBe(1);
+    expect(settlementCentavos(3, 5_000)).toBe(2);
+    expect(settlementCentavos(1, 4_999)).toBe(0);
+  });
+
+  it("keeps a whole fee at 100 % and nothing at 0 %", () => {
+    expect(settlementCentavos(123_457, 10_000)).toBe(123_457);
+    expect(settlementCentavos(123_457, 0)).toBe(0);
   });
 });

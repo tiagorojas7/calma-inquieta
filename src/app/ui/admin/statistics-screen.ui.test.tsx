@@ -19,6 +19,12 @@ const props: StatisticsScreenProps = {
   conversion: [{ key: "a", cells: ["Cerámica", "8", "2", "2", "4", "25 %"] }],
   income: [],
   students: ["8", "2", "25 %"],
+  teachers: [
+    {
+      key: "t1",
+      cells: ["Ana Gómez", "De terceros", "30 %", "2", "$ 30.000", "$ 9.000"],
+    },
+  ],
   materials: [
     {
       key: "m",
@@ -55,6 +61,30 @@ describe("StatisticsScreen", () => {
     expect(screen.getByRole("table", { name: "Alumnas" })).toBeVisible();
     expect(screen.getByRole("table", { name: "Materiales" })).toBeVisible();
     await expectNoAxeViolations(container);
+  });
+
+  it("shows the teachers table with the settlement column and the note about own teachers", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const table = screen.getByRole("table", { name: "Profesores" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      "Profesor",
+      "Modalidad",
+      "Porcentaje",
+      "Alumnas vinculadas",
+      "Ingresos asociados",
+      "Importe estimado a liquidar",
+    ]);
+    expect(
+      within(table).getByRole("row", { name: /Ana Gómez/ }),
+    ).toHaveTextContent("$ 9.000");
+    expect(
+      screen.getByText(/modalidad propia no tienen porcentaje/),
+    ).toBeVisible();
   });
 
   it("explains an indicator with no rows instead of drawing an empty table", () => {

@@ -247,4 +247,30 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
       recurring: 0,
     });
   });
+
+  it("totals the fee income and distinct normalized students of each period's paid orders", async () => {
+    const { add, reader } = await fixture();
+    await add({ studentEmail: "Ana@Example.com ", materials: 4_000_00 });
+    await add({ studentEmail: "ana@example.com" });
+    await add({ studentEmail: "bea@example.com" });
+    await add({
+      status: "pending_confirmation",
+      studentEmail: "p@example.com",
+    });
+    await add(CANCELLED);
+    await add({ period: "2026-12", studentEmail: "later@example.com" });
+
+    const rows = await reader.periodRegistrations("2026-11");
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      periodId: PERIOD_A,
+      orders: 3,
+      feeCentavos: 30_000_00,
+    });
+    expect([...(rows[0]?.studentEmails ?? [])].sort()).toEqual([
+      "ana@example.com",
+      "bea@example.com",
+    ]);
+  });
 });

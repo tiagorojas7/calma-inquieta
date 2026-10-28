@@ -39,6 +39,17 @@ export interface IncomeRow {
   readonly materialsCentavos: number;
 }
 
+/**
+ * What one workshop period registered: the paid orders' fee income (materials
+ * excluded) and the distinct students behind them, as normalized emails.
+ */
+export interface PeriodRegistrationRow {
+  readonly periodId: string;
+  readonly orders: number;
+  readonly feeCentavos: number;
+  readonly studentEmails: readonly string[];
+}
+
 export interface PendingSummary {
   readonly total: number;
   /** Pending orders requested before the cutoff. */
@@ -77,6 +88,10 @@ export interface EnrollmentInsightsReader {
     periodIds: readonly string[],
   ): Promise<readonly ConfirmedSeatsRow[]>;
   income(filter: IncomeFilter): Promise<readonly IncomeRow[]>;
+  /** Paid-order registrations of every workshop period of a month. */
+  periodRegistrations(
+    period: string,
+  ): Promise<readonly PeriodRegistrationRow[]>;
   pendingSummary(olderThan: Date): Promise<PendingSummary>;
   /** Material lines of orders that are not cancelled. */
   materials(filter: InsightsPeriodFilter): Promise<readonly MaterialRow[]>;

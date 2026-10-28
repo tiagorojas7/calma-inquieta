@@ -96,6 +96,25 @@ export function createDrizzleEnrollmentInsightsReader(
           .groupBy(orders.workshopId, orders.period),
       ),
 
+    periodRegistrations: (period) =>
+      withDb(async (db) => {
+        const rows = await db
+          .select({
+            periodId: orders.periodId,
+            orders: count(),
+            feeCentavos: sumOf(sql`${orders.feeCentavos}`),
+            studentEmails: sql<
+              string[]
+            >`array_agg(distinct lower(btrim(${orders.studentEmail})))`,
+          })
+          .from(orders)
+          .where(
+            and(inArray(orders.status, CONFIRMED), eq(orders.period, period)),
+          )
+          .groupBy(orders.periodId);
+        return rows;
+      }),
+
     pendingSummary: (olderThan) =>
       withDb(async (db) => {
         const [row] = await db

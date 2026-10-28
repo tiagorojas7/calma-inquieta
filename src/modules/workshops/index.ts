@@ -47,6 +47,7 @@ export { createPublicTalleresReader } from "./application/public-talleres-reader
 export type {
   InsightsPeriodStatus,
   PeriodCapacityRow,
+  PeriodTeacherRow,
   PublishedWorkshopRow,
   WorkshopInsightsReader,
 } from "./application/insights-reader";

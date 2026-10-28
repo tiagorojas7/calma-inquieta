@@ -59,6 +59,12 @@ import {
   type PublicEnrollmentUseCases,
   type SupplierConsolidationUseCases,
 } from "~/modules/enrollments";
+import {
+  createStudentsService,
+  type StudentUseCases,
+} from "~/modules/students";
+import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
+import { createDrizzleStudentOrderSource } from "./drizzle-student-order-source";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
@@ -101,6 +107,7 @@ export interface AppServices {
   readonly enrollments: AdminEnrollmentUseCases;
   readonly consolidation: SupplierConsolidationUseCases;
   readonly publicEnrollments: PublicEnrollmentUseCases;
+  readonly students: StudentUseCases;
   readonly publicCatalog: PublicCatalogService;
 }
 
@@ -285,6 +292,11 @@ export function createRequestServices(
       clock: systemClock,
     }),
     ...enrollmentServices,
+    students: createStudentsService({
+      orders: createDrizzleStudentOrderSource(openSession),
+      notes: createDrizzleStudentNoteRepository(openSession),
+      clock: systemClock,
+    }),
     // A real reader failure is not caught: it reaches the error boundary.
     publicCatalog: {
       talleres: createPublicTalleresReader({

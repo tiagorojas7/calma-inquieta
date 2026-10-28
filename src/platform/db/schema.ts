@@ -3,5 +3,6 @@
 export * from "./schema/enrollments";
 export * from "./schema/materials";
 export * from "./schema/media";
+export * from "./schema/students";
 export * from "./schema/teachers";
 export * from "./schema/workshops";

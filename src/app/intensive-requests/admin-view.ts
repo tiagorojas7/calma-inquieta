@@ -1,10 +1,13 @@
 import { formatEventDate, formatPesos } from "~/app/catalog/format";
 import { dateLabel, dateTimeLabel } from "~/app/enrollment/order-labels";
+import type {
+  IntensiveRequestGroup,
+  IntensiveRequestRow,
+} from "~/app/ui/admin/intensive-requests";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
   INTENSIVE_REQUEST_STATUSES,
   type AdminIntensiveOverview,
-  type IntensiveRequestStatus,
   type StoredIntensiveRequest,
 } from "~/modules/intensive-requests";
 import { buildWhatsAppUrl } from "~/modules/site-content";
@@ -18,7 +21,7 @@ function byAt(by: string | null, at: Date | null): string | null {
   return by !== null && at !== null ? `${by}, ${dateTimeLabel(at)}` : null;
 }
 
-function requestRow(request: StoredIntensiveRequest) {
+function requestRow(request: StoredIntensiveRequest): IntensiveRequestRow {
   const whatsapp = buildWhatsAppUrl(request.phoneDigits, "");
   return {
     id: request.id,
@@ -36,14 +39,6 @@ function requestRow(request: StoredIntensiveRequest) {
     cancelReason: request.cancelReason,
     cancelledBy: byAt(request.cancelledBy, request.cancelledAt),
   };
-}
-
-export type IntensiveRequestRow = ReturnType<typeof requestRow>;
-
-export interface IntensiveRequestGroup {
-  readonly status: IntensiveRequestStatus;
-  readonly title: string;
-  readonly rows: readonly IntensiveRequestRow[];
 }
 
 /** Plain, serializable data for the reservations screen of one intensivo. */

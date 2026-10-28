@@ -16,24 +16,24 @@ import type { Route } from "./+types/intensive-request";
 
 const copy = intensiveRequestCopy;
 
-/**
- * A paused or full intensivo is still public, so the visitor goes back to its
- * page; an unknown or hidden one is the same bare 404 as the detail page.
- */
-function refusal(
-  kind: "not-found" | "requests-closed" | "seats-full" | "unavailable",
-  slug: string,
-) {
-  if (kind === "not-found") return data(null, { status: 404 });
-  if (kind === "unavailable") return data(null, { status: 503 });
-  return redirect(`/intensivos/${slug}`);
+/** An unknown or hidden intensivo is the same bare 404 as the detail page. */
+function gone(kind: "not-found" | "unavailable") {
+  return data(null, { status: kind === "not-found" ? 404 : 503 });
 }
+
+/** A paused or full intensivo is still public, so the visitor goes back to it. */
+const backToDetail = (slug: string) => redirect(`/intensivos/${slug}`);
 
 export async function loader({ context, params }: Route.LoaderArgs) {
   const found = await context
     .get(servicesContext)
     .intensiveRequests.getOffer(params.slug);
-  if (!found.ok) throw refusal(found.error.kind, params.slug);
+  if (!found.ok) {
+    const kind = found.error.kind;
+    if (kind === "requests-closed" || kind === "seats-full")
+      return backToDetail(params.slug);
+    throw gone(kind);
+  }
   const offer = found.value;
   return {
     intensivo: {
@@ -87,8 +87,11 @@ export async function action({ request, context, params }: Route.ActionArgs) {
         },
         { status: 503 },
       );
+    case "requests-closed":
+    case "seats-full":
+      return backToDetail(params.slug);
     default:
-      throw refusal(error.kind, params.slug);
+      throw gone(error.kind);
   }
 }
 

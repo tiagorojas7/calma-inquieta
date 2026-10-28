@@ -1,8 +1,4 @@
 import type { ReactNode } from "react";
-import type {
-  IntensiveRequestGroup,
-  IntensiveRequestRow,
-} from "~/app/intensive-requests/admin-view";
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
@@ -10,6 +6,29 @@ import { FormError, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.intensiveRequests;
+
+/** Plain display strings of one request; the delivery layer builds them. */
+export interface IntensiveRequestRow {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly phone: string;
+  readonly whatsappHref: string | undefined;
+  readonly reference: string;
+  readonly receivedAt: string;
+  readonly paidAmount: string | null;
+  readonly paidOn: string | null;
+  readonly paymentNote: string | null;
+  readonly confirmedBy: string | null;
+  readonly cancelReason: string | null;
+  readonly cancelledBy: string | null;
+}
+
+export interface IntensiveRequestGroup {
+  readonly status: "pending_confirmation" | "confirmed" | "cancelled";
+  readonly title: string;
+  readonly rows: readonly IntensiveRequestRow[];
+}
 
 export interface IntensiveRequestsViewData {
   readonly intensivo: {

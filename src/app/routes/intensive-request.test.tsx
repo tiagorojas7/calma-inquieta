@@ -49,11 +49,18 @@ function post(
   } as never);
 }
 
+/** The loader's data, failing the test if it redirected instead. */
+async function open(services: ReturnType<typeof createTestServices>) {
+  const result = await loader(args(services));
+  if (result instanceof Response) throw new Error("unexpected redirect");
+  return result;
+}
+
 describe("intensive request loader", () => {
   it("returns plain data with the deposit and the conditions visible", async () => {
     const { services } = setup();
 
-    const result = await loader(args(services));
+    const result = await open(services);
 
     expect(result.intensivo.name).toBe("Intensivo de cerámica");
     expect(result.intensivo.deposit.replace(/\s/g, " ")).toBe("$ 15.000");
@@ -82,11 +89,10 @@ describe("intensive request loader", () => {
       buildIntensiveOffer({ capacity: 0 }),
     ]) {
       const { services } = setup(offer);
-      const thrown = (await loader(args(services)).catch(
-        (reason: unknown) => reason,
-      )) as Response;
-      expect(thrown.status).toBe(302);
-      expect(thrown.headers.get("Location")).toBe(
+      const redirected = await loader(args(services));
+      expect(redirected).toBeInstanceOf(Response);
+      expect((redirected as Response).status).toBe(302);
+      expect((redirected as Response).headers.get("Location")).toBe(
         `/intensivos/${FAKE_INTENSIVE_SLUG}`,
       );
     }
@@ -136,7 +142,7 @@ describe("intensive request action", () => {
     const { repository, services } = setup();
     const submitted = { fullName: "", email: "mal", phone: "12" };
 
-    const result = (await post(services, submitted)) as {
+    const result = (await post(services, submitted)) as unknown as {
       data: { values: Record<string, string>; errors: object };
       init: { status: number };
     };

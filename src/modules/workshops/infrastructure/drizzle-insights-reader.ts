@@ -9,6 +9,7 @@ import type { DbSessionFactory } from "~/platform/db/session";
 import type {
   InsightsPeriodStatus,
   PeriodCapacityRow,
+  PeriodTeacherRow,
   WorkshopInsightsReader,
 } from "../application/insights-reader";
 
@@ -65,6 +66,31 @@ export function createDrizzleWorkshopInsightsReader(
         return rows.map((row): PeriodCapacityRow => ({
           ...row,
           periodStatus: row.periodStatus === "closed" ? "closed" : "open",
+        }));
+      }),
+
+    periodTeachers: (period) =>
+      withDb(async (db) => {
+        const rows = await db
+          .select({
+            periodId: workshopPeriod.id,
+            workshopId: workshopPeriod.workshopId,
+            workshopName: monthlyWorkshop.name,
+            teacherId: workshopPeriod.snapshotTeacherId,
+            teacherName: workshopPeriod.snapshotTeacherName,
+            modality: workshopPeriod.snapshotTeacherModality,
+            percentageBp: workshopPeriod.snapshotPercentageBp,
+          })
+          .from(workshopPeriod)
+          .innerJoin(
+            monthlyWorkshop,
+            eq(workshopPeriod.workshopId, monthlyWorkshop.id),
+          )
+          .where(eq(workshopPeriod.period, period))
+          .orderBy(asc(monthlyWorkshop.name));
+        return rows.map((row): PeriodTeacherRow => ({
+          ...row,
+          modality: row.modality === "own" ? "own" : "third_party",
         }));
       }),
 

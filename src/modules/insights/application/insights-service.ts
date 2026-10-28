@@ -5,9 +5,11 @@ import {
   type EnrollmentInsightsReader,
   type IncomeRow,
   type OrderStatus,
+  type PeriodRegistrationRow,
 } from "~/modules/enrollments";
 import {
   cordobaDateOf,
+  type PeriodTeacherRow,
   type WorkshopInsightsReader,
 } from "~/modules/workshops";
 import {
@@ -17,6 +19,7 @@ import {
   percentOf,
   periodBounds,
   pesos,
+  settlementCentavos,
 } from "../domain/insights-core";
 import type {
   ConversionRow,
@@ -28,7 +31,9 @@ import type {
   OccupancyRow,
   OccupancyTotals,
   PanelView,
+  SettlementsView,
   StatisticsView,
+  TeacherSettlementRow,
 } from "./insights";
 
 type MaybeActor = AdminActor | null | undefined;
@@ -95,6 +100,72 @@ function conversionOf(
     cancelled: of("cancelled"),
     percent: percentOf(confirmed, received),
   };
+}
+
+function invalidPeriod() {
+  return err({
+    kind: "invalid" as const,
+    issues: [{ field: "period" as const, code: "invalid-format" as const }],
+  });
+}
+
+/** Folds the month's period snapshots and payments into one row per teacher. */
+function settlementRows(
+  snapshots: readonly PeriodTeacherRow[],
+  registrations: readonly PeriodRegistrationRow[],
+): TeacherSettlementRow[] {
+  const byPeriod = new Map(registrations.map((row) => [row.periodId, row]));
+  const byTeacher = new Map<
+    string,
+    {
+      snapshot: PeriodTeacherRow;
+      percentages: Set<number>;
+      activities: Set<string>;
+      emails: Set<string>;
+      orders: number;
+      fee: number;
+      estimate: number | null;
+    }
+  >();
+  for (const snapshot of snapshots) {
+    const entry = byTeacher.get(snapshot.teacherId) ?? {
+      snapshot,
+      percentages: new Set<number>(),
+      activities: new Set<string>(),
+      emails: new Set<string>(),
+      orders: 0,
+      fee: 0,
+      estimate: null,
+    };
+    const paid = byPeriod.get(snapshot.periodId);
+    const fee = paid?.feeCentavos ?? 0;
+    entry.activities.add(snapshot.workshopName);
+    entry.orders += paid?.orders ?? 0;
+    entry.fee += fee;
+    for (const email of paid?.studentEmails ?? []) entry.emails.add(email);
+    if (snapshot.percentageBp !== null) {
+      entry.percentages.add(snapshot.percentageBp);
+      // Each period rounds on its own: its share is what gets settled.
+      entry.estimate =
+        (entry.estimate ?? 0) + settlementCentavos(fee, snapshot.percentageBp);
+    }
+    byTeacher.set(snapshot.teacherId, entry);
+  }
+  return [...byTeacher.entries()]
+    .map(([teacherId, entry]): TeacherSettlementRow => ({
+      teacherId,
+      teacherName: entry.snapshot.teacherName,
+      modality: entry.snapshot.modality,
+      percentagesBp: [...entry.percentages].sort((a, b) => a - b),
+      activities: [...entry.activities].sort((a, b) =>
+        a.localeCompare(b, "es"),
+      ),
+      orders: entry.orders,
+      students: entry.emails.size,
+      fee: pesos(entry.fee),
+      estimate: entry.estimate === null ? null : pesos(entry.estimate),
+    }))
+    .sort((a, b) => a.teacherName.localeCompare(b.teacherName, "es"));
 }
 
 /**
@@ -184,13 +255,7 @@ export function createInsightsService(
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       const period = query.period ?? currentPeriod();
-      if (!isPeriod(period))
-        return err({
-          kind: "invalid" as const,
-          issues: [
-            { field: "period" as const, code: "invalid-format" as const },
-          ],
-        });
+      if (!isPeriod(period)) return invalidPeriod();
       const [occupancy, counts, registered, participation, materials] =
         await Promise.all([
           occupancyOf(period),
@@ -261,6 +326,32 @@ export function createInsightsService(
       };
       return ok(view);
     },
+
+    async settlements(actor, query) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const period = query.period ?? currentPeriod();
+      if (!isPeriod(period)) return invalidPeriod();
+      const [snapshots, registrations] = await Promise.all([
+        workshops.periodTeachers(period),
+        orders.periodRegistrations(period),
+      ]);
+      const rows = settlementRows(snapshots, registrations);
+      const view: SettlementsView = {
+        period,
+        rows,
+        totals: {
+          fee: pesos(rows.reduce((sum, row) => sum + row.fee.toCentavos(), 0)),
+          estimate: pesos(
+            rows.reduce(
+              (sum, row) => sum + (row.estimate?.toCentavos() ?? 0),
+              0,
+            ),
+          ),
+        },
+      };
+      return ok(view);
+    },
   };
 }
 
@@ -272,5 +363,5 @@ export function createUnavailableInsightsService(): InsightsUseCases {
       authorized.ok ? err({ kind: "unavailable" as const }) : authorized,
     );
   };
-  return { panel: fail, statistics: fail };
+  return { panel: fail, statistics: fail, settlements: fail };
 }

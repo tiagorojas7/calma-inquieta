@@ -8,9 +8,11 @@ import type {
   OrderCountRow,
   ParticipationRow,
   PendingSummary,
+  PeriodRegistrationRow,
 } from "~/modules/enrollments";
 import type {
   PeriodCapacityRow,
+  PeriodTeacherRow,
   PublishedWorkshopRow,
   WorkshopInsightsReader,
 } from "~/modules/workshops";
@@ -26,6 +28,7 @@ export class InMemoryEnrollmentInsightsReader implements EnrollmentInsightsReade
   pending: PendingSummary = { total: 0, older: 0 };
   materialRows: MaterialRow[] = [];
   participationRow: ParticipationRow = { students: 0, recurring: 0 };
+  registrationRows: (PeriodRegistrationRow & { period: string })[] = [];
   readonly incomeCalls: IncomeFilter[] = [];
   readonly pendingCalls: Date[] = [];
   readonly participationCalls: string[] = [];
@@ -51,6 +54,12 @@ export class InMemoryEnrollmentInsightsReader implements EnrollmentInsightsReade
     );
   }
 
+  periodRegistrations(period: string) {
+    return Promise.resolve(
+      this.registrationRows.filter((row) => row.period === period),
+    );
+  }
+
   pendingSummary(olderThan: Date) {
     this.pendingCalls.push(olderThan);
     return Promise.resolve(this.pending);
@@ -71,6 +80,7 @@ export class InMemoryEnrollmentInsightsReader implements EnrollmentInsightsReade
 export class InMemoryWorkshopInsightsReader implements WorkshopInsightsReader {
   capacityRows: PeriodCapacityRow[] = [];
   published: PublishedWorkshopRow[] = [];
+  teacherRows: (PeriodTeacherRow & { period: string })[] = [];
   readonly publishedCalls: string[] = [];
 
   capacity(period: string) {
@@ -82,5 +92,11 @@ export class InMemoryWorkshopInsightsReader implements WorkshopInsightsReader {
   publishedWorkshops(period: string) {
     this.publishedCalls.push(period);
     return Promise.resolve(this.published);
+  }
+
+  periodTeachers(period: string) {
+    return Promise.resolve(
+      this.teacherRows.filter((row) => row.period === period),
+    );
   }
 }

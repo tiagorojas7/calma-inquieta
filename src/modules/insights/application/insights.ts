@@ -105,6 +105,30 @@ export interface PanelView {
   };
 }
 
+export interface TeacherSettlementRow {
+  readonly teacherId: string;
+  readonly teacherName: string;
+  readonly modality: "own" | "third_party";
+  /** Distinct agreed percentages (basis points) the month's periods froze. */
+  readonly percentagesBp: readonly number[];
+  /** Workshops of the month the teacher is responsible for. */
+  readonly activities: readonly string[];
+  /** Paid orders behind the income. */
+  readonly orders: number;
+  /** Distinct students (normalized emails) with a paid order. */
+  readonly students: number;
+  /** Registered fee income, materials excluded. */
+  readonly fee: Money;
+  /** Null when no percentage was agreed (own modality). */
+  readonly estimate: Money | null;
+}
+
+export interface SettlementsView {
+  readonly period: string;
+  readonly rows: readonly TeacherSettlementRow[];
+  readonly totals: { readonly fee: Money; readonly estimate: Money };
+}
+
 export interface StatisticsQuery {
   /** `YYYY-MM`; the current Cordoba month when omitted. */
   readonly period?: string;
@@ -117,4 +141,9 @@ export interface InsightsService {
     actor: AdminActor,
     query: StatisticsQuery,
   ): Promise<Result<StatisticsView, AdminFailure | Invalid<"period">>>;
+  /** Per teacher: linked students, associated income and estimated share. */
+  settlements(
+    actor: AdminActor,
+    query: StatisticsQuery,
+  ): Promise<Result<SettlementsView, AdminFailure | Invalid<"period">>>;
 }

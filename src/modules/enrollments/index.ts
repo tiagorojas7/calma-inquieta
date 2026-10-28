@@ -80,4 +80,5 @@ export type {
   OrderCountRow,
   ParticipationRow,
   PendingSummary,
+  PeriodRegistrationRow,
 } from "./application/insights-reader";

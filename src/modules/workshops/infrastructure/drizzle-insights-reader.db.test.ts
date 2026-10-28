@@ -105,4 +105,57 @@ describe("createDrizzleWorkshopInsightsReader", () => {
       { workshopId: without.id, name: "Sin periodo", periodStatus: null },
     ]);
   });
+
+  it("reads the teacher snapshot of every period of a month, drafts included", async () => {
+    const third = "33333333-3333-4333-8333-333333333333";
+    const own = "44444444-4444-4444-8444-444444444444";
+    const thirdPeriod = seedPeriod({
+      period: "2026-11",
+      status: "open",
+      snapshotTeacherId: third,
+      snapshotTeacherName: "Ana Gomez",
+      snapshotTeacherModality: "third_party",
+      snapshotPercentageBp: 3_050,
+    });
+    const ownDraft = seedPeriod({
+      period: "2026-11",
+      status: "draft",
+      snapshotTeacherId: own,
+      snapshotTeacherName: "Duena",
+      snapshotTeacherModality: "own",
+      snapshotPercentageBp: null,
+    });
+    const otherMonth = seedPeriod({ period: "2026-12" });
+    const ceramica = seedTaller({ name: "Ceramica", periods: [thirdPeriod] });
+    const acuarela = seedTaller({
+      name: "Acuarela",
+      periods: [ownDraft, otherMonth],
+    });
+    const reader = await readerFor(
+      buildSeed({ talleres: [ceramica, acuarela] }),
+    );
+
+    const rows = await reader.periodTeachers("2026-11");
+
+    expect(rows).toEqual([
+      {
+        periodId: ownDraft.id,
+        workshopId: acuarela.id,
+        workshopName: "Acuarela",
+        teacherId: own,
+        teacherName: "Duena",
+        modality: "own",
+        percentageBp: null,
+      },
+      {
+        periodId: thirdPeriod.id,
+        workshopId: ceramica.id,
+        workshopName: "Ceramica",
+        teacherId: third,
+        teacherName: "Ana Gomez",
+        modality: "third_party",
+        percentageBp: 3_050,
+      },
+    ]);
+  });
 });

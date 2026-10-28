@@ -41,3 +41,18 @@ export function pesos(centavos: number): Money {
   if (!money.ok) throw new Error("aggregated amount is not a safe integer");
   return money.value;
 }
+
+const BASIS_POINTS = 10_000;
+
+/**
+ * A teacher's share of a fee income: whole centavos, half a centavo rounded
+ * up. Integer arithmetic only, so no floating point drift.
+ */
+export function settlementCentavos(
+  feeCentavos: number,
+  percentageBp: number,
+): number {
+  return Math.floor(
+    (feeCentavos * percentageBp + BASIS_POINTS / 2) / BASIS_POINTS,
+  );
+}

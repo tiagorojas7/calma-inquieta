@@ -14,9 +14,11 @@ export type {
   OccupancyRow,
   OccupancyTotals,
   PanelView,
+  SettlementsView,
   StatisticsQuery,
   StatisticsView,
   StudentStats,
+  TeacherSettlementRow,
 } from "./application/insights";
 export {
   createInsightsService,

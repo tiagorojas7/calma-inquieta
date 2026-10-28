@@ -61,6 +61,8 @@ export default [
     route("pedido/:publicId", "routes/order.tsx"),
     route("intensivos", "routes/intensivos.tsx"),
     route("intensivos/:slug", "routes/intensivo.tsx"),
+    route("intensivos/:slug/reserva", "routes/intensive-request.tsx"),
+    route("reserva/:publicId", "routes/intensive-request-summary.tsx"),
     route("eventos-privados", "routes/private-event-request.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -2,6 +2,7 @@ import { data, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { intensivoToDetail } from "~/app/catalog/mappers";
 import { buildActivityWhatsAppUrl } from "~/app/catalog/whatsapp";
+import { intensiveRequestCopy } from "~/app/intensive-requests/copy";
 import { buildEventJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
 import { buildPageMeta, truncateDescription } from "~/app/seo/meta";
 import { JsonLdScript } from "~/app/ui/json-ld-script";
@@ -38,6 +39,18 @@ export async function loader({ context, params }: Route.LoaderArgs) {
         ? { kind: "paused", name: intensivo.name }
         : { kind: "intensivo", name: intensivo.name, date: intensivo.date },
   });
+  // The seat request replaces the WhatsApp-only call to action while the
+  // intensivo is open and has seats; any other answer keeps the inquiry link.
+  const open =
+    intensivo.status === "open"
+      ? await services.intensiveRequests.getOffer(intensivo.slug)
+      : null;
+  const reservation = open?.ok
+    ? {
+        href: `/intensivos/${intensivo.slug}/reserva`,
+        label: intensiveRequestCopy.reserveCta,
+      }
+    : undefined;
   const cover = intensivo.images[0];
   const path = `/intensivos/${intensivo.slug}`;
   return {
@@ -59,7 +72,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
         services.site.baseUrl,
       ),
     ),
-    detail: intensivoToDetail(intensivo, content, link),
+    detail: intensivoToDetail(intensivo, content, link, reservation),
     metaInput: {
       title: intensivo.name,
       description: truncateDescription(intensivo.summary, DESCRIPTION_LIMIT),

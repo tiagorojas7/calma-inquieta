@@ -282,6 +282,30 @@ describe("intensivoToDetail", () => {
     expect(JSON.parse(JSON.stringify(detail))).toEqual(detail);
   });
 
+  it("replaces the inquiry action with the reservation link when the seat request is open", () => {
+    const reservation = {
+      href: "/intensivos/intensivo-demo/reserva",
+      label: "Reservar mi lugar",
+    };
+    const detail = intensivoToDetail(
+      buildPublicIntensivo(),
+      content,
+      link,
+      reservation,
+    );
+    expect(detail.action).toEqual({ kind: "reserve", ...reservation });
+  });
+
+  it("keeps the paused notice even when a reservation link is offered", () => {
+    const detail = intensivoToDetail(
+      buildPublicIntensivo({ status: "paused" }),
+      content,
+      link,
+      { href: "/x", label: "Reservar mi lugar" },
+    );
+    expect(detail.action.kind).toBe("paused");
+  });
+
   it("shows the paused notice instead of the inquiry action", () => {
     const pausedLink = {
       href: "https://wa.me/549351?text=y",

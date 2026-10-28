@@ -35,6 +35,7 @@ export interface IntensivoDetailProps {
   gallery: (DetailImage & { id: string })[];
   action:
     | { kind: "inquiry"; href: string; label: string }
+    | { kind: "reserve"; href: string; label: string }
     | {
         kind: "paused";
         text: string;

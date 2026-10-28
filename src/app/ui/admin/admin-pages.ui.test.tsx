@@ -37,6 +37,7 @@ describe("AdminLanding", () => {
         "Profesores",
         "Inscripciones",
         "Alumnas",
+        "Asistencia",
         "Materiales",
         "Eventos privados",
       ],

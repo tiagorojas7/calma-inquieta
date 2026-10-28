@@ -27,10 +27,10 @@ export function summarizeAttendance(
   marks: readonly { readonly status: AttendanceStatus }[],
   makeUps: readonly { readonly status: MakeUpStatus }[],
 ): AttendanceSummary {
-  const count = <T extends { status: string }>(
-    items: readonly T[],
-    s: string,
-  ) => items.filter((item) => item.status === s).length;
+  const count = (
+    items: readonly { readonly status: string }[],
+    status: string,
+  ) => items.filter((item) => item.status === status).length;
   return {
     present: count(marks, "present"),
     absent: count(marks, "absent"),

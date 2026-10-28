@@ -31,6 +31,15 @@ export default [
     route("inscripciones/:id", "routes/admin/enrollment-detail.tsx"),
     route("alumnas", "routes/admin/students.tsx"),
     route("alumnas/:email", "routes/admin/student-detail.tsx"),
+    route("asistencia", "routes/admin/attendance.tsx"),
+    route(
+      "asistencia/:periodId/:turnoId",
+      "routes/admin/attendance-sessions.tsx",
+    ),
+    route(
+      "asistencia/:periodId/:turnoId/:date",
+      "routes/admin/attendance-sheet.tsx",
+    ),
     route("profesores", "routes/admin/teachers.tsx"),
     route("profesores/nuevo", "routes/admin/teacher-new.tsx"),
     route("profesores/:id", "routes/admin/teacher-detail.tsx"),

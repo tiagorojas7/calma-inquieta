@@ -11,6 +11,10 @@ import {
 import { createUnavailableInsightsService } from "~/modules/insights";
 import { createUnavailableRemindersService } from "~/modules/reminders";
 import { createUnavailableStudentsService } from "~/modules/students";
+import {
+  createDisabledEmailSender,
+  createNotificationService,
+} from "~/modules/notifications";
 import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
@@ -94,6 +98,18 @@ export function createTestServices(
       repository: new InMemoryPrivateEventRepository(),
       clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
     }),
+    notifications: createNotificationService({
+      enabled: false,
+      sender: createDisabledEmailSender(),
+      audience: {
+        classesOn: () => Promise.resolve([]),
+        pendingRequestedBetween: () => Promise.resolve([]),
+      },
+      clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
+      siteUrl: "https://example.test",
+      studioEmail: () => Promise.resolve(null),
+    }),
+    emailEnabled: false,
     ...overrides,
   };
 }

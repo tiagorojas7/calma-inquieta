@@ -82,3 +82,7 @@ export type {
   PendingSummary,
   PeriodRegistrationRow,
 } from "./application/insights-reader";
+export type {
+  OrderAudienceReader,
+  OrderAudienceRow,
+} from "./application/order-audience";

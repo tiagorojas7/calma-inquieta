@@ -117,3 +117,16 @@ describe("a copied .dev.vars.example", () => {
     expect(workerEnvSchema.safeParse(env).success).toBe(false);
   });
 });
+
+describe("wrangler email configuration", () => {
+  const config = readFileSync("wrangler.jsonc", "utf8");
+
+  it("runs the daily reminders at 12:00 UTC (09:00 in Córdoba)", () => {
+    expect(config).toMatch(/"crons":\s*\[\s*"0 12 \* \* \*"\s*\]/);
+  });
+
+  it("never commits the Resend key or the sender address", () => {
+    expect(config).not.toContain("RESEND_API_KEY");
+    expect(config).not.toContain("EMAIL_FROM");
+  });
+});

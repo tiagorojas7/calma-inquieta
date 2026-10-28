@@ -5,6 +5,18 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import AdminHome from "./home";
 import AdminLayout, { ErrorBoundary } from "./layout";
 
+const summary = {
+  period: "2026-10",
+  monthLabel: "octubre 2026",
+  nextMonthLabel: "noviembre 2026",
+  occupancy: { percent: 0, confirmed: 0, capacity: 0, free: 0 },
+  pending: { total: 0, older: 0 },
+  confirmedThisMonth: 0,
+  income: { total: "$ 0", fee: "$ 0", materials: "$ 0" },
+  materialsToOrder: { orders: 0, units: 0 },
+  alerts: { withoutOpenPeriod: [] },
+};
+
 function renderAdmin(childLoader: () => unknown) {
   const Stub = createRoutesStub([
     {
@@ -19,7 +31,7 @@ function renderAdmin(childLoader: () => unknown) {
           Component: AdminHome,
           loader: () => {
             childLoader();
-            return { email: "agus@example.com" };
+            return { email: "agus@example.com", summary };
           },
         },
       ],

@@ -7,7 +7,10 @@ import {
   parseTeacherDraft,
   parseTeacherIntent,
 } from "~/app/admin/teacher-form-data";
+import { toTeacherSettlement } from "~/app/admin/insights-view";
 import { Heading } from "~/app/ui/atoms/heading";
+import { TeacherSettlementPanel } from "~/app/ui/admin/teacher-settlement";
+import { isPeriod } from "~/modules/insights";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { TeacherForm, TeacherStatePanel } from "~/app/ui/admin/teacher-form";
 import { requireAdmin } from "./require-admin";
@@ -34,9 +37,18 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
         actor,
         teacher.id,
       );
+  // The month falls back to the current one; a failed read only hides the block.
+  const month = new URL(request.url).searchParams.get("mes") ?? "";
+  const settled = await services.insights.settlements(
+    actor,
+    isPeriod(month) ? { period: month } : {},
+  );
   return {
     id: teacher.id,
     active: teacher.active,
+    settlement: settled.ok
+      ? toTeacherSettlement(settled.value, teacher.id)
+      : null,
     values: {
       name: teacher.name,
       bioLine: teacher.bioLine,
@@ -97,6 +109,12 @@ export default function AdminTeacherDetail() {
         assignedTo={teacher.assignedTo}
         error={stateError}
       />
+      {teacher.settlement && (
+        <TeacherSettlementPanel
+          teacherId={teacher.id}
+          settlement={teacher.settlement}
+        />
+      )}
       <TeacherForm
         key={teacher.id}
         values={formRejected?.values ?? teacher.values}

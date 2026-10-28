@@ -12,6 +12,7 @@ const EXPECTED = [
   ["Alumnas", "/admin/alumnas"],
   ["Materiales", "/admin/materiales"],
   ["Eventos privados", "/admin/eventos"],
+  ["Estadísticas", "/admin/estadisticas"],
 ];
 
 function entries(nav: HTMLElement) {

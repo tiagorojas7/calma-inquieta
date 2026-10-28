@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
-import type { PanelView, StatisticsView } from "~/modules/insights";
-import { toPanelSummary, toStatisticsScreen } from "./insights-view";
+import type {
+  PanelView,
+  SettlementsView,
+  StatisticsView,
+} from "~/modules/insights";
+import {
+  toPanelSummary,
+  toStatisticsScreen,
+  toTeacherSettlement,
+  toTeacherSettlementRows,
+} from "./insights-view";
 
 const pesos = (amount: number) => {
   const money = Money.fromCentavos(amount * 100);
@@ -170,5 +179,119 @@ describe("toStatisticsScreen", () => {
     expect(empty.occupancy).toEqual([]);
     expect(empty.conversion).toEqual([]);
     expect(empty.income).toEqual([]);
+  });
+});
+
+const settlements: SettlementsView = {
+  period: "2026-10",
+  rows: [
+    {
+      teacherId: "t1",
+      teacherName: "Ana Gómez",
+      modality: "third_party",
+      percentagesBp: [3_050],
+      activities: ["Cerámica", "Torno"],
+      orders: 3,
+      students: 2,
+      fee: pesos(30_000),
+      estimate: pesos(9_150),
+    },
+    {
+      teacherId: "t2",
+      teacherName: "Lola Paz",
+      modality: "own",
+      percentagesBp: [],
+      activities: ["Acuarela"],
+      orders: 1,
+      students: 1,
+      fee: pesos(10_000),
+      estimate: null,
+    },
+  ],
+  totals: { fee: pesos(40_000), estimate: pesos(9_150) },
+};
+
+describe("toTeacherSettlementRows", () => {
+  it("formats modality, percentage, income and estimate, with a totals row", () => {
+    expect(toTeacherSettlementRows(settlements)).toEqual([
+      {
+        key: "t1",
+        cells: [
+          "Ana Gómez",
+          "De terceros",
+          "30,5 %",
+          "2",
+          "$ 30.000",
+          "$ 9.150",
+        ],
+      },
+      {
+        key: "t2",
+        cells: [
+          "Lola Paz",
+          "Propia",
+          "Sin porcentaje",
+          "1",
+          "$ 10.000",
+          "Sin porcentaje",
+        ],
+      },
+      {
+        key: "total",
+        cells: ["Total", "", "", "", "$ 40.000", "$ 9.150"],
+        total: true,
+      },
+    ]);
+  });
+
+  it("stays empty when no teacher has a period in the month", () => {
+    expect(
+      toTeacherSettlementRows({
+        ...settlements,
+        rows: [],
+      }),
+    ).toEqual([]);
+  });
+
+  it("lists every percentage when the agreement changed inside the month", () => {
+    const [first] = toTeacherSettlementRows({
+      ...settlements,
+      rows: settlements.rows
+        .slice(0, 1)
+        .map((row) => ({ ...row, percentagesBp: [2_000, 4_000] })),
+    });
+    expect(first?.cells[2]).toBe("20 %, 40 %");
+  });
+});
+
+describe("toTeacherSettlement", () => {
+  it("picks the teacher's figures for the month", () => {
+    expect(toTeacherSettlement(settlements, "t1")).toEqual({
+      period: "2026-10",
+      periodLabel: "octubre 2026",
+      responsible: true,
+      modality: "De terceros",
+      percentage: "30,5 %",
+      activities: "Cerámica, Torno",
+      students: "2",
+      income: "$ 30.000",
+      estimate: "$ 9.150",
+    });
+  });
+
+  it("marks an own teacher without an estimate", () => {
+    expect(toTeacherSettlement(settlements, "t2")).toMatchObject({
+      modality: "Propia",
+      percentage: "Sin porcentaje",
+      estimate: null,
+    });
+  });
+
+  it("says she is not responsible for anything that month", () => {
+    expect(toTeacherSettlement(settlements, "nobody")).toEqual({
+      period: "2026-10",
+      periodLabel: "octubre 2026",
+      responsible: false,
+    });
   });
 });

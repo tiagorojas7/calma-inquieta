@@ -20,6 +20,7 @@ export interface StatisticsScreenProps {
   readonly conversion: readonly StatisticsRow[];
   readonly income: readonly StatisticsRow[];
   readonly students: readonly string[];
+  readonly teachers: readonly StatisticsRow[];
   readonly materials: readonly StatisticsRow[];
 }
 
@@ -90,7 +91,7 @@ function StatsTable({
  * plain anchor, because the Worker gate refuses `.data` requests.
  */
 export function StatisticsScreen(props: StatisticsScreenProps) {
-  const { occupancy, conversion, income, students, materials } = copy;
+  const { occupancy, conversion, income, students, teachers, materials } = copy;
   return (
     <section className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -149,6 +150,14 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
           rows={[{ key: "students", cells: props.students }]}
         />
         <Text tone="muted">{students.note}</Text>
+      </Block>
+      <Block title={teachers.title} intro={teachers.intro}>
+        <StatsTable
+          title={teachers.title}
+          headers={Object.values(teachers.columns)}
+          rows={props.teachers}
+        />
+        <Text tone="muted">{teachers.note}</Text>
       </Block>
       <Block title={materials.title} intro={materials.intro}>
         <StatsTable

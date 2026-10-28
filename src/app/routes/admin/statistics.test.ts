@@ -22,6 +22,27 @@ function run(path: string, admin = true) {
     },
   ];
   orders.seats = [{ periodId: "p1", turnoId: "t1", confirmedSeats: 1 }];
+  workshops.teacherRows = [
+    {
+      period: "2026-09",
+      periodId: "p1",
+      workshopId: "w1",
+      workshopName: "Ceramica",
+      teacherId: "t1",
+      teacherName: "Ana Gomez",
+      modality: "third_party",
+      percentageBp: 2_500,
+    },
+  ];
+  orders.registrationRows = [
+    {
+      period: "2026-09",
+      periodId: "p1",
+      orders: 1,
+      feeCentavos: 40_000_00,
+      studentEmails: ["a@x.test"],
+    },
+  ];
   return loader({
     request: getRequest(path),
     params: {},
@@ -42,6 +63,19 @@ describe("admin statistics route", () => {
       "1",
       "3",
       "25 %",
+    ]);
+  });
+
+  it("adds the teachers' settlement estimate for the same month", async () => {
+    const result = await run("/admin/estadisticas?mes=2026-09");
+
+    expect(result.teachers[0]?.cells).toEqual([
+      "Ana Gomez",
+      "De terceros",
+      "25 %",
+      "1",
+      "$ 40.000",
+      "$ 10.000",
     ]);
   });
 

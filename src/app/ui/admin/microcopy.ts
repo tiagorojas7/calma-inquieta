@@ -347,6 +347,21 @@ export const adminMicrocopy = {
       },
       note: "Las asistencias, faltas y recuperaciones se suman cuando esté el control de asistencia.",
     },
+    teachers: {
+      title: "Profesores",
+      intro:
+        "Alumnas vinculadas, ingresos asociados y liquidación estimada según porcentaje.",
+      columns: {
+        teacher: "Profesor",
+        modality: "Modalidad",
+        percentage: "Porcentaje",
+        students: "Alumnas vinculadas",
+        income: "Ingresos asociados",
+        estimate: "Importe estimado a liquidar",
+      },
+      noPercentage: "Sin porcentaje",
+      note: "El importe es el porcentaje acordado de cada período sobre las cuotas cobradas en el mes, sin materiales. Los profesores de modalidad propia no tienen porcentaje acordado, por eso no suman importe. Las señas de los intensivos se suman cuando se registren.",
+    },
     materials: {
       title: "Materiales",
       intro: "Pedidos por estado, taller, proyecto y proveedor.",
@@ -408,6 +423,23 @@ export const adminMicrocopy = {
       save: "Guardar",
       cancel: "Cancelar",
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    settlement: {
+      title: "Importe estimado a liquidar",
+      intro: (month: string) =>
+        `Cuotas cobradas en ${month} de las actividades a cargo de este profesor, sin materiales.`,
+      month: "Mes",
+      apply: "Ver mes",
+      none: "Este mes no tiene actividades a cargo de este profesor.",
+      modality: "Modalidad",
+      percentage: "Porcentaje acordado",
+      activities: "Actividades",
+      students: "Alumnas vinculadas",
+      income: "Ingresos asociados",
+      estimate: "Importe estimado a liquidar",
+      noPercentage: "Sin porcentaje",
+      ownNote:
+        "La modalidad propia no tiene porcentaje acordado, así que no se calcula un importe.",
     },
     state: {
       archive: "Archivar",

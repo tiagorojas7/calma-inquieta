@@ -103,6 +103,7 @@ describe("AdminLanding", () => {
       "Materiales",
       "Eventos privados",
       "Estadísticas",
+      "Recordatorios",
     ]);
   });
 

@@ -64,6 +64,10 @@ import {
   type StudentUseCases,
 } from "~/modules/students";
 import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
+import {
+  createRemindersService,
+  type ReminderUseCases,
+} from "~/modules/reminders";
 import { createDrizzleEnrollmentInsightsReader } from "~/modules/enrollments/infrastructure/drizzle-insights-reader";
 import { createDrizzleWorkshopInsightsReader } from "~/modules/workshops/infrastructure/drizzle-insights-reader";
 import {
@@ -120,6 +124,7 @@ export interface AppServices {
   readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly students: StudentUseCases;
   readonly insights: InsightsUseCases;
+  readonly reminders: ReminderUseCases;
   readonly publicCatalog: PublicCatalogService;
   readonly privateEvents: PrivateEventUseCases;
 }
@@ -309,6 +314,9 @@ export function createRequestServices(
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
       clock: systemClock,
+    }),
+    reminders: createRemindersService({
+      orders: createDrizzleOrderHistoryReader(openSession),
     }),
     insights: createInsightsService({
       orders: createDrizzleEnrollmentInsightsReader(openSession),

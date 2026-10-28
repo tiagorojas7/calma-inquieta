@@ -17,9 +17,15 @@ if (!total.ok) throw new Error("bad money");
 
 function notifier() {
   return {
-    enrollmentReceived: vi.fn((_order: unknown) => Promise.resolve()),
-    paymentConfirmed: vi.fn((_order: unknown) => Promise.resolve()),
-    privateEventReceived: vi.fn((_inquiry: unknown) => Promise.resolve()),
+    enrollmentReceived: vi.fn<(order: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+    paymentConfirmed: vi.fn<(order: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+    privateEventReceived: vi.fn<(inquiry: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
     runDailyReminders: vi.fn(() =>
       Promise.resolve({ classes: 0, fees: 0, failed: 0 }),
     ),
@@ -83,14 +89,15 @@ describe("withEnrollmentEmails", () => {
   function setup(
     result: Awaited<ReturnType<PublicEnrollmentUseCases["requestEnrollment"]>>,
   ) {
+    const getOffer = vi.fn();
     const inner: PublicEnrollmentUseCases = {
-      getOffer: vi.fn(),
+      getOffer,
       getOrderByPublicId: vi.fn(),
       requestEnrollment: vi.fn(() => Promise.resolve(result)),
     };
     const n = notifier();
     const d = deferred();
-    return { service: withEnrollmentEmails(inner, n, d.defer), n, d, inner };
+    return { service: withEnrollmentEmails(inner, n, d.defer), n, d, getOffer };
   }
 
   it("defers the received email after the order is created and returns the result untouched", async () => {
@@ -121,8 +128,9 @@ describe("withEnrollmentEmails", () => {
   });
 
   it("passes the other use cases through", () => {
-    const { service, inner } = setup(ok(view));
-    expect(service.getOffer).toBe(inner.getOffer);
+    const { service, getOffer } = setup(ok(view));
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- identity check only
+    expect(service.getOffer).toBe(getOffer);
   });
 });
 
@@ -147,9 +155,12 @@ describe("withPaymentEmails", () => {
     confirm: Awaited<ReturnType<AdminEnrollmentUseCases["confirmPayment"]>>,
   ) {
     const confirmPayment = vi.fn(() => Promise.resolve(confirm));
-    const readDetail = vi.fn((_actor: unknown, _id: string) =>
-      Promise.resolve(ok(detail)),
-    );
+    const readDetail = vi.fn<
+      (
+        actor: unknown,
+        id: string,
+      ) => Promise<{ ok: true; value: typeof detail }>
+    >(() => Promise.resolve(ok(detail)));
     // Only the two use cases the decorator touches are exercised.
     const inner = {
       confirmPayment,

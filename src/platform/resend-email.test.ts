@@ -35,7 +35,7 @@ describe("resend sender", () => {
     expect(new Headers(init?.headers).get("authorization")).toBe(
       "Bearer re_test_key",
     );
-    expect(JSON.parse(String(init?.body))).toEqual({
+    expect(JSON.parse(init?.body as string)).toEqual({
       from: "Calma Inquieta <hola@calma.example.test>",
       to: ["ana@example.com"],
       subject: "Hola",

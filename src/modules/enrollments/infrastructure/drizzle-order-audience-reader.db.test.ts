@@ -18,7 +18,9 @@ const unpaid = { paidAt: null, paidAmountCentavos: null } as const;
 async function setup() {
   const database = await createTestDatabase();
   created.push(database);
-  const openSession = createDbSessionFactory({ connectionString: database.url });
+  const openSession = createDbSessionFactory({
+    connectionString: database.url,
+  });
   let next = 0;
   async function add(overrides: Partial<Values> = {}) {
     next += 1;

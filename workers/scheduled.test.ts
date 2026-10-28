@@ -60,7 +60,9 @@ describe("handleScheduled", () => {
   });
 
   it("reports an invalid environment by variable name and does not throw", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     await expect(
       handleScheduled({}, runtime, createIsolateState(), "production"),
     ).resolves.toBeNull();

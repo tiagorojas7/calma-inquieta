@@ -15,7 +15,6 @@ import {
   isAdminPath,
   runAdminGate,
 } from "~/composition/admin-gate";
-import type { ReminderRunSummary } from "~/modules/notifications";
 import { readAdminConfig } from "~/platform/admin-env";
 import { withAdminHeaders } from "~/platform/admin-headers";
 import { readMediaBinding } from "~/platform/r2";
@@ -103,7 +102,11 @@ export async function handleScheduled(
   runtime: WorkerContext,
   isolate: IsolateState,
   mode: string,
-): Promise<ReminderRunSummary | null> {
+): Promise<{
+  readonly classes: number;
+  readonly fees: number;
+  readonly failed: number;
+} | null> {
   const parsed = readWorkerEnv(env, { mode });
   if (!parsed.ok) {
     console.error(formatEnvError(parsed.error));

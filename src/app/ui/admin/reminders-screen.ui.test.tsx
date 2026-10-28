@@ -24,6 +24,7 @@ const base: RemindersScreenProps = {
   statuses: [{ value: "paid", label: "Pagado" }],
   errors: {},
   result: null,
+  emailEnabled: false,
 };
 
 const withResult: RemindersScreenProps = {
@@ -54,6 +55,20 @@ afterEach(() => {
 });
 
 describe("RemindersScreen", () => {
+  it("states that automatic emails are off until the domain is set up", () => {
+    render(<RemindersScreen {...base} />);
+    expect(
+      screen.getByText(
+        "Emails automáticos: desactivados (falta configurar el dominio)",
+      ),
+    ).toBeVisible();
+  });
+
+  it("states that automatic emails are on", () => {
+    render(<RemindersScreen {...base} emailEnabled />);
+    expect(screen.getByText("Emails automáticos: activados")).toBeVisible();
+  });
+
   it("offers a GET form with the template and the audience filters", async () => {
     const { container } = render(<RemindersScreen {...base} />);
 

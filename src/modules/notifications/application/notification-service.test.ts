@@ -40,10 +40,13 @@ function setup(over: Partial<NotificationServiceDeps> = {}) {
       return Promise.resolve(ok(undefined));
     },
   };
-  const audience: NotificationAudience = {
-    classesOn: vi.fn(() => Promise.resolve([])),
-    pendingRequestedBetween: vi.fn(() => Promise.resolve([])),
-  };
+  const classesOn = vi.fn<NotificationAudience["classesOn"]>(() =>
+    Promise.resolve([]),
+  );
+  const pendingRequestedBetween = vi.fn<
+    NotificationAudience["pendingRequestedBetween"]
+  >(() => Promise.resolve([]));
+  const audience: NotificationAudience = { classesOn, pendingRequestedBetween };
   const failures: string[] = [];
   const service = createNotificationService({
     enabled: true,
@@ -55,7 +58,7 @@ function setup(over: Partial<NotificationServiceDeps> = {}) {
     onFailure: (name) => failures.push(name),
     ...over,
   });
-  return { service, sent, audience, failures };
+  return { service, sent, classesOn, pendingRequestedBetween, failures };
 }
 
 const notice = {
@@ -123,7 +126,9 @@ describe("notification service", () => {
   });
 
   it("does nothing, and reads nothing, when disabled", async () => {
-    const { service, sent, audience } = setup({ enabled: false });
+    const { service, sent, classesOn, pendingRequestedBetween } = setup({
+      enabled: false,
+    });
     await service.enrollmentReceived(notice);
     await service.paymentConfirmed(notice);
     await expect(service.runDailyReminders()).resolves.toEqual({
@@ -132,8 +137,8 @@ describe("notification service", () => {
       failed: 0,
     });
     expect(sent).toEqual([]);
-    expect(audience.classesOn).not.toHaveBeenCalled();
-    expect(audience.pendingRequestedBetween).not.toHaveBeenCalled();
+    expect(classesOn).not.toHaveBeenCalled();
+    expect(pendingRequestedBetween).not.toHaveBeenCalled();
   });
 
   it("swallows a rejected send and logs only its name", async () => {
@@ -163,22 +168,22 @@ describe("notification service", () => {
   });
 
   it("asks for tomorrow's class by Córdoba weekday and month", async () => {
-    const { service, audience } = setup();
+    const { service, classesOn } = setup();
     await service.runDailyReminders(); // Monday 2026-11-02 -> Tuesday 11-03
-    expect(audience.classesOn).toHaveBeenCalledWith(2, "2026-11");
+    expect(classesOn).toHaveBeenCalledWith(2, "2026-11");
   });
 
   it("uses the Córdoba calendar when the UTC date differs", async () => {
-    const { service, audience } = setup({
+    const { service, classesOn } = setup({
       // 01:00 UTC on Sunday 2026-11-01 is still Saturday 2026-10-31 in Córdoba.
       clock: { now: () => new Date("2026-11-01T01:00:00.000Z") },
     });
     await service.runDailyReminders(); // tomorrow = Sunday 2026-11-01
-    expect(audience.classesOn).toHaveBeenCalledWith(7, "2026-11");
+    expect(classesOn).toHaveBeenCalledWith(7, "2026-11");
   });
 
   it("sends a class reminder per order and a fee reminder in the 48-72 h window", async () => {
-    const { service, sent, audience } = setup({
+    const { service, sent } = setup({
       audience: {
         classesOn: () => Promise.resolve([audienceOrder()]),
         pendingRequestedBetween: vi.fn(() =>
@@ -202,7 +207,6 @@ describe("notification service", () => {
     ]);
     expect(sent[0]?.text).toContain("17:30");
     expect(sent[0]?.text).not.toContain("17:30:00");
-    expect(audience).toBeDefined();
   });
 
   it("queries pending orders requested between 72 and 48 hours ago", async () => {

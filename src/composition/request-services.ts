@@ -33,6 +33,7 @@ import {
   createWorkshopPeriodsService,
   createWorkshopEnrollmentOfferLookup,
   createWorkshopOfferedMaterialIdsLookup,
+  createIntensiveSeatOfferLookup,
   createPublicIntensivosReader,
   createPublicTalleresReader,
   createWorkshopPeriodLookup,
@@ -80,6 +81,12 @@ import {
   type PrivateEventUseCases,
 } from "~/modules/private-events";
 import { createDrizzlePrivateEventRepository } from "~/modules/private-events/infrastructure/drizzle-private-event-repository";
+import {
+  createIntensiveRequestService,
+  createUnavailableIntensiveRequestService,
+  type IntensiveRequestUseCases,
+} from "~/modules/intensive-requests";
+import { createDrizzleIntensiveRequestRepository } from "~/modules/intensive-requests/infrastructure/drizzle-intensive-request-repository";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
@@ -127,6 +134,7 @@ export interface AppServices {
   readonly reminders: ReminderUseCases;
   readonly publicCatalog: PublicCatalogService;
   readonly privateEvents: PrivateEventUseCases;
+  readonly intensiveRequests: IntensiveRequestUseCases;
 }
 
 export interface RuntimeConfig {
@@ -199,6 +207,7 @@ export function createRequestServices(
     createDrizzleOrderLineUsageLookup(openSession),
   );
   const turnoRepository = createDrizzleTurnoRepository(openSession);
+  const intensiveRepository = createDrizzleIntensiveRepository(openSession);
   const seats = config.databaseUrl
     ? createDrizzleSeatLedger(openSession)
     : null;
@@ -294,7 +303,7 @@ export function createRequestServices(
     }),
     workshopPeriods,
     intensives: createIntensivesService({
-      repository: createDrizzleIntensiveRepository(openSession),
+      repository: intensiveRepository,
       teachers,
       media,
       clock: systemClock,
@@ -315,6 +324,19 @@ export function createRequestServices(
       notes: createDrizzleStudentNoteRepository(openSession),
       clock: systemClock,
     }),
+    intensiveRequests: config.databaseUrl
+      ? createIntensiveRequestService({
+          repository: createDrizzleIntensiveRequestRepository(openSession),
+          offers: createIntensiveSeatOfferLookup({
+            repository: intensiveRepository,
+            clock: systemClock,
+          }),
+          clock: systemClock,
+          random: {
+            bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+          },
+        })
+      : createUnavailableIntensiveRequestService(),
     reminders: createRemindersService({
       orders: createDrizzleOrderHistoryReader(openSession),
     }),

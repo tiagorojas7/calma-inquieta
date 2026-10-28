@@ -151,6 +151,7 @@ const ENROLLMENT_LABEL = "Inscribirme";
 type DetailAction =
   | { kind: "inquiry"; href: string; label: string }
   | { kind: "enrollment"; href: string; label: string }
+  | { kind: "reserve"; href: string; label: string }
   | {
       kind: "paused";
       text: string;
@@ -160,6 +161,7 @@ type DetailAction =
 /**
  * Props of the intensivo detail page. `link` is the WhatsApp link for the
  * activity state: the inquiry link when open, the paused link when paused.
+ * `reservation`, when the seat request is open, replaces the inquiry action.
  * The cover is the hero; the other images form the gallery, keyed by position
  * and source because one asset may repeat.
  */
@@ -167,6 +169,7 @@ export function intensivoToDetail(
   intensivo: PublicIntensivo,
   content: CatalogContent,
   link: ActivityLink,
+  reservation?: { href: string; label: string },
 ) {
   const seats = intensivoSeats(intensivo, content);
   const action: DetailAction =
@@ -176,7 +179,9 @@ export function intensivoToDetail(
           text: content.shared.paused,
           link: { href: link.href, label: link.label },
         }
-      : { kind: "inquiry", href: link.href, label: link.label };
+      : reservation
+        ? { kind: "reserve", href: reservation.href, label: reservation.label }
+        : { kind: "inquiry", href: link.href, label: link.label };
   return {
     breadcrumb: {
       label: content.shared.breadcrumbLabel,

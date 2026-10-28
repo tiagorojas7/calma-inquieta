@@ -22,6 +22,7 @@ export default [
     route("intensivos", "routes/admin/intensives.tsx"),
     route("intensivos/nuevo", "routes/admin/intensive-new.tsx"),
     route("intensivos/:id", "routes/admin/intensive-detail.tsx"),
+    route("intensivos/:id/reservas", "routes/admin/intensive-requests.tsx"),
     route("inscripciones", "routes/admin/enrollments.tsx"),
     route(
       "inscripciones/materiales",
@@ -63,6 +64,8 @@ export default [
     route("pedido/:publicId", "routes/order.tsx"),
     route("intensivos", "routes/intensivos.tsx"),
     route("intensivos/:slug", "routes/intensivo.tsx"),
+    route("intensivos/:slug/reserva", "routes/intensive-request.tsx"),
+    route("reserva/:publicId", "routes/intensive-request-summary.tsx"),
     route("eventos-privados", "routes/private-event-request.tsx"),
   ]),
 ] satisfies RouteConfig;

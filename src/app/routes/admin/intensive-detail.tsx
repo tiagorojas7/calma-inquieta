@@ -21,6 +21,7 @@ import {
 import type { FieldIssue } from "~/modules/_shared";
 import type { IntensiveWorkshop } from "~/modules/workshops";
 import { Heading } from "~/app/ui/atoms/heading";
+import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
 import { IntensiveStatePanel } from "~/app/ui/admin/intensive-state-panel";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
@@ -190,6 +191,14 @@ export default function AdminIntensiveDetail() {
   return (
     <section className="flex flex-col gap-6">
       <Heading level={1}>{copy.editTitle}</Heading>
+      <div>
+        <AdminButtonLink
+          variant="outline"
+          href={`${LIST}/${intensive.id}/reservas`}
+        >
+          {adminMicrocopy.intensiveRequests.link}
+        </AdminButtonLink>
+      </div>
       <IntensiveStatePanel
         status={intensive.status}
         schedule={intensive.values}

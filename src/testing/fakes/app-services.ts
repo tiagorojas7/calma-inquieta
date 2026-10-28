@@ -11,6 +11,7 @@ import {
 import { createUnavailableInsightsService } from "~/modules/insights";
 import { createUnavailableRemindersService } from "~/modules/reminders";
 import { createUnavailableStudentsService } from "~/modules/students";
+import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
 import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
@@ -89,6 +90,7 @@ export function createTestServices(
       getOrderByPublicId: () =>
         Promise.resolve(err({ kind: "unavailable" as const })),
     },
+    intensiveRequests: createUnavailableIntensiveRequestService(),
     publicCatalog: createFakePublicCatalog(),
     privateEvents: createPrivateEventService({
       repository: new InMemoryPrivateEventRepository(),

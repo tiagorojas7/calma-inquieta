@@ -1,7 +1,7 @@
 # Admin UI/UX overhaul
 
 - Feature: `ui-admin-overhaul` (ODD, not SDD).
-- Branch: `feat/ui-admin-overhaul-audit`, from `origin/main` `13bcf8c`.
+- Branch: `feat/ui-admin-overhaul-audit`, rebased onto `origin/main` `265668f`.
 - Audience: non-technical workshop owners, primarily on mobile.
 - Ownership: `src/app/ui/admin/**` and `src/app/routes/admin/**` only.
 - Delivery: audit-only first commit, then reviewable PR slices of about 400 changed lines against `main`.
@@ -263,11 +263,11 @@ These are implementation forecasts, not commitments to exact line counts; split 
 
 ## Progress and evidence
 
-| Task | Status   | Evidence                                                                                                                                                              |
-| ---- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 screens × 3 widths; 46 findings; live environment failure and fixture fallback documented. Audit commit pending. |
-| T2   | Pending  | —                                                                                                                                                                     |
-| T3   | Pending  | —                                                                                                                                                                     |
-| T4   | Pending  | —                                                                                                                                                                     |
-| T5   | Pending  | —                                                                                                                                                                     |
-| T6   | Pending  | —                                                                                                                                                                     |
+| Task | Status   | Evidence                                                                                                                                                                                                      |
+| ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 screens × 3 widths; 46 findings; live environment failure and fixture fallback documented. Audit commit `5c6d83a` (`docs(admin): audit admin panel UX`). |
+| T2   | Pending  | —                                                                                                                                                                                                             |
+| T3   | Pending  | —                                                                                                                                                                                                             |
+| T4   | Pending  | —                                                                                                                                                                                                             |
+| T5   | Pending  | —                                                                                                                                                                                                             |
+| T6   | Pending  | —                                                                                                                                                                                                             |

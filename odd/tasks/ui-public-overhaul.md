@@ -1,6 +1,6 @@
 # Public UI overhaul
 
-Status: source audit ready; visual viewport matrix pending
+Status: source and visual audit complete; Phase 2 ready
 Branch: `feat/ui-public-overhaul-audit`
 Baseline: `origin/main` at `265668f`
 
@@ -22,20 +22,29 @@ The generated design-system suggestion was treated as advice, not a replacement 
 
 Runtime capture was interrupted when the shared Docker/PostgreSQL service stopped accepting connections. The environment was later rebuilt successfully with an empty, migrated database. The owner explicitly instructed Terminal A to commit these 53 source findings as the first work unit, then seed test data and complete the viewport matrix before UI implementation.
 
-| Screen                     | 360     | 768     | 1024    | 1440    |
-| -------------------------- | ------- | ------- | ------- | ------- |
-| Home                       | pending | pending | pending | pending |
-| Talleres                   | pending | pending | pending | pending |
-| Taller detail              | pending | pending | pending | pending |
-| Intensivos                 | pending | pending | pending | pending |
-| Intensivo detail           | pending | pending | pending | pending |
-| Quiénes somos              | pending | pending | pending | pending |
-| Contacto                   | pending | pending | pending | pending |
-| Eventos privados           | pending | pending | pending | pending |
-| Enrollment form            | pending | pending | pending | pending |
-| Materials selector         | pending | pending | pending | pending |
-| Order summary and WhatsApp | pending | pending | pending | pending |
-| 404 and server error       | pending | pending | pending | pending |
+The rebuilt local database was seeded with one published workshop, one published intensive, one open enrollment period, one material variant, and one order. Each screen was captured at the top, middle, and bottom before visual review. The matrix confirms the 53 source findings and adds direct runtime evidence for the already-recorded overflow, density, hierarchy, and touch-target defects.
+
+| Screen                     | 360      | 768      | 1024     | 1440     |
+| -------------------------- | -------- | -------- | -------- | -------- |
+| Home                       | observed | observed | observed | observed |
+| Talleres                   | observed | observed | observed | observed |
+| Taller detail              | observed | observed | observed | observed |
+| Intensivos                 | observed | observed | observed | observed |
+| Intensivo detail           | observed | observed | observed | observed |
+| Quiénes somos              | observed | observed | observed | observed |
+| Contacto                   | observed | observed | observed | observed |
+| Eventos privados           | observed | observed | observed | observed |
+| Enrollment form            | observed | observed | observed | observed |
+| Materials selector         | observed | observed | observed | observed |
+| Order summary and WhatsApp | observed | observed | observed | observed |
+| 404 and server error       | observed | observed | observed | observed |
+
+Measured runtime evidence:
+
+- Home reaches a 968 px document width in the 360 px viewport because the hero collage escapes its container, validating G05/H02.
+- Taller, intensivo, enrollment, materials, order, contact, and error screens fit the 360 px document width, but their native controls and compact links retain the touch-target defects recorded in G01, EN02, M05, and ER01.
+- The `Quiénes somos` gallery intentionally clips and overlaps many media elements; its document width is masked to the viewport, validating the fragility recorded in A02 rather than proving a robust narrow layout.
+- At 1024 px the desktop header fits with the current fallback fonts and seeded Spanish copy. This is not evidence for the future owner fonts; the breakpoint must be rechecked when those assets are supplied.
 
 ## Audit findings
 
@@ -163,9 +172,9 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 
 ## Tasks
 
-- [ ] Audit the global visual system and every public screen at all required viewport widths.
+- [x] Audit the global visual system and every public screen at all required viewport widths.
 - [x] Record prioritized source findings by section, including skill guidance and a concrete remedy.
-- [ ] Commit and publish the source audit, then notify Terminal B.
+- [x] Commit and publish the source audit, then notify Terminal B.
 - [ ] Implement tokens, typography, and spacing.
 - [ ] Implement differentiated primary, secondary, and tertiary CTAs with complete states.
 - [ ] Implement and publish the licensed SVG icon component slice, then notify Terminal B.
@@ -174,6 +183,6 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 
 ## Work-unit evidence
 
-- Source audit: this first work-unit commit; exact hash will be recorded in the next feature-document update.
+- Source audit: `5155c8f` (`docs(ui): audit public experience`), published to `origin/feat/ui-public-overhaul-audit`; Terminal B was notified.
 - No UI source changes were made in the audit work unit.
-- Viewport matrix: pending against the rebuilt local database.
+- Viewport matrix: 48 viewport captures plus top/middle/bottom screenshots, completed against the rebuilt and seeded local database. Generated screenshots remain outside Git.

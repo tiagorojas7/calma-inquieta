@@ -50,6 +50,8 @@
   /* Space (§3.3). */
   --spacing: 0.25rem;
   --spacing-section: clamp(3rem, 2rem + 4vw, 6rem);
+  --spacing-module: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  --scroll-offset-header: 5rem;
   --spacing-gutter: clamp(1.25rem, 0.75rem + 2vw, 2rem);
   --container-page: 90rem;
 
@@ -58,12 +60,16 @@
   --radius-md: 0.75rem; /* cards */
   --radius-pill: 9999px; /* CTAs, pills */
 
-  /* Elevation (§3.3). */
-  --shadow-card:
+  /* Elevation (§3.3): rest for inset details, raised for cards, floating for chrome. */
+  --shadow-rest: 0 1px 2px rgb(31 27 24 / 0.04);
+  --shadow-raised:
     0 1px 2px rgb(31 27 24 / 0.04), 0 6px 20px rgb(31 27 24 / 0.06);
+  --shadow-floating: 0 6px 24px rgb(31 27 24 / 0.08);
+  /* Legacy utility aliases preserve existing component treatment. */
+  --shadow-card: var(--shadow-raised);
   --shadow-lift:
     0 2px 4px rgb(31 27 24 / 0.05), 0 16px 36px rgb(31 27 24 / 0.12);
-  --shadow-header: 0 6px 24px rgb(31 27 24 / 0.08);
+  --shadow-header: var(--shadow-floating);
 
   /* Motion (§3.3). app.css reduces durations under prefers-reduced-motion. */
   --ease-calm: cubic-bezier(0.2, 0, 0, 1);

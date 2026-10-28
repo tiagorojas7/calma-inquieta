@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type {
+  MakeUpEntry,
   ScheduledTurno,
   SessionSheet,
   TurnoSessions,
 } from "~/modules/attendance";
 import {
   attendanceIndexView,
+  makeUpsView,
   parseAttendanceFilter,
   parseStatusEntries,
   parseTurnoRef,
@@ -234,6 +236,63 @@ describe("parseStatusEntries", () => {
     expect(parseStatusEntries(form)).toEqual([
       { email: "ana@example.com", status: "present" },
       { email: "bea@example.com", status: "absent" },
+    ]);
+  });
+});
+
+describe("makeUpsView", () => {
+  const entry = (overrides: Partial<MakeUpEntry> = {}): MakeUpEntry => ({
+    id: "m1",
+    email: "ana@example.com",
+    studentName: "Ana Pérez",
+    periodId: P1,
+    turnoId: T1,
+    date: "2026-10-05",
+    makeUpPeriodId: P1,
+    makeUpTurnoId: T2,
+    makeUpDate: "2026-10-14",
+    status: "pending",
+    createdBy: "owner@example.com",
+    createdAt: new Date("2026-10-06T12:00:00Z"),
+    doneBy: null,
+    doneAt: null,
+    workshopName: "Cerámica",
+    turnoLabel: "Lunes tarde",
+    makeUpWorkshopName: "Cerámica",
+    makeUpTurnoLabel: "Miércoles",
+    ...overrides,
+  });
+
+  it("splits pending from done and describes both classes", () => {
+    const view = makeUpsView([
+      entry(),
+      entry({
+        id: "m2",
+        status: "done",
+        doneBy: "owner@example.com",
+        doneAt: new Date("2026-10-15T15:00:00Z"),
+      }),
+    ]);
+
+    expect(view.pending).toEqual([
+      {
+        id: "m1",
+        student: "Ana Pérez",
+        email: "ana@example.com",
+        absence: "Cerámica, Lunes tarde · Lunes 05/10/2026",
+        makeUp: "Cerámica, Miércoles · Miércoles 14/10/2026",
+        doneNote: null,
+      },
+    ]);
+    expect(view.done).toEqual([
+      {
+        id: "m2",
+        student: "Ana Pérez",
+        email: "ana@example.com",
+        absence: "Cerámica, Lunes tarde · Lunes 05/10/2026",
+        makeUp: "Cerámica, Miércoles · Miércoles 14/10/2026",
+        doneNote: "Realizada el 15/10/2026 12:00 (owner@example.com)",
+      },
     ]);
   });
 });

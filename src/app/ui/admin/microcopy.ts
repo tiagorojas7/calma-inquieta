@@ -904,14 +904,10 @@ export const adminMicrocopy = {
     makeUps: {
       title: "Recuperaciones",
       back: "Volver a asistencia",
-      filterLabel: "Filtrar recuperaciones",
-      filters: {
-        status: "Estado",
-        all: "Todas",
-        pending: "Pendientes",
-        done: "Realizadas",
-        apply: "Filtrar",
-      },
+      pendingTitle: "Pendientes",
+      doneTitle: "Realizadas",
+      emptyPending: "No hay recuperaciones pendientes.",
+      emptyDone: "Todavía no hay recuperaciones realizadas.",
       columns: {
         student: "Alumna",
         absence: "Clase que faltó",

@@ -32,6 +32,7 @@ export default [
     route("alumnas", "routes/admin/students.tsx"),
     route("alumnas/:email", "routes/admin/student-detail.tsx"),
     route("asistencia", "routes/admin/attendance.tsx"),
+    route("asistencia/recuperaciones", "routes/admin/attendance-make-ups.tsx"),
     route(
       "asistencia/:periodId/:turnoId",
       "routes/admin/attendance-sessions.tsx",

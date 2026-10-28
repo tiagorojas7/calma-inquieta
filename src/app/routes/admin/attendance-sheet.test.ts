@@ -136,3 +136,107 @@ describe("admin attendance sheet route", () => {
     ).toBe(403);
   });
 });
+
+describe("admin attendance sheet make-up classes", () => {
+  const WED = "2f8e5b6a-4d0c-4c3b-8e8f-6a1b3c5d7e03";
+  const makeUp = (overrides: Record<string, string> = {}) => ({
+    intent: "makeup",
+    email: "ana@example.com",
+    makeUpTurno: `${ATT_PERIOD}:${WED}`,
+    makeUpDate: "2026-10-14",
+    ...overrides,
+  });
+
+  async function withAbsence() {
+    const context = setup();
+    await context.save({
+      intent: "save",
+      "status:ana@example.com": "absent",
+    });
+    return context;
+  }
+
+  it("offers every scheduled turno as a make-up choice", async () => {
+    const { load } = setup();
+    const result = await load();
+    expect(result.makeUpTurnos.map((option) => option.label)).toEqual([
+      "Cerámica, Lunes tarde (octubre 2026)",
+      "Cerámica, Miércoles mañana (octubre 2026)",
+    ]);
+  });
+
+  it("schedules a pending make-up for an absent student and shows it", async () => {
+    const { save, load, repository } = await withAbsence();
+
+    const response = (await save(makeUp())) as Response;
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(path());
+    expect([...repository.makeUps.values()]).toMatchObject([
+      {
+        email: "ana@example.com",
+        date: DATE,
+        makeUpTurnoId: WED,
+        makeUpDate: "2026-10-14",
+        status: "pending",
+        createdBy: "a@x.test",
+      },
+    ]);
+    const after = await load();
+    expect(after.rows[0]?.makeUp).toEqual({
+      status: "pending",
+      label: "Recuperación pendiente",
+    });
+  });
+
+  it("answers 422 with the field error and keeps what was typed", async () => {
+    const { save, repository } = await withAbsence();
+
+    const result = (await save(makeUp({ makeUpDate: "2026-10-15" }))) as {
+      data: { makeUp: { errors: Record<string, string>; values: object } };
+      init: { status: number };
+    };
+
+    expect(result.init.status).toBe(422);
+    expect(result.data.makeUp.errors).toEqual({
+      makeUpDate: "Elegí una fecha que sea el día de la semana del turno.",
+    });
+    expect(result.data.makeUp.values).toEqual({
+      makeUpTurno: `${ATT_PERIOD}:${WED}`,
+      makeUpDate: "2026-10-15",
+    });
+    expect(repository.makeUps.size).toBe(0);
+  });
+
+  it("answers 422 for a turno choice that is not a turno reference", async () => {
+    const { save } = await withAbsence();
+    const result = (await save(makeUp({ makeUpTurno: "nope" }))) as {
+      data: { makeUp: { errors: Record<string, string> } };
+    };
+    expect(result.data.makeUp.errors).toEqual({
+      makeUpTurno: "Elegí un turno de la lista.",
+    });
+  });
+
+  it("answers 422 for a student who was not marked absent", async () => {
+    const { save } = setup();
+    const result = (await save(makeUp())) as {
+      data: { makeUp: { errors: Record<string, string> } };
+    };
+    expect(result.data.makeUp.errors).toEqual({
+      student:
+        "Solo se puede programar la recuperación de una alumna marcada como ausente.",
+    });
+  });
+
+  it("answers 422 when the absence already has a make-up", async () => {
+    const { save } = await withAbsence();
+    await save(makeUp());
+    const result = (await save(makeUp())) as {
+      data: { makeUp: { formError: string } };
+    };
+    expect(result.data.makeUp.formError).toBe(
+      "Esta ausencia ya tiene una recuperación programada.",
+    );
+  });
+});

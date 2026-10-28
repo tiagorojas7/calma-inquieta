@@ -1,10 +1,15 @@
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { formatTimeRange, weekdayName } from "~/app/catalog/format";
-import { dateLabel, monthLabel } from "~/app/enrollment/order-labels";
+import {
+  dateLabel,
+  dateTimeLabel,
+  monthLabel,
+} from "~/app/enrollment/order-labels";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
   sessionDates,
   weekdayOf,
+  type MakeUpEntry,
   type ScheduledTurno,
   type SessionSheet,
   type TurnoSessions,
@@ -144,4 +149,26 @@ export function parseStatusEntries(
       entries.push({ email: name.slice(STATUS_FIELD.length), status: value });
   }
   return entries;
+}
+
+function makeUpRow(entry: MakeUpEntry) {
+  return {
+    id: entry.id,
+    student: entry.studentName,
+    email: entry.email,
+    absence: `${entry.workshopName}, ${entry.turnoLabel} · ${sessionDateLabel(entry.date)}`,
+    makeUp: `${entry.makeUpWorkshopName}, ${entry.makeUpTurnoLabel} · ${sessionDateLabel(entry.makeUpDate)}`,
+    doneNote:
+      entry.status === "done" && entry.doneAt && entry.doneBy
+        ? copy.makeUps.doneBy(entry.doneBy, dateTimeLabel(entry.doneAt))
+        : null,
+  };
+}
+
+/** Make-up classes split into the ones still to take and the ones taken. */
+export function makeUpsView(entries: readonly MakeUpEntry[]) {
+  return {
+    pending: entries.filter((e) => e.status === "pending").map(makeUpRow),
+    done: entries.filter((e) => e.status === "done").map(makeUpRow),
+  };
 }

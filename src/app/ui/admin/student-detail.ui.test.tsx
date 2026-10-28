@@ -108,4 +108,31 @@ describe("StudentDetail", () => {
       screen.getByText("Todavía no tiene inscripciones vigentes."),
     ).toBeVisible();
   });
+
+  it("summarizes her attendance and make-up classes", () => {
+    render(
+      <StudentDetail
+        student={{
+          ...student,
+          attendance: {
+            present: "8",
+            absent: "2",
+            makeUpsPending: "1",
+            makeUpsDone: "1",
+          },
+        }}
+      />,
+    );
+
+    const summary = screen.getByRole("region", { name: "Asistencia" });
+    expect(summary).toHaveTextContent("Clases a las que vino8");
+    expect(summary).toHaveTextContent("Clases que faltó2");
+    expect(summary).toHaveTextContent("Recuperaciones pendientes1");
+    expect(summary).toHaveTextContent("Recuperaciones realizadas1");
+  });
+
+  it("shows no attendance section when it is unavailable", () => {
+    render(<StudentDetail student={{ ...student, attendance: null }} />);
+    expect(screen.queryByRole("region", { name: "Asistencia" })).toBeNull();
+  });
 });

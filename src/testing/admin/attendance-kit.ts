@@ -66,7 +66,7 @@ export function attendanceFixture() {
     roster: { forTurno: () => Promise.resolve(ATT_ROSTER) },
     repository,
     clock: fixedClock(new Date("2026-10-06T15:00:00.000Z")),
-    newId: () => `makeup-${String(++next)}`,
+    newId: () => `00000000-0000-4000-8000-${String(++next).padStart(12, "0")}`,
   });
   return { repository, service };
 }

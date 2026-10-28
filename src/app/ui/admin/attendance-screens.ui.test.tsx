@@ -94,6 +94,10 @@ const sheet: AttendanceSheetProps = {
   heading: "Lunes 05/10/2026",
   subtitle: "Cerámica, Lunes tarde · octubre 2026",
   backHref: "/admin/asistencia/p/t",
+  makeUpTurnos: [
+    { value: "p:t", label: "Cerámica, Lunes tarde (octubre 2026)" },
+    { value: "p:u", label: "Cerámica, Miércoles (octubre 2026)" },
+  ],
   rows: [
     {
       email: "ana@example.com",
@@ -118,9 +122,11 @@ describe("AttendanceSheet", () => {
   it("marks every student inside ONE native post form", async () => {
     const { container } = render(<AttendanceSheet {...sheet} />);
 
-    const forms = screen.getAllByRole("form");
-    expect(forms).toHaveLength(1);
-    expect(forms[0]).toHaveAttribute("method", "post");
+    const marking = screen.getByRole("form", {
+      name: "Asistencia de la clase",
+    });
+    expect(marking).toHaveAttribute("method", "post");
+    expect(within(marking).getAllByRole("radio")).toHaveLength(2);
     const ana = screen.getByRole("group", { name: "Ana Pérez" });
     expect(within(ana).getByLabelText("Ausente")).toBeChecked();
     expect(within(ana).getByLabelText("Presente")).not.toBeChecked();
@@ -168,5 +174,94 @@ describe("AttendanceSheet", () => {
     expect(screen.queryByRole("button", { name: "Guardar asistencia" })).toBe(
       null,
     );
+  });
+
+  describe("make-up classes", () => {
+    it("offers a plain post form for each absent student", () => {
+      render(<AttendanceSheet {...sheet} />);
+
+      const form = screen.getByRole("form", {
+        name: "Programar recuperación: Ana Pérez",
+      });
+      expect(form).toHaveAttribute("method", "post");
+      expect(form.querySelector("input[name=intent]")).toHaveValue("makeup");
+      expect(form.querySelector("input[name=email]")).toHaveValue(
+        "ana@example.com",
+      );
+      expect(
+        within(form).getByLabelText("Turno de la recuperación"),
+      ).toHaveValue("p:t");
+      expect(
+        within(form).getByLabelText("Fecha de la recuperación"),
+      ).toHaveAttribute("type", "date");
+      expect(
+        within(form).getByRole("button", { name: "Programar recuperación" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("form", {
+          name: "Programar recuperación: Caro Díaz",
+        }),
+      ).toBeNull();
+    });
+
+    it("shows the scheduled state instead of a form", () => {
+      const [ana, caro] = sheet.rows;
+      render(
+        <AttendanceSheet
+          {...sheet}
+          rows={[
+            {
+              ...ana!,
+              makeUp: { status: "pending", label: "Recuperación pendiente" },
+            },
+            caro!,
+          ]}
+        />,
+      );
+      expect(screen.getByText("Recuperación pendiente")).toBeVisible();
+      expect(
+        screen.queryByRole("form", { name: /Programar recuperación/ }),
+      ).toBeNull();
+    });
+
+    it("says so when nobody was absent", () => {
+      render(
+        <AttendanceSheet
+          {...sheet}
+          rows={sheet.rows.map((row) => ({ ...row, status: null }))}
+        />,
+      );
+      expect(
+        screen.getByText("No hay alumnas ausentes en esta clase."),
+      ).toBeVisible();
+    });
+
+    it("shows a rejected form errors and what was typed on that student only", async () => {
+      const { container } = render(
+        <AttendanceSheet
+          {...sheet}
+          feedback={{
+            makeUp: {
+              email: "ana@example.com",
+              errors: { makeUpDate: "Elegí una fecha válida." },
+              values: { makeUpTurno: "p:u", makeUpDate: "2026-10-15" },
+            },
+          }}
+        />,
+      );
+      const form = screen.getByRole("form", {
+        name: "Programar recuperación: Ana Pérez",
+      });
+      expect(
+        within(form).getByLabelText("Turno de la recuperación"),
+      ).toHaveValue("p:u");
+      expect(
+        within(form).getByLabelText("Fecha de la recuperación"),
+      ).toHaveValue("2026-10-15");
+      expect(within(form).getByRole("alert")).toHaveTextContent(
+        "Elegí una fecha válida.",
+      );
+      await expectNoAxeViolations(container);
+    });
   });
 });

@@ -143,6 +143,74 @@ export const adminMicrocopy = {
       },
     },
   },
+  reminders: {
+    title: "Recordatorios",
+    intro:
+      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. No se manda nada automáticamente.",
+    formLabel: "Preparar mensajes",
+    fields: {
+      message: "Mensaje",
+      when: "Cuándo",
+      whenHint:
+        "Para clase e intensivo. Por ejemplo: mañana, el martes 4 o este sábado.",
+      activity: "Nombre del intensivo",
+      activityHint: "Solo para el recordatorio de intensivo.",
+      text: "Texto del aviso",
+      textHint:
+        "Solo para el aviso libre. Se agrega después del saludo con el nombre.",
+    },
+    audience: {
+      workshop: "Taller",
+      anyWorkshop: "Todos los talleres",
+      period: "Mes",
+      anyPeriod: "Todos los meses",
+      turno: "Turno",
+      anyTurno: "Todos los turnos",
+      status: "Estado de la inscripción",
+      anyStatus: "Según el mensaje",
+      statusHint:
+        "Sin elegir, la cuota pendiente va a quienes tienen la inscripción por confirmar y el resto a quienes no cancelaron.",
+    },
+    submit: "Preparar mensajes",
+    preview: "Vista previa",
+    count: (students: number, withoutPhone: number) =>
+      `${String(students)} ${students === 1 ? "alumna" : "alumnas"}${
+        withoutPhone > 0 ? `, ${String(withoutPhone)} sin teléfono válido` : ""
+      }.`,
+    columns: { student: "Alumna", message: "Mensaje", actions: "Acciones" },
+    send: (name: string) => `Enviar por WhatsApp a ${name}`,
+    sendLabel: "Enviar por WhatsApp",
+    noPhone: "Sin teléfono válido",
+    copy: "Copiar mensaje",
+    copyFor: (name: string) => `Copiar mensaje de ${name}`,
+    copied: "Mensaje copiado.",
+    empty: {
+      title: "No hay alumnas para este filtro",
+      message: "Probá con otro taller, mes, turno o estado.",
+      action: "Volver a empezar",
+    },
+    errors: {
+      when: {
+        required: "Escribí cuándo es.",
+        "too-long": "Cuándo puede tener hasta 60 caracteres.",
+      },
+      activity: {
+        required: "Escribí el nombre del intensivo.",
+        "too-long": "El nombre puede tener hasta 80 caracteres.",
+      },
+      text: {
+        required: "Escribí el texto del aviso.",
+        "too-long": "El aviso puede tener hasta 800 caracteres.",
+      },
+    },
+    kinds: {
+      class: "Recordatorio de clase",
+      fee: "Cuota pendiente",
+      materials: "Materiales listos",
+      intensive: "Reserva de intensivo",
+      notice: "Aviso libre",
+    },
+  },
   students: {
     title: "Alumnas",
     filterLabel: "Filtrar alumnas",

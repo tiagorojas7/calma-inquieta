@@ -64,5 +64,9 @@ export type {
   OfferedMaterialsLookup,
   OfferedVariant,
 } from "./application/offered-materials";
+export type {
+  OrderHistoryReader,
+  OrderHistoryRow,
+} from "./application/order-history";
 export type { RandomBytes } from "./application/random-bytes";
 export type { SeatLedger } from "./application/seat-ledger";

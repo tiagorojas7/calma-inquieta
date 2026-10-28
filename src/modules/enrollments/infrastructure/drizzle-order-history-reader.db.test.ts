@@ -7,7 +7,7 @@ import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
-import { createDrizzleStudentOrderSource } from "./drizzle-student-order-source";
+import { createDrizzleOrderHistoryReader } from "./drizzle-order-history-reader";
 
 const created: TestDatabase[] = [];
 afterAll(async () => {
@@ -22,7 +22,7 @@ runStudentOrderSourceContract(async () => {
   });
   let next = 0;
   return {
-    source: createDrizzleStudentOrderSource(openSession),
+    source: createDrizzleOrderHistoryReader(openSession),
     async add(overrides = {}) {
       next += 1;
       const order = studentOrder(next, overrides);

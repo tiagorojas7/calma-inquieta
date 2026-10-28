@@ -2,22 +2,21 @@ import { eq, sql } from "drizzle-orm";
 import { Money } from "~/modules/_shared";
 import { enrollmentOrder } from "~/platform/db/schema/enrollments";
 import type { DbSessionFactory } from "~/platform/db/session";
-import {
-  normalizeStudentEmail,
-  type StudentOrderSource,
-  type StudentOrderStatus,
-  type StudentSourceOrder,
-} from "~/modules/students";
+import type {
+  OrderHistoryReader,
+  OrderHistoryRow,
+} from "../application/order-history";
+import type { OrderStatus } from "../domain/order-core";
 
 type Row = typeof enrollmentOrder.$inferSelect;
 
-function toSource(row: Row): StudentSourceOrder {
+function toSource(row: Row): OrderHistoryRow {
   const total = Money.fromCentavos(row.totalCentavos);
   if (!total.ok) throw new Error("persisted order total is invalid");
   return {
     id: row.id,
     number: row.number,
-    status: row.status as StudentOrderStatus,
+    status: row.status as OrderStatus,
     requestedAt: row.requestedAt,
     paidAt: row.paidAt,
     total: total.value,
@@ -32,16 +31,14 @@ function toSource(row: Row): StudentSourceOrder {
 }
 
 /**
- * Lives in composition because a module's infrastructure may import only its
- * own schema file, and this read crosses from students to enrollment orders.
- * Reads the orders the registry is derived from. Grouping and filtering run
- * in the domain, so this stays a plain read; the studio handles hundreds of
- * orders a year, which one request can load.
+ * Reads the order history other modules derive from (the students registry).
+ * Grouping stays with the consumer; the studio handles hundreds of orders a
+ * year, which one request can load.
  */
-export function createDrizzleStudentOrderSource(
+export function createDrizzleOrderHistoryReader(
   openSession: DbSessionFactory,
-): StudentOrderSource {
-  async function read(email?: string): Promise<readonly StudentSourceOrder[]> {
+): OrderHistoryReader {
+  async function read(email?: string): Promise<readonly OrderHistoryRow[]> {
     const session = await openSession();
     try {
       const query = session.db.select().from(enrollmentOrder);
@@ -50,7 +47,7 @@ export function createDrizzleStudentOrderSource(
         : query.where(
             eq(
               sql`lower(btrim(${enrollmentOrder.studentEmail}))`,
-              normalizeStudentEmail(email),
+              email.trim().toLowerCase(),
             ),
           ));
       return rows.map(toSource);

@@ -64,7 +64,7 @@ import {
   type StudentUseCases,
 } from "~/modules/students";
 import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
-import { createDrizzleStudentOrderSource } from "./drizzle-student-order-source";
+import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
@@ -293,7 +293,7 @@ export function createRequestServices(
     }),
     ...enrollmentServices,
     students: createStudentsService({
-      orders: createDrizzleStudentOrderSource(openSession),
+      orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
       clock: systemClock,
     }),

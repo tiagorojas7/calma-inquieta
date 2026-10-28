@@ -41,6 +41,7 @@ export default [
     route("materiales/proveedores/:id", "routes/admin/supplier-detail.tsx"),
     route("eventos", "routes/admin/private-events.tsx"),
     route("eventos/:id", "routes/admin/private-event-detail.tsx"),
+    route("estadisticas", "routes/admin/statistics.tsx"),
   ]),
   route("imagenes/:file", "routes/media-file.ts"),
   route("status", "routes/status.tsx"),

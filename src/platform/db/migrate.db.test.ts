@@ -125,6 +125,7 @@ describe("runMigrations", () => {
       { table_name: "order_number_sequence" },
       { table_name: "period_material_offer" },
       { table_name: "period_turno" },
+      { table_name: "student_note" },
       { table_name: "supplier" },
       { table_name: "teacher" },
       { table_name: "turno_seat_counter" },

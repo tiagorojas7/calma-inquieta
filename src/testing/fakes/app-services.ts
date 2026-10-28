@@ -8,6 +8,7 @@ import {
   createUnavailableAdminEnrollmentService,
   createUnavailableSupplierConsolidationService,
 } from "~/modules/enrollments";
+import { createUnavailableStudentsService } from "~/modules/students";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
 import {
@@ -74,6 +75,7 @@ export function createTestServices(
       >(),
     enrollments: createUnavailableAdminEnrollmentService(),
     consolidation: createUnavailableSupplierConsolidationService(),
+    students: createUnavailableStudentsService(),
     publicEnrollments: {
       getOffer: () => Promise.resolve(err({ kind: "unavailable" as const })),
       requestEnrollment: () =>

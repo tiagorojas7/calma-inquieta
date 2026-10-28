@@ -9,6 +9,7 @@ export const ADMIN_NAV: readonly AdminNavEntry[] = [
   { label: "Intensivos", href: "/admin/intensivos" },
   { label: "Profesores", href: "/admin/profesores" },
   { label: "Inscripciones", href: "/admin/inscripciones" },
+  { label: "Alumnas", href: "/admin/alumnas" },
   { label: "Materiales", href: "/admin/materiales" },
 ];
 

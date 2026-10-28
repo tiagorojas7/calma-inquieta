@@ -11,6 +11,7 @@ export const ADMIN_NAV: readonly AdminNavEntry[] = [
   { label: "Inscripciones", href: "/admin/inscripciones" },
   { label: "Alumnas", href: "/admin/alumnas" },
   { label: "Materiales", href: "/admin/materiales" },
+  { label: "Eventos privados", href: "/admin/eventos" },
 ];
 
 /** Active by path prefix on a segment boundary, so `/admin/talleres-x` is not Talleres. */

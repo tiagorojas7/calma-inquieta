@@ -65,6 +65,11 @@ import {
 } from "~/modules/students";
 import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
+import {
+  createPrivateEventService,
+  type PrivateEventUseCases,
+} from "~/modules/private-events";
+import { createDrizzlePrivateEventRepository } from "~/modules/private-events/infrastructure/drizzle-private-event-repository";
 import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
@@ -109,6 +114,7 @@ export interface AppServices {
   readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly students: StudentUseCases;
   readonly publicCatalog: PublicCatalogService;
+  readonly privateEvents: PrivateEventUseCases;
 }
 
 export interface RuntimeConfig {
@@ -295,6 +301,10 @@ export function createRequestServices(
     students: createStudentsService({
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
+      clock: systemClock,
+    }),
+    privateEvents: createPrivateEventService({
+      repository: createDrizzlePrivateEventRepository(openSession),
       clock: systemClock,
     }),
     // A real reader failure is not caught: it reaches the error boundary.

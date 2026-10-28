@@ -9,6 +9,7 @@ import {
   createUnavailableSupplierConsolidationService,
 } from "~/modules/enrollments";
 import { createUnavailableStudentsService } from "~/modules/students";
+import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
 import {
@@ -16,6 +17,7 @@ import {
   createInMemorySiteContentSource,
 } from "./in-memory-site-content-source";
 import { fixedClock } from "./fixed-clock";
+import { InMemoryPrivateEventRepository } from "./in-memory-private-event-repository";
 import { InMemorySupplierRepository } from "./in-memory-supplier-repository";
 
 const OK_VIEW: SystemStatusView = {
@@ -84,6 +86,10 @@ export function createTestServices(
         Promise.resolve(err({ kind: "unavailable" as const })),
     },
     publicCatalog: createFakePublicCatalog(),
+    privateEvents: createPrivateEventService({
+      repository: new InMemoryPrivateEventRepository(),
+      clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
+    }),
     ...overrides,
   };
 }

@@ -175,6 +175,10 @@ describe("intensive admin screens", () => {
     ).toBeVisible();
     expect(screen.getByText("admin@example.com")).toBeVisible();
     expect(screen.getByText("10 oct 2026, 09:00")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Ver reservas" })).toHaveAttribute(
+      "href",
+      "/admin/intensivos/i1/reservas",
+    );
     await expectNoAxeViolations(container);
   }, 30_000);
 

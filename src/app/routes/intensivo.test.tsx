@@ -13,6 +13,10 @@ import {
   buildPublicImage,
   buildPublicIntensivo,
 } from "~/testing/fakes/public-catalog-builders";
+import {
+  buildIntensiveOffer,
+  createInMemoryIntensiveRequests,
+} from "~/testing/fakes/intensive-request-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import { loader, meta } from "./intensivo";
 
@@ -43,6 +47,36 @@ describe("intensivo loader", () => {
     expect(result.detail.name).toBe("Demo");
     expect(result.detail.action.kind).toBe("inquiry");
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+
+  it("offers Reservar mi lugar while the intensivo is open and has seats", async () => {
+    const services = createTestServices({
+      publicCatalog: createFakePublicCatalog({
+        intensivos: [buildPublicIntensivo({ slug: "demo" })],
+      }),
+      intensiveRequests: createInMemoryIntensiveRequests({
+        offer: buildIntensiveOffer({ slug: "demo" }),
+      }).service,
+    });
+    const result = await loader(args(services, "demo"));
+    expect(result.detail.action).toEqual({
+      kind: "reserve",
+      href: "/intensivos/demo/reserva",
+      label: "Reservar mi lugar",
+    });
+  });
+
+  it("keeps the WhatsApp inquiry when no seats are left", async () => {
+    const services = createTestServices({
+      publicCatalog: createFakePublicCatalog({
+        intensivos: [buildPublicIntensivo({ slug: "demo" })],
+      }),
+      intensiveRequests: createInMemoryIntensiveRequests({
+        offer: buildIntensiveOffer({ slug: "demo", capacity: 0 }),
+      }).service,
+    });
+    const result = await loader(args(services, "demo"));
+    expect(result.detail.action.kind).toBe("inquiry");
   });
 
   it("builds the inquiry link from the profile with the name and the date", async () => {

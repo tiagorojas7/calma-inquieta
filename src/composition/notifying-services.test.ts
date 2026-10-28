@@ -160,7 +160,7 @@ describe("withPaymentEmails", () => {
         actor: unknown,
         id: string,
       ) => Promise<{ ok: true; value: typeof detail }>
-    >(() => Promise.resolve(ok(detail)));
+    >(() => Promise.resolve({ ok: true as const, value: detail }));
     // Only the two use cases the decorator touches are exercised.
     const inner = {
       confirmPayment,

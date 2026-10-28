@@ -175,7 +175,7 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - [x] Audit the global visual system and every public screen at all required viewport widths.
 - [x] Record prioritized source findings by section, including skill guidance and a concrete remedy.
 - [x] Commit and publish the source audit, then notify Terminal B.
-- [ ] Implement tokens, typography, and spacing.
+- [x] Implement tokens, typography, and spacing.
 - [ ] Implement differentiated primary, secondary, and tertiary CTAs with complete states.
 - [ ] Implement and publish the licensed SVG icon component slice, then notify Terminal B.
 - [ ] Improve each public page and the enrollment/order flow in bounded slices.
@@ -186,3 +186,4 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - Source audit: `5155c8f` (`docs(ui): audit public experience`), published to `origin/feat/ui-public-overhaul-audit`; Terminal B was notified.
 - No UI source changes were made in the audit work unit.
 - Viewport matrix: 48 viewport captures plus top/middle/bottom screenshots, completed against the rebuilt and seeded local database. Generated screenshots remain outside Git.
+- Tokens, typography, and spacing: `6f2a78c` (`feat(ui): refine public visual system`). Strict TDD recorded RED before implementation and GREEN with 82 focused tests; independent verification passed. Runtime smoke completed all 48 captures and confirmed desktop content is not constrained. The pre-existing Home overflow remains explicitly deferred to the Home page slice.

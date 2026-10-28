@@ -17,7 +17,7 @@ Quoted from `docs/client-proposal/proposal.md` (contract). Each S# gets its own 
 - S8 Profesores: "porcentaje acordado e importe estimado a liquidar." (percentages and period snapshots exist; the estimate is missing).
 - S9 Recordatorios: "Selección de alumnas por taller o workshop y preparacion de mensajes. El envio automático requiere la integración opcional con WhatsApp Business API." Messages are prepared as `wa.me` links; the Business API is out of scope (quoted separately).
 - S10 Launch: custom domain, Cloudflare Access re-scoped to `/admin`, rate-limit rule (`docs/runbooks/enrollment-rate-limit.md`), "Pruebas, carga inicial, capacitacion y publicación".
-- S11 Renewals and email (change 6): renewal links and transactional/reminder emails (Resend). Needs an owner decision: the contract lists no email module, and sending needs a verified domain.
+- S11 Notifications (owner decision L3-L4): both prepared WhatsApp messages (`wa.me`, free, sent by the owner with one tap) and automatic emails through Resend (free tier) for "inscripción recibida, pago confirmado, recordatorio de clase y cuota". Email needs the custom domain verified, so it ships behind configuration and turns on at launch (S10).
 
 ## Tasks
 
@@ -39,3 +39,5 @@ Admin screens for R1-R7 reuse the admin primitives that Terminal B delivers firs
 
 - L1 2026-10-28 owner: "espera, por que falta la seccion de estadisticas en el panel, las inscripciones, falta trabajo para hacer en el proyecto? si falta algo, te tenes que encargar vos para ya tener el 100% del proyecto terminado"
 - L2 2026-10-28: gap found by reading the contract against `openspec/changes/*`: changes 1-5 and design-adjustments are merged; changes 6, 7 and 8 were planned but never started. Claude's earlier "falta poco" covered only change 3 and was wrong for the contract as a whole.
+- L3 2026-10-28 owner, on whether to include emails: "pero whatssap me cobra por eso, si es asi, cambialos por el mail". Clarified: `wa.me` prepared messages are free; only the WhatsApp Business API charges per message.
+- L4 2026-10-28 owner choice: "WhatsApp preparado + email automático (Recommended)".

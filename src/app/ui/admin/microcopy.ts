@@ -718,6 +718,52 @@ export const adminMicrocopy = {
         "No se puede elegir para materiales nuevos. Los materiales que ya lo tienen lo siguen mostrando. Podés reactivarlo cuando quieras.",
     },
   },
+  privateEvents: {
+    title: "Eventos privados",
+    filterLabel: "Filtrar consultas",
+    filters: { status: "Estado", all: "Todas", apply: "Filtrar" },
+    status: {
+      nueva: "Nueva",
+      contactada: "Contactada",
+      cerrada: "Cerrada",
+    },
+    columns: {
+      received: "Recibida",
+      name: "Nombre",
+      date: "Fecha deseada",
+      place: "Lugar o tipo de evento",
+      participants: "Personas",
+      status: "Estado",
+    },
+    empty: {
+      title: "Todavía no hay consultas",
+      message:
+        "Cuando alguien consulte por un evento privado, la vas a ver acá.",
+      action: "Ver todas las consultas",
+    },
+    detailTitle: "Consulta de evento privado",
+    back: "Volver a las consultas",
+    fields: {
+      received: "Recibida",
+      name: "Nombre",
+      phone: "Teléfono",
+      email: "Correo electrónico",
+      date: "Fecha deseada",
+      place: "Lugar o tipo de evento",
+      participants: "Cantidad de personas",
+      notes: "Observaciones",
+      statusChanged: "Último cambio de estado",
+    },
+    noEmail: "No dejó correo",
+    noNotes: "Sin observaciones",
+    whatsapp: "Escribirle por WhatsApp",
+    statusForm: {
+      label: "Estado de la consulta",
+      field: "Estado",
+      save: "Guardar estado",
+      failed: "Elegí un estado de la lista e intentá de nuevo.",
+    },
+  },
   errors: {
     generic: {
       title: "Algo salió mal",

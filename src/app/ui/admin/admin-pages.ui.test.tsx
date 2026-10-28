@@ -38,6 +38,7 @@ describe("AdminLanding", () => {
         "Inscripciones",
         "Alumnas",
         "Materiales",
+        "Eventos privados",
       ],
     );
     expect(screen.queryByRole("table")).toBeNull();

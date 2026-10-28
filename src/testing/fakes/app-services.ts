@@ -8,6 +8,8 @@ import {
   createUnavailableAdminEnrollmentService,
   createUnavailableSupplierConsolidationService,
 } from "~/modules/enrollments";
+import { createUnavailableInsightsService } from "~/modules/insights";
+import { createUnavailableRemindersService } from "~/modules/reminders";
 import { createUnavailableStudentsService } from "~/modules/students";
 import { createUnavailableAttendanceService } from "~/modules/attendance";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
@@ -81,6 +83,8 @@ export function createTestServices(
     consolidation: createUnavailableSupplierConsolidationService(),
     students: createUnavailableStudentsService(),
     attendance: createUnavailableAttendanceService(),
+    insights: createUnavailableInsightsService(),
+    reminders: createUnavailableRemindersService(),
     publicEnrollments: {
       getOffer: () => Promise.resolve(err({ kind: "unavailable" as const })),
       requestEnrollment: () =>

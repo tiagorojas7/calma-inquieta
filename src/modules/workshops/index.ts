@@ -56,3 +56,10 @@ export {
   type WorkshopScheduleLookupDeps,
   type WorkshopScheduleTurno,
 } from "./application/attendance-schedule";
+export type {
+  InsightsPeriodStatus,
+  PeriodCapacityRow,
+  PeriodTeacherRow,
+  PublishedWorkshopRow,
+  WorkshopInsightsReader,
+} from "./application/insights-reader";

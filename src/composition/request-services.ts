@@ -72,6 +72,16 @@ import {
 import { createDrizzleAttendanceRepository } from "~/modules/attendance/infrastructure/drizzle-attendance-repository";
 import { createDrizzleTurnoRosterReader } from "~/modules/enrollments/infrastructure/drizzle-turno-roster-reader";
 import { createDrizzleStudentNoteRepository } from "~/modules/students/infrastructure/drizzle-student-note-repository";
+import {
+  createRemindersService,
+  type ReminderUseCases,
+} from "~/modules/reminders";
+import { createDrizzleEnrollmentInsightsReader } from "~/modules/enrollments/infrastructure/drizzle-insights-reader";
+import { createDrizzleWorkshopInsightsReader } from "~/modules/workshops/infrastructure/drizzle-insights-reader";
+import {
+  createInsightsService,
+  type InsightsUseCases,
+} from "~/modules/insights";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
 import {
   createPrivateEventService,
@@ -128,6 +138,8 @@ export interface AppServices {
   readonly publicEnrollments: PublicEnrollmentUseCases;
   readonly students: StudentUseCases;
   readonly attendance: AttendanceUseCases;
+  readonly insights: InsightsUseCases;
+  readonly reminders: ReminderUseCases;
   readonly publicCatalog: PublicCatalogService;
   readonly privateEvents: PrivateEventUseCases;
   readonly intensiveRequests: IntensiveRequestUseCases;
@@ -342,6 +354,14 @@ export function createRequestServices(
           },
         })
       : createUnavailableIntensiveRequestService(),
+    reminders: createRemindersService({
+      orders: createDrizzleOrderHistoryReader(openSession),
+    }),
+    insights: createInsightsService({
+      orders: createDrizzleEnrollmentInsightsReader(openSession),
+      workshops: createDrizzleWorkshopInsightsReader(openSession),
+      clock: systemClock,
+    }),
     privateEvents: createPrivateEventService({
       repository: createDrizzlePrivateEventRepository(openSession),
       clock: systemClock,

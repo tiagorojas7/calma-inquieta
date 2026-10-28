@@ -143,6 +143,74 @@ export const adminMicrocopy = {
       },
     },
   },
+  reminders: {
+    title: "Recordatorios",
+    intro:
+      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. No se manda nada automáticamente.",
+    formLabel: "Preparar mensajes",
+    fields: {
+      message: "Mensaje",
+      when: "Cuándo",
+      whenHint:
+        "Para clase e intensivo. Por ejemplo: mañana, el martes 4 o este sábado.",
+      activity: "Nombre del intensivo",
+      activityHint: "Solo para el recordatorio de intensivo.",
+      text: "Texto del aviso",
+      textHint:
+        "Solo para el aviso libre. Se agrega después del saludo con el nombre.",
+    },
+    audience: {
+      workshop: "Taller",
+      anyWorkshop: "Todos los talleres",
+      period: "Mes",
+      anyPeriod: "Todos los meses",
+      turno: "Turno",
+      anyTurno: "Todos los turnos",
+      status: "Estado de la inscripción",
+      anyStatus: "Según el mensaje",
+      statusHint:
+        "Sin elegir, la cuota pendiente va a quienes tienen la inscripción por confirmar y el resto a quienes no cancelaron.",
+    },
+    submit: "Preparar mensajes",
+    preview: "Vista previa",
+    count: (students: number, withoutPhone: number) =>
+      `${String(students)} ${students === 1 ? "alumna" : "alumnas"}${
+        withoutPhone > 0 ? `, ${String(withoutPhone)} sin teléfono válido` : ""
+      }.`,
+    columns: { student: "Alumna", message: "Mensaje", actions: "Acciones" },
+    send: (name: string) => `Enviar por WhatsApp a ${name}`,
+    sendLabel: "Enviar por WhatsApp",
+    noPhone: "Sin teléfono válido",
+    copy: "Copiar mensaje",
+    copyFor: (name: string) => `Copiar mensaje de ${name}`,
+    copied: "Mensaje copiado.",
+    empty: {
+      title: "No hay alumnas para este filtro",
+      message: "Probá con otro taller, mes, turno o estado.",
+      action: "Volver a empezar",
+    },
+    errors: {
+      when: {
+        required: "Escribí cuándo es.",
+        "too-long": "Cuándo puede tener hasta 60 caracteres.",
+      },
+      activity: {
+        required: "Escribí el nombre del intensivo.",
+        "too-long": "El nombre puede tener hasta 80 caracteres.",
+      },
+      text: {
+        required: "Escribí el texto del aviso.",
+        "too-long": "El aviso puede tener hasta 800 caracteres.",
+      },
+    },
+    kinds: {
+      class: "Recordatorio de clase",
+      fee: "Cuota pendiente",
+      materials: "Materiales listos",
+      intensive: "Reserva de intensivo",
+      notice: "Aviso libre",
+    },
+  },
   students: {
     title: "Alumnas",
     filterLabel: "Filtrar alumnas",
@@ -232,7 +300,149 @@ export const adminMicrocopy = {
   landing: {
     title: "Panel de administración",
     greeting: (email: string) => `Hola, ${email}`,
-    intro: "Elegí qué querés administrar.",
+    intro: "Mirá cómo viene el mes y elegí qué querés administrar.",
+    summaryTitle: (month: string) => `Resumen de ${month}`,
+    areasTitle: "Secciones",
+    cards: {
+      occupancy: {
+        label: "Ocupación",
+        value: (percent: number) => `${String(percent)} %`,
+        detail: (confirmed: number, capacity: number, free: number) =>
+          `${String(confirmed)} inscriptas de ${String(capacity)} cupos, ${String(free)} libres.`,
+        action: "Ver ocupación",
+      },
+      pending: {
+        label: "Solicitudes pendientes",
+        detail: (older: number) =>
+          older === 0
+            ? "Ninguna espera hace más de 48 horas."
+            : `${String(older)} esperan hace más de 48 horas.`,
+        action: "Revisar solicitudes",
+      },
+      confirmed: {
+        label: "Confirmadas este mes",
+        detail: "Pagos registrados durante el mes.",
+        action: "Ver confirmadas",
+      },
+      income: {
+        label: "Ingresos registrados",
+        detail: (fee: string, materials: string) =>
+          `Cuotas y señas ${fee}, materiales ${materials}.`,
+        action: "Ver ingresos",
+      },
+      materials: {
+        label: "Materiales a pedir",
+        detail: (orders: number, units: number) =>
+          `${String(units)} unidades en ${String(orders)} pedidos.`,
+        action: "Armar el pedido a proveedores",
+      },
+    },
+    alerts: {
+      title: "Alertas pendientes",
+      empty: "No hay alertas pendientes. Está todo al día.",
+      overdue: (count: number) =>
+        count === 1
+          ? "Una solicitud espera confirmación hace más de 48 horas."
+          : `${String(count)} solicitudes esperan confirmación hace más de 48 horas.`,
+      overdueAction: "Revisar solicitudes",
+      withoutPeriod: (name: string, month: string) =>
+        `${name} no tiene inscripción abierta para ${month}.`,
+      withoutPeriodAction: (name: string) => `Abrir inscripción de ${name}`,
+      materials: (orders: number) =>
+        orders === 1
+          ? "Un pedido con materiales todavía sin pedir al proveedor."
+          : `${String(orders)} pedidos con materiales todavía sin pedir al proveedor.`,
+      materialsAction: "Ver materiales a pedir",
+    },
+  },
+  statistics: {
+    title: "Estadísticas",
+    subtitle: (month: string) => `Datos de ${month}.`,
+    month: "Mes",
+    apply: "Ver mes",
+    backToPanel: "Volver al panel",
+    total: "Total",
+    empty: {
+      title: "Todavía no hay datos para este mes",
+      message: "Probá con otro mes o revisá las inscripciones.",
+      action: "Ver inscripciones",
+    },
+    occupancy: {
+      title: "Ocupación",
+      intro:
+        "Inscriptas, cupos libres y porcentaje de ocupación por taller y turno.",
+      columns: {
+        workshop: "Taller",
+        turno: "Turno",
+        capacity: "Cupos",
+        confirmed: "Inscriptas",
+        free: "Libres",
+        percent: "Ocupación",
+      },
+    },
+    conversion: {
+      title: "Conversión",
+      intro:
+        "Solicitudes recibidas, pendientes y confirmadas para detectar consultas sin concretar.",
+      columns: {
+        workshop: "Taller",
+        received: "Recibidas",
+        pending: "Pendientes",
+        confirmed: "Confirmadas",
+        cancelled: "Canceladas",
+        percent: "Concretadas",
+      },
+    },
+    income: {
+      title: "Ingresos registrados",
+      intro: "Cuotas, señas y materiales cobrados en el mes, por taller.",
+      columns: {
+        workshop: "Taller",
+        orders: "Cobros",
+        fee: "Cuotas y señas",
+        materials: "Materiales",
+        total: "Total",
+      },
+    },
+    students: {
+      title: "Alumnas",
+      intro:
+        "Participación y recurrencia de las alumnas con inscripción confirmada.",
+      columns: {
+        students: "Participantes",
+        recurring: "También en otro mes",
+        percent: "Recurrencia",
+      },
+      note: "Las asistencias, faltas y recuperaciones se suman cuando esté el control de asistencia.",
+    },
+    teachers: {
+      title: "Profesores",
+      intro:
+        "Alumnas vinculadas, ingresos asociados y liquidación estimada según porcentaje.",
+      columns: {
+        teacher: "Profesor",
+        modality: "Modalidad",
+        percentage: "Porcentaje",
+        students: "Alumnas vinculadas",
+        income: "Ingresos asociados",
+        estimate: "Importe estimado a liquidar",
+      },
+      noPercentage: "Sin porcentaje",
+      note: "El importe es el porcentaje acordado de cada período sobre las cuotas cobradas en el mes, sin materiales. Los profesores de modalidad propia no tienen porcentaje acordado, por eso no suman importe. Las señas de los intensivos se suman cuando se registren.",
+    },
+    materials: {
+      title: "Materiales",
+      intro: "Pedidos por estado, taller, proyecto y proveedor.",
+      columns: {
+        status: "Estado",
+        workshop: "Taller",
+        project: "Proyecto",
+        supplier: "Proveedor",
+        orders: "Pedidos",
+        units: "Unidades",
+        amount: "Importe",
+      },
+    },
   },
   denied: {
     title: "No tenés acceso al panel",
@@ -281,6 +491,23 @@ export const adminMicrocopy = {
       save: "Guardar",
       cancel: "Cancelar",
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    settlement: {
+      title: "Importe estimado a liquidar",
+      intro: (month: string) =>
+        `Cuotas cobradas en ${month} de las actividades a cargo de este profesor, sin materiales.`,
+      month: "Mes",
+      apply: "Ver mes",
+      none: "Este mes no tiene actividades a cargo de este profesor.",
+      modality: "Modalidad",
+      percentage: "Porcentaje acordado",
+      activities: "Actividades",
+      students: "Alumnas vinculadas",
+      income: "Ingresos asociados",
+      estimate: "Importe estimado a liquidar",
+      noPercentage: "Sin porcentaje",
+      ownNote:
+        "La modalidad propia no tiene porcentaje acordado, así que no se calcula un importe.",
     },
     state: {
       archive: "Archivar",

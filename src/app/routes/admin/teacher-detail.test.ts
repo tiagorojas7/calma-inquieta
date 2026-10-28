@@ -10,6 +10,7 @@ import {
   thrownStatus,
   withOverrides,
 } from "~/testing/admin/route-kit";
+import { insightsFixture } from "~/testing/admin/insights-kit";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { action, loader } from "./teacher-detail";
@@ -82,6 +83,7 @@ describe("admin teacher detail loader", () => {
       active: true,
       values: DRAFT,
       assignedTo: [],
+      settlement: null,
     });
     expect(list).not.toHaveBeenCalled();
   });
@@ -117,6 +119,60 @@ describe("admin teacher detail loader", () => {
   it("answers 404 for an unknown teacher", async () => {
     const { service } = await withTeacher();
     expect(await thrownStatus(() => load(service, "nope"))).toBe(404);
+  });
+});
+
+describe("admin teacher detail settlement block", () => {
+  async function loadWithInsights(path: string) {
+    const { service, id } = await withTeacher();
+    const { orders, workshops, service: insights } = insightsFixture();
+    workshops.teacherRows = [
+      {
+        period: "2026-09",
+        periodId: "p1",
+        workshopId: "w1",
+        workshopName: "Ceramica",
+        teacherId: id,
+        teacherName: "Ana Gómez",
+        modality: "third_party",
+        percentageBp: 3_000,
+      },
+    ];
+    orders.registrationRows = [
+      {
+        period: "2026-09",
+        periodId: "p1",
+        orders: 2,
+        feeCentavos: 20_000_00,
+        studentEmails: ["a@x.test", "b@x.test"],
+      },
+    ];
+    return loader({
+      request: getRequest(`/admin/profesores/${id}${path}`),
+      params: { id },
+      context: adminContext({ teachers: service, insights }),
+    } as never);
+  }
+
+  it("estimates the share to settle for the month in the query string", async () => {
+    const result = await loadWithInsights("?mes=2026-09");
+    expect(result.settlement).toMatchObject({
+      period: "2026-09",
+      responsible: true,
+      percentage: "30 %",
+      students: "2",
+      income: "$ 20.000",
+      estimate: "$ 6.000",
+    });
+  });
+
+  it("falls back to the current month, where she has nothing yet", async () => {
+    const result = await loadWithInsights("?mes=nope");
+    expect(result.settlement).toEqual({
+      period: "2026-10",
+      periodLabel: "octubre 2026",
+      responsible: false,
+    });
   });
 });
 

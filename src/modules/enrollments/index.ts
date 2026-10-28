@@ -75,3 +75,15 @@ export {
   type TurnoRosterEntry,
   type TurnoRosterReader,
 } from "./application/turno-roster";
+export type {
+  EnrollmentInsightsReader,
+  ConfirmedSeatsRow,
+  IncomeFilter,
+  IncomeRow,
+  InsightsPeriodFilter,
+  MaterialRow,
+  OrderCountRow,
+  ParticipationRow,
+  PendingSummary,
+  PeriodRegistrationRow,
+} from "./application/insights-reader";

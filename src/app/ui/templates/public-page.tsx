@@ -103,7 +103,7 @@ export function PublicPage({
         id="contenido"
         tabIndex={-1}
         inert={menuOpen}
-        className="mx-auto w-full max-w-page px-gutter"
+        className="public-main mx-auto w-full max-w-page px-gutter"
       >
         {children}
       </main>

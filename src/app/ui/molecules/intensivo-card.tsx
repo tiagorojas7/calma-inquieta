@@ -49,12 +49,12 @@ export function IntensivoCard({
   ctaLabel: string;
 }) {
   return (
-    <article className="card-hover flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-card">
+    <article className="card-hover flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-raised">
       <div className="card-hover-frame w-full rounded-sm">
         <Image {...image} className="block w-full object-cover" />
       </div>
       <div className="flex items-center gap-4">
-        <div className="rounded-sm bg-sand-100 p-2 shadow-card">
+        <div className="rounded-sm bg-sand-100 p-2 shadow-rest">
           <DateBadge {...date} />
         </div>
         <Heading level={2} size="h3">

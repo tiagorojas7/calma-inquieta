@@ -35,6 +35,11 @@
     overflow-x: clip;
   }
 
+  /* The document is the scroll container; scope its header clearance to public pages. */
+  html:has(.public-main) {
+    scroll-padding-block-start: var(--scroll-offset-header);
+  }
+
   /* Mixed roman and italic headings (S3): <em> renders Cormorant italic in
      the accent colour (terracotta-700, AA on canvas, surface and sand-200).
      Section tones that darken the background redefine --em-color. The
@@ -49,11 +54,25 @@
     color: var(--em-color, var(--color-terracotta-700));
   }
 
-  /* Minimum 24 px target for every control (§3.3); primary CTAs raise it
-     to 44 px (min-h-11) in the Button atom. :where keeps specificity at
-     zero so component utilities can adjust. */
+  .public-main :is(h1, h2, h3, h4) {
+    max-inline-size: 24ch;
+    text-wrap: balance;
+  }
+
+  .public-main,
+  .public-main :is(h1, h2, h3, h4, [id], :target, :focus-visible) {
+    scroll-margin-block-start: var(--scroll-offset-header);
+  }
+
+  /* Baseline applies to admin and role buttons; public native controls layer above it. */
   :where(button, [role="button"], input, select, textarea) {
     min-height: 1.5rem;
+  }
+
+  /* Native public controls meet the 44 px target at a readable 16 px. */
+  .public-main :where(button, input, select, textarea) {
+    min-height: 2.75rem;
+    font-size: 1rem;
   }
 }
 

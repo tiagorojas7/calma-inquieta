@@ -15,6 +15,14 @@ const renderWithRouter = (element: React.ReactNode) =>
   render(<MemoryRouter>{element}</MemoryRouter>);
 
 describe("home cards", () => {
+  it("uses the raised semantic elevation role for cards", () => {
+    const { container } = renderWithRouter(
+      <ActivityCard {...activityFixture} />,
+    );
+
+    expect(container.querySelector("article")).toHaveClass("shadow-raised");
+  });
+
   it("renders an activity image, copy and lazy CTA", async () => {
     const { container } = renderWithRouter(
       <ActivityCard {...activityFixture} />,

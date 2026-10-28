@@ -211,10 +211,12 @@ describe("global base styles", () => {
     expect(parseFloat(match?.[1] ?? "0")).toBeGreaterThanOrEqual(1.5);
   });
 
-  it("renders <em> inside headings as Cormorant italic in the accent colour", () => {
+  it("keeps heading-em branding global for public and admin headings", () => {
     const css = readStyles("app.css");
 
-    expect(css).toMatch(/h1 em[\s\S]*font-style:\s*italic/);
+    expect(css).toMatch(/\n\s*h1 em,\s*\n\s*h2 em,\s*\n\s*h3 em\s*\{/);
+    expect(css).not.toMatch(/\.public-main h1 em/);
+    expect(css).toMatch(/font-style:\s*italic/);
     expect(css).toMatch(/--em-color/);
   });
 
@@ -227,6 +229,62 @@ describe("global base styles", () => {
     expect(css, "app.css is missing the focus-visible rule").toMatch(
       /:focus-visible/,
     );
+  });
+
+  it("preserves the global 24 px baseline before layering public native-control sizing", () => {
+    const css = readStyles("app.css");
+
+    expect(css).toMatch(
+      /:where\(button, \[role="button"\], input, select, textarea\)/,
+    );
+    expect(css).toMatch(/min-height:\s*1\.5rem/);
+    expect(css).toMatch(
+      /\.public-main\s*:where\(button, input, select, textarea\)/,
+    );
+    expect(css).toMatch(/min-height:\s*2\.75rem/);
+    expect(css).toMatch(/font-size:\s*1rem/);
+  });
+
+  it("applies the named header offset to the document scroller and public targets", () => {
+    const app = readStyles("app.css");
+    const tokens = readStyles("tokens.css");
+
+    expect(tokens).toMatch(/--scroll-offset-header:\s*5rem/);
+    expect(app).toMatch(
+      /html:has\(\.public-main\)\s*\{[^}]*scroll-padding-block-start:\s*var\(--scroll-offset-header\)/,
+    );
+    expect(app).toMatch(
+      /\.public-main\s*:is\(h1, h2, h3, h4, \[id\], :target, :focus-visible\)/,
+    );
+    expect(app).toMatch(
+      /scroll-margin-block-start:\s*var\(--scroll-offset-header\)/,
+    );
+  });
+
+  it("scopes balanced headings to the public main surface", () => {
+    const css = readStyles("app.css");
+
+    expect(css).toMatch(/\.public-main\s*:is\(h1, h2, h3, h4\)/);
+    expect(css).toMatch(/text-wrap:\s*balance/);
+    expect(css).toMatch(/max-inline-size:/);
+  });
+
+  it("never applies heading measure or balance to the bare public main", () => {
+    const css = readStyles("app.css");
+    const bareMainRule = css.match(
+      /\.public-main,\s*\.public-main\s*:is\([^)]*\)\s*\{([^}]*)\}/,
+    )?.[1];
+
+    expect(bareMainRule).toContain("scroll-margin-block-start");
+    expect(bareMainRule).not.toMatch(/max-inline-size|text-wrap/);
+  });
+
+  it("defines semantic elevation roles", () => {
+    const css = readStyles("tokens.css");
+
+    for (const role of ["rest", "raised", "floating"]) {
+      expect(css).toMatch(new RegExp(`--shadow-${role}:`));
+    }
   });
 });
 

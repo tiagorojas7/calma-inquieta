@@ -14,7 +14,7 @@ export function ConditionsNote({
   level?: 2 | 3;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-md bg-sand-100 p-4">
+    <div className="flex flex-col gap-2 rounded-md bg-sand-100 p-4 shadow-rest">
       <Heading level={level} size="h4">
         {label}
       </Heading>

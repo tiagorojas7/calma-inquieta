@@ -46,7 +46,7 @@ describe("MaterialForm", () => {
       "Imagen",
       "Variante",
       "Precio (en pesos)",
-      "Color",
+      "Usar color de muestra",
     ]) {
       expect(await screen.findByLabelText(label)).toBeVisible();
     }
@@ -63,6 +63,27 @@ describe("MaterialForm", () => {
     expect(form).toHaveAttribute("novalidate");
     expect(fireEvent.submit(form as HTMLFormElement)).toBe(true);
     await expectNoAxeViolations(container);
+  });
+
+  it("submits no swatch until the color checkbox turns the native picker on", async () => {
+    renderForm();
+    const toggle = await screen.findByLabelText("Usar color de muestra");
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByLabelText("Color")).not.toBeInTheDocument();
+    const form = toggle.closest("form") as HTMLFormElement;
+    expect(new FormData(form).getAll("variantSwatch")).toEqual([""]);
+    expect(
+      screen.getByLabelText("Precio (en pesos)"),
+    ).toHaveAccessibleDescription("Solo números, por ejemplo 12500 o 12.500.");
+
+    fireEvent.click(toggle);
+    const picker = screen.getByLabelText("Color");
+    expect(picker).toHaveAttribute("type", "color");
+    fireEvent.change(picker, { target: { value: "#aa3300" } });
+    expect(new FormData(form).getAll("variantSwatch")).toEqual(["#aa3300"]);
+
+    fireEvent.click(toggle);
+    expect(new FormData(form).getAll("variantSwatch")).toEqual([""]);
   });
 
   it("keeps values, maps errors to fields, and offers an optional second variant", async () => {
@@ -201,9 +222,9 @@ describe("MaterialForm", () => {
     expect(
       screen.getByLabelText("Precio (en pesos)"),
     ).toHaveAccessibleDescription(/Ingresá un monto/);
-    expect(screen.getByLabelText("Color")).toHaveAccessibleDescription(
-      "Usá un color hexadecimal.",
-    );
+    expect(
+      screen.getByLabelText("Usar color de muestra"),
+    ).toHaveAccessibleDescription("Usá un color hexadecimal.");
   });
 
   it("renders a service-level variants error above its rows", async () => {

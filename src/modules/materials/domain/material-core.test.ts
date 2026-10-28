@@ -123,8 +123,31 @@ describe("material core", () => {
       validateMaterialDraft(draft({ variants: [{ ...variant, price }] })),
     ).toEqual({
       ok: false,
-      error: [{ field: "variants", code }],
+      error: [{ field: "variants.0.price", code }],
     });
+  });
+
+  it.each([
+    ["12.500", 1250000],
+    ["$ 12.500", 1250000],
+  ])("accepts the written variant price %j", (price, centavos) => {
+    const variant = draft().variants[0];
+    if (!variant) throw new Error("expected draft variant");
+    const value = valueOf(
+      validateMaterialDraft(draft({ variants: [{ ...variant, price }] })),
+    );
+    expect(value.variants[0]?.price.toCentavos()).toBe(centavos);
+  });
+
+  it("expands a short #RGB swatch to its six-digit form", () => {
+    const variant = draft().variants[0];
+    if (!variant) throw new Error("expected draft variant");
+    const value = valueOf(
+      validateMaterialDraft(
+        draft({ variants: [{ ...variant, swatch: "#A1c" }] }),
+      ),
+    );
+    expect(value.variants[0]?.swatch).toBe("#aa11cc");
   });
 
   it("aggregates blank labels, duplicate normalized labels, and invalid swatches", () => {
@@ -151,10 +174,10 @@ describe("material core", () => {
     ).toEqual({
       ok: false,
       error: [
-        { field: "variants", code: "required" },
-        { field: "variants", code: "invalid-format" },
-        { field: "variants", code: "duplicate" },
-        { field: "variants", code: "invalid-format" },
+        { field: "variants.0.label", code: "required" },
+        { field: "variants.0.swatch", code: "invalid-format" },
+        { field: "variants.2.label", code: "duplicate" },
+        { field: "variants.2.swatch", code: "invalid-format" },
       ],
     });
   });

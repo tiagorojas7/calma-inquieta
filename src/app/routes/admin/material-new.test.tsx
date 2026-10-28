@@ -183,21 +183,39 @@ describe("admin material create route", () => {
   });
 
   it.each([
-    ["0", "El valor está fuera del rango permitido."],
-    ["12,5", "El formato no es válido. Revisalo."],
-  ])("returns 422 for the variant price %s", async (price, message) => {
-    const fixture = await materialsFixture();
-    const result = await submit(
-      { materials: fixture.service, suppliers: fixture.suppliersService },
-      { ...VALID, variantPrice: price },
-    );
-    expect(result).toMatchObject({
-      init: { status: 422 },
-      data: { errors: { variants: { form: message } } },
-    });
-  });
+    ["0", "Ingresá un precio mayor a cero."],
+    ["12,5", "Ingresá solo números, por ejemplo 12500 o 12.500."],
+  ])(
+    "returns 422 on the variant row for the price %s",
+    async (price, message) => {
+      const fixture = await materialsFixture();
+      const result = await submit(
+        { materials: fixture.service, suppliers: fixture.suppliersService },
+        { ...VALID, variantPrice: price },
+      );
+      expect(result).toMatchObject({
+        init: { status: 422 },
+        data: { errors: { variants: { rows: [{ price: message }] } } },
+      });
+      expect(fixture.repository.materials.size).toBe(0);
+    },
+  );
 
-  it("returns 422 for a malformed variant swatch", async () => {
+  it.each(["12.500", "$ 12.500", "12500"])(
+    "creates a material from the written price %s",
+    async (price) => {
+      const fixture = await materialsFixture();
+      await submit(
+        { materials: fixture.service, suppliers: fixture.suppliersService },
+        { ...VALID, variantPrice: price, variantSwatch: "" },
+      );
+      const [created] = [...fixture.repository.materials.values()];
+      expect(created?.variants[0]?.price.toCentavos()).toBe(1250000);
+      expect(created?.variants[0]?.swatch).toBeNull();
+    },
+  );
+
+  it("returns 422 on the variant row for a malformed swatch", async () => {
     const fixture = await materialsFixture();
     const result = await submit(
       { materials: fixture.service, suppliers: fixture.suppliersService },
@@ -207,7 +225,7 @@ describe("admin material create route", () => {
       init: { status: 422 },
       data: {
         errors: {
-          variants: { form: "El formato no es válido. Revisalo." },
+          variants: { rows: [{ swatch: "Elegí un color con el selector." }] },
         },
       },
     });
@@ -233,7 +251,9 @@ describe("admin material create route", () => {
       init: { status: 422 },
       data: {
         errors: {
-          variants: { form: "Ya existe uno activo con el mismo nombre." },
+          variants: {
+            rows: [{}, { label: "Ya hay otra variante con ese nombre." }],
+          },
         },
       },
     });

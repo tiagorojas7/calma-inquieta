@@ -20,6 +20,13 @@ export interface EnvError {
 
 const databaseUrl = z.url({ protocol: /^postgres(ql)?$/ });
 
+/** A blank value counts as unset: email stays off until both variables are filled in. */
+const optionalText = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().optional(),
+);
+
 /** Variables for `pnpm db:migrate` (a Node script reading `process.env`). */
 export const migrationEnvSchema = z.object({
   MIGRATION_DATABASE_URL: databaseUrl,
@@ -45,6 +52,9 @@ export const workerEnvSchema = z
         typeof value === "string" && value.trim() === "" ? undefined : value,
       z.string().optional(),
     ),
+    // Optional: without both, no email is sent (a secret and a var respectively).
+    RESEND_API_KEY: optionalText,
+    EMAIL_FROM: optionalText,
     // The indexing gate defaults to off; only the literal "on" opens it.
     SITE_INDEXING: z
       .enum(["on", "off"])

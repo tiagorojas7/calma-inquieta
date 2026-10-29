@@ -17,6 +17,16 @@ export interface OrderEmailInput {
   readonly orderUrl: string;
 }
 
+export interface ReservationEmailInput {
+  readonly studentName: string;
+  readonly intensivoName: string;
+  /** Already formatted, e.g. "sábado 5 de diciembre". */
+  readonly dateLabel: string;
+  /** Already formatted, e.g. "$ 20.000". */
+  readonly deposit: string;
+  readonly reservationUrl: string;
+}
+
 export interface ClassEmailInput {
   readonly studentName: string;
   readonly workshopName: string;
@@ -96,6 +106,35 @@ export function paymentConfirmedEmail(input: OrderEmailInput): EmailContent {
       text: `Confirmamos el pago de tu inscripción ${input.number}: ${input.workshopName} (${input.periodLabel}, ${input.turnoLabel}). Tu lugar está reservado.`,
     },
     { text: "Podés ver el detalle acá:", link: input.orderUrl },
+    SIGNATURE,
+  ]);
+}
+
+export function intensiveReservationReceivedEmail(
+  input: ReservationEmailInput,
+): EmailContent {
+  return compose("Recibimos tu reserva", [
+    greeting(input.studentName),
+    {
+      text: `Recibimos tu pedido de lugar para el intensivo ${input.intensivoName} (${input.dateLabel}). Para reservarlo, la seña es de ${input.deposit}.`,
+    },
+    {
+      text: "Cuando registremos tu seña, te avisamos. Podés ver el resumen de tu reserva acá:",
+      link: input.reservationUrl,
+    },
+    SIGNATURE,
+  ]);
+}
+
+export function intensiveReservationConfirmedEmail(
+  input: ReservationEmailInput,
+): EmailContent {
+  return compose("Confirmamos tu reserva", [
+    greeting(input.studentName),
+    {
+      text: `Confirmamos tu seña de ${input.deposit}: tu lugar en el intensivo ${input.intensivoName} (${input.dateLabel}) está reservado.`,
+    },
+    { text: "Podés ver el resumen acá:", link: input.reservationUrl },
     SIGNATURE,
   ]);
 }

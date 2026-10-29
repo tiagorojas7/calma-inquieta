@@ -2,6 +2,7 @@ import type {
   AdminEnrollmentUseCases,
   PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
+import type { IntensiveRequestUseCases } from "~/modules/intensive-requests";
 import type { NotificationService } from "~/modules/notifications";
 import type { PrivateEventUseCases } from "~/modules/private-events";
 
@@ -101,6 +102,54 @@ export function withPrivateEventEmails(
             notes: draft.notes.trim() === "" ? null : draft.notes.trim(),
           }),
         );
+      }
+      return result;
+    },
+  };
+}
+
+export function withIntensiveRequestEmails(
+  inner: IntensiveRequestUseCases,
+  notifier: NotificationService,
+  defer: Defer,
+): IntensiveRequestUseCases {
+  /** The public summary carries the intensivo name, date and deposit. */
+  async function notice(publicId: string, studentEmail: string) {
+    const found = await inner.getRequestByPublicId(publicId);
+    if (!found.ok) return null;
+    const view = found.value;
+    return {
+      studentEmail,
+      studentName: view.studentName,
+      publicId: view.publicId,
+      intensivoName: view.intensivoName,
+      eventDate: view.eventDate,
+      deposit: view.deposit,
+    };
+  }
+
+  return {
+    ...inner,
+    async requestSeat(input) {
+      const result = await inner.requestSeat(input);
+      // A filled honeypot answers with a decoy id that was never stored.
+      if (result.ok && input.student.honeypot.trim() === "") {
+        const { publicId } = result.value;
+        schedule(defer, async () => {
+          const data = await notice(publicId, input.student.email.trim());
+          if (data) await notifier.intensiveRequestReceived(data);
+        });
+      }
+      return result;
+    },
+    async confirm(actor, input) {
+      const result = await inner.confirm(actor, input);
+      if (result.ok) {
+        const { publicId, email } = result.value;
+        schedule(defer, async () => {
+          const data = await notice(publicId, email);
+          if (data) await notifier.intensiveReservationConfirmed(data);
+        });
       }
       return result;
     },

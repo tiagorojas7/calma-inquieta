@@ -118,6 +118,7 @@ import { createDrizzleOrderAudienceReader } from "~/modules/enrollments/infrastr
 import { createResendSender } from "~/platform/resend-email";
 import {
   withEnrollmentEmails,
+  withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
 } from "./notifying-services";
@@ -400,17 +401,21 @@ export function createRequestServices(
       clock: systemClock,
     }),
     intensiveRequests: config.databaseUrl
-      ? createIntensiveRequestService({
-          repository: createDrizzleIntensiveRequestRepository(openSession),
-          offers: createIntensiveSeatOfferLookup({
-            repository: intensiveRepository,
+      ? withIntensiveRequestEmails(
+          createIntensiveRequestService({
+            repository: createDrizzleIntensiveRequestRepository(openSession),
+            offers: createIntensiveSeatOfferLookup({
+              repository: intensiveRepository,
+              clock: systemClock,
+            }),
             clock: systemClock,
+            random: {
+              bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+            },
           }),
-          clock: systemClock,
-          random: {
-            bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-          },
-        })
+          notifications,
+          defer,
+        )
       : createUnavailableIntensiveRequestService(),
     reminders: createRemindersService({
       orders: createDrizzleOrderHistoryReader(openSession),

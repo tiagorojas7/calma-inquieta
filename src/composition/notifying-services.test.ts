@@ -4,10 +4,15 @@ import type {
   AdminEnrollmentUseCases,
   PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
+import type {
+  IntensiveRequestUseCases,
+  PublicRequestView,
+} from "~/modules/intensive-requests";
 import type { NotificationService } from "~/modules/notifications";
 import type { PrivateEventUseCases } from "~/modules/private-events";
 import {
   withEnrollmentEmails,
+  withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
 } from "./notifying-services";
@@ -25,6 +30,12 @@ function notifier() {
     ),
     privateEventReceived: vi.fn<(inquiry: unknown) => Promise<void>>(() =>
       Promise.resolve(),
+    ),
+    intensiveRequestReceived: vi.fn<(notice: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+    intensiveReservationConfirmed: vi.fn<(notice: unknown) => Promise<void>>(
+      () => Promise.resolve(),
     ),
     runDailyReminders: vi.fn(() =>
       Promise.resolve({ classes: 0, fees: 0, failed: 0 }),
@@ -257,5 +268,140 @@ describe("withPrivateEventEmails", () => {
     const bad = setup(err({ kind: "invalid", issues: [] }));
     await bad.service.requestEvent(draft);
     expect(bad.n.privateEventReceived).not.toHaveBeenCalled();
+  });
+});
+
+describe("withIntensiveRequestEmails", () => {
+  const actor = { kind: "admin-actor" as const, email: "owner@example.test" };
+  const deposit = Money.fromCentavos(2_000_000);
+  if (!deposit.ok) throw new Error("bad money");
+  const summary: PublicRequestView = {
+    publicId: "res123",
+    reference: "res123ab",
+    status: "pending_confirmation",
+    studentName: "Ana Pérez",
+    intensivoName: "Bordado libre",
+    eventDate: "2026-12-05",
+    startsAt: "10:00",
+    endsAt: "14:00",
+    deposit: deposit.value,
+  };
+  const expectedReservation = {
+    studentEmail: "ana@example.com",
+    studentName: "Ana Pérez",
+    publicId: "res123",
+    intensivoName: "Bordado libre",
+    eventDate: "2026-12-05",
+    deposit: deposit.value,
+  };
+  const seat = {
+    slug: "bordado-libre",
+    student: {
+      fullName: "Ana Pérez",
+      email: " ana@example.com ",
+      phone: "351",
+      policyAccepted: true,
+      honeypot: "",
+    },
+  };
+  const confirmInput = {
+    intensiveId: "i1",
+    requestId: "r1",
+    amount: "20000",
+    paidOn: "2026-11-01",
+    note: "",
+  };
+  const stored = { publicId: "res123" };
+
+  function setup(over: {
+    requestSeat?: unknown;
+    confirm?: unknown;
+    summary?: unknown;
+  }) {
+    const requestSeat = vi.fn(() =>
+      Promise.resolve(over.requestSeat ?? ok({ publicId: "res123" })),
+    );
+    const confirm = vi.fn(() => Promise.resolve(over.confirm ?? ok(stored)));
+    const getRequestByPublicId = vi.fn(() =>
+      Promise.resolve(over.summary ?? ok(summary)),
+    );
+    const inner = {
+      requestSeat,
+      confirm,
+      getRequestByPublicId,
+    } as unknown as IntensiveRequestUseCases;
+    const n = notifier();
+    const d = deferred();
+    return {
+      service: withIntensiveRequestEmails(inner, n, d.defer),
+      n,
+      d,
+      getRequestByPublicId,
+      requestSeat,
+    };
+  }
+
+  it("defers the received email after the request is stored and returns the result untouched", async () => {
+    const { service, n, d, getRequestByPublicId } = setup({});
+    await expect(service.requestSeat(seat)).resolves.toEqual(
+      ok({ publicId: "res123" }),
+    );
+    await d.settle();
+    expect(getRequestByPublicId).toHaveBeenCalledWith("res123");
+    expect(n.intensiveRequestReceived).toHaveBeenCalledWith(
+      expectedReservation,
+    );
+  });
+
+  it("sends nothing for a refused request or the honeypot decoy", async () => {
+    const refused = setup({ requestSeat: err({ kind: "seats-full" }) });
+    await refused.service.requestSeat(seat);
+    expect(refused.d.pending).toHaveLength(0);
+
+    const decoy = setup({});
+    await decoy.service.requestSeat({
+      ...seat,
+      student: { ...seat.student, honeypot: "bot" },
+    });
+    expect(decoy.d.pending).toHaveLength(0);
+    expect(decoy.n.intensiveRequestReceived).not.toHaveBeenCalled();
+  });
+
+  it("never fails the flow when the summary read or the notifier rejects", async () => {
+    const { service, n, d, getRequestByPublicId } = setup({});
+    getRequestByPublicId.mockRejectedValueOnce(new Error("db down"));
+    await expect(service.requestSeat(seat)).resolves.toEqual(
+      ok({ publicId: "res123" }),
+    );
+    await expect(d.settle()).resolves.toBeDefined();
+    expect(n.intensiveRequestReceived).not.toHaveBeenCalled();
+
+    const second = setup({});
+    second.n.intensiveRequestReceived.mockRejectedValueOnce(new Error("boom"));
+    await second.service.requestSeat(seat);
+    await expect(second.d.settle()).resolves.toBeDefined();
+  });
+
+  it("defers the confirmed email to the student's address once the deposit is confirmed", async () => {
+    const { service, n, d } = setup({
+      confirm: ok({ publicId: "res123", email: "ana@example.com" }),
+    });
+    await service.confirm(actor, confirmInput);
+    await d.settle();
+    expect(n.intensiveReservationConfirmed).toHaveBeenCalledWith(
+      expectedReservation,
+    );
+  });
+
+  it("sends nothing when the confirmation fails", async () => {
+    const { service, n, d } = setup({ confirm: err({ kind: "not-found" }) });
+    await service.confirm(actor, confirmInput);
+    expect(d.pending).toHaveLength(0);
+    expect(n.intensiveReservationConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("passes the other use cases through", () => {
+    const { service } = setup({});
+    expect(typeof service.requestSeat).toBe("function");
   });
 });

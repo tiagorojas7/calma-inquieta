@@ -12,6 +12,8 @@ import {
   parseOpenMonthIntent,
   parsePeriodValue,
 } from "~/app/admin/workshop-period-form-data";
+import { withFeedback } from "~/app/admin/feedback-code";
+import { monthName, openableMonths } from "~/app/admin/workshop-readiness";
 import { WorkshopPeriodsList } from "~/app/ui/admin/workshop-periods-list";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { requireAdmin } from "./require-admin";
@@ -36,6 +38,10 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     workshopId: workshop.value.id,
     workshopName: workshop.value.name,
     suggestedNext: listed.value.suggestedNext,
+    openable: openableMonths(
+      listed.value.suggestedNext,
+      listed.value.periods.map((period) => period.period),
+    ),
     periods: listed.value.periods.map((period) => ({
       id: period.id,
       period: period.period,
@@ -64,7 +70,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const opened = await context
     .get(servicesContext)
     .workshopPeriods.openMonth(actor, params.id, period);
-  if (opened.ok) return redirect(`${LIST}/${params.id}/periodos`);
+  if (opened.ok)
+    return redirect(
+      withFeedback(`${LIST}/${params.id}/periodos/${period}`, "opened"),
+    );
   if (opened.error.kind === "invalid")
     return data(
       {
@@ -105,6 +114,14 @@ export default function AdminWorkshopPeriods() {
       workshopName={screen.workshopName}
       workshopHref={`${LIST}/${screen.workshopId}`}
       rows={screen.periods}
+      openableNames={screen.openable.map(monthName).join(", ")}
+      submitMonth={
+        /^\d{4}-(0[1-9]|1[0-2])$/.test(
+          rejected?.values.period ?? screen.suggestedNext ?? "",
+        )
+          ? monthName(rejected?.values.period ?? screen.suggestedNext ?? "")
+          : ""
+      }
       form={{
         period: rejected?.values.period ?? screen.suggestedNext ?? "",
         error: rejected?.errors.period,

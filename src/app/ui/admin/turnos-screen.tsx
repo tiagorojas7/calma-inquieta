@@ -1,6 +1,7 @@
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { DataTable, type DataTableColumn } from "./data-table";
 import { FormError, SelectField, TextField } from "./form-fields";
@@ -67,6 +68,8 @@ export function TurnosScreen({
   turnos,
   form,
   listError,
+  feedback = null,
+  nextMonth = "",
 }: {
   workshopName: string;
   workshopHref: string;
@@ -80,6 +83,8 @@ export function TurnosScreen({
     weekdays: readonly { value: string; label: string }[];
   };
   listError?: string | undefined;
+  feedback?: keyof typeof copy.feedback | null;
+  nextMonth?: string;
 }) {
   const columns: readonly DataTableColumn<TurnoRow>[] = [
     { key: "label", header: copy.columns.label, cell: (row) => row.label },
@@ -142,12 +147,28 @@ export function TurnosScreen({
   const f = copy.form;
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={1}>{copy.title(workshopName)}</Heading>
-        <AdminButtonLink href={workshopHref} variant="outline">
-          {copy.back}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={copy.title(workshopName)}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.workshops.title, href: "/admin/talleres" },
+          { label: workshopName, href: workshopHref },
+          { label: "Turnos" },
+        ]}
+        back={{ href: workshopHref, label: copy.back }}
+      />
+      {feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[feedback]}>
+          {feedback === "added" && nextMonth ? (
+            <a
+              className="inline-flex min-h-11 items-center underline underline-offset-4"
+              href={`${workshopHref}/periodos`}
+            >
+              {copy.nextStep(nextMonth)}
+            </a>
+          ) : null}
+        </AdminFeedback>
+      ) : null}
       <FormError message={listError} />
       <DataTable
         caption={copy.listLabel}

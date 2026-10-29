@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { err, ok } from "~/modules/_shared";
 import type { MaterialsService } from "~/modules/materials";
-import type { WorkshopPeriodsService } from "~/modules/workshops";
+import type {
+  MonthlyWorkshopsService,
+  WorkshopPeriodsService,
+} from "~/modules/workshops";
 import {
   adminContext,
   getRequest,
@@ -74,7 +77,16 @@ function args(
     request,
     params: { id: "w1", period },
     context: adminContext(
-      { workshopPeriods: periods, materials: materialService },
+      {
+        workshopPeriods: periods,
+        materials: materialService,
+        monthlyWorkshops: withOverrides(
+          createUnavailableService<MonthlyWorkshopsService>(),
+          {
+            get: () => Promise.resolve(ok({ name: "Cerámica Creativa" })),
+          } as unknown as Partial<MonthlyWorkshopsService>,
+        ),
+      },
       { admin },
     ),
   } as never;
@@ -255,7 +267,9 @@ describe("admin workshop period detail", () => {
         materialIds: ["m2", "m3"],
       }),
     );
-    expect((response as Response).headers.get("Location")).toBe(path);
+    expect((response as Response).headers.get("Location")).toBe(
+      `${path}?ok=saved`,
+    );
   });
 
   it("runs only known lifecycle intents and redirects each success", async () => {
@@ -271,10 +285,10 @@ describe("admin workshop period detail", () => {
     const published = (await submit(periods, {
       intent: "publish",
     })) as Response;
-    expect(published.headers.get("Location")).toBe(path);
+    expect(published.headers.get("Location")).toBe(`${path}?ok=published`);
     expect(publish).toHaveBeenCalledWith(expect.anything(), "period-1");
     const closed = (await submit(periods, { intent: "close" })) as Response;
-    expect(closed.headers.get("Location")).toBe(path);
+    expect(closed.headers.get("Location")).toBe(`${path}?ok=closed`);
     expect(close).toHaveBeenCalledWith(expect.anything(), "period-1");
     const deleted = (await submit(periods, { intent: "delete" })) as Response;
     expect(remove).toHaveBeenCalledWith(expect.anything(), "period-1");

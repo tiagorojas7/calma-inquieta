@@ -19,6 +19,9 @@ import {
   turnoFormValues,
   weekdayName,
 } from "~/app/admin/turno-form-data";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { monthName } from "~/app/admin/workshop-readiness";
+import { cordobaMonthOf } from "~/modules/workshops";
 import { TurnosScreen } from "~/app/ui/admin/turnos-screen";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/turnos";
@@ -50,6 +53,14 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   if (editingId !== null && editing === null)
     throw failureResponse({ kind: "not-found" });
   return {
+    feedback: feedbackCode(request, [
+      "added",
+      "updated",
+      "retired",
+      "reactivated",
+      "deleted",
+    ] as const),
+    monthName: monthName(cordobaMonthOf(new Date())),
     workshopId: workshop.id,
     workshopName: workshop.name,
     turnos: workshop.turnos.map((turno) => ({
@@ -82,7 +93,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       turnoId === ""
         ? await workshops.addTurno(actor, params.id, draft)
         : await workshops.updateTurno(actor, params.id, turnoId, draft);
-    if (saved.ok) return redirect(here);
+    if (saved.ok)
+      return redirect(withFeedback(here, turnoId === "" ? "added" : "updated"));
     if (saved.error.kind === "invalid")
       return invalidTurnoResponse(draft, turnoId, saved.error.issues);
     throw failureResponse(saved.error);
@@ -92,7 +104,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
   if (intent === "reactivate") {
     const changed = await workshops.reactivateTurno(actor, params.id, turnoId);
-    if (changed.ok) return redirect(here);
+    if (changed.ok) return redirect(withFeedback(here, "reactivated"));
     if (changed.error.kind === "label-conflict")
       return turnoRefusedResponse(TURNO_FIELD_MESSAGES.label.duplicate);
     throw failureResponse(changed.error);
@@ -102,7 +114,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     intent === "retire"
       ? await workshops.retireTurno(actor, params.id, turnoId)
       : await workshops.deleteTurno(actor, params.id, turnoId);
-  if (changed.ok) return redirect(here);
+  if (changed.ok)
+    return redirect(
+      withFeedback(here, intent === "retire" ? "retired" : "deleted"),
+    );
   if (changed.error.kind === "rules-unmet")
     return turnoRefusedResponse(turnoRulesMessage(changed.error.rules));
   throw failureResponse(changed.error);
@@ -129,6 +144,8 @@ export default function AdminTurnos() {
         weekdays: WEEKDAY_OPTIONS,
       }}
       listError={listError}
+      feedback={screen.feedback}
+      nextMonth={screen.monthName}
     />
   );
 }

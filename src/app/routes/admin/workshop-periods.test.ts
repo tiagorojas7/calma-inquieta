@@ -55,7 +55,7 @@ describe("admin workshop periods route", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(302);
     expect((result as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${id}/periodos`,
+      `/admin/talleres/${id}/periodos/2026-11?ok=opened`,
     );
   });
 
@@ -149,7 +149,11 @@ describe("admin workshop periods route", () => {
         params: { id },
         context: context(periods, fixture.service),
       } as never),
-    ).toMatchObject({ workshopId: id, periods: [] });
+    ).toMatchObject({
+      workshopId: id,
+      periods: [],
+      openable: ["2026-11", "2026-12"],
+    });
     expect(calls).toBe(1);
     await expect(
       thrownStatus(() =>

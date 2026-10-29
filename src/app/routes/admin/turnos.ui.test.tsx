@@ -53,6 +53,7 @@ function stub(
     editing?: { turnoId: string; values: typeof EMPTY_VALUES } | null;
     turnos?: typeof TURNOS;
     actionData?: unknown;
+    feedback?: string | null;
   } = {},
 ) {
   const Stub = createRoutesStub([
@@ -73,6 +74,8 @@ function stub(
             workshopName: "Cerámica Creativa",
             turnos: options.turnos ?? TURNOS,
             editing: options.editing ?? null,
+            feedback: options.feedback ?? null,
+            monthName: "octubre",
           },
         },
         ...(options.actionData
@@ -84,6 +87,22 @@ function stub(
 }
 
 describe("turnos admin screen", () => {
+  it("confirms an added turno and points to opening the month", async () => {
+    const { container } = render(stub({ feedback: "added" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Turno agregado",
+    );
+    expect(
+      screen.getByRole("link", {
+        name: "Siguiente: abrir inscripciones de octubre",
+      }),
+    ).toHaveAttribute("href", "/admin/talleres/w1/periodos");
+    expect(
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    ).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
   it("lists each turno with its day, time range, capacity and state, with only the actions that apply", async () => {
     const { container } = render(stub());
     const table = await screen.findByRole("table", {

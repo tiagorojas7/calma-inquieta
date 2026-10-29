@@ -49,6 +49,7 @@ function stub({
             workshopName: "Cerámica Creativa",
             periods: rows,
             suggestedNext: "2026-11",
+            openable: ["2026-11", "2026-12"],
           },
         },
         ...(actionData ? { actionData: { periods: actionData } } : {}),
@@ -83,9 +84,17 @@ describe("workshop periods admin screen", () => {
     expect(
       screen.getByRole("link", { name: "Volver al taller" }),
     ).toHaveAttribute("href", "/admin/talleres/w1");
-    expect(screen.getByRole("heading", { name: "Abrir mes" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Abrir inscripciones" }),
+    ).toBeVisible();
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-11");
-    expect(screen.getByRole("button", { name: "Abrir mes" })).toBeVisible();
+    expect(screen.getByText(/Podés abrir: noviembre, diciembre/)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Abrir inscripciones de noviembre" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    ).toBeVisible();
     expect(container.querySelector("form")).toHaveAttribute("method", "post");
     await expectNoAxeViolations(container);
   });
@@ -116,7 +125,10 @@ describe("workshop periods admin screen", () => {
   });
 });
 
-function detailStub(status: "draft" | "open" | "closed" = "draft") {
+function detailStub(
+  status: "draft" | "open" | "closed" = "draft",
+  feedback?: string,
+) {
   const Stub = createRoutesStub([
     {
       path: "/admin/talleres/:id/periodos/:period",
@@ -130,6 +142,10 @@ function detailStub(status: "draft" | "open" | "closed" = "draft") {
       hydrationData={{
         loaderData: {
           "period-detail": {
+            feedback: feedback ?? null,
+            workshopId: "w1",
+            workshopName: "Cerámica Creativa",
+            totalCapacity: 8,
             period: "2026-11",
             status,
             values: {
@@ -176,6 +192,22 @@ function detailStub(status: "draft" | "open" | "closed" = "draft") {
 }
 
 describe("workshop period detail admin screen", () => {
+  it("explains the public consequence, confirms the last change and offers back paths", async () => {
+    const { container } = render(detailStub("draft", "opened"));
+    expect((await screen.findAllByRole("status")).length).toBe(2);
+    expect(
+      screen.getByText("Mes abierto. Ahora definí cupos y materiales."),
+    ).toBeVisible();
+    expect(screen.getByText("Todavía no acepta inscripciones")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Volver a inscripciones del taller" }),
+    ).toHaveAttribute("href", "/admin/talleres/w1/periodos");
+    expect(
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    ).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
   it("renders draft editing plus native publish and confirmed delete controls", async () => {
     const { container } = render(detailStub());
     expect(

@@ -10,6 +10,9 @@ import {
   formatWholePesos,
 } from "~/app/admin/workshop-form-data";
 import { servicesContext } from "~/app/context";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { monthName } from "~/app/admin/workshop-readiness";
+import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { Button } from "~/app/ui/atoms/button";
 import { Heading } from "~/app/ui/atoms/heading";
 import { ConfirmedSubmit } from "~/app/ui/admin/confirmed-submit";
@@ -100,7 +103,23 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       ),
     ];
   }
+  const workshop = await context
+    .get(servicesContext)
+    .monthlyWorkshops.get(actor, params.id);
+  if (!workshop.ok) throw failureResponse(workshop.error);
   return {
+    feedback: feedbackCode(request, [
+      "opened",
+      "saved",
+      "published",
+      "closed",
+    ] as const),
+    workshopId: params.id,
+    workshopName: workshop.value.name,
+    totalCapacity: period.turnos.reduce(
+      (sum, turno) => sum + turno.capacity,
+      0,
+    ),
     period: period.period,
     status: period.status,
     values: formValues(period),
@@ -134,7 +153,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     const draft = parsePeriodDraft(form, period);
     const saved = await periods.update(actor, period.id, draft);
     if (saved.ok)
-      return redirect(`/admin/talleres/${params.id}/periodos/${period.period}`);
+      return redirect(
+        withFeedback(
+          `/admin/talleres/${params.id}/periodos/${period.period}`,
+          "saved",
+        ),
+      );
     const values = formValues(period, draft);
     const rejected = { values, formError: undefined };
     if (saved.error.kind === "invalid")
@@ -164,7 +188,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     return redirect(
       intent === "delete"
         ? `/admin/talleres/${params.id}/periodos`
-        : `/admin/talleres/${params.id}/periodos/${period.period}`,
+        : withFeedback(
+            `/admin/talleres/${params.id}/periodos/${period.period}`,
+            intent === "publish" ? "published" : "closed",
+          ),
     );
   if (transitioned.error.kind === "transition-refused")
     return data(
@@ -187,7 +214,37 @@ export default function AdminWorkshopPeriodDetail() {
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   return (
     <section className="flex max-w-prose flex-col gap-6">
-      <Heading level={1}>{copy.title(screen.period)}</Heading>
+      <AdminPageHeader
+        title={copy.title(screen.period)}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.workshops.title, href: "/admin/talleres" },
+          {
+            label: screen.workshopName,
+            href: `/admin/talleres/${screen.workshopId}`,
+          },
+          {
+            label: "Inscripciones",
+            href: `/admin/talleres/${screen.workshopId}/periodos`,
+          },
+          { label: monthName(screen.period) },
+        ]}
+        back={{
+          href: `/admin/talleres/${screen.workshopId}/periodos`,
+          label: copy.backToMonths,
+        }}
+      />
+      {screen.feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[screen.feedback]} />
+      ) : null}
+      <AdminFeedback
+        tone="info"
+        title={copy.enrollment[screen.status].title}
+        message={copy.enrollment[screen.status].message(
+          monthName(screen.period),
+          screen.totalCapacity,
+        )}
+      />
       {screen.status !== "closed" && (
         <WorkshopPeriodForm
           values={formRejected?.values ?? screen.values}

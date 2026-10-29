@@ -13,6 +13,8 @@ import {
 import { seedTeacher, seedWorkshop } from "~/testing/admin/workshop-seed";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { action as workshopAction } from "./workshop-detail";
+import { monthName } from "~/app/admin/workshop-readiness";
+import { cordobaMonthOf } from "~/modules/workshops";
 import { action, loader } from "./turnos";
 
 type Fixture = ReturnType<typeof workshopsFixture>;
@@ -86,6 +88,8 @@ describe("admin turnos loader", () => {
     const id = await seedWorkshop(fixture);
     const turnoId = await addTurno(fixture, id);
     expect(await load(fixture, id)).toEqual({
+      feedback: null,
+      monthName: monthName(cordobaMonthOf(new Date())),
       workshopId: id,
       workshopName: "Cerámica Creativa",
       turnos: [
@@ -154,7 +158,7 @@ describe("admin turnos action", () => {
     const id = await seedWorkshop(fixture);
     const response = await submit(fixture, id, { intent: "save", ...MORNING });
     expect((response as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${id}/turnos`,
+      `/admin/talleres/${id}/turnos?ok=added`,
     );
     expect([...fixture.turnos.items.values()]).toMatchObject([
       {
@@ -260,7 +264,7 @@ describe("admin turnos action", () => {
       label: "tarde",
     });
     expect((allowed as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${other}/turnos`,
+      `/admin/talleres/${other}/turnos?ok=added`,
     );
   });
 

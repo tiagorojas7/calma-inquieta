@@ -587,14 +587,44 @@ export const adminMicrocopy = {
         message: "Los períodos que abras se organizan acá.",
       },
       form: {
-        title: "Abrir mes",
+        title: "Abrir inscripciones",
+        intro:
+          "Al abrir un mes se crea con los cupos de tus turnos activos. Después elegís los materiales y lo publicás: recién ahí el sitio acepta inscripciones.",
         period: "Mes",
-        submit: "Abrir mes",
+        hint: (months: string) =>
+          months
+            ? `Escribilo como AAAA-MM. Podés abrir: ${months}.`
+            : "Escribilo como AAAA-MM, por ejemplo 2026-11.",
+        submit: (month: string) =>
+          month ? `Abrir inscripciones de ${month}` : "Abrir inscripciones",
         saveFailed: "Revisá el mes para abrir el período.",
         conflict: "Ya existe un período para ese mes.",
       },
       detail: {
         title: (period: string) => `Período ${period}`,
+        backToMonths: "Volver a inscripciones del taller",
+        feedback: {
+          opened: "Mes abierto. Ahora definí cupos y materiales.",
+          saved: "Cambios guardados",
+          published: "Mes publicado: ya acepta inscripciones",
+          closed: "Mes cerrado",
+        },
+        enrollment: {
+          draft: {
+            title: "Todavía no acepta inscripciones",
+            message: (month: string, seats: number) =>
+              `${month} está en borrador con ${String(seats)} cupos. Publicalo cuando los cupos y los materiales estén listos.`,
+          },
+          open: {
+            title: "Acepta inscripciones",
+            message: (month: string, seats: number) =>
+              `${month} está publicado en el sitio con ${String(seats)} cupos.`,
+          },
+          closed: {
+            title: "No acepta inscripciones",
+            message: (month: string) => `${month} está cerrado.`,
+          },
+        },
         status: "Estado",
         fee: "Arancel mensual",
         materialsRequired: "Requiere materiales",
@@ -657,6 +687,14 @@ export const adminMicrocopy = {
       manage: "Administrar turnos",
       title: (workshop: string) => `Turnos de ${workshop}`,
       back: "Volver al taller",
+      feedback: {
+        added: "Turno agregado",
+        updated: "Turno actualizado",
+        retired: "Turno retirado",
+        reactivated: "Turno reactivado",
+        deleted: "Turno eliminado",
+      },
+      nextStep: (month: string) => `Siguiente: abrir inscripciones de ${month}`,
       listLabel: "Turnos del taller",
       columns: {
         label: "Turno",

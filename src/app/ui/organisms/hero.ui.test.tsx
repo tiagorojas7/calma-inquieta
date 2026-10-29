@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -66,6 +67,7 @@ function renderHero({
 }
 
 const imgByAlt = (alt: string) => screen.getByAltText(alt);
+const motifsCss = readFileSync("src/app/ui/styles/motifs.css", "utf8");
 
 describe("HeroSection structure", () => {
   it("is a full-bleed tone band labelled by the h1", () => {
@@ -91,9 +93,10 @@ describe("HeroSection structure", () => {
     expect(
       screen.getByText("Un espacio para encontrarnos."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Equilibrio entre serenidad y movimiento"),
-    ).toBeInTheDocument();
+    const bajada = screen.getByText("Equilibrio entre serenidad y movimiento");
+    expect(bajada).toBeInTheDocument();
+    expect(bajada).toHaveClass("hero-bajada");
+    expect(bajada).not.toHaveClass("max-lg:sr-only");
     expect(screen.getByRole("link", { name: "Ver talleres" })).toHaveAttribute(
       "href",
       "/talleres",
@@ -101,6 +104,26 @@ describe("HeroSection structure", () => {
     expect(
       screen.getByRole("link", { name: "Ver intensivos" }),
     ).toHaveAttribute("href", "/intensivos");
+  });
+
+  it("contains the narrow hero locally with a ratio-driven collage board", () => {
+    expect(motifsCss).toMatch(
+      /@media \(max-width: 63\.999rem\)[\s\S]*?\.hero-stage[\s\S]*?overflow-x: clip/,
+    );
+
+    const narrowCollage = motifsCss.match(
+      /@media \(max-width: 63\.999rem\)[\s\S]*?\.hero-collage\s*\{([\s\S]*?)\n  \}/,
+    )?.[1];
+
+    expect(narrowCollage).toMatch(/width: min\(100%, 22\.22rem\)/);
+    expect(narrowCollage).toMatch(/height: auto/);
+    expect(narrowCollage).toMatch(/min-height: 0/);
+    expect(narrowCollage).toMatch(/aspect-ratio: 1 \/ 0\.9/);
+    expect(narrowCollage).toMatch(/margin-inline: auto/);
+    expect(narrowCollage).not.toMatch(/height: clamp/);
+    expect(motifsCss).toMatch(
+      /@media \(max-width: 63\.999rem\)[\s\S]*?\.hero-sprig-a,[\s\S]*?\.hero-butterfly[\s\S]*?display: none/,
+    );
   });
 
   it("exports the shared media and sizes", () => {

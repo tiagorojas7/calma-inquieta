@@ -235,6 +235,40 @@
   margin-top: 0.5rem;
 }
 
+/* Keep the narrow composition inside its own band rather than clipping the
+   document. The shorter board leaves the copy and primary CTA in the first
+   scan while the secondary sprig and butterfly stay desktop decoration. */
+@media (max-width: 63.999rem) {
+  .hero-stage {
+    overflow-x: clip;
+  }
+
+  .hero-copy {
+    gap: 1rem;
+    padding-block: 1rem 0;
+  }
+
+  .hero-bajada {
+    margin-top: 0.25rem;
+    padding-top: 1rem;
+  }
+
+  .hero-collage {
+    flex: none;
+    width: min(100%, 22.22rem);
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 1 / 0.9;
+    margin-inline: auto;
+    margin-top: 0.25rem;
+  }
+
+  .hero-sprig-a,
+  .hero-butterfly {
+    display: none;
+  }
+}
+
 .collage-lead {
   position: absolute;
   z-index: 2;

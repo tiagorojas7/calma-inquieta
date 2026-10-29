@@ -1,11 +1,12 @@
 # Admin UI/UX overhaul
 
 - Feature: `ui-admin-overhaul` (ODD, not SDD).
-- Branch: `feat/ui-admin-overhaul-audit`, rebased onto `origin/main` `265668f`.
+- Audit branch: `feat/ui-admin-overhaul-audit`, merged by PR #147.
+- Annex branch: `feat/ui-admin-overhaul-audit-annex`, based on `origin/main` `9bcdfca` after PRs #141–#149.
 - Audience: non-technical workshop owners, primarily on mobile.
 - Ownership: `src/app/ui/admin/**` and `src/app/routes/admin/**` only.
-- Delivery: audit-only first commit, then reviewable PR slices of about 400 changed lines against `main`.
-- Engram mirror: `odd/ui-admin-overhaul/tasks` (save attempted; Engram timed out and must be reconciled before implementation).
+- Delivery: audit evidence first, then reviewable PR slices of about 400 changed lines against `main`; fetch and rebase before every slice.
+- Engram mirror: `odd/ui-admin-overhaul/tasks` (writes remain unreconciled because Engram accepts connections but times out; do not blindly retry uncertain writes).
 
 ## Objective
 
@@ -13,20 +14,25 @@ Make every `/admin` screen clear, guided, comfortable, and mobile-first. The cri
 
 ## Constraints
 
-- The admin home MUST NOT show metrics or a dashboard. It may show navigation and next-step guidance only.
+- Include the approved Panel general metrics and `/admin/estadisticas`; the former no-dashboard rule was superseded by merged PR #143.
 - Use native `<a>` and `<form method="post">`; never React Router `<Form>`, fetchers, or `.data` navigation.
-- Reuse the shared icon set from Terminal A when available; do not add icon packages or edit shared atoms/tokens/styles.
+- Start with text controls. Reuse Terminal A's shared icon set only after its exact commit/PR lands; do not add icon packages or edit shared atoms/tokens/styles.
+- The access-denied recovery action is “Pedir acceso por WhatsApp”, built with the existing site-content number and `buildWhatsAppUrl`; do not add another channel.
 - Do not touch `src/app/ui/admin/material-form.tsx`, `src/app/admin/material-form-data.ts`, or `src/modules/materials/domain/material-core.ts` until `fix/admin-material-form-formats` is merged.
 - Preserve strict TDD for behavior changes and keep UI/axe tests at least as strong as today.
+- Run checks sequentially because the workstation is RAM-constrained. DB tests use `TEST_DATABASE_URL=postgres://calma_test_fix:fix@localhost:5432/postgres`; the empty development database is `postgres://postgres:postgres@localhost:5432/calma_dev` and is populated only through `/admin`.
 
 ## Tasks
 
-- [x] T1 — Audit every admin screen at 360, 768, and 1280 px. Record priority, problem, skill recommendation, and concrete fix per screen. Commit the audit before production UI changes and notify Terminal A.
+- [x] T1 — Audit the original 24 admin states at 360, 768, and 1280 px; commit the audit, notify Terminal A, and merge PR #147.
+- [x] T1a — Audit the 13 states added by Panel general, statistics, students, private events, teacher settlements, reminders, intensive reservations, and attendance at 360, 768, and 1280 px; append the findings before production UI changes.
 - [ ] T2 — Establish admin-only navigation and page hierarchy: mobile shell, breadcrumbs/back paths, screen titles, primary/secondary/destructive action hierarchy, success feedback, and reusable admin page patterns.
 - [ ] T3 — Implement the guided workshop enrollment-readiness flow across workshop list, detail, shifts, periods, and period detail.
-- [ ] T4 — Apply the system to intensives, teachers, materials, and suppliers, including forms, empty states, validation help, and lifecycle actions.
+- [ ] T4 — Apply the system to intensives and reservations, teachers and settlements, materials, and suppliers.
 - [ ] T5 — Apply the system to enrollments, order detail, materials-to-order, access denied, and error states.
-- [ ] T6 — Run cross-screen responsive, keyboard, axe, and repository verification; resolve regressions and document remaining owner decisions.
+- [ ] T6 — Apply the system to Panel general, statistics, students, private events, and reminders.
+- [ ] T7 — Apply the system to attendance index, sessions, sheet, and make-ups.
+- [ ] T8 — Run cross-screen responsive, keyboard, axe, and repository verification; resolve regressions and document remaining owner decisions.
 
 ## Audit method and evidence
 
@@ -65,6 +71,40 @@ Docker Desktop, Postgres, and eventually the `docker-desktop` WSL distro became 
 
 Both delegated read-only scouts also crashed in the Pi host with Windows exit code `2147483651`; the parent completed the bounded audit from source, tests, and visual evidence.
 
+## Merged-screen audit annex
+
+### Scope and evidence
+
+Main gained eight admin capabilities after the first audit: Panel general and statistics (#143), students (#141), private events (#142), teacher settlements (#145), reminders (#148), intensive reservations (#144), and attendance (#149). The annex covers 13 representative visual states because attendance has four operational screens and private events has list/detail screens.
+
+- Base: `origin/main` `9bcdfca`.
+- States: Panel general; statistics; students list/detail; private events list/detail; teacher settlement; reminders; intensive reservations; attendance index/sessions/sheet/make-ups.
+- Viewports: 360, 768, and 1280 px.
+- Evidence: 39 full-page screenshots rendered from real production components inside `AdminShell`, fixture data from existing UI tests, and the production CSS emitted by `pnpm build`.
+- Verification: focused harness test passed; an independent verifier confirmed 39 valid PNGs with exactly the three required widths and no out-of-scope files.
+- Limitation: this annex is visual and source/test-based. It does not claim interactive submission, keyboard, screen-reader, or contrast coverage; existing UI/axe tests remain the semantic baseline.
+
+### Annex findings
+
+**14 additional findings — 1 critical, 11 high, 2 medium. Combined audit: 60 findings — 5 critical, 40 high, 15 medium.**
+
+| ID   | Priority | Screen                                   | Problem                                                                                                                                                                                               | Skill recommendation                                                     | Fix                                                                                                                                                                                              |
+| ---- | -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A-47 | High     | Panel general                            | At 360 px, five metric cards, alerts, and ten section links produce a 2,555 px page. The section list duplicates navigation and pushes operational guidance below a long summary.                     | `content-priority`, `progressive-disclosure`, `mobile-first`             | Keep the approved metrics, but lead with urgent next actions, use a compact responsive metric grid, and demote the duplicate section directory below operational content.                        |
+| A-48 | High     | Statistics                               | Every report remains a wide table at 360 px; right-hand values are clipped with no visible scroll cue, so the owner cannot read the full result.                                                      | `horizontal-scroll`, `content-priority`, `mobile-first`                  | Present each report as a mobile summary/card with its decisive figure and optional detail; keep full tables at `md+` or add an explicit labelled scroll affordance.                              |
+| A-49 | High     | Statistics                               | Six reports form one long undifferentiated page. Explanatory copy is good, but there is no top summary of what changed or what needs action.                                                          | `visual-hierarchy`, `information-dashboard`, `error-recovery`            | Add a month summary and anchor/section navigation; distinguish informational reports from actionable exceptions without inventing new metrics.                                                   |
+| A-50 | High     | Students list                            | The 360 px table exposes name/email but clips phone, workshops, order count, request date, and row context. Filters consume the first viewport.                                                       | `content-priority`, `progressive-disclosure`, `touch-target-size`        | Use mobile student cards with contact, active workshop/order summary, and a 44 px detail action; collapse secondary filters and expose active-filter chips/reset.                                |
+| A-51 | High     | Student detail                           | Activity and order tables clip status/total/payment columns, while the attendance summary and editable note appear far below the identity. No single next action is prioritized.                      | `visual-hierarchy`, `horizontal-scroll`, `primary-action`                | Add a compact student summary, render activity/orders as mobile cards, and prioritize the most relevant follow-up while keeping observations clearly internal.                                   |
+| A-52 | High     | Private events list                      | The list clips received date, participant count, and status at 360 px, hiding the data used to triage a consultation.                                                                                 | `content-priority`, `state-clarity`, `mobile-first`                      | Use mobile request cards with status, desired date, party size, location, and one clear detail/contact action.                                                                                   |
+| A-53 | High     | Private event detail                     | WhatsApp is a small inline text link and saving status redirects without visible success confirmation. Contact and lifecycle actions have similar weight.                                             | `primary-action`, `success-feedback`, `touch-target-size`                | Promote “Escribir por WhatsApp” to a 44 px secondary action, show status-save confirmation, and separate contact from lifecycle management.                                                      |
+| A-54 | Medium   | Teacher settlement                       | The settlement block is readable by itself, but inside the already dense teacher detail it competes with identity, assignments, editing, and lifecycle actions; error/filter context is not isolated. | `section-grouping`, `visual-hierarchy`, `error-clarity`                  | Make settlement a named summary section with month context, modality explanation, scoped errors, and a clear relationship to teacher assignments.                                                |
+| A-55 | High     | Reminders                                | All message-specific fields are visible at once, including irrelevant intensive/free-text inputs, producing a long and cognitively expensive mobile form.                                             | `progressive-disclosure`, `conditional-fields`, `field-grouping`         | Reveal only fields required by the selected reminder kind, preserve existing helper copy, and keep one clear “Preparar mensajes” action.                                                         |
+| A-56 | High     | Reminders                                | The result table compresses recipient, message, WhatsApp, and copy actions into narrow columns at 360 px; clipboard rejection has no error feedback.                                                  | `mobile-first`, `success-feedback`, `error-recovery`                     | Render recipient cards with stacked 44 px actions and provide accessible success/failure feedback for copying; keep the desktop table only where it remains readable.                            |
+| A-57 | Critical | Attendance sheet                         | At 360 px, attendance controls and the pending-fee explanation extend beyond the visible table. An owner can lose access to a student's present/absent controls, blocking the core task.              | `content-priority`, `touch-target-size`, `horizontal-scroll`             | Replace the mobile table with one student card per row containing payment state and full-width radio controls; preserve the table at larger widths and focus the first invalid row after errors. |
+| A-58 | High     | Attendance index, sessions, and make-ups | All three screens clip decisive columns at 360 px; make-up dates and state become partially invisible, and the index hides session context.                                                           | `mobile-first`, `state-clarity`, `back-behavior`                         | Use mobile cards with workshop/shift/date/state and explicit next actions; preserve predictable breadcrumbs across index → sessions → sheet → make-ups.                                          |
+| A-59 | High     | Intensive reservations                   | Pending, confirmed, and cancelled groups create a 2,851 px mobile page. Confirm/cancel forms sit together, and cancellation lacks a confirmation step.                                                | `progressive-disclosure`, `destructive-emphasis`, `confirmation-dialogs` | Default to the operational group, collapse completed groups, separate confirmation from cancellation, and require an explicit cancellation confirmation with consequence text.                   |
+| A-60 | Medium   | Access denied                            | The owner selected a single recovery channel after the first audit; the current generic state still lacks that concrete route.                                                                        | `accessible-authentication`, `consistent-help`, `touch-target-size`      | Add “Pedir acceso por WhatsApp” using the existing site-content number and `buildWhatsAppUrl`, alongside sign-out/switch-account recovery; do not add another channel.                           |
+
 ## Findings
 
 **Total: 46 findings — 4 critical, 29 high, 13 medium.**
@@ -84,10 +124,10 @@ Both delegated read-only scouts also crashed in the Pi host with Windows exit co
 
 ### `/admin` — home
 
-| ID   | Priority | Problem                                                                                                                                            | Skill recommendation                                           | Fix                                                                                                                                                                            |
-| ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A-09 | High     | Home only says “Elegí qué querés administrar”; it offers no safe next step for the enrollment problem.                                             | `content-priority`, `empty-state`, `primary-action`.           | Keep the “no metrics/dashboard” contract, but add a “Preparar inscripciones” task entry that explains the sequence and starts at Talleres. No counters without owner approval. |
-| A-10 | Medium   | At desktop the access cards duplicate the sidebar and remain flat text blocks; at mobile they give no description of what each destination is for. | `visual-hierarchy`, `icon-style-consistent`, `nav-label-icon`. | Turn them into descriptive action cards with Terminal A’s SVG icons, short helper copy, and one clear affordance; avoid dashboard metrics.                                     |
+| ID   | Priority | Problem                                                                                                                                                               | Skill recommendation                                           | Fix                                                                                                                                                             |
+| ---- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A-09 | High     | The approved Panel general now shows useful metrics, but enrollment readiness is only one alert among summary cards and does not expose the complete guided sequence. | `content-priority`, `error-recovery`, `primary-action`         | Keep the approved metrics and elevate the current-month workshop blocker/CTA into the actionable alert hierarchy, linked to the guided readiness flow.          |
+| A-10 | Medium   | The section directory duplicates the shell navigation, adds substantial mobile length, and gives no description of what each destination is for.                      | `visual-hierarchy`, `progressive-disclosure`, `nav-label-icon` | Keep task-oriented descriptions/text controls, compact or demote the duplicate directory, and add Terminal A's shared icons only after their exact slice lands. |
 
 ### `/admin/talleres` — workshop list
 
@@ -236,38 +276,45 @@ Both delegated read-only scouts also crashed in the Pi host with Windows exit co
 
 ### Access denied
 
-| ID   | Priority | Problem                                                                                      | Skill recommendation                                              | Fix                                                                                                                                                                  |
-| ---- | -------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A-46 | Medium   | The denial explains the state but gives no concrete way to switch account or request access. | `accessible-authentication`, `error-recovery`, `consistent-help`. | Keep the bare no-data layout, show the signed-in account, add “Cerrar sesión y usar otra cuenta”, and identify the access-request channel if the owner provides one. |
+| ID   | Priority | Problem                                                                                      | Skill recommendation                                             | Fix                                                                                                                                                                                                 |
+| ---- | -------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A-46 | Medium   | The denial explains the state but gives no concrete way to switch account or request access. | `accessible-authentication`, `error-recovery`, `consistent-help` | Keep the bare no-data layout, show the signed-in account, add “Cerrar sesión y usar otra cuenta”, and add “Pedir acceso por WhatsApp” with the existing site-content number and `buildWhatsAppUrl`. |
 
-## Owner decisions
+## Owner decisions — resolved
 
-1. **No dashboard metrics implemented.** If the owner wants counts such as pending orders on `/admin`, that changes the current MUST NOT dashboard/metrics requirement and needs explicit approval first.
-2. **Access request channel.** A-46 needs the preferred contact/action (for example WhatsApp or a named administrator); do not invent one.
-3. **Icon dependency.** Terminal A’s icon slice was not produced because its environment audit closed blocked. Implementation may proceed with text-first controls, but icon-enhanced navigation waits for a concrete shared commit/PR or a new owner decision on ownership.
+1. **Panel general and statistics are in scope.** Merged PR #143 superseded the former no-dashboard rule. Redesign the approved metrics and `/admin/estadisticas`; do not reopen the decision.
+2. **Access request uses WhatsApp.** Add “Pedir acceso por WhatsApp” using the existing site-content number and `buildWhatsAppUrl`. No additional support channel.
+3. **Text-first, then shared icons.** Implement controls with text now. Add Terminal A's icons only after its exact shared commit/PR lands; never duplicate the icon set or add a package.
 
 ## Proposed PR slices
 
-These are implementation forecasts, not commitments to exact line counts; split again if a slice exceeds review focus.
+These are implementation forecasts, not commitments to exact line counts. Fetch/rebase from `origin/main` before every slice, keep each PR near 400 changed lines, wait for merge, and remove its worktree before starting the next independent slice.
 
 1. Admin shell + page headers + breadcrumbs/back + success banner foundation.
-2. Mobile list/card pattern + action hierarchy for top-level lists.
-3. Guided workshop readiness on list/detail.
-4. Guided shifts → period handoff and “Abrir inscripciones de <mes>”.
-5. Period detail enrollment state and mobile presentation.
-6. Intensives list/new/detail hierarchy and progressive gallery.
-7. Teachers and suppliers forms/lifecycle confirmations.
-8. Enrollments list + order detail + materials-to-order workflow.
-9. Materials screens after `fix/admin-material-form-formats` merges.
-10. Error/denied recovery and final responsive/axe regression.
+2. Panel general + statistics hierarchy and mobile summaries.
+3. Admin-only mobile list/card pattern for workshops and students.
+4. Guided workshop readiness on list/detail.
+5. Guided shifts → period handoff and “Abrir inscripciones de <mes>”.
+6. Period detail enrollment state and mobile presentation.
+7. Students detail + private events list/detail.
+8. Attendance index/sessions/sheet/make-ups.
+9. Intensives list/new/detail + reservation operations.
+10. Reminders conditional form + mobile recipient actions.
+11. Teachers/settlements and supplier lifecycle confirmations.
+12. Enrollments list + order detail + materials-to-order workflow.
+13. Materials screens after `fix/admin-material-form-formats` merges.
+14. Error/denied recovery, shared icons when available, and final responsive/axe regression.
 
 ## Progress and evidence
 
-| Task | Status   | Evidence                                                                                                                                                                                                      |
-| ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 screens × 3 widths; 46 findings; live environment failure and fixture fallback documented. Audit commit `5c6d83a` (`docs(admin): audit admin panel UX`). |
-| T2   | Pending  | —                                                                                                                                                                                                             |
-| T3   | Pending  | —                                                                                                                                                                                                             |
-| T4   | Pending  | —                                                                                                                                                                                                             |
-| T5   | Pending  | —                                                                                                                                                                                                             |
-| T6   | Pending  | —                                                                                                                                                                                                             |
+| Task | Status   | Evidence                                                                                                                                                                                                |
+| ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 states × 3 widths; 46 findings; fixture limitation documented; commits `5c6d83a` and `0fe0098`; PR #147 merged.                                    |
+| T1a  | Complete | Main `9bcdfca`; 13 added states × 3 widths; 39 production-CSS screenshots; focused harness and independent verification passed; 14 annex findings. Temporary harness/evidence is removed before commit. |
+| T2   | Pending  | —                                                                                                                                                                                                       |
+| T3   | Pending  | —                                                                                                                                                                                                       |
+| T4   | Pending  | —                                                                                                                                                                                                       |
+| T5   | Pending  | —                                                                                                                                                                                                       |
+| T6   | Pending  | —                                                                                                                                                                                                       |
+| T7   | Pending  | —                                                                                                                                                                                                       |
+| T8   | Pending  | —                                                                                                                                                                                                       |

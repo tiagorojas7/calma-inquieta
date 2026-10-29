@@ -68,7 +68,11 @@ export function HeroSection({
           <ButtonLink href="/talleres" className="hero-cta">
             Ver talleres
           </ButtonLink>
-          <ButtonLink href="/intensivos" variant="outline" className="hero-cta">
+          <ButtonLink
+            href="/intensivos"
+            variant="secondary"
+            className="hero-cta"
+          >
             Ver intensivos
           </ButtonLink>
         </div>

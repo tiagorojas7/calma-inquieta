@@ -55,7 +55,14 @@ export function TallerCard({
       {teacher ? <Text tone="muted">{teacher}</Text> : null}
       <Text>{summary}</Text>
       <TurnoList items={turnos} />
-      {price ? <PriceTag {...price} /> : null}
+      {price ? (
+        <div
+          data-slot="price-block"
+          className="w-full border-t border-tan-400 pt-4"
+        >
+          <PriceTag {...price} />
+        </div>
+      ) : null}
       {paused ? (
         <>
           <Pill tone="notice">Pausado</Pill>
@@ -68,7 +75,11 @@ export function TallerCard({
         </>
       ) : null}
       {showSeats && seats ? <Pill>{seats}</Pill> : null}
-      <ButtonLink href={href} variant="text-arrow" className="mt-auto">
+      <ButtonLink
+        href={href}
+        variant="secondary"
+        className="mt-auto w-full justify-center"
+      >
         {ctaLabel}
       </ButtonLink>
     </article>

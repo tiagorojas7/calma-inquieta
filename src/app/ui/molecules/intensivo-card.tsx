@@ -53,18 +53,27 @@ export function IntensivoCard({
       <div className="card-hover-frame w-full rounded-sm">
         <Image {...image} className="block w-full object-cover" />
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-3">
         <div className="rounded-sm bg-sand-100 p-2 shadow-rest">
           <DateBadge {...date} />
         </div>
-        <Heading level={2} size="h3">
-          {name}
-        </Heading>
+        <div className="min-w-0 flex-1 basis-40">
+          <Heading level={2} size="h3">
+            {name}
+          </Heading>
+        </div>
       </div>
-      {teacher ? <Text tone="muted">{teacher}</Text> : null}
-      <Text>{duration}</Text>
-      <PriceTag amount={price} />
-      <Text tone="muted">{deposit}</Text>
+      <div className="flex flex-col gap-1">
+        <Text>{duration}</Text>
+        {teacher ? <Text tone="muted">{teacher}</Text> : null}
+      </div>
+      <div
+        data-slot="price-block"
+        className="flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-tan-400 pt-4"
+      >
+        <PriceTag amount={price} />
+        <Text tone="muted">{deposit}</Text>
+      </div>
       <div className="flex flex-wrap gap-2">
         {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
         {seats && !paused ? <Pill>{seats}</Pill> : null}
@@ -76,7 +85,11 @@ export function IntensivoCard({
         </>
       ) : null}
       <ConditionsNote {...conditions} />
-      <ButtonLink href={href} variant="text-arrow" className="mt-auto">
+      <ButtonLink
+        href={href}
+        variant="secondary"
+        className="mt-auto w-full justify-center"
+      >
         {ctaLabel}
       </ButtonLink>
     </article>

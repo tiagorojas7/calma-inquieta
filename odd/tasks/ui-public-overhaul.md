@@ -176,7 +176,7 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - [x] Record prioritized source findings by section, including skill guidance and a concrete remedy.
 - [x] Commit and publish the source audit, then notify Terminal B.
 - [x] Implement tokens, typography, and spacing.
-- [ ] Implement differentiated primary, secondary, and tertiary CTAs with complete states.
+- [x] Implement differentiated primary, secondary, and tertiary CTAs with complete states.
 - [ ] Implement and publish the licensed SVG icon component slice, then notify Terminal B.
 - [ ] Improve each public page and the enrollment/order flow in bounded slices.
 - [ ] Run the required checks before every PR and record final evidence.
@@ -187,3 +187,4 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - No UI source changes were made in the audit work unit.
 - Viewport matrix: 48 viewport captures plus top/middle/bottom screenshots, completed against the rebuilt and seeded local database. Generated screenshots remain outside Git.
 - Tokens, typography, and spacing: `6f2a78c` (`feat(ui): refine public visual system`). Strict TDD recorded RED before implementation and GREEN with 82 focused tests; independent verification passed. Runtime smoke completed all 48 captures and confirmed desktop content is not constrained. The pre-existing Home overflow remains explicitly deferred to the Home page slice.
+- CTA hierarchy and states: `72264f8` (`feat(ui): complete public CTA states`). Strict TDD covered canonical and compatibility variants, native and link disabled/busy semantics, stable loading geometry, visible reduced-motion-safe progress, and public call-site hierarchy; independent verification passed 39 focused tests.

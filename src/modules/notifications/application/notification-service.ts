@@ -5,6 +5,8 @@ import {
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
+  intensiveReservationConfirmedEmail,
+  intensiveReservationReceivedEmail,
   paymentConfirmedEmail,
   type EmailContent,
   type EventInquiryInput,
@@ -35,6 +37,49 @@ export interface OrderNotice {
   readonly total: Money;
 }
 
+/** What an intensivo reservation email needs; carries the student's address. */
+export interface ReservationNotice {
+  readonly studentEmail: string;
+  readonly studentName: string;
+  readonly publicId: string;
+  readonly intensivoName: string;
+  /** `YYYY-MM-DD`, a Córdoba calendar date. */
+  readonly eventDate: string;
+  readonly deposit: Money;
+}
+
+const WEEKDAYS = [
+  "domingo",
+  "lunes",
+  "martes",
+  "miércoles",
+  "jueves",
+  "viernes",
+  "sábado",
+] as const;
+const MONTHS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+] as const;
+
+/** "sábado 5 de diciembre" from a `YYYY-MM-DD` calendar date. */
+function eventDateLabel(date: string): string {
+  const [year = 0, month = 1, day = 1] = date.split("-").map(Number);
+  const weekday =
+    WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return `${weekday ?? ""} ${String(day)} de ${MONTHS[month - 1] ?? ""}`;
+}
+
 export interface ReminderRunSummary {
   readonly classes: number;
   readonly fees: number;
@@ -49,6 +94,8 @@ export interface NotificationService {
   enrollmentReceived(order: OrderNotice): Promise<void>;
   paymentConfirmed(order: OrderNotice): Promise<void>;
   privateEventReceived(inquiry: EventInquiryInput): Promise<void>;
+  intensiveRequestReceived(notice: ReservationNotice): Promise<void>;
+  intensiveReservationConfirmed(notice: ReservationNotice): Promise<void>;
   /** Class-tomorrow and pending-fee reminders; meant to run once a day. */
   runDailyReminders(): Promise<ReminderRunSummary>;
 }
@@ -130,6 +177,14 @@ export function createNotificationService(
     orderUrl: orderUrl(order.publicId),
   });
 
+  const reservationInput = (notice: ReservationNotice) => ({
+    studentName: notice.studentName,
+    intensivoName: notice.intensivoName,
+    dateLabel: eventDateLabel(notice.eventDate),
+    deposit: formatPesos(notice.deposit),
+    reservationUrl: `${deps.siteUrl.replace(/\/+$/, "")}/reserva/${notice.publicId}`,
+  });
+
   return {
     async enrollmentReceived(order) {
       if (!deps.enabled) return;
@@ -144,6 +199,22 @@ export function createNotificationService(
       await deliver(
         order.studentEmail,
         paymentConfirmedEmail(orderInput(order)),
+      );
+    },
+
+    async intensiveRequestReceived(notice) {
+      if (!deps.enabled) return;
+      await deliver(
+        notice.studentEmail,
+        intensiveReservationReceivedEmail(reservationInput(notice)),
+      );
+    },
+
+    async intensiveReservationConfirmed(notice) {
+      if (!deps.enabled) return;
+      await deliver(
+        notice.studentEmail,
+        intensiveReservationConfirmedEmail(reservationInput(notice)),
       );
     },
 

@@ -7,6 +7,7 @@ export {
   type NotificationServiceDeps,
   type OrderNotice,
   type ReminderRunSummary,
+  type ReservationNotice,
 } from "./application/notification-service";
 export type {
   AudienceOrder,

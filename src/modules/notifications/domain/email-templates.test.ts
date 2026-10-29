@@ -4,6 +4,8 @@ import {
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
+  intensiveReservationConfirmedEmail,
+  intensiveReservationReceivedEmail,
   paymentConfirmedEmail,
 } from "./email-templates";
 
@@ -90,5 +92,52 @@ describe("email templates", () => {
     expect(email.text).toContain("5493511234567");
     expect(email.text).toContain("2026-12-05");
     expect(email.text).toContain("8");
+  });
+
+  describe("intensivo reservation emails", () => {
+    const reservation = {
+      studentName: "Ana Pérez",
+      intensivoName: "Bordado libre",
+      dateLabel: "sábado 5 de diciembre",
+      deposit: "$ 20.000",
+      reservationUrl: "https://calma.example.test/reserva/abc123",
+    };
+
+    it("acknowledges the request with the deposit and the summary link", () => {
+      const email = intensiveReservationReceivedEmail(reservation);
+      expect(email.subject).toBe("Recibimos tu reserva");
+      expect(email.text).toContain("Hola, Ana.");
+      expect(email.text).toContain("Bordado libre");
+      expect(email.text).toContain("sábado 5 de diciembre");
+      expect(email.text).toContain("$ 20.000");
+      expect(email.text).toContain(reservation.reservationUrl);
+      expect(email.html).toContain(`href="${reservation.reservationUrl}"`);
+    });
+
+    it("confirms the reservation", () => {
+      const email = intensiveReservationConfirmedEmail(reservation);
+      expect(email.subject).toBe("Confirmamos tu reserva");
+      expect(email.text).toContain("Bordado libre");
+      expect(email.text).toContain("sábado 5 de diciembre");
+      expect(email.text).toContain(reservation.reservationUrl);
+    });
+
+    it("uses voseo and never says workshop", () => {
+      for (const email of [
+        intensiveReservationReceivedEmail(reservation),
+        intensiveReservationConfirmedEmail(reservation),
+      ]) {
+        expect(`${email.subject} ${email.text}`).not.toMatch(/workshop/i);
+        expect(email.text).toMatch(/intensivo/i);
+      }
+    });
+
+    it("escapes interpolated values in the html body", () => {
+      const email = intensiveReservationReceivedEmail({
+        ...reservation,
+        intensivoName: "A & B",
+      });
+      expect(email.html).toContain("A &amp; B");
+    });
   });
 });

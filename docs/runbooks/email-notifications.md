@@ -10,13 +10,15 @@ Never paste a real key into a chat, an issue or a file in the repository.
 | --------------------------- | ----------------------------------------------------------------- | ------- |
 | Inscripción recibida        | A monthly enrollment order is created                             | Alumna  |
 | Pago confirmado             | The owner confirms a payment in the panel                         | Alumna  |
+| Reserva recibida            | A public intensivo seat request is stored                         | Alumna  |
+| Reserva confirmada          | The owner confirms the deposit in the panel                       | Alumna  |
 | Consulta de evento recibida | Someone sends the private event form                              | Estudio |
 | Mañana tenés clase          | Daily at 09:00 (Córdoba), for paid orders with a turno tomorrow   | Alumna  |
 | Cuota pendiente             | Daily at 09:00 (Córdoba), once, for orders pending 48 to 72 hours | Alumna  |
 
 The studio address for event inquiries is the confirmed email of the business profile; without one, that email is skipped.
 
-Not included yet: the intensivo "reserva recibida" and "reserva confirmada" emails. The intensivo seat request flow (R4) did not exist when this was built. Add them with the same pattern when R4 lands.
+"Reserva recibida" includes the intensivo name and date, the deposit amount and the summary link `/reserva/:publicId`.
 
 A failed email never breaks enrollment, payment or the event form: the failure is logged by name only (`Email notification failed: <name>`), never the key, an address or a body.
 

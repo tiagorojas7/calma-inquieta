@@ -72,7 +72,56 @@ const notice = {
   total: money(58000),
 };
 
+const reservation = {
+  studentEmail: "ana@example.com",
+  studentName: "Ana Pérez",
+  publicId: "res123",
+  intensivoName: "Bordado libre",
+  eventDate: "2026-12-05",
+  deposit: money(20000),
+};
+
 describe("notification service", () => {
+  it("emails the student when an intensivo reservation is received", async () => {
+    const { service, sent } = setup();
+    await service.intensiveRequestReceived(reservation);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: "ana@example.com",
+      subject: "Recibimos tu reserva",
+    });
+    expect(sent[0]?.text).toContain("Bordado libre");
+    expect(sent[0]?.text).toContain("sábado 5 de diciembre");
+    expect(sent[0]?.text).toContain("$ 20.000");
+    expect(sent[0]?.text).toContain(`${SITE}/reserva/res123`);
+  });
+
+  it("emails the student when an intensivo reservation is confirmed", async () => {
+    const { service, sent } = setup();
+    await service.intensiveReservationConfirmed(reservation);
+    expect(sent[0]).toMatchObject({
+      to: "ana@example.com",
+      subject: "Confirmamos tu reserva",
+    });
+    expect(sent[0]?.text).toContain(`${SITE}/reserva/res123`);
+  });
+
+  it("sends no intensivo email when disabled and swallows sender failures by name", async () => {
+    const off = setup({ enabled: false });
+    await off.service.intensiveRequestReceived(reservation);
+    await off.service.intensiveReservationConfirmed(reservation);
+    expect(off.sent).toHaveLength(0);
+
+    const failing = setup({
+      sender: { send: () => Promise.resolve(err({ kind: "rejected" })) },
+    });
+    await expect(
+      failing.service.intensiveRequestReceived(reservation),
+    ).resolves.toBeUndefined();
+    expect(failing.failures).toHaveLength(1);
+    expect(failing.failures[0]).not.toContain("ana@example.com");
+  });
+
   it("emails the student when an enrollment is received, with the public order link", async () => {
     const { service, sent } = setup();
     await service.enrollmentReceived(notice);

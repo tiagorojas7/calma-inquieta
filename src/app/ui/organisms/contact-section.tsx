@@ -2,6 +2,7 @@ import { ButtonLink } from "../atoms/button";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
 import { Butterfly } from "../atoms/butterfly";
 import { Heading } from "../atoms/heading";
+import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
 import { Text } from "../atoms/text";
 import { ContactItem } from "../molecules/contact-item";
@@ -26,7 +27,8 @@ const PHOTO_SIZES = "(min-width: 64rem) 42vw, calc(100vw - 2.5rem)";
  * Contacto: a full-bleed sand band. The info sits on one side; the photo
  * bleeds to the right page edge on desktop and follows the info as a wide
  * card on a phone. The facade is dark blue at night, so a warm colour
- * overlay pulls it into the palette. No text ever sits on the photo.
+ * overlay pulls it into the palette. No text ever sits on the photo. WhatsApp
+ * is the one primary action; the catalog and the directions are subordinate.
  */
 export function ContactSection({
   heading,
@@ -41,6 +43,9 @@ export function ContactSection({
   items: readonly Item[];
   directionsHref: string;
 }) {
+  // WhatsApp is the preferred channel: it leads as the single primary action.
+  const primary = items.find((item) => item.icon === "whatsapp" && item.href);
+  const rest = items.filter((item) => item !== primary);
   return (
     <Section
       bleed
@@ -54,14 +59,29 @@ export function ContactSection({
         >
           <Heading level={1}>{heading}</Heading>
           <Text className="max-w-prose text-lead">{intro}</Text>
+          {primary?.href ? (
+            <div data-contact-primary className="w-full sm:w-auto">
+              <ButtonLink
+                href={primary.href}
+                className="w-full gap-2 sm:w-auto"
+              >
+                <Icon name="whatsapp" aria-hidden="true" className="size-5" />
+                {primary.value}
+              </ButtonLink>
+            </div>
+          ) : null}
           <div className="grid w-full gap-6 sm:grid-cols-2">
-            {items.map(({ id, ...item }) => (
+            {rest.map(({ id, ...item }) => (
               <ContactItem key={id} {...item} />
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <ButtonLink href="/talleres">Ver talleres</ButtonLink>
-            <ButtonLink href={directionsHref} variant="outline">
+            <ButtonLink href="/talleres" variant="secondary" className="gap-2">
+              <Icon name="calendar" aria-hidden="true" className="size-5" />
+              Ver talleres
+            </ButtonLink>
+            <ButtonLink href={directionsHref} variant="tertiary">
+              <Icon name="map" aria-hidden="true" className="size-5" />
               {microcopy.directions}
             </ButtonLink>
           </div>

@@ -27,9 +27,9 @@ interface IntroLoop {
 
 /** Tilt, width and drop of each of the three 9:16 frames, left to right. */
 const LOOP_FRAMES = [
-  { reveal: "mt-12 w-1/3 lg:mt-16", tilt: "-rotate-3" },
-  { reveal: "z-10 -mx-3 w-5/12 lg:-mx-6", tilt: "rotate-1" },
-  { reveal: "mt-20 w-1/3 lg:mt-28", tilt: "rotate-3" },
+  { reveal: "mt-12 w-1/4 lg:mt-16 lg:w-1/3", tilt: "-rotate-3" },
+  { reveal: "z-10 w-1/3 lg:-mx-6 lg:w-5/12", tilt: "rotate-1" },
+  { reveal: "mt-20 w-1/4 lg:mt-28 lg:w-1/3", tilt: "rotate-3" },
 ] as const;
 const LOOP_SIZES = "(min-width: 64rem) 14rem, 38vw";
 
@@ -79,7 +79,7 @@ function LoopCollage({ loops }: { loops: readonly IntroLoop[] }) {
         aria-hidden="true"
         className="absolute inset-x-4 bottom-6 top-16 rounded-full bg-sand-200/70 lg:inset-x-10"
       />
-      <div className="relative flex items-start">
+      <div className="relative flex items-start justify-center gap-2 lg:gap-0">
         {loops.slice(0, LOOP_FRAMES.length).map((loop, at) => {
           const frame = LOOP_FRAMES[at] ?? LOOP_FRAMES[0];
           return (
@@ -163,8 +163,10 @@ function LoopFrame({
 
 /**
  * Quiénes somos opening band: the story on one side, a collage of
- * overlapping framed photos of different ratios on the other. The text comes
- * first in the DOM, so on a phone it leads and the collage follows, staggered.
+ * framed photos of different ratios on the other. The text comes first in the
+ * DOM, so on a phone it leads and the photos follow as a simple stack; the
+ * overlap is reserved for large screens. Only the heading and the media
+ * reveal on scroll, so the copy is readable immediately.
  */
 export function AboutIntro({
   heading,
@@ -193,33 +195,23 @@ export function AboutIntro({
           <Reveal>
             <Heading level={1}>{heading}</Heading>
           </Reveal>
-          {lead ? (
-            <Reveal index={1}>
-              <p className="text-lead text-ink-700">{lead}</p>
-            </Reveal>
-          ) : null}
-          {others.map((text, at) => (
-            <Reveal key={text} index={at + 2}>
-              <Text>{text}</Text>
-            </Reveal>
+          {lead ? <p className="text-lead text-ink-700">{lead}</p> : null}
+          {others.map((text) => (
+            <Text key={text}>{text}</Text>
           ))}
-          <Reveal index={others.length + 2}>
-            <p className="border-l-2 border-tan-400 pl-4 font-display text-xl italic text-clay-800">
-              {valueProposition}
-            </p>
-          </Reveal>
+          <p className="border-l-2 border-tan-400 pl-4 font-display text-xl italic text-clay-800">
+            {valueProposition}
+          </p>
           {pullQuote ? (
-            <Reveal index={others.length + 3}>
-              <blockquote className="mt-2">
-                <ScriptText as="p">{pullQuote}</ScriptText>
-              </blockquote>
-            </Reveal>
+            <blockquote className="mt-2">
+              <ScriptText as="p">{pullQuote}</ScriptText>
+            </blockquote>
           ) : null}
         </div>
         {loops.length > 0 ? <LoopCollage loops={loops} /> : null}
         {main ? (
-          <div className="relative mx-auto flex w-full max-w-md items-start pb-8 lg:max-w-none lg:pb-10">
-            <Reveal className="z-10 mt-14 w-1/2 shrink-0 lg:mt-20">
+          <div className="relative mx-auto flex w-full max-w-md flex-col gap-6 pb-8 lg:max-w-none lg:flex-row lg:items-start lg:gap-0 lg:pb-10">
+            <Reveal className="order-last w-full lg:z-10 lg:order-none lg:mt-20 lg:w-1/2 lg:shrink-0">
               <div className="flex flex-col gap-4">
                 {rest.map((image, at) => (
                   <Framed
@@ -233,7 +225,7 @@ export function AboutIntro({
             </Reveal>
             <Reveal
               index={2}
-              className={`${rest.length ? "-ml-10 w-7/12" : "mx-auto w-4/5"} shrink-0`}
+              className={`${rest.length ? "w-full lg:-ml-10 lg:w-7/12" : "mx-auto w-4/5"} shrink-0`}
             >
               <Framed image={main} sizes={MAIN_SIZES} className="rotate-1" />
             </Reveal>

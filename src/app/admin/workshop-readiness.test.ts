@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   monthName,
+  openableMonths,
   workshopReadiness,
   type ReadinessInput,
 } from "./workshop-readiness";
@@ -121,5 +122,17 @@ describe("workshopReadiness", () => {
     });
     expect(result.complete).toBe(false);
     expect(result.next?.key).toBe("open");
+  });
+});
+
+describe("openableMonths", () => {
+  it("offers the suggested month and the one after, skipping opened ones", () => {
+    expect(openableMonths("2026-10", [])).toEqual(["2026-10", "2026-11"]);
+    expect(openableMonths("2026-10", ["2026-10"])).toEqual(["2026-11"]);
+    expect(openableMonths("2026-12", [])).toEqual(["2026-12", "2027-01"]);
+  });
+
+  it("offers nothing without a suggestion", () => {
+    expect(openableMonths(null, [])).toEqual([]);
   });
 });

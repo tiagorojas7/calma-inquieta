@@ -133,3 +133,18 @@ export function workshopReadiness(input: ReadinessInput): Readiness {
     monthName: name,
   };
 }
+
+/** Months an owner can open: the suggested one and the next, minus opened. */
+export function openableMonths(
+  suggested: string | null,
+  existing: readonly string[],
+): string[] {
+  if (suggested === null) return [];
+  const year = Number(suggested.slice(0, 4));
+  const month = Number(suggested.slice(5, 7));
+  const next =
+    month === 12
+      ? `${String(year + 1)}-01`
+      : `${String(year)}-${String(month + 1).padStart(2, "0")}`;
+  return [suggested, next].filter((key) => !existing.includes(key));
+}

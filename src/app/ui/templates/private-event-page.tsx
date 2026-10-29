@@ -1,4 +1,5 @@
-import { Button } from "../atoms/button";
+import { Button, ButtonLink } from "../atoms/button";
+import { Icon } from "../atoms/icons";
 import { Heading, Text } from "../atoms/heading";
 import { TextAreaField, TextField } from "../admin/form-fields";
 
@@ -51,8 +52,8 @@ export type PrivateEventPageProps = {
     }
 );
 
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+const cardClasses =
+  "flex flex-col gap-4 rounded-md bg-surface p-5 shadow-raised sm:p-8";
 
 /** Public private-event request page; plain structural props, native form post. */
 export function PrivateEventPage(props: PrivateEventPageProps) {
@@ -60,28 +61,22 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
 
   if (props.state === "thanks") {
     return (
-      <main className="flex max-w-prose flex-col gap-4 py-section">
-        <Heading level={1}>{copy.thanks.title}</Heading>
-        <Text>{copy.thanks.message}</Text>
-        <div className="flex flex-wrap gap-4">
-          {whatsappHref ? (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClasses}
-            >
-              {copy.thanks.whatsapp}
-            </a>
-          ) : null}
-          <a
-            href={instagramHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={linkClasses}
-          >
-            {copy.thanks.instagram}
-          </a>
+      <main className="max-w-prose py-section">
+        <div data-form-card className={cardClasses}>
+          <Heading level={1}>{copy.thanks.title}</Heading>
+          <Text>{copy.thanks.message}</Text>
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+            {whatsappHref ? (
+              <ButtonLink href={whatsappHref} className="gap-2">
+                <Icon name="whatsapp" aria-hidden="true" className="size-5" />
+                {copy.thanks.whatsapp}
+              </ButtonLink>
+            ) : null}
+            <ButtonLink href={instagramHref} variant="tertiary">
+              <Icon name="instagram" aria-hidden="true" className="size-5" />
+              {copy.thanks.instagram}
+            </ButtonLink>
+          </div>
         </div>
       </main>
     );
@@ -94,89 +89,91 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
         <Heading level={1}>{copy.title}</Heading>
         <Text>{copy.intro}</Text>
       </header>
-      <form
-        method="post"
-        aria-label={copy.form.label}
-        className="flex flex-col gap-4"
-      >
-        <div className="sr-only" aria-hidden="true">
-          <label htmlFor="honeypot">No completes este campo</label>
-          <input
-            autoComplete="off"
-            id="honeypot"
-            name="honeypot"
-            tabIndex={-1}
-            type="text"
+      <div data-form-card className={cardClasses}>
+        <form
+          method="post"
+          aria-label={copy.form.label}
+          className="flex flex-col gap-4"
+        >
+          <div className="sr-only" aria-hidden="true">
+            <label htmlFor="honeypot">No completes este campo</label>
+            <input
+              autoComplete="off"
+              id="honeypot"
+              name="honeypot"
+              tabIndex={-1}
+              type="text"
+            />
+          </div>
+          <TextField
+            label={copy.form.fullName}
+            name="fullName"
+            autoComplete="name"
+            required
+            defaultValue={values.fullName}
+            error={errors.fullName}
           />
-        </div>
-        <TextField
-          label={copy.form.fullName}
-          name="fullName"
-          autoComplete="name"
-          required
-          defaultValue={values.fullName}
-          error={errors.fullName}
-        />
-        <TextField
-          label={copy.form.phone}
-          hint={copy.form.phoneHint}
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          required
-          defaultValue={values.phone}
-          error={errors.phone}
-        />
-        <TextField
-          label={copy.form.email}
-          name="email"
-          type="email"
-          autoComplete="email"
-          defaultValue={values.email}
-          error={errors.email}
-        />
-        <TextField
-          label={copy.form.desiredDate}
-          name="desiredDate"
-          type="date"
-          min={minDate}
-          required
-          defaultValue={values.desiredDate}
-          error={errors.desiredDate}
-        />
-        <TextField
-          label={copy.form.place}
-          hint={copy.form.placeHint}
-          name="place"
-          required
-          maxLength={200}
-          defaultValue={values.place}
-          error={errors.place}
-        />
-        <TextField
-          label={copy.form.participants}
-          hint={copy.form.participantsHint}
-          name="participants"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={200}
-          required
-          defaultValue={values.participants}
-          error={errors.participants}
-        />
-        <TextAreaField
-          label={copy.form.notes}
-          hint={copy.form.notesHint}
-          name="notes"
-          maxLength={1000}
-          defaultValue={values.notes}
-          error={errors.notes}
-        />
-        <div>
-          <Button type="submit">{copy.form.submit}</Button>
-        </div>
-      </form>
+          <TextField
+            label={copy.form.phone}
+            hint={copy.form.phoneHint}
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            required
+            defaultValue={values.phone}
+            error={errors.phone}
+          />
+          <TextField
+            label={copy.form.email}
+            name="email"
+            type="email"
+            autoComplete="email"
+            defaultValue={values.email}
+            error={errors.email}
+          />
+          <TextField
+            label={copy.form.desiredDate}
+            name="desiredDate"
+            type="date"
+            min={minDate}
+            required
+            defaultValue={values.desiredDate}
+            error={errors.desiredDate}
+          />
+          <TextField
+            label={copy.form.place}
+            hint={copy.form.placeHint}
+            name="place"
+            required
+            maxLength={200}
+            defaultValue={values.place}
+            error={errors.place}
+          />
+          <TextField
+            label={copy.form.participants}
+            hint={copy.form.participantsHint}
+            name="participants"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={200}
+            required
+            defaultValue={values.participants}
+            error={errors.participants}
+          />
+          <TextAreaField
+            label={copy.form.notes}
+            hint={copy.form.notesHint}
+            name="notes"
+            maxLength={1000}
+            defaultValue={values.notes}
+            error={errors.notes}
+          />
+          <Button type="submit" className="w-full sm:w-auto sm:self-start">
+            {copy.form.submit}
+          </Button>
+        </form>
+      </div>
     </main>
   );
 }

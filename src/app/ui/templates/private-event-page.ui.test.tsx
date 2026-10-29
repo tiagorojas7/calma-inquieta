@@ -84,10 +84,10 @@ describe("PrivateEventPage", () => {
       "¡Gracias por escribirnos!",
     );
     expect(
-      screen.getByRole("link", { name: "Escribinos por WhatsApp" }),
+      screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
     ).toHaveAttribute("href", shared.whatsappHref);
     expect(
-      screen.getByRole("link", { name: "Seguinos en Instagram" }),
+      screen.getByRole("link", { name: /Seguinos en Instagram/ }),
     ).toHaveAttribute("href", shared.instagramHref);
     await expectNoAxeViolations(container);
   });
@@ -98,7 +98,49 @@ describe("PrivateEventPage", () => {
     );
 
     expect(
-      screen.queryByRole("link", { name: "Escribinos por WhatsApp" }),
+      screen.queryByRole("link", { name: /Escribinos por WhatsApp/ }),
     ).toBeNull();
+  });
+
+  it("holds the form in a raised surface card with a full-width submit on phones", () => {
+    const { container } = render(
+      <PrivateEventPage
+        {...shared}
+        state="form"
+        values={values}
+        errors={{}}
+        minDate="2026-10-28"
+      />,
+    );
+    const card = container.querySelector("[data-form-card]");
+    expect(card).not.toBeNull();
+    expect(card?.className).toContain("shadow-raised");
+    expect(card).toContainElement(screen.getByRole("form"));
+    expect(
+      screen.getByRole("button", { name: "Enviar consulta" }).className,
+    ).toContain("w-full");
+  });
+
+  it("gives the thanks state one primary WhatsApp action and a tertiary Instagram link", () => {
+    render(<PrivateEventPage {...shared} state="thanks" />);
+    const whatsapp = screen.getByRole("link", {
+      name: /Escribinos por WhatsApp/,
+    });
+    const instagram = screen.getByRole("link", {
+      name: /Seguinos en Instagram/,
+    });
+    expect(whatsapp.className).toContain("bg-clay-600");
+    expect(instagram.className).not.toContain("bg-clay-600");
+    for (const link of [whatsapp, instagram]) {
+      expect(link.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+      expect(link.className).toContain("min-h-11");
+    }
+  });
+
+  it("keeps the thanks message inside a card", () => {
+    const { container } = render(
+      <PrivateEventPage {...shared} state="thanks" />,
+    );
+    expect(container.querySelector("[data-form-card]")).not.toBeNull();
   });
 });

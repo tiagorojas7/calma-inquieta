@@ -177,7 +177,7 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - [x] Commit and publish the source audit, then notify Terminal B.
 - [x] Implement tokens, typography, and spacing.
 - [x] Implement differentiated primary, secondary, and tertiary CTAs with complete states.
-- [ ] Implement and publish the licensed SVG icon component slice, then notify Terminal B.
+- [x] Implement and publish the licensed SVG icon component slice, then notify Terminal B.
 - [ ] Improve each public page and the enrollment/order flow in bounded slices.
 - [ ] Run the required checks before every PR and record final evidence.
 
@@ -188,4 +188,4 @@ Each row states what is wrong, the applicable skill guidance, and the concrete r
 - Viewport matrix: 48 viewport captures plus top/middle/bottom screenshots, completed against the rebuilt and seeded local database. Generated screenshots remain outside Git.
 - Tokens, typography, and spacing: `6f2a78c` (`feat(ui): refine public visual system`). Strict TDD recorded RED before implementation and GREEN with 82 focused tests; independent verification passed. Runtime smoke completed all 48 captures and confirmed desktop content is not constrained. The pre-existing Home overflow remains explicitly deferred to the Home page slice.
 - CTA hierarchy and states: `72264f8` (`feat(ui): complete public CTA states`). Strict TDD covered canonical and compatibility variants, native and link disabled/busy semantics, stable loading geometry, visible reduced-motion-safe progress, and public call-site hierarchy; independent verification passed 39 focused tests.
-- Licensed icon set: `c0d65ab` (`feat(ui): add licensed shared icon set`) with the stale visual-system assertion aligned in `8028f63`. The dependency-free Phosphor v2.0.8 registry, compatibility export, play/pause migration, and full MIT provenance passed 121 focused tests and independent geometry/license verification. Runtime review completed all 48 captures with no missing or clipped icons; the pre-existing image-preload hydration mismatch is unrelated and remains deferred. Required pre-PR checks passed sequentially: format, typecheck, lint, and 1,280 unit/UI tests.
+- Licensed icon set: authored as `c0d65ab` in the overhaul branch and published independently from current `main` as `b958257` in PR [#154](https://github.com/tiagorojas7/calma-inquieta/pull/154); Terminal B was notified. The dependency-free Phosphor v2.0.8 registry, compatibility export, play/pause migration, and full MIT provenance passed independent geometry/license verification. Runtime review completed all 48 captures with no missing or clipped icons; the pre-existing image-preload hydration mismatch is unrelated and remains deferred. Isolated PR verification passed sequentially: format, typecheck, lint, 198 test files, and 1,453 unit/UI tests. CI passed.

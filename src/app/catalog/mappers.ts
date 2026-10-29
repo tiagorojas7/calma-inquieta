@@ -15,6 +15,7 @@ import {
 } from "./format";
 import { seatsIndicator, tallerDisplay } from "./display-state";
 import type { ActivityLink } from "./whatsapp";
+import { microcopy } from "~/app/ui/microcopy";
 
 /**
  * Read model to presentational props. Every label, the stand-in image and the
@@ -215,6 +216,15 @@ export function intensivoToDetail(
       label: content.intensivos.depositLabel,
       amount: formatPesos(intensivo.deposit),
     },
+    // A reservation amount above the total has no meaningful balance.
+    ...(intensivo.deposit.toCentavos() <= intensivo.price.toCentavos()
+      ? {
+          balance: {
+            label: microcopy.balanceLabel,
+            amount: formatPesos(intensivo.price.subtract(intensivo.deposit)),
+          },
+        }
+      : {}),
     ...(seats === undefined ? {} : { seats }),
     ...(intensivo.materialsIncluded
       ? { materialsBadge: content.intensivos.materialsIncluded }

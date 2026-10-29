@@ -273,6 +273,8 @@ describe("intensivoToDetail", () => {
     expect(detail.price.label).toBe("Precio");
     expect(normalize(detail.deposit.amount)).toBe("$ 15.000");
     expect(detail.deposit.label).toBe("Seña");
+    expect(detail.balance?.label).toBe("Saldo restante");
+    expect(normalize(detail.balance?.amount ?? "")).toBe("$ 30.000");
     expect(detail.conditions.minSeats).toBe(
       "Se realiza con un mínimo de 6 personas",
     );

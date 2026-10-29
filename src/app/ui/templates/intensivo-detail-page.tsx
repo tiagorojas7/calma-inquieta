@@ -3,10 +3,13 @@ import { Heading } from "../atoms/heading";
 import { Image } from "../atoms/image";
 import { Pill } from "../atoms/pill";
 import { Text } from "../atoms/text";
+import { microcopy } from "../microcopy";
+import { BookingSummary } from "../molecules/booking-summary";
 import { Breadcrumb } from "../molecules/breadcrumb";
 import { ConditionsNote } from "../molecules/conditions-note";
 import { PausedNotice } from "../molecules/paused-notice";
-import { PriceTag } from "../molecules/price-tag";
+import { PricingSummary } from "../molecules/pricing-summary";
+import { StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
 import { GalleryGrid } from "../organisms/gallery-grid";
 
@@ -29,6 +32,8 @@ export interface IntensivoDetailProps {
   teacher?: { heading: string; name: string; bioLine?: string };
   price: { label: string; amount: string };
   deposit: { label: string; amount: string };
+  /** Remaining amount once the reservation amount is paid. */
+  balance?: { label: string; amount: string };
   seats?: string;
   materialsBadge?: string;
   conditions: { label: string; policyText: string; minSeats: string };
@@ -55,6 +60,7 @@ export function IntensivoDetailPage({
   teacher,
   price,
   deposit,
+  balance,
   seats,
   materialsBadge,
   conditions,
@@ -72,32 +78,47 @@ export function IntensivoDetailPage({
           {seats ? <Pill>{seats}</Pill> : null}
         </div>
       </header>
-      <Image
-        {...image}
-        aboveTheFold
-        className="w-full rounded-md object-cover"
-      />
-      <p className="max-w-prose whitespace-pre-line text-ink-700">
-        {description}
-      </p>
-      {teacher ? (
-        <TeacherBlock
-          heading={teacher.heading}
-          name={teacher.name}
-          {...(teacher.bioLine ? { bioLine: teacher.bioLine } : {})}
-        />
-      ) : null}
-      <div className="flex flex-wrap gap-8">
-        <PriceTag label={price.label} amount={price.amount} />
-        <PriceTag label={deposit.label} amount={deposit.amount} />
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <BookingSummary>
+          <PricingSummary
+            total={price}
+            reservation={deposit}
+            {...(balance ? { balance } : {})}
+          />
+          {action.kind === "paused" ? (
+            <PausedNotice text={action.text} link={action.link} />
+          ) : (
+            <ButtonLink href={action.href}>{action.label}</ButtonLink>
+          )}
+        </BookingSummary>
+        <div className="flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-1">
+          <Image
+            {...image}
+            aboveTheFold
+            className="w-full rounded-md object-cover"
+          />
+          <p className="max-w-prose whitespace-pre-line text-ink-700">
+            {description}
+          </p>
+          {teacher ? (
+            <TeacherBlock
+              heading={teacher.heading}
+              name={teacher.name}
+              {...(teacher.bioLine ? { bioLine: teacher.bioLine } : {})}
+            />
+          ) : null}
+          <ConditionsNote {...conditions} level={2} />
+          {gallery.length ? (
+            <section className="flex flex-col gap-4">
+              <Heading level={2}>{microcopy.gallery}</Heading>
+              <GalleryGrid images={gallery} />
+            </section>
+          ) : null}
+        </div>
       </div>
-      <ConditionsNote {...conditions} level={2} />
-      {action.kind === "paused" ? (
-        <PausedNotice text={action.text} link={action.link} />
-      ) : (
-        <ButtonLink href={action.href}>{action.label}</ButtonLink>
-      )}
-      <GalleryGrid images={gallery} />
+      {action.kind !== "paused" ? (
+        <StickyAction href={action.href} label={action.label} />
+      ) : null}
     </article>
   );
 }

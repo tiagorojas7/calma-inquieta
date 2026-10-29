@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
-import type { MonthlyWorkshopsService } from "~/modules/workshops";
+import { err } from "~/modules/_shared";
+import type {
+  MonthlyWorkshopsService,
+  WorkshopPeriodsService,
+} from "~/modules/workshops";
 import {
   adminContext,
   getRequest,
   postRequest,
   thrownStatus,
+  withOverrides,
   workshopsFixture,
 } from "~/testing/admin/route-kit";
 import {
@@ -26,9 +31,20 @@ const TURNO = {
   defaultCapacity: "8",
 };
 
+const noPeriods = withOverrides(
+  createUnavailableService<WorkshopPeriodsService>(),
+  {
+    get: () => Promise.resolve(err({ kind: "not-found" })),
+  },
+);
+
 function context(fixture: Fixture, options: { admin?: boolean } = {}) {
   return adminContext(
-    { monthlyWorkshops: fixture.service, teachers: fixture.teachers.service },
+    {
+      monthlyWorkshops: fixture.service,
+      teachers: fixture.teachers.service,
+      workshopPeriods: noPeriods,
+    },
     options,
   );
 }
@@ -80,8 +96,9 @@ describe("admin workshop detail loader", () => {
       percentage: "35,5",
     });
     await fixture.service.addTurno(testAdminActor(), id, TURNO);
-    expect(await load(fixture, id)).toEqual({
+    expect(await load(fixture, id)).toMatchObject({
       id,
+      name: "Cerámica Creativa",
       status: "draft",
       published: false,
       values: {
@@ -96,7 +113,33 @@ describe("admin workshop detail loader", () => {
       },
       teachers: [{ id: teacher, name: "Beto Ruiz", modality: "third_party" }],
       activeTurnos: 1,
+      feedback: null,
+      readiness: {
+        summary: "Falta publicar el taller",
+        complete: false,
+        next: {
+          cta: "Publicar el taller",
+          href: `/admin/talleres/${id}#estado`,
+        },
+      },
     });
+  });
+
+  it("reports a feedback code only when it is declared", async () => {
+    const fixture = workshopsFixture();
+    const id = await seedWorkshop(fixture);
+    const known = await loader({
+      request: getRequest(`/admin/talleres/${id}?ok=created`),
+      params: { id },
+      context: context(fixture),
+    } as never);
+    const unknown = await loader({
+      request: getRequest(`/admin/talleres/${id}?ok=nope`),
+      params: { id },
+      context: context(fixture),
+    } as never);
+    expect(known.feedback).toBe("created");
+    expect(unknown.feedback).toBeNull();
   });
 
   it("keeps an archived assigned teacher selectable so the form can save", async () => {
@@ -133,7 +176,7 @@ describe("admin workshop detail loader", () => {
 });
 
 describe("admin workshop detail action", () => {
-  it("saves every field as the admin and redirects to the list", async () => {
+  it("saves every field as the admin and redirects to the workshop with feedback", async () => {
     const fixture = workshopsFixture();
     const id = await seedWorkshop(fixture);
     const response = await submit(fixture, id, {
@@ -142,7 +185,7 @@ describe("admin workshop detail action", () => {
       defaultFee: "15000",
     });
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/talleres",
+      `/admin/talleres/${id}?ok=saved`,
     );
     expect(stored(fixture, id)).toMatchObject({
       name: "Cerámica Nueva",
@@ -191,7 +234,7 @@ describe("admin workshop detail action", () => {
     const id = await publishable(fixture);
     const response = await submit(fixture, id, { intent: "publish" });
     expect((response as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${id}`,
+      `/admin/talleres/${id}?ok=published#estado`,
     );
     expect(stored(fixture, id).status).toBe("published");
   });
@@ -241,7 +284,7 @@ describe("admin workshop detail action", () => {
     const id = await seedWorkshop(fixture);
     const response = await submit(fixture, id, { intent: "delete" });
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/talleres",
+      "/admin/talleres?ok=deleted",
     );
     expect(fixture.repository.items.has(id)).toBe(false);
   });

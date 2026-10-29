@@ -6,9 +6,10 @@ import {
   loadTeacherOptions,
 } from "~/app/admin/workshop-action-data";
 import { parseWorkshopDraft } from "~/app/admin/workshop-form-data";
-import { Heading } from "~/app/ui/atoms/heading";
+import { AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { WorkshopForm } from "~/app/ui/admin/workshop-form";
+import { withFeedback } from "~/app/admin/feedback-code";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/workshop-new";
 
@@ -47,7 +48,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   const created = await context
     .get(servicesContext)
     .monthlyWorkshops.create(actor, draft);
-  if (created.ok) return redirect(LIST);
+  if (created.ok)
+    return redirect(withFeedback(`${LIST}/${created.value.id}`, "created"));
   if (created.error.kind === "invalid")
     return invalidWorkshopResponse(draft, created.error.issues);
   throw failureResponse(created.error);
@@ -58,7 +60,15 @@ export default function AdminWorkshopNew() {
   const rejected = useActionData<typeof action>();
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{copy.newTitle}</Heading>
+      <AdminPageHeader
+        title={copy.newTitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: LIST },
+          { label: copy.newTitle },
+        ]}
+        back={{ href: LIST, label: copy.backToList }}
+      />
       <WorkshopForm
         values={rejected?.values ?? EMPTY}
         errors={rejected?.errors ?? {}}

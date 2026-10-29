@@ -1,7 +1,8 @@
 import { Button } from "../atoms/button";
-import { Heading } from "../atoms/heading";
+import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { SelectField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge } from "./status-badge";
@@ -31,39 +32,6 @@ const linkClasses =
 
 const copy = adminMicrocopy.materials;
 
-const columns: readonly DataTableColumn<MaterialRow>[] = [
-  {
-    key: "name",
-    header: copy.columns.name,
-    cell: (row) => (
-      <a href={`${BASE}/${row.id}`} className={linkClasses}>
-        {row.name}
-      </a>
-    ),
-  },
-  { key: "category", header: copy.columns.category, cell: (r) => r.category },
-  {
-    key: "supplier",
-    header: copy.columns.supplier,
-    cell: (row) => row.supplierName,
-  },
-  {
-    key: "variants",
-    header: copy.columns.variants,
-    cell: (row) => String(row.variantCount),
-  },
-  {
-    key: "state",
-    header: copy.columns.state,
-    cell: (row) => (
-      <span className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={row.active ? "active" : "archived"} />
-        {row.available ? null : <span>{copy.unavailable}</span>}
-      </span>
-    ),
-  },
-];
-
 /**
  * Materiales list. Every link and the filter form are document navigation:
  * the Worker gate refuses the `.data` requests a client navigation would make.
@@ -75,6 +43,7 @@ export function MaterialsList({
   supplierId,
   categories,
   suppliers,
+  feedback = null,
 }: {
   rows: readonly MaterialRow[];
   filter: MaterialFilterKey;
@@ -82,23 +51,33 @@ export function MaterialsList({
   supplierId: string;
   categories: readonly string[];
   suppliers: readonly { value: string; label: string }[];
+  feedback?: keyof typeof copy.feedback | null | undefined;
 }) {
   const carried = new URLSearchParams();
   if (category) carried.set("categoria", category);
   if (supplierId) carried.set("proveedor", supplierId);
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={1}>{copy.title}</Heading>
-        <div className="flex flex-wrap items-center gap-3">
-          <a href={`${BASE}/proveedores`} className={linkClasses}>
-            {copy.suppliersLink}
-          </a>
-          <AdminButtonLink href={`${BASE}/nuevo`}>
-            {copy.newAction}
-          </AdminButtonLink>
-        </div>
-      </div>
+      <AdminPageHeader
+        title={copy.title}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title },
+        ]}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <AdminButtonLink href={`${BASE}/nuevo`}>
+              {copy.newAction}
+            </AdminButtonLink>
+            <AdminButtonLink href={`${BASE}/proveedores`} variant="outline">
+              {copy.suppliersLink}
+            </AdminButtonLink>
+          </div>
+        }
+      />
+      {feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[feedback].title} />
+      ) : null}
       <nav aria-label={copy.filterLabel}>
         <ul className="flex flex-wrap gap-4">
           {FILTER_KEYS.map((key) => {
@@ -147,11 +126,26 @@ export function MaterialsList({
           {copy.refine.apply}
         </Button>
       </form>
-      <DataTable
-        caption={copy.title}
-        columns={columns}
+      <AdminCardList
+        label={copy.title}
         rows={rows}
         rowKey={(row) => row.id}
+        card={(row) => (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <a href={`${BASE}/${row.id}`} className={linkClasses}>
+                {row.name}
+              </a>
+              <span className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={row.active ? "active" : "archived"} />
+                {row.available ? null : <span>{copy.unavailable}</span>}
+              </span>
+            </div>
+            <Text tone="muted">{row.category}</Text>
+            <Text tone="muted">{row.supplierName}</Text>
+            <Text tone="muted">{copy.variantCount(row.variantCount)}</Text>
+          </>
+        )}
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,

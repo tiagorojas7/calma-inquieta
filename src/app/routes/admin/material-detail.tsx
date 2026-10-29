@@ -6,6 +6,7 @@ import {
 } from "~/app/admin/material-form-data";
 import { issueMessage } from "~/app/admin/issue-messages";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { MaterialDetail } from "~/app/ui/admin/material-detail";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
@@ -13,6 +14,7 @@ import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/material-detail";
 
 const LIST = "/admin/materiales";
+const FEEDBACK = ["saved", "deactivated", "reactivated"] as const;
 const copy = adminMicrocopy.materialDetail;
 
 function auditDate(value: Date): string {
@@ -45,6 +47,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const image = material.image;
   return {
     id: material.id,
+    feedback: feedbackCode(request, FEEDBACK),
     name: material.name,
     description: material.description,
     category: material.category,
@@ -102,7 +105,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       }
       throw failureResponse(changed.error);
     }
-    return redirect(`${LIST}/${params.id}`);
+    return redirect(
+      withFeedback(
+        `${LIST}/${params.id}`,
+        intent === "deactivate" ? "deactivated" : "reactivated",
+      ),
+    );
   }
 
   if (intent !== null && intent !== "save") throw data(null, { status: 400 });
@@ -122,7 +130,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
 
   const changed = await materials.update(actor, params.id, draft);
-  if (changed.ok) return redirect(`${LIST}/${params.id}`);
+  if (changed.ok)
+    return redirect(withFeedback(`${LIST}/${params.id}`, "saved"));
   if (changed.error.kind === "invalid")
     return data(
       {
@@ -146,9 +155,11 @@ export default function AdminMaterialDetail() {
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const edit = rejected && "values" in rejected ? rejected : undefined;
+  const saved = material.feedback ? copy.feedback[material.feedback] : null;
   return (
     <MaterialDetail
       {...material}
+      feedback={saved}
       values={edit?.values ?? material}
       errors={edit?.errors ?? {}}
       formError={edit?.formError}

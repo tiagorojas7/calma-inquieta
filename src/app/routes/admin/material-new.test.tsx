@@ -95,7 +95,7 @@ describe("admin material create route", () => {
     );
     expect((response as Response).status).toBe(302);
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/materiales",
+      "/admin/materiales?ok=created",
     );
     expect([...fixture.repository.materials.values()]).toMatchObject([
       {

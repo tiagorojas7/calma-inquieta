@@ -319,7 +319,7 @@ describe("admin material detail action", () => {
         ID,
       );
       expect((response as Response).headers.get("Location")).toBe(
-        `/admin/materiales/${ID}`,
+        `/admin/materiales/${ID}?ok=${intent === "deactivate" ? "deactivated" : "reactivated"}`,
       );
     }
   });
@@ -380,7 +380,7 @@ describe("admin material detail action", () => {
       }),
     );
     expect((response as Response).headers.get("Location")).toBe(
-      `/admin/materiales/${ID}`,
+      `/admin/materiales/${ID}?ok=saved`,
     );
   });
 

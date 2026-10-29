@@ -2,7 +2,7 @@
 
 - Feature: `ui-admin-overhaul` (ODD, not SDD).
 - Audit branch: `feat/ui-admin-overhaul-audit`, merged by PR #147.
-- Annex branch: `feat/ui-admin-overhaul-audit-annex`, based on `origin/main` `9bcdfca` after PRs #141–#149.
+- Annex branch: `feat/ui-admin-overhaul-audit-annex`, rebased onto `origin/main` `9313846` after PRs #141–#151.
 - Audience: non-technical workshop owners, primarily on mobile.
 - Ownership: `src/app/ui/admin/**` and `src/app/routes/admin/**` only.
 - Delivery: audit evidence first, then reviewable PR slices of about 400 changed lines against `main`; fetch and rebase before every slice.
@@ -77,7 +77,7 @@ Both delegated read-only scouts also crashed in the Pi host with Windows exit co
 
 Main gained eight admin capabilities after the first audit: Panel general and statistics (#143), students (#141), private events (#142), teacher settlements (#145), reminders (#148), intensive reservations (#144), and attendance (#149). The annex covers 13 representative visual states because attendance has four operational screens and private events has list/detail screens.
 
-- Base: `origin/main` `9bcdfca`.
+- Visual-capture base: `origin/main` `9bcdfca`; branch rebased to `9313846` before delivery. PR #150 subsequently added one automatic-email status line to Recordatorios; its source/tests were reviewed and do not change A-55/A-56.
 - States: Panel general; statistics; students list/detail; private events list/detail; teacher settlement; reminders; intensive reservations; attendance index/sessions/sheet/make-ups.
 - Viewports: 360, 768, and 1280 px.
 - Evidence: 39 full-page screenshots rendered from real production components inside `AdminShell`, fixture data from existing UI tests, and the production CSS emitted by `pnpm build`.
@@ -307,14 +307,14 @@ These are implementation forecasts, not commitments to exact line counts. Fetch/
 
 ## Progress and evidence
 
-| Task | Status   | Evidence                                                                                                                                                                                                |
-| ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 states × 3 widths; 46 findings; fixture limitation documented; commits `5c6d83a` and `0fe0098`; PR #147 merged.                                    |
-| T1a  | Complete | Main `9bcdfca`; 13 added states × 3 widths; 39 production-CSS screenshots; focused harness and independent verification passed; 14 annex findings. Temporary harness/evidence is removed before commit. |
-| T2   | Pending  | —                                                                                                                                                                                                       |
-| T3   | Pending  | —                                                                                                                                                                                                       |
-| T4   | Pending  | —                                                                                                                                                                                                       |
-| T5   | Pending  | —                                                                                                                                                                                                       |
-| T6   | Pending  | —                                                                                                                                                                                                       |
-| T7   | Pending  | —                                                                                                                                                                                                       |
-| T8   | Pending  | —                                                                                                                                                                                                       |
+| Task | Status   | Evidence                                                                                                                                                                                                                                                        |
+| ---- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1   | Complete | Required skill/reference reads; 8 skill searches; 24 states × 3 widths; 46 findings; fixture limitation documented; commits `5c6d83a` and `0fe0098`; PR #147 merged.                                                                                            |
+| T1a  | Complete | Visual base `9bcdfca`, delivery base `9313846`; 13 added states × 3 widths; 39 production-CSS screenshots; focused harness and independent verification passed; 14 annex findings; audit commit `9ee1dd8`. Temporary harness/evidence is removed before commit. |
+| T2   | Pending  | —                                                                                                                                                                                                                                                               |
+| T3   | Pending  | —                                                                                                                                                                                                                                                               |
+| T4   | Pending  | —                                                                                                                                                                                                                                                               |
+| T5   | Pending  | —                                                                                                                                                                                                                                                               |
+| T6   | Pending  | —                                                                                                                                                                                                                                                               |
+| T7   | Pending  | —                                                                                                                                                                                                                                                               |
+| T8   | Pending  | —                                                                                                                                                                                                                                                               |

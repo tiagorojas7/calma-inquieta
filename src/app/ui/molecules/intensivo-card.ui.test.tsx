@@ -50,6 +50,28 @@ describe("IntensivoCard", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("leads with date and title, separates the price block and anchors a full-width CTA", () => {
+    renderCard(intensivoCardFixture);
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.parentElement).toHaveClass("min-w-0");
+    expect(heading.parentElement?.parentElement).toHaveClass("flex-wrap");
+    const price = screen.getByText("$ 45.000");
+    expect(price.closest("[data-slot='price-block']")).toHaveClass(
+      "border-t",
+      "border-tan-400",
+    );
+    expect(
+      within(
+        price.closest("[data-slot='price-block']") as HTMLElement,
+      ).getByText("Seña $ 15.000"),
+    ).toBeVisible();
+    const cta = screen.getByRole("link", {
+      name: intensivoCardFixture.ctaLabel,
+    });
+    expect(cta).toHaveClass("border-clay-600");
+    expect(cta).toHaveClass("w-full");
+  });
+
   it("shows the always-visible policy note with no minimum seats line", async () => {
     const { container } = renderCard(intensivoCardFixture);
     expect(

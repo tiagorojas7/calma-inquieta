@@ -88,4 +88,13 @@ describe("TallerCard", () => {
     expect(screen.getByText("Inscripciones pausadas")).toBeVisible();
     expect(screen.queryByText("Próximamente abrimos inscripciones")).toBeNull();
   });
+
+  it("separates the price block and anchors a full-width footer CTA", () => {
+    renderCard(tallerCardFixture);
+    const block = document.querySelector("[data-slot='price-block']");
+    expect(block).toHaveClass("border-t", "border-tan-400");
+    expect(
+      screen.getByRole("link", { name: tallerCardFixture.ctaLabel }),
+    ).toHaveClass("w-full", "border-clay-600");
+  });
 });

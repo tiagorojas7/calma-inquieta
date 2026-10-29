@@ -543,6 +543,29 @@ export const adminMicrocopy = {
       turnos: "Turnos activos",
     },
     noTeacher: "Sin profesor",
+    backToList: "Volver a talleres",
+    enrollment: "Inscripciones",
+    readiness: {
+      title: (month: string) => `Para abrir las inscripciones de ${month}`,
+      progress: (done: number, total: number) =>
+        `${String(done)} de ${String(total)} pasos listos`,
+      done: "Listo",
+      pending: "Pendiente",
+      complete: "Las inscripciones están abiertas.",
+    },
+    feedback: {
+      created: {
+        title: "Taller creado",
+        message:
+          "Siguiente paso: agregá un turno para que se pueda reservar un lugar.",
+      },
+      saved: { title: "Cambios guardados" },
+      deleted: { title: "Borrador eliminado" },
+      published: { title: "Taller publicado" },
+      paused: { title: "Taller pausado" },
+      archived: { title: "Taller archivado" },
+      restored: { title: "Taller restaurado como borrador" },
+    },
     periods: {
       manage: "Administrar períodos",
       title: (workshop: string) => `Períodos de ${workshop}`,

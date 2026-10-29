@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
-import type { MonthlyWorkshopsService } from "~/modules/workshops";
+import { ok } from "~/modules/_shared";
+import {
+  cordobaMonthOf,
+  type MonthlyWorkshopsService,
+  type WorkshopPeriodsService,
+} from "~/modules/workshops";
 import {
   adminContext,
   getRequest,
   thrownStatus,
+  withOverrides,
   workshopsFixture,
 } from "~/testing/admin/route-kit";
 import { seedTeacher, seedWorkshop } from "~/testing/admin/workshop-seed";
@@ -23,15 +29,33 @@ async function seeded() {
   return fixture.service;
 }
 
+const MONTH = cordobaMonthOf(new Date());
+
+function periodsReturning(
+  periods: {
+    period: string;
+    status: "draft" | "open" | "closed";
+    totalCapacity: number;
+  }[],
+) {
+  return withOverrides(createUnavailableService<WorkshopPeriodsService>(), {
+    list: () => Promise.resolve(ok({ periods, suggestedNext: MONTH })),
+  } as Partial<WorkshopPeriodsService>);
+}
+
 function call(
   service: MonthlyWorkshopsService,
   query = "",
   options: { admin?: boolean } = {},
+  periods: WorkshopPeriodsService = periodsReturning([]),
 ) {
   return loader({
     request: getRequest(`/admin/talleres${query}`),
     params: {},
-    context: adminContext({ monthlyWorkshops: service }, options),
+    context: adminContext(
+      { monthlyWorkshops: service, workshopPeriods: periods },
+      options,
+    ),
   } as never);
 }
 
@@ -46,6 +70,12 @@ describe("admin workshops list loader", () => {
         teacherName: "Ana Gómez",
         status: "draft",
         activeTurnos: 0,
+        enrollment: {
+          open: false,
+          summary: "Falta agregar un turno activo",
+          cta: "Agregar un turno",
+          href: "/admin/talleres/w1/turnos",
+        },
       },
     ]);
   });

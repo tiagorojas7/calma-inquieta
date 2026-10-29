@@ -408,7 +408,7 @@ describe("admin turnos action", () => {
     await submit(fixture, id, { intent: "save", ...MORNING });
     const published = await publish(fixture, id);
     expect((published as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${id}`,
+      `/admin/talleres/${id}?ok=published#estado`,
     );
     expect(fixture.repository.items.get(id)?.status).toBe("published");
   });

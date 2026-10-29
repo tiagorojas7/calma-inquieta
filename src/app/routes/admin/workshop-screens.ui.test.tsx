@@ -22,6 +22,42 @@ const VALUES = {
   percentage: "35,5",
 };
 
+const READINESS = {
+  monthName: "octubre",
+  summary: "Falta abrir octubre",
+  complete: false,
+  steps: [
+    {
+      key: "shift",
+      label: "Tiene al menos un turno activo",
+      done: true,
+      href: "/admin/talleres/w1/turnos",
+    },
+    {
+      key: "publish",
+      label: "El taller está publicado",
+      done: true,
+      href: "/admin/talleres/w1#estado",
+    },
+    {
+      key: "month",
+      label: "Abriste octubre",
+      done: false,
+      href: "/admin/talleres/w1/periodos",
+    },
+  ],
+  next: {
+    cta: "Abrir inscripciones de octubre",
+    href: "/admin/talleres/w1/periodos",
+  },
+};
+
+const DETAIL_EXTRA = {
+  name: "Cerámica Creativa",
+  feedback: null,
+  readiness: READINESS,
+};
+
 describe("workshop admin screens", () => {
   it("list screen shows each workshop with teacher, status and turnos, and filter links", async () => {
     const Stub = createRoutesStub([
@@ -37,6 +73,12 @@ describe("workshop admin screens", () => {
               teacherName: "Ana Gómez",
               status: "published",
               activeTurnos: 2,
+              enrollment: {
+                open: false,
+                summary: "Falta abrir octubre",
+                cta: "Abrir inscripciones de octubre",
+                href: "/admin/talleres/w1/periodos",
+              },
             },
             {
               id: "w2",
@@ -44,6 +86,12 @@ describe("workshop admin screens", () => {
               teacherName: null,
               status: "draft",
               activeTurnos: 0,
+              enrollment: {
+                open: false,
+                summary: "Falta agregar un turno activo",
+                cta: "Agregar un turno",
+                href: "/admin/talleres/w2/turnos",
+              },
             },
           ],
         }),
@@ -54,7 +102,11 @@ describe("workshop admin screens", () => {
       await screen.findByRole("link", { name: "Cerámica Creativa" }),
     ).toHaveAttribute("href", "/admin/talleres/w1");
     expect(screen.getByText("Publicado")).toBeVisible();
-    expect(screen.getByText("Sin profesor")).toBeVisible();
+    expect(screen.getByText(/Sin profesor/)).toBeVisible();
+    expect(screen.getByText("Falta abrir octubre")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Abrir inscripciones de octubre" }),
+    ).toHaveAttribute("href", "/admin/talleres/w1/periodos");
     expect(screen.getByRole("link", { name: "Vigentes" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -138,6 +190,7 @@ describe("workshop admin screens", () => {
           values: VALUES,
           teachers: TEACHERS,
           activeTurnos: 2,
+          ...DETAIL_EXTRA,
         }),
       },
     ]);
@@ -179,6 +232,7 @@ describe("workshop admin screens", () => {
           values: VALUES,
           teachers: TEACHERS,
           activeTurnos: 0,
+          ...DETAIL_EXTRA,
         }),
       },
     ]);
@@ -194,6 +248,7 @@ describe("workshop admin screens", () => {
               values: VALUES,
               teachers: TEACHERS,
               activeTurnos: 0,
+              ...DETAIL_EXTRA,
             },
           },
           actionData: {
@@ -219,5 +274,41 @@ describe("workshop admin screens", () => {
     expect(
       screen.queryByLabelText(/Entiendo que cambiar el enlace/),
     ).toBeNull();
+  });
+
+  it("detail shows breadcrumbs, the created banner and the guided next step", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/admin/talleres/:id",
+        Component: AdminWorkshopDetail,
+        action: () => null,
+        loader: () => ({
+          id: "w1",
+          status: "draft",
+          published: false,
+          values: VALUES,
+          teachers: TEACHERS,
+          activeTurnos: 0,
+          ...DETAIL_EXTRA,
+          feedback: "created",
+        }),
+      },
+    ]);
+    const { container } = render(
+      <Stub initialEntries={["/admin/talleres/w1?ok=created"]} />,
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Taller creado",
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Cerámica Creativa" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Volver a talleres" }),
+    ).toHaveAttribute("href", "/admin/talleres");
+    expect(
+      screen.getByRole("link", { name: "Abrir inscripciones de octubre" }),
+    ).toHaveAttribute("href", "/admin/talleres/w1/periodos");
+    await expectNoAxeViolations(container);
   });
 });

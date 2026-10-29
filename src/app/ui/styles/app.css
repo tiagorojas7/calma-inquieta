@@ -91,3 +91,13 @@ html[data-menu-open] {
     scroll-behavior: auto;
   }
 }
+
+/* Quantity fields use explicit buttons, so the native spinner is redundant. */
+.qty-input {
+  appearance: textfield;
+}
+.qty-input::-webkit-inner-spin-button,
+.qty-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}

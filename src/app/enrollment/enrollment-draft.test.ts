@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CART_LINES } from "~/modules/enrollments";
+import { MAX_CART_LINES, MAX_LINE_QUANTITY } from "~/modules/enrollments";
 import {
   addDraftLine,
   loadEnrollmentDraft,
+  removeDraftLine,
   saveEnrollmentDraft,
   selectEnrollmentDraft,
+  setDraftLineQuantity,
   type EnrollmentDraft,
 } from "./enrollment-draft";
 
@@ -100,5 +102,33 @@ describe("enrollment draft", () => {
       ok: false,
       error: { kind: "too-many-lines" },
     });
+  });
+});
+
+describe("line quantity edits", () => {
+  it("sets a quantity on an existing line without merging", () => {
+    expect(setDraftLineQuantity(draft, "grande", 5).lines).toEqual([
+      { materialId: "arcilla", variantId: "grande", quantity: 5 },
+    ]);
+  });
+
+  it("clamps above the maximum and removes below the minimum", () => {
+    expect(setDraftLineQuantity(draft, "grande", 99).lines[0]?.quantity).toBe(
+      MAX_LINE_QUANTITY,
+    );
+    expect(setDraftLineQuantity(draft, "grande", 0).lines).toEqual([]);
+  });
+
+  it("ignores unknown variants and non-integer quantities", () => {
+    expect(setDraftLineQuantity(draft, "otra", 3)).toBe(draft);
+    expect(setDraftLineQuantity(draft, "grande", 1.5)).toBe(draft);
+    expect(setDraftLineQuantity(draft, "grande", Number.NaN)).toBe(draft);
+  });
+
+  it("removes a line by variant and leaves the student untouched", () => {
+    const next = removeDraftLine(draft, "grande");
+    expect(next.lines).toEqual([]);
+    expect(next.student).toBe(draft.student);
+    expect(removeDraftLine(draft, "otra").lines).toEqual(draft.lines);
   });
 });

@@ -288,7 +288,7 @@ describe("admin enrollment detail action", () => {
     });
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=confirmed",
     );
   });
 
@@ -392,7 +392,7 @@ describe("admin enrollment detail action", () => {
       reason: "Pidió la baja",
     });
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=cancelled",
     );
   });
 
@@ -427,7 +427,7 @@ describe("admin enrollment detail action", () => {
       "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
     );
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      `/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=${intent}`,
     );
   });
 
@@ -481,5 +481,42 @@ describe("admin enrollment detail action", () => {
     expect(
       await thrownStatus(() => submit({ confirmPayment }, confirmFields)),
     ).toBe(status);
+  });
+});
+
+describe("admin enrollment detail feedback", () => {
+  it.each([
+    ["confirmed", "confirmed"],
+    ["cancelled", "cancelled"],
+    ["materials-requested", "materials-requested"],
+    ["materials-received", "materials-received"],
+  ] as const)("returns the %s code from the query", async (code, expected) => {
+    const result = await loader({
+      request: getRequest(
+        `/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=${code}`,
+      ),
+      params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
+      context: adminContext(
+        services({ detail: () => Promise.resolve(ok(detail)) }),
+        { admin: true },
+      ),
+    } as never);
+
+    expect(result.feedback).toBe(expected);
+  });
+
+  it("ignores a code it does not declare", async () => {
+    const result = await loader({
+      request: getRequest(
+        "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=<script>",
+      ),
+      params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
+      context: adminContext(
+        services({ detail: () => Promise.resolve(ok(detail)) }),
+        { admin: true },
+      ),
+    } as never);
+
+    expect(result.feedback).toBeNull();
   });
 });

@@ -160,6 +160,7 @@ describe("AttendanceSheet", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Asistencia guardada.",
     );
+    expect(screen.getByRole("status")).toHaveClass("bg-sand-200");
     rerender(<AttendanceSheet {...sheet} feedback={{ error: "No pudimos" }} />);
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos");
   });

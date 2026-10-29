@@ -53,13 +53,10 @@ export function AdminShell({
           <a href="/admin" className="font-display text-xl text-ink-900">
             {copy.brand}
           </a>
-          <div className="flex items-center gap-4">
-            {email ? (
-              <span className="hidden text-sm text-ink-700 sm:inline">
-                <span className="sr-only">{copy.signedInAs} </span>
-                {email}
-              </span>
-            ) : null}
+          <div
+            data-testid="admin-actions"
+            className="flex shrink-0 items-center gap-4"
+          >
             <a
               href={ADMIN_SIGN_OUT_HREF}
               className="inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4"
@@ -67,6 +64,7 @@ export function AdminShell({
               {copy.signOut}
             </a>
             <button
+              data-testid="admin-menu-button"
               type="button"
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-clay-600 text-clay-800 lg:hidden"
               aria-expanded={menuOpen}
@@ -81,7 +79,10 @@ export function AdminShell({
           </div>
         </div>
         {email ? (
-          <p className="px-gutter pb-2 text-sm text-ink-700 sm:hidden">
+          <p
+            data-testid="admin-desktop-identity"
+            className="hidden min-w-0 break-all px-gutter pb-2 text-sm text-ink-700 lg:block"
+          >
             <span className="sr-only">{copy.signedInAs} </span>
             {email}
           </p>
@@ -92,6 +93,12 @@ export function AdminShell({
             aria-label={copy.mobileSections}
             className="border-t border-sand-200 px-gutter py-3 lg:hidden"
           >
+            {email ? (
+              <p className="mb-3 min-w-0 break-all text-sm text-ink-700">
+                <span className="sr-only">{copy.signedInAs} </span>
+                {email}
+              </p>
+            ) : null}
             <NavList pathname={pathname} />
           </nav>
         ) : null}

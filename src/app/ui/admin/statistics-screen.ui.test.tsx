@@ -98,6 +98,16 @@ describe("StatisticsScreen", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("uses the shared page header without changing its query form", () => {
+    render(<StatisticsScreen {...props} />);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("link", { name: "Volver al panel" }),
+    ).toHaveAttribute("href", "/admin");
+    expect(screen.getByText("Datos de octubre 2026.")).toBeVisible();
+  });
+
   it("filters the month with a GET form and links back with plain anchors", () => {
     render(<StatisticsScreen {...props} />);
 

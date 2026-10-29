@@ -24,6 +24,28 @@ function entries(nav: HTMLElement) {
 }
 
 describe("AdminShell", () => {
+  it("keeps a long account identity out of the action row and exposes it in the mobile menu", async () => {
+    const email =
+      "owner-with-a-very-long-email-address-that-must-wrap@example.com";
+    render(
+      <AdminShell email={email} pathname="/admin">
+        <h1>Panel</h1>
+      </AdminShell>,
+    );
+
+    expect(screen.getByTestId("admin-actions")).not.toHaveTextContent(email);
+    expect(screen.getByTestId("admin-menu-button")).toHaveClass("min-w-11");
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const mobile = screen.getByRole("navigation", {
+      name: "Menú de secciones",
+    });
+    expect(within(mobile).getByText(email)).toBeVisible();
+
+    const desktopIdentity = screen.getByTestId("admin-desktop-identity");
+    expect(desktopIdentity).toHaveTextContent(email);
+    expect(desktopIdentity).toHaveClass("min-w-0", "break-all");
+  });
+
   it("shows the email and Salir, lists the four areas and marks the active one", async () => {
     const { container } = render(
       <AdminShell

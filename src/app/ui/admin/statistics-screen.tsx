@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Heading, Text } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
+import { AdminPageHeader } from "./admin-page";
 import { DataTable, type DataTableColumn } from "./data-table";
 import { TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -94,15 +94,11 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
   const { occupancy, conversion, income, students, teachers, materials } = copy;
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Heading level={1}>{copy.title}</Heading>
-        <Text tone="muted">{copy.subtitle(props.periodLabel)}</Text>
-        <div>
-          <AdminButtonLink variant="outline" href="/admin">
-            {copy.backToPanel}
-          </AdminButtonLink>
-        </div>
-      </div>
+      <AdminPageHeader
+        title={copy.title}
+        description={copy.subtitle(props.periodLabel)}
+        back={{ href: "/admin", label: copy.backToPanel }}
+      />
       <form
         role="search"
         method="get"

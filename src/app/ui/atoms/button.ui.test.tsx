@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -52,6 +52,8 @@ describe("Button", () => {
   });
   it.each([
     ["primary", ["bg-clay-600", "text-white"]],
+    ["secondary", ["border-clay-600", "text-clay-800"]],
+    ["tertiary", ["text-clay-800"]],
     ["outline", ["border-clay-600", "text-clay-800"]],
     ["text-arrow", ["text-clay-800"]],
   ] as const)("supports %s with token roles", (variant, classes) => {
@@ -108,7 +110,7 @@ describe("Button", () => {
       render(<Button variant={variant}>Acción</Button>);
 
       expect(screen.getByRole("button")).toHaveClass(
-        "transition-[color,background-color,border-color,box-shadow,transform]",
+        "transition-[color,background-color,border-color,box-shadow,transform,opacity]",
         "duration-200",
         "ease-calm",
         "motion-safe:hover:-translate-y-0.5",
@@ -145,7 +147,7 @@ describe("Button", () => {
     expect(start).toHaveBeenCalled();
   });
 
-  it("uses native keyboard activation and suppresses disabled buttons", async () => {
+  it("uses native disabled and busy semantics without changing its target", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
     render(<Button onClick={onClick}>Acción</Button>);
@@ -158,7 +160,94 @@ describe("Button", () => {
         Deshabilitado
       </Button>,
     );
-    await user.click(screen.getByRole("button", { name: "Deshabilitado" }));
+    const disabled = screen.getByRole("button", { name: "Deshabilitado" });
+    expect(disabled).toBeDisabled();
+    expect(disabled).not.toHaveAttribute("aria-busy");
+    await user.click(disabled);
     expect(onClick).toHaveBeenCalledTimes(2);
+    render(
+      <Button loading onClick={onClick}>
+        Guardando
+      </Button>,
+    );
+    const busy = screen.getByRole("button", { name: "Guardando" });
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    expect(busy).toHaveClass("min-h-11", "px-6", "py-3");
+    await user.click(busy);
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [
+      "Button",
+      "button",
+      "Guardar",
+      (loading: boolean) => <Button loading={loading}>Guardar</Button>,
+    ],
+    [
+      "ButtonLink",
+      "link",
+      "Guardar(se abre en una pestaña nueva)",
+      (loading: boolean) => (
+        <ButtonLink href="https://example.com" loading={loading}>
+          Guardar
+        </ButtonLink>
+      ),
+    ],
+  ] as const)(
+    "shows an out-of-flow progress indicator only while %s is loading",
+    (_control, role, accessibleName, renderControl) => {
+      const { rerender } = render(renderControl(false));
+      const control = screen.getByRole(role, { name: accessibleName });
+      const idleClasses = control.className;
+
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      expect(within(control).getByText("Guardar")).not.toHaveClass("opacity-0");
+
+      rerender(renderControl(true));
+
+      const busyControl = screen.getByRole(role, { name: accessibleName });
+      expect(busyControl).toHaveClass(...idleClasses.split(" "));
+      expect(within(busyControl).getByText("Guardar")).toHaveClass("opacity-0");
+      expect(screen.getByTestId("loading-indicator")).toHaveClass(
+        "absolute",
+        "motion-reduce:animate-none",
+      );
+      expect(screen.getByText("Guardar")).toHaveClass("opacity-0");
+      expect(
+        screen.getByRole(role, { name: accessibleName }),
+      ).toHaveAccessibleName(accessibleName);
+
+      rerender(renderControl(false));
+
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    },
+  );
+
+  it("marks disabled or busy links unavailable and prevents their activation", async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <ButtonLink href="/contacto" loading onClick={onClick}>
+            Contacto
+          </ButtonLink>
+        ),
+      },
+      { path: "/contacto", Component: () => <p>Página de contacto</p> },
+    ]);
+    render(<Stub initialEntries={["/"]} />);
+
+    const link = screen.getByRole("link", { name: "Contacto" });
+    expect(link).toHaveAttribute("aria-disabled", "true");
+    expect(link).toHaveAttribute("aria-busy", "true");
+    expect(link).toHaveClass("min-h-11", "px-6", "py-3");
+    await user.click(link);
+    await user.keyboard("{Enter}");
+    expect(onClick).not.toHaveBeenCalled();
+    expect(screen.queryByText("Página de contacto")).not.toBeInTheDocument();
   });
 });

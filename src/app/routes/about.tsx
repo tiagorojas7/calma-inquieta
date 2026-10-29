@@ -107,7 +107,7 @@ function BookingBand({
           {whatsappHref ? (
             <ButtonLink
               href={whatsappHref}
-              variant="text-arrow"
+              variant="tertiary"
               className={`text-canvas! ${lightFocus}`}
             >
               Escribinos por WhatsApp

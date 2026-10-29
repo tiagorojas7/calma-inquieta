@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Heading } from "../atoms/heading";
-import { Icon } from "../atoms/icon";
+import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
 import { microcopy } from "../microcopy";
 import { useGalleryLightbox, type GalleryEntry } from "./gallery-grid";
@@ -241,18 +241,10 @@ export function GalleryCarousel({
                     setUserPaused((paused) => !paused);
                   }}
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="size-4 fill-current"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    {userPaused ? (
-                      <path d="M8 5v14l11-7Z" />
-                    ) : (
-                      <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
-                    )}
-                  </svg>
+                  <Icon
+                    name={userPaused ? "play" : "pause"}
+                    className="size-4"
+                  />
                 </button>
               ) : null}
               <button

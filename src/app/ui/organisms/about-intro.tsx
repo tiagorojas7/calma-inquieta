@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
 import { Heading } from "../atoms/heading";
+import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
 import { ScriptText } from "../atoms/script-text";
 import { Text } from "../atoms/text";
@@ -106,18 +107,7 @@ function LoopCollage({ loops }: { loops: readonly IntroLoop[] }) {
           }}
           className="absolute bottom-0 left-1/2 z-30 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-canvas px-5 text-sm font-semibold text-ink-900 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="size-4 fill-current"
-            aria-hidden="true"
-            focusable="false"
-          >
-            {paused ? (
-              <path d="M8 5v14l11-7Z" />
-            ) : (
-              <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
-            )}
-          </svg>
+          <Icon name={paused ? "play" : "pause"} className="size-4" />
           {paused ? microcopy.playAnimation : microcopy.pauseAnimation}
         </button>
       ) : null}

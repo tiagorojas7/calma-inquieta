@@ -1,6 +1,7 @@
 import { Button } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
+import { AdminFeedback } from "./admin-page";
 import { DataTable, type DataTableColumn } from "./data-table";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -182,7 +183,9 @@ export function AttendanceSheet({
           {copy.sheet.back}
         </AdminButtonLink>
       </div>
-      {feedback?.saved ? <p role="status">{copy.sheet.saved}</p> : null}
+      {feedback?.saved ? (
+        <AdminFeedback tone="success" title={copy.sheet.saved} />
+      ) : null}
       <form
         method="post"
         aria-label={copy.sheet.formLabel}

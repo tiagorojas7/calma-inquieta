@@ -86,6 +86,30 @@ describe("home organisms", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("keeps catalog modules free of nested page-section spacing", () => {
+    const { container, rerender } = render(
+      <ActivityShowcase
+        items={[]}
+        emptyAction={{
+          href: "https://wa.me/5493510000000",
+          label: "Escribinos",
+        }}
+      />,
+    );
+
+    expect(container.querySelector("section")).not.toHaveClass("py-section");
+    rerender(
+      <UpcomingList
+        items={[]}
+        emptyAction={{
+          href: "https://www.instagram.com/calma.inquieta/",
+          label: "Seguinos",
+        }}
+      />,
+    );
+    expect(container.querySelector("section")).not.toHaveClass("py-section");
+  });
+
   it("renders each ActivityShowcase card when populated", async () => {
     const { container } = render(
       <MemoryRouter>

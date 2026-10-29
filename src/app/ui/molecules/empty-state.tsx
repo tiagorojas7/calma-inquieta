@@ -7,7 +7,7 @@ export function EmptyState({
   actions?: { href: string; label: string }[];
 }) {
   return (
-    <div className="flex flex-col items-start gap-4 rounded-md bg-sand-100 p-6">
+    <div className="flex flex-col items-start gap-4 rounded-md bg-sand-100 p-6 shadow-rest">
       <p className="text-ink-700">{message}</p>
       {actions.map((action) => (
         <a

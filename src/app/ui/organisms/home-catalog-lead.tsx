@@ -51,7 +51,7 @@ export function HomeCatalogLead({
           ) : null}
           <ButtonLink
             href="/talleres"
-            variant={whatsappHref ? "text-arrow" : "primary"}
+            variant={whatsappHref ? "tertiary" : "primary"}
           >
             Ver todos los talleres
           </ButtonLink>

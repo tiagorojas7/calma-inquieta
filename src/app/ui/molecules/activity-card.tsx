@@ -28,7 +28,7 @@ export function ActivityCard({
   ctaLabel: string;
 }) {
   return (
-    <article className="card-hover flex h-full flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-card">
+    <article className="card-hover flex h-full flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-raised">
       <div className="card-hover-frame w-full rounded-sm">
         <Image {...image} className="block w-full object-cover" />
       </div>

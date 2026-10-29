@@ -14,7 +14,7 @@ export function ActivityShowcase({
   emptyAction: { href: string; label: string };
 }) {
   return (
-    <section className="flex flex-col gap-6 py-section">
+    <section className="flex flex-col gap-module">
       <Heading level={2}>{title}</Heading>
       {items.length ? (
         <div className="grid gap-6 md:grid-cols-3">

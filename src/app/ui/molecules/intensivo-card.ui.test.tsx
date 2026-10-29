@@ -31,7 +31,7 @@ describe("IntensivoCard", () => {
     expect(screen.getByRole("time")).toHaveTextContent("14");
     expect(screen.getByRole("time").parentElement).toHaveClass(
       "bg-sand-100",
-      "shadow-card",
+      "shadow-rest",
     );
     expect(screen.getByText("2 h 30 min")).toBeVisible();
     expect(screen.getByText("$ 45.000")).toBeVisible();

@@ -521,7 +521,19 @@ export const adminMicrocopy = {
         "No se puede elegir para actividades nuevas. Podés reactivarlo cuando quieras.",
       assignedWarning: (names: string) =>
         `Sigue asignado a: ${names}. Las asignaciones y los períodos existentes lo conservan.`,
+      dangerTitle: "Zona de riesgo",
+      archiveTitle: "¿Archivar este profesor?",
+      archiveMessage:
+        "No se va a poder elegir para actividades nuevas. Las asignaciones y los períodos existentes lo conservan, y podés reactivarlo cuando quieras.",
     },
+    feedback: {
+      created: { title: "Profesor creado" },
+      saved: { title: "Cambios guardados" },
+      archived: { title: "Profesor archivado" },
+      restored: { title: "Profesor reactivado" },
+    },
+    modalityHint:
+      "Propia: no hay porcentaje acordado y no se calcula un importe. De terceros: la liquidación usa el porcentaje acordado de cada período.",
   },
   workshops: {
     title: "Talleres",
@@ -1008,7 +1020,18 @@ export const adminMicrocopy = {
       archivedNotice: "Este proveedor está archivado.",
       archivedHint:
         "No se puede elegir para materiales nuevos. Los materiales que ya lo tienen lo siguen mostrando. Podés reactivarlo cuando quieras.",
+      dangerTitle: "Zona de riesgo",
+      archiveTitle: "¿Archivar este proveedor?",
+      archiveMessage:
+        "No se va a poder elegir para materiales nuevos. Los materiales que ya lo tienen lo siguen mostrando y podés reactivarlo cuando quieras.",
     },
+    feedback: {
+      created: { title: "Proveedor creado" },
+      saved: { title: "Cambios guardados" },
+      archived: { title: "Proveedor archivado" },
+      restored: { title: "Proveedor reactivado" },
+    },
+    backToList: "Volver a proveedores",
   },
   intensiveRequests: {
     title: "Reservas",

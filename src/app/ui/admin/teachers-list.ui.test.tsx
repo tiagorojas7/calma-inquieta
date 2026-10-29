@@ -22,7 +22,7 @@ function renderList(props: Partial<Parameters<typeof TeachersList>[0]> = {}) {
 describe("TeachersList", () => {
   it("lists name, modality and state with a link to each edit page", async () => {
     const { container } = renderList();
-    const table = await screen.findByRole("table", { name: "Profesores" });
+    const table = await screen.findByRole("list", { name: "Profesores" });
     const ana = within(table).getByRole("link", { name: "Ana Gómez" });
     expect(ana).toHaveAttribute("href", "/admin/profesores/t1");
     expect(within(table).getByText("Propia")).toBeVisible();
@@ -58,7 +58,7 @@ describe("TeachersList", () => {
         name: "Todavía no hay profesores",
       }),
     ).toBeVisible();
-    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Profesores" })).toBeNull();
     expect(
       screen.getAllByRole("link", { name: "Nuevo profesor" }).at(-1),
     ).toHaveAttribute("href", "/admin/profesores/nuevo");

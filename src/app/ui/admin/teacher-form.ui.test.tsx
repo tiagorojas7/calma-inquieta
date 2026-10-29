@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
-import { TeacherForm, TeacherStatePanel } from "./teacher-form";
+import {
+  TeacherArchiveZone,
+  TeacherForm,
+  TeacherStatePanel,
+} from "./teacher-form";
 
 const empty = { name: "", bioLine: "", phone: "", email: "", modality: "" };
 
@@ -81,21 +85,21 @@ describe("TeacherForm", () => {
 });
 
 describe("TeacherStatePanel", () => {
-  it("offers Archivar for an active teacher through a native post form", async () => {
+  it("asks before archiving an active teacher, then posts the archive intent", async () => {
     const Stub = createRoutesStub([
-      {
-        path: "/",
-        Component: () => (
-          <TeacherStatePanel active assignedTo={[]} error={undefined} />
-        ),
-      },
+      { path: "/", Component: () => <TeacherArchiveZone error={undefined} /> },
     ]);
     render(<Stub />);
-    const button = await screen.findByRole("button", { name: "Archivar" });
-    const form = button.closest("form");
+    const zone = await screen.findByRole("region", { name: "Zona de riesgo" });
+    const form = within(zone)
+      .getByRole("button", { name: "Archivar" })
+      .closest("form");
     expect(form?.getAttribute("method")?.toLowerCase()).toBe("post");
     expect(form?.querySelector("input[name=intent]")).toHaveValue("archive");
-    expect(fireEvent.submit(form as HTMLFormElement)).toBe(true);
+    fireEvent.click(within(zone).getByRole("button", { name: "Archivar" }));
+    expect(
+      await screen.findByRole("dialog", { name: "¿Archivar este profesor?" }),
+    ).toBeVisible();
   });
 
   it("offers Reactivar and warns naming the activities an archived teacher keeps", async () => {
@@ -104,7 +108,6 @@ describe("TeacherStatePanel", () => {
         path: "/",
         Component: () => (
           <TeacherStatePanel
-            active={false}
             assignedTo={["Cerámica inicial", "Intensivo de torno"]}
             error="Ya existe uno activo con el mismo nombre."
           />
@@ -130,7 +133,7 @@ describe("TeacherStatePanel", () => {
       {
         path: "/",
         Component: () => (
-          <TeacherStatePanel active={false} assignedTo={[]} error={undefined} />
+          <TeacherStatePanel assignedTo={[]} error={undefined} />
         ),
       },
     ]);

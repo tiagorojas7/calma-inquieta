@@ -1,6 +1,8 @@
 import { Button } from "../atoms/button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
+import { AdminDangerZone } from "./admin-sections";
+import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -71,36 +73,38 @@ export function SupplierForm({
 }
 
 /**
- * Archive or reactivate, as its own native post form. Archiving never removes
- * the supplier from materials that already point to it.
+ * Archived suppliers: why it is unavailable and the one way back. Archiving
+ * never removes the supplier from materials that already point to it, so
+ * active suppliers are archived from `SupplierArchiveZone`.
  */
-export function SupplierStatePanel({
-  active,
-  error,
-}: {
-  active: boolean;
-  error: string | undefined;
-}) {
+export function SupplierStatePanel({ error }: { error: string | undefined }) {
   const state = copy.state;
   return (
     <section className="flex max-w-prose flex-col gap-3">
-      {!active && (
-        <>
-          <Text>{state.archivedNotice}</Text>
-          <Text tone="muted">{state.archivedHint}</Text>
-        </>
-      )}
+      <Text>{state.archivedNotice}</Text>
+      <Text tone="muted">{state.archivedHint}</Text>
       <FormError message={error} />
       <form method="post">
-        <input
-          type="hidden"
-          name="intent"
-          value={active ? "archive" : "reactivate"}
-        />
-        <Button type="submit" variant="outline">
-          {active ? state.archive : state.reactivate}
-        </Button>
+        <input type="hidden" name="intent" value="reactivate" />
+        <Button type="submit">{state.reactivate}</Button>
       </form>
     </section>
+  );
+}
+
+/** Archiving asks first and lives apart from the save button. */
+export function SupplierArchiveZone({ error }: { error: string | undefined }) {
+  const state = copy.state;
+  return (
+    <AdminDangerZone title={state.dangerTitle}>
+      <FormError message={error} />
+      <ConfirmedSubmit
+        intent="archive"
+        label={state.archive}
+        title={state.archiveTitle}
+        message={state.archiveMessage}
+        tone="destructive"
+      />
+    </AdminDangerZone>
   );
 }

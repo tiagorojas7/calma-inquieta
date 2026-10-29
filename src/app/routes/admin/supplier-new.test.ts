@@ -39,7 +39,7 @@ describe("admin supplier create action", () => {
     const response = await submit(service, VALID);
     expect((response as Response).status).toBe(302);
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/materiales/proveedores",
+      "/admin/materiales/proveedores?ok=created",
     );
     expect([...repository.suppliers.values()]).toMatchObject([
       {

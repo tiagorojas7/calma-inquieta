@@ -81,6 +81,7 @@ describe("admin teacher detail loader", () => {
     expect(result).toEqual({
       id,
       active: true,
+      feedback: null,
       values: DRAFT,
       assignedTo: [],
       settlement: null,
@@ -187,7 +188,7 @@ describe("admin teacher detail action", () => {
     });
     expect((response as Response).status).toBe(302);
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/profesores",
+      "/admin/profesores?ok=saved",
     );
     expect(repository.teachers.get(id)).toMatchObject({
       bioLine: "Cerámica y esmaltes",
@@ -214,7 +215,7 @@ describe("admin teacher detail action", () => {
     const { service, repository, id } = await withTeacher();
     const response = await submit(service, id, { intent: "archive" });
     expect((response as Response).headers.get("Location")).toBe(
-      `/admin/profesores/${id}`,
+      `/admin/profesores/${id}?ok=archived`,
     );
     expect(repository.teachers.get(id)?.active).toBe(false);
   });
@@ -223,7 +224,9 @@ describe("admin teacher detail action", () => {
     const { service, repository, id } = await withTeacher();
     await service.archive(testAdminActor(), id);
     const response = await submit(service, id, { intent: "reactivate" });
-    expect((response as Response).status).toBe(302);
+    expect((response as Response).headers.get("Location")).toBe(
+      `/admin/profesores/${id}?ok=restored`,
+    );
     expect(repository.teachers.get(id)?.active).toBe(true);
   });
 

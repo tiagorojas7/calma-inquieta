@@ -809,6 +809,19 @@ export const adminMicrocopy = {
     newTitle: "Nuevo intensivo",
     editTitle: "Editar intensivo",
     newAction: "Nuevo intensivo",
+    back: "Volver a intensivos",
+    seats: (count: number) => `Lugares: ${String(count)}`,
+    feedback: {
+      created: { title: "Intensivo creado" },
+      saved: { title: "Cambios guardados" },
+      deleted: { title: "Borrador eliminado" },
+      published: { title: "Intensivo publicado" },
+      paused: { title: "Intensivo pausado" },
+      cancelled: { title: "Intensivo cancelado" },
+      archived: { title: "Intensivo archivado" },
+      restored: { title: "Intensivo restaurado" },
+      rescheduled: { title: "Fecha y horario actualizados" },
+    },
     audit: {
       title: "Última actualización",
       by: "Actualizado por",
@@ -1035,6 +1048,13 @@ export const adminMicrocopy = {
   },
   intensiveRequests: {
     title: "Reservas",
+    feedback: {
+      confirmed: "Seña registrada: el lugar quedó confirmado",
+      cancelled: "Solicitud cancelada",
+    },
+    cancelStep: "Cancelar esta solicitud",
+    cancelConsequence:
+      "No se puede deshacer. Si estaba confirmada, libera el lugar.",
     link: "Ver reservas",
     back: "Volver al intensivo",
     summary: {

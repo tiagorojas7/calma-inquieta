@@ -81,28 +81,28 @@ describe("IntensiveRequestsScreen", () => {
       within(card).getByRole("form", {
         name: "Cancelar la solicitud: Ana Pérez",
       }),
-    ).toBeVisible();
+    ).toBeInTheDocument();
   });
 
   it("shows the payment of a confirmed request, with cancel only", () => {
     render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
 
     const card = screen.getByRole("article", { name: "Bea Gómez" });
-    expect(within(card).getByText("transferencia")).toBeVisible();
-    expect(within(card).getByText("21/10/2026")).toBeVisible();
+    expect(within(card).getByText("transferencia")).toBeInTheDocument();
+    expect(within(card).getByText("21/10/2026")).toBeInTheDocument();
     expect(
       within(card).queryByRole("form", { name: /Registrar la seña/ }),
     ).toBeNull();
     expect(
       within(card).getByRole("form", { name: /Cancelar la solicitud/ }),
-    ).toBeVisible();
+    ).toBeInTheDocument();
   });
 
   it("shows the reason of a cancelled request and no forms", () => {
     render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
 
     const card = screen.getByRole("article", { name: "Carla Ruiz" });
-    expect(within(card).getByText("no puede asistir")).toBeVisible();
+    expect(within(card).getByText("no puede asistir")).toBeInTheDocument();
     expect(within(card).queryByRole("form")).toBeNull();
   });
 
@@ -136,5 +136,58 @@ describe("IntensiveRequestsScreen", () => {
     for (const form of container.querySelectorAll("form"))
       expect(form).toHaveAttribute("method", "post");
     expect(container.querySelectorAll("a").length).toBeGreaterThan(0);
+  });
+
+  it("shows breadcrumbs back to the intensivo and a confirmation banner", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={view}
+        feedback={undefined}
+        done="confirmed"
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Seña registrada: el lugar quedó confirmado",
+    );
+    const crumbs = within(
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    );
+    expect(crumbs.getByRole("link", { name: "Intensivos" })).toHaveAttribute(
+      "href",
+      "/admin/intensivos",
+    );
+  });
+
+  it("keeps cancelling apart from confirming, behind an explicit step with its consequence", () => {
+    render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
+
+    const card = screen.getByRole("article", { name: "Ana Pérez" });
+    const step = within(card).getByText("Cancelar esta solicitud");
+    const details = step.closest("details");
+    expect(details).not.toHaveAttribute("open");
+    expect(
+      within(details as HTMLElement).getByRole("form", {
+        name: "Cancelar la solicitud: Ana Pérez",
+      }),
+    ).toBeInTheDocument();
+    expect(details).toHaveTextContent("No se puede deshacer");
+  });
+
+  it("opens only the pending group by default and collapses the finished ones", () => {
+    render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
+
+    const open = (title: string) =>
+      screen
+        .getByRole("heading", { name: title })
+        .closest("details")
+        ?.hasAttribute("open");
+    expect(open("Confirmadas (1)")).toBe(false);
+    expect(open("Canceladas (1)")).toBe(false);
+    expect(
+      screen
+        .getByRole("heading", { name: "Pendientes de seña (1)" })
+        .closest("details"),
+    ).toBeNull();
   });
 });

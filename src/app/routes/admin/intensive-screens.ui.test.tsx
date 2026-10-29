@@ -54,7 +54,7 @@ describe("intensive admin screens", () => {
     expect(
       await screen.findByRole("link", { name: "Cerámica de sábado" }),
     ).toHaveAttribute("href", "/admin/intensivos/i1");
-    expect(screen.getByText("12")).toBeVisible();
+    expect(screen.getByText("Lugares: 12")).toBeVisible();
     expect(screen.getByRole("link", { name: "Archivados" })).toHaveAttribute(
       "href",
       "/admin/intensivos?estado=archivados",
@@ -171,7 +171,10 @@ describe("intensive admin screens", () => {
       />,
     );
     expect(
-      await screen.findByRole("heading", { name: "Editar intensivo" }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cerámica de sábado",
+      }),
     ).toBeVisible();
     expect(screen.getByText("admin@example.com")).toBeVisible();
     expect(screen.getByText("10 oct 2026, 09:00")).toBeVisible();

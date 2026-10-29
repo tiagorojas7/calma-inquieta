@@ -1,4 +1,5 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
@@ -21,6 +22,7 @@ import {
 import type { FieldIssue } from "~/modules/_shared";
 import type { IntensiveWorkshop } from "~/modules/workshops";
 import { Heading } from "~/app/ui/atoms/heading";
+import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
 import { IntensiveStatePanel } from "~/app/ui/admin/intensive-state-panel";
@@ -36,6 +38,23 @@ function rescheduleErrors(
 ): Partial<Record<"eventDate" | "timeRange", string>> {
   return fieldErrors(issues, INTENSIVE_FIELD_MESSAGES);
 }
+
+const FEEDBACK = [
+  "published",
+  "paused",
+  "cancelled",
+  "archived",
+  "restored",
+  "rescheduled",
+] as const;
+
+const INTENT_CODE = {
+  publish: "published",
+  pause: "paused",
+  cancel: "cancelled",
+  archive: "archived",
+  restore: "restored",
+} as const;
 
 export function meta() {
   return [{ title: "Editar intensivo | Panel | Calma Inquieta" }];
@@ -86,6 +105,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   return {
     id: intensive.id,
     status: intensive.status,
+    feedback: feedbackCode(request, FEEDBACK),
     values: formValues(intensive),
     teachers: listed.value
       .filter((teacher) => teacher.active || teacher.id === assigned)
@@ -111,7 +131,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "save") {
     const draft = parseIntensiveDraft(form);
     const saved = await intensives.update(actor, params.id, draft);
-    if (saved.ok) return redirect(LIST);
+    if (saved.ok) return redirect(withFeedback(LIST, "saved"));
     if (saved.error.kind === "invalid")
       return invalidIntensiveResponse(draft, saved.error.issues);
     if (saved.error.kind === "rules-unmet")
@@ -128,7 +148,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "reschedule") {
     const schedule = parseIntensiveSchedule(form);
     const changed = await intensives.reschedule(actor, params.id, schedule);
-    if (changed.ok) return redirect(`${LIST}/${params.id}`);
+    if (changed.ok)
+      return redirect(withFeedback(`${LIST}/${params.id}`, "rescheduled"));
     if (changed.error.kind === "invalid")
       return data(
         {
@@ -143,7 +164,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   }
   if (intent === "delete") {
     const deleted = await intensives.delete(actor, params.id);
-    if (deleted.ok) return redirect(LIST);
+    if (deleted.ok) return redirect(withFeedback(LIST, "deleted"));
     if (deleted.error.kind === "rules-unmet")
       return data(
         { stateError: intensiveDeleteRuleMessage() },
@@ -161,7 +182,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
           : intent === "archive"
             ? await intensives.archive(actor, params.id)
             : await intensives.restore(actor, params.id);
-  if (changed.ok) return redirect(`${LIST}/${params.id}`);
+  if (changed.ok)
+    return redirect(withFeedback(`${LIST}/${params.id}`, INTENT_CODE[intent]));
   if (changed.error.kind === "transition-refused")
     return data(
       {
@@ -188,17 +210,27 @@ export default function AdminIntensiveDetail() {
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const reschedule =
     rejected && "reschedule" in rejected ? rejected.reschedule : undefined;
+  const saved = intensive.feedback ? copy.feedback[intensive.feedback] : null;
   return (
     <section className="flex flex-col gap-6">
-      <Heading level={1}>{copy.editTitle}</Heading>
-      <div>
-        <AdminButtonLink
-          variant="outline"
-          href={`${LIST}/${intensive.id}/reservas`}
-        >
-          {adminMicrocopy.intensiveRequests.link}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={intensive.values.name}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: LIST },
+          { label: intensive.values.name },
+        ]}
+        back={{ href: LIST, label: copy.back }}
+        actions={
+          <AdminButtonLink
+            variant="outline"
+            href={`${LIST}/${intensive.id}/reservas`}
+          >
+            {adminMicrocopy.intensiveRequests.link}
+          </AdminButtonLink>
+        }
+      />
+      {saved ? <AdminFeedback tone="success" title={saved.title} /> : null}
       <IntensiveStatePanel
         status={intensive.status}
         schedule={intensive.values}

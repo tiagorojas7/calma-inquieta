@@ -1,4 +1,5 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { failureResponse } from "~/app/admin/failure-response";
 import { servicesContext } from "~/app/context";
@@ -14,6 +15,8 @@ import type { Route } from "./+types/intensive-requests";
 
 const copy = adminMicrocopy.intensiveRequests;
 
+const DONE = ["confirmed", "cancelled"] as const;
+
 export function meta() {
   return [{ title: "Reservas | Panel | Calma Inquieta" }];
 }
@@ -25,7 +28,10 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .get(servicesContext)
     .intensiveRequests.overview(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
-  return intensiveRequestsView(found.value, cordobaDateOf(new Date()));
+  return {
+    ...intensiveRequestsView(found.value, cordobaDateOf(new Date())),
+    done: feedbackCode(request, DONE),
+  };
 }
 
 function text(form: FormData, name: string): string {
@@ -90,7 +96,13 @@ export async function action({ request, context, params }: Route.ActionArgs) {
           requestId,
           reason,
         });
-  if (result.ok) return redirect(`/admin/intensivos/${params.id}/reservas`);
+  if (result.ok)
+    return redirect(
+      withFeedback(
+        `/admin/intensivos/${params.id}/reservas`,
+        intent === "confirm" ? "confirmed" : "cancelled",
+      ),
+    );
 
   const error = result.error;
   if (
@@ -106,7 +118,13 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function AdminIntensiveRequests() {
-  const view = useLoaderData<typeof loader>();
+  const { done, ...view } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
-  return <IntensiveRequestsScreen view={view} feedback={rejected?.feedback} />;
+  return (
+    <IntensiveRequestsScreen
+      view={view}
+      feedback={rejected?.feedback}
+      done={done}
+    />
+  );
 }

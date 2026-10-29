@@ -1,4 +1,5 @@
 import { useLoaderData } from "react-router";
+import { feedbackCode } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
@@ -8,6 +9,8 @@ import {
 import { IntensivesList } from "~/app/ui/admin/intensives-list";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/intensives";
+
+const FEEDBACK = ["created", "saved", "deleted"] as const;
 
 export function meta() {
   return [{ title: "Intensivos | Panel | Calma Inquieta" }];
@@ -30,6 +33,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!listed.ok) throw failureResponse(listed.error);
   return {
     filter: parseIntensiveFilterKey(estado),
+    feedback: feedbackCode(request, FEEDBACK),
     rows: listed.value.map((intensive) => ({
       id: intensive.id,
       name: intensive.name,
@@ -42,6 +46,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export default function AdminIntensives() {
-  const { filter, rows } = useLoaderData<typeof loader>();
-  return <IntensivesList filter={filter} rows={rows} />;
+  const { filter, rows, feedback } = useLoaderData<typeof loader>();
+  return <IntensivesList filter={filter} rows={rows} feedback={feedback} />;
 }

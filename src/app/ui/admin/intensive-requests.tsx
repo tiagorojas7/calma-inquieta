@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { FormError, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -136,6 +136,7 @@ function CancelForm({
     >
       <input type="hidden" name="intent" value="cancel" />
       <input type="hidden" name="requestId" value={row.id} />
+      <p className="text-ink-700">{copy.cancelConsequence}</p>
       <FormError message={shown?.formError} />
       <TextField
         label={f.reason}
@@ -217,7 +218,16 @@ function RequestCard({
       {status === "pending_confirmation" ? (
         <ConfirmForm row={row} intensivo={intensivo} feedback={own} />
       ) : null}
-      {status !== "cancelled" ? <CancelForm row={row} feedback={own} /> : null}
+      {status !== "cancelled" ? (
+        <details open={own?.intent === "cancel"} className="max-w-prose">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-clay-800 underline underline-offset-4">
+            {copy.cancelStep}
+          </summary>
+          <div className="pt-3">
+            <CancelForm row={row} feedback={own} />
+          </div>
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -230,38 +240,42 @@ function RequestCard({
 export function IntensiveRequestsScreen({
   view,
   feedback,
+  done = null,
 }: {
   view: IntensiveRequestsViewData;
   feedback: IntensiveRequestFeedback | undefined;
+  done?: keyof typeof copy.feedback | null | undefined;
 }) {
   const { intensivo, groups } = view;
   return (
     <section className="flex flex-col gap-6">
-      <Heading level={1}>{`${copy.title}: ${intensivo.name}`}</Heading>
-      <div>
-        <AdminButtonLink
-          variant="outline"
-          href={`/admin/intensivos/${intensivo.id}`}
-        >
-          {copy.back}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={`${copy.title}: ${intensivo.name}`}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.intensives.title, href: "/admin/intensivos" },
+          { label: intensivo.name, href: `/admin/intensivos/${intensivo.id}` },
+          { label: copy.title },
+        ]}
+        back={{ href: `/admin/intensivos/${intensivo.id}`, label: copy.back }}
+      />
+      {done ? (
+        <AdminFeedback tone="success" title={copy.feedback[done]} />
+      ) : null}
       <dl className="grid gap-4 md:grid-cols-4">
         <Fact label={copy.summary.date}>{intensivo.dateLine}</Fact>
         <Fact label={copy.summary.deposit}>{intensivo.deposit}</Fact>
         <Fact label={copy.summary.seats}>{intensivo.seats}</Fact>
         <Fact label={copy.summary.minSeats}>{intensivo.minSeats}</Fact>
       </dl>
-      {groups.map((group) => (
-        <section
-          key={group.status}
-          aria-labelledby={`group-${group.status}`}
-          className="flex flex-col gap-4"
-        >
+      {groups.map((group) => {
+        const heading = (
           <Heading level={2} id={`group-${group.status}`}>
             {`${group.title} (${String(group.rows.length)})`}
           </Heading>
-          {group.rows.length === 0 ? (
+        );
+        const body =
+          group.rows.length === 0 ? (
             <p className="text-ink-700">{copy.empty}</p>
           ) : (
             group.rows.map((row) => (
@@ -273,9 +287,28 @@ export function IntensiveRequestsScreen({
                 feedback={feedback}
               />
             ))
-          )}
-        </section>
-      ))}
+          );
+        // Finished groups start collapsed so the pending work comes first.
+        return group.status === "pending_confirmation" ? (
+          <section
+            key={group.status}
+            aria-labelledby={`group-${group.status}`}
+            className="flex flex-col gap-4"
+          >
+            {heading}
+            {body}
+          </section>
+        ) : (
+          <details
+            key={group.status}
+            open={feedback !== undefined && feedback.intent === "cancel"}
+            className="flex flex-col gap-4"
+          >
+            <summary className="min-h-11 cursor-pointer">{heading}</summary>
+            <div className="flex flex-col gap-4 pt-4">{body}</div>
+          </details>
+        );
+      })}
     </section>
   );
 }

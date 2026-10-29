@@ -78,7 +78,7 @@ export function HeroSection({
         </div>
         <Text
           tone="muted"
-          className="mt-4 w-full max-w-prose border-t border-tan-400 pt-6 max-lg:sr-only"
+          className="hero-bajada mt-4 w-full max-w-prose border-t border-tan-400 pt-6"
         >
           {bajada}
         </Text>

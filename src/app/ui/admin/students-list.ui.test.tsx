@@ -21,13 +21,43 @@ const props: StudentsListProps = {
 };
 
 describe("StudentsList", () => {
+  it("shows breadcrumbs, a result count and no table on small screens", () => {
+    render(<StudentsList {...props} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+    expect(screen.getByText("1 alumna")).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("keeps the filters closed until one is active", () => {
+    const { rerender } = render(<StudentsList {...props} />);
+    const summary = screen.getByText("Buscar y filtrar");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+
+    rerender(
+      <StudentsList
+        {...props}
+        filter={{ q: "ana", taller: "", estado: "", page: 1 }}
+      />,
+    );
+    expect(
+      screen.getByText("Buscar y filtrar").closest("details"),
+    ).toHaveAttribute("open");
+  });
+
   it("lists one row per student with a plain link to her page", async () => {
     const { container } = render(<StudentsList {...props} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Alumnas" }),
     ).toBeVisible();
-    const row = screen.getByRole("row", { name: /Ana Pérez/ });
+    const row = within(screen.getByRole("list", { name: "Alumnas" })).getByRole(
+      "listitem",
+    );
     expect(
       within(row).getByRole("link", { name: "Ana Pérez" }),
     ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");

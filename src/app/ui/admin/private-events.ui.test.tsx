@@ -22,6 +22,27 @@ const row = {
 };
 
 describe("PrivateEventsList", () => {
+  it("shows breadcrumbs, a count and cards instead of a table", () => {
+    render(
+      <PrivateEventsList
+        rows={[row]}
+        filter=""
+        statusOptions={statusOptions}
+      />,
+    );
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+    expect(screen.getByText("1 consulta")).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("list", { name: "Eventos privados" }),
+    ).toBeVisible();
+  });
+
   it("lists requests with a plain link to the detail and a GET filter", async () => {
     const { container } = render(
       <PrivateEventsList
@@ -88,6 +109,21 @@ describe("PrivateEventDetail", () => {
       screen.getByRole("link", { name: "Volver a las consultas" }),
     ).toHaveAttribute("href", "/admin/eventos");
     await expectNoAxeViolations(container);
+  });
+
+  it("shows breadcrumbs and a top back link", () => {
+    render(<PrivateEventDetail request={request} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(
+      within(crumbs).getByRole("link", { name: "Eventos privados" }),
+    ).toHaveAttribute("href", "/admin/eventos");
+  });
+
+  it("confirms a saved status with a status message", () => {
+    render(<PrivateEventDetail request={request} feedback="status-saved" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Estado actualizado");
   });
 
   it("shows who changed the status and a form error", () => {

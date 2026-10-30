@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Button } from "../atoms/button";
-import { Heading } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { Heading, Text } from "../atoms/heading";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { TextAreaField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -44,6 +44,8 @@ export interface StudentDetailProps {
       | null
       | undefined;
   };
+  readonly feedback?:
+    keyof typeof adminMicrocopy.students.detail.feedback | null | undefined;
   readonly form?: {
     readonly error?: string | undefined;
     readonly value?: string | undefined;
@@ -65,60 +67,26 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const activityColumns: readonly DataTableColumn<StudentActivityRow>[] = [
-  {
-    key: "workshop",
-    header: copy.activities.columns.workshop,
-    cell: (r) => r.workshop,
-  },
-  { key: "month", header: copy.activities.columns.month, cell: (r) => r.month },
-  { key: "turno", header: copy.activities.columns.turno, cell: (r) => r.turno },
-  {
-    key: "status",
-    header: copy.activities.columns.status,
-    cell: (r) => <OrderStatusBadge status={r.status} label={r.statusLabel} />,
-  },
-];
-
-const orderColumns: readonly DataTableColumn<StudentOrderRow>[] = [
-  {
-    key: "number",
-    header: copy.orders.columns.number,
-    cell: (row) => (
-      <a href={`/admin/inscripciones/${row.id}`} className={linkClasses}>
-        {row.number}
-      </a>
-    ),
-  },
-  {
-    key: "workshop",
-    header: copy.orders.columns.workshop,
-    cell: (r) => r.workshop,
-  },
-  { key: "month", header: copy.orders.columns.month, cell: (r) => r.month },
-  {
-    key: "status",
-    header: copy.orders.columns.status,
-    cell: (r) => <OrderStatusBadge status={r.status} label={r.statusLabel} />,
-  },
-  { key: "total", header: copy.orders.columns.total, cell: (r) => r.total },
-  {
-    key: "paidOn",
-    header: copy.orders.columns.paidOn,
-    cell: (r) => r.paidOn ?? copy.orders.unpaid,
-  },
-];
-
 /** One student: data, activities, order and payment history, and the owner's notes. */
-export function StudentDetail({ student, form }: StudentDetailProps) {
+export function StudentDetail({
+  student,
+  form,
+  feedback = null,
+}: StudentDetailProps) {
   return (
     <section className="flex flex-col gap-6">
-      <Heading level={1}>{student.name}</Heading>
-      <div>
-        <AdminButtonLink variant="outline" href="/admin/alumnas">
-          {copy.back}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={student.name}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.students.title, href: "/admin/alumnas" },
+          { label: student.name },
+        ]}
+        back={{ href: "/admin/alumnas", label: copy.back }}
+      />
+      {feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[feedback]} />
+      ) : null}
 
       <dl aria-label={copy.personal} className="grid gap-4 md:grid-cols-3">
         <Fact label={copy.name}>{student.name}</Fact>
@@ -126,34 +94,61 @@ export function StudentDetail({ student, form }: StudentDetailProps) {
         <Fact label={copy.phone}>{student.phone}</Fact>
       </dl>
 
-      <section className="flex flex-col gap-3">
+      <section
+        aria-label={copy.activities.title}
+        className="flex flex-col gap-3"
+      >
         <Heading level={2}>{copy.activities.title}</Heading>
-        {student.activities.length === 0 ? (
-          <p>{copy.activities.empty}</p>
-        ) : (
-          <DataTable
-            caption={copy.activities.title}
-            columns={activityColumns}
-            rows={student.activities}
-            rowKey={(row) =>
-              `${row.workshop}|${row.month}|${row.turno}|${row.status}`
-            }
-            empty={{
-              title: copy.activities.empty,
-              message: "",
-              action: { href: "/admin/alumnas", label: copy.back },
-            }}
-          />
-        )}
+        <AdminCardList
+          label={copy.activities.title}
+          rows={student.activities}
+          rowKey={(row) =>
+            `${row.workshop}|${row.month}|${row.turno}|${row.status}`
+          }
+          card={(row) => (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-ink-900">
+                  {row.workshop}
+                </span>
+                <OrderStatusBadge status={row.status} label={row.statusLabel} />
+              </div>
+              <Text tone="muted">{row.month}</Text>
+              <Text tone="muted">{row.turno}</Text>
+            </>
+          )}
+          empty={{
+            title: copy.activities.empty,
+            message: "",
+            action: { href: "/admin/alumnas", label: copy.back },
+          }}
+        />
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section aria-label={copy.orders.title} className="flex flex-col gap-3">
         <Heading level={2}>{copy.orders.title}</Heading>
-        <DataTable
-          caption={copy.orders.title}
-          columns={orderColumns}
+        <AdminCardList
+          label={copy.orders.title}
           rows={student.orders}
           rowKey={(row) => row.id}
+          card={(row) => (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <a
+                  href={`/admin/inscripciones/${row.id}`}
+                  className={linkClasses}
+                >
+                  {row.number}
+                </a>
+                <OrderStatusBadge status={row.status} label={row.statusLabel} />
+              </div>
+              <Text tone="muted">
+                {row.workshop} - {row.month}
+              </Text>
+              <p className="text-ink-900">{row.total}</p>
+              <Text tone="muted">{row.paidOn ?? copy.orders.unpaid}</Text>
+            </>
+          )}
           empty={{
             title: copy.orders.title,
             message: "",

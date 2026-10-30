@@ -46,6 +46,23 @@ const actionArgs = (context: unknown, email: string, note: string) =>
   }) as never;
 
 describe("admin student detail route", () => {
+  it("reports a bounded feedback code and ignores unknown ones", async () => {
+    const { context } = setup();
+    const known = await loader({
+      request: getRequest(`${path("ana@example.com")}?ok=note-saved`),
+      params: { email: "ana@example.com" },
+      context,
+    } as never);
+    const unknown = await loader({
+      request: getRequest(`${path("ana@example.com")}?ok=<b>hi</b>`),
+      params: { email: "ana@example.com" },
+      context,
+    } as never);
+
+    expect(known.feedback).toBe("note-saved");
+    expect(unknown.feedback).toBeNull();
+  });
+
   it("shows the data, the active workshops, the order and payment history and the note", async () => {
     const { context, notes } = setup();
     notes.notes.set("ana@example.com", {
@@ -112,7 +129,7 @@ describe("admin student detail route", () => {
     const redirect = response as Response;
     expect(redirect.status).toBe(302);
     expect(redirect.headers.get("Location")).toBe(
-      "/admin/alumnas/ana%40example.com",
+      "/admin/alumnas/ana%40example.com?ok=note-saved",
     );
     expect(notes.notes.get("ana@example.com")).toMatchObject({
       text: "Viene con su hermana",

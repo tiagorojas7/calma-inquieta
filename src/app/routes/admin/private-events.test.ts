@@ -116,6 +116,19 @@ describe("admin private event detail route", () => {
     expect(result.whatsappHref).toContain("https://wa.me/5493515550101");
   });
 
+  it("reports a bounded feedback code on the detail", async () => {
+    const { services } = await seeded();
+    const run = (query: string) =>
+      detailLoader({
+        request: getRequest(`/admin/eventos/${ID}${query}`),
+        params: { id: ID },
+        context: adminContext(services),
+      } as never);
+
+    expect((await run("?ok=status-saved")).feedback).toBe("status-saved");
+    expect((await run("?ok=other")).feedback).toBeNull();
+  });
+
   it("answers 404 for a non-UUID or unknown id and 403 for a non-admin", async () => {
     const { services } = await seeded();
 
@@ -138,7 +151,9 @@ describe("admin private event detail route", () => {
     } as never)) as Response;
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(`/admin/eventos/${ID}`);
+    expect(response.headers.get("Location")).toBe(
+      `/admin/eventos/${ID}?ok=status-saved`,
+    );
     expect(repository.requests.get(ID)).toMatchObject({
       status: "contactada",
       statusChangedBy: "a@x.test",

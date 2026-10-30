@@ -1,5 +1,6 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import {
   dateLabel,
@@ -20,6 +21,7 @@ export function meta() {
 
 const CORDOBA_OFFSET_MS = 10_800_000;
 const copy = adminMicrocopy.students.detail;
+const FEEDBACK = ["note-saved"] as const;
 
 /** The email in the path, or a 404 for anything that cannot be one. */
 function emailParam(value: string | undefined): string {
@@ -39,6 +41,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   if (!found.ok) throw enrollmentFailureResponse(found.error);
   const student = found.value;
   return {
+    feedback: feedbackCode(request, FEEDBACK),
     name: student.fullName,
     email: student.email,
     phone: student.phoneDigits,
@@ -95,16 +98,23 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const saved = await context
     .get(servicesContext)
     .students.saveNote(actor, email, note);
-  if (saved.ok) return redirect(`/admin/alumnas/${encodeURIComponent(email)}`);
+  if (saved.ok)
+    return redirect(
+      withFeedback(`/admin/alumnas/${encodeURIComponent(email)}`, "note-saved"),
+    );
   if (saved.error.kind === "invalid")
     return data({ error: copy.notes.tooLong, value: note }, { status: 422 });
   throw enrollmentFailureResponse(saved.error);
 }
 
 export default function AdminStudentDetail() {
-  const student = useLoaderData<typeof loader>();
+  const { feedback, ...student } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   return (
-    <StudentDetail student={student} {...(result ? { form: result } : {})} />
+    <StudentDetail
+      student={student}
+      feedback={feedback}
+      {...(result ? { form: result } : {})}
+    />
   );
 }

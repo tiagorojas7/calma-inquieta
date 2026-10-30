@@ -280,7 +280,10 @@ export const adminMicrocopy = {
   students: {
     title: "Alumnas",
     filterLabel: "Filtrar alumnas",
+    count: (n: number) => (n === 1 ? "1 alumna" : `${String(n)} alumnas`),
+    cardLabels: { email: "Email", phone: "Teléfono", orders: "Pedidos" },
     filters: {
+      summary: "Buscar y filtrar",
       search: "Buscar",
       searchHint: "Nombre, email o teléfono.",
       workshop: "Taller",
@@ -309,6 +312,7 @@ export const adminMicrocopy = {
     },
     detail: {
       back: "Volver a alumnas",
+      feedback: { "note-saved": "Observaciones guardadas" },
       personal: "Datos",
       name: "Nombre",
       email: "Email",
@@ -1193,7 +1197,19 @@ export const adminMicrocopy = {
   privateEvents: {
     title: "Eventos privados",
     filterLabel: "Filtrar consultas",
-    filters: { status: "Estado", all: "Todas", apply: "Filtrar" },
+    count: (n: number) => (n === 1 ? "1 consulta" : `${String(n)} consultas`),
+    cardLabels: {
+      date: "Fecha deseada",
+      people: "Personas",
+      received: "Recibida",
+    },
+    feedback: { "status-saved": "Estado actualizado" },
+    filters: {
+      summary: "Filtrar por estado",
+      status: "Estado",
+      all: "Todas",
+      apply: "Filtrar",
+    },
     status: {
       nueva: "Nueva",
       contactada: "Contactada",

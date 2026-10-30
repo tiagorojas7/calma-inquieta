@@ -8,9 +8,18 @@ import type { Route } from "./+types/home";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
-  const panel = await context.get(servicesContext).insights.panel(actor);
+  const services = context.get(servicesContext);
+  const [panel, events] = await Promise.all([
+    services.insights.panel(actor),
+    services.privateEvents.list(actor, "nueva"),
+  ]);
   if (!panel.ok) throw enrollmentFailureResponse(panel.error);
-  return { email: actor.email, summary: toPanelSummary(panel.value) };
+  // An enquiry count that cannot be read must not hide the rest of the day.
+  const privateEventsUnanswered = events.ok ? events.value.length : 0;
+  return {
+    email: actor.email,
+    summary: toPanelSummary(panel.value, { privateEventsUnanswered }),
+  };
 }
 
 export default function AdminHome() {

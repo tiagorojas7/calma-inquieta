@@ -1,24 +1,31 @@
-import { monthLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
-import type { AdminPanelSummary } from "~/app/ui/admin/admin-landing";
+import { monthLabel } from "~/app/enrollment/order-labels";
+import type {
+  AdminPanelSummary,
+  TodayTask,
+} from "~/app/ui/admin/admin-landing";
 import type { TeacherSettlementSummary } from "~/app/ui/admin/teacher-settlement";
 import type {
   StatisticsRow,
   StatisticsScreenProps,
 } from "~/app/ui/admin/statistics-screen";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { Money } from "~/modules/_shared";
 import { formatPesos } from "~/modules/enrollments";
-import type {
-  PanelView,
-  SettlementsView,
-  StatisticsView,
-  TeacherSettlementRow,
+import {
+  nextPeriod,
+  previousPeriod,
+  type EarningsView,
+  type PanelView,
+  type SettlementsView,
+  type TeacherSettlementRow,
 } from "~/modules/insights";
 
-const TOTAL = adminMicrocopy.statistics.total;
-const percent = (value: number) => `${String(value)} %`;
-const text = (value: number) => String(value);
 const NO_PERCENTAGE = adminMicrocopy.statistics.teachers.noPercentage;
 const MODALITY = adminMicrocopy.teachers.modality;
+const stats = adminMicrocopy.statistics;
+const today = adminMicrocopy.landing.tasks;
+const text = (value: number) => String(value);
+const percent = (value: number) => `${String(value)} %`;
 
 /** Basis points as an es-AR percentage: 3050 is "30,5 %". */
 function percentageOf(percentagesBp: readonly number[]): string {
@@ -29,22 +36,97 @@ function percentageOf(percentagesBp: readonly number[]): string {
         .join(", ");
 }
 
-/** The panel figures as the landing shows them: month names and pesos. */
-export function toPanelSummary(view: PanelView): AdminPanelSummary {
+/** "A", "A y B" or "A, B y C": the suppliers a task names. */
+function listOf(names: readonly string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1] ?? ""}`;
+}
+
+/** The sum of some amounts, formatted as pesos. */
+function pesosOf(amounts: readonly Money[]): string {
+  const sum = Money.fromCentavos(
+    amounts.reduce((total, amount) => total + amount.toCentavos(), 0),
+  );
+  return sum.ok ? formatPesos(sum.value) : "";
+}
+
+export interface TodayExtras {
+  /** Private-event enquiries nobody answered yet. */
+  readonly privateEventsUnanswered: number;
+}
+
+/**
+ * The home: what is due today as ordered actions, each with one button, and
+ * the month's four figures. A task only exists while it has something to do.
+ */
+export function toPanelSummary(
+  view: PanelView,
+  extras: TodayExtras = { privateEventsUnanswered: 0 },
+): AdminPanelSummary {
+  const tasks: TodayTask[] = [];
+  if (view.pending.total > 0)
+    tasks.push({
+      key: "charge",
+      text: today.charge.text(view.pending.total),
+      action: today.charge.action,
+      hint: today.charge.hint,
+      href: "/admin/inscripciones?estado=pending_confirmation",
+    });
+  if (view.today.suppliersToOrder.length > 0)
+    tasks.push({
+      key: "order",
+      text: today.orderMaterials.text(listOf(view.today.suppliersToOrder)),
+      action: today.orderMaterials.action,
+      hint: today.orderMaterials.hint,
+      href: "/admin/inscripciones/materiales",
+    });
+  if (view.today.ordersToDeliver > 0)
+    tasks.push({
+      key: "deliver",
+      text: today.deliver.text(view.today.ordersToDeliver),
+      action: today.deliver.action,
+      hint: today.deliver.hint,
+      href: "/admin/inscripciones/materiales?seccion=entregar",
+    });
+  const next = monthLabel(view.nextPeriod);
+  for (const workshop of view.alerts.withoutOpenPeriod)
+    tasks.push({
+      key: `open-${workshop.workshopId}`,
+      text: today.openMonth.text(next, workshop.name),
+      action: today.openMonth.action(next),
+      hint: today.openMonth.hint(workshop.name),
+      href: "/admin/talleres",
+    });
+  if (view.today.pendingIntensiveRequests > 0)
+    tasks.push({
+      key: "intensive",
+      text: today.intensiveDeposit.text(view.today.pendingIntensiveRequests),
+      action: today.intensiveDeposit.action,
+      hint: today.intensiveDeposit.hint,
+      href: "/admin/intensivos",
+    });
+  if (extras.privateEventsUnanswered > 0)
+    tasks.push({
+      key: "event",
+      text: today.privateEvent.text(extras.privateEventsUnanswered),
+      action: today.privateEvent.action,
+      hint: today.privateEvent.hint,
+      href: "/admin/eventos",
+    });
   return {
     period: view.period,
     monthLabel: monthLabel(view.period),
-    nextMonthLabel: monthLabel(view.nextPeriod),
-    occupancy: view.occupancy,
-    pending: view.pending,
-    confirmedThisMonth: view.confirmedThisMonth,
-    income: {
-      total: formatPesos(view.income.total),
-      fee: formatPesos(view.income.fee),
-      materials: formatPesos(view.income.materials),
+    tasks,
+    figures: {
+      collected: formatPesos(view.month.collected),
+      profit: formatPesos(view.month.profit),
+      teachers: formatPesos(view.month.teacherPay),
+      occupancy: percent(view.month.occupancyPercent),
+      occupancyDetail: adminMicrocopy.landing.figures.occupancyDetail(
+        view.month.enrolled,
+        view.month.capacity,
+      ),
     },
-    materialsToOrder: view.materialsToOrder,
-    alerts: { withoutOpenPeriod: view.alerts.withoutOpenPeriod },
   };
 }
 
@@ -58,122 +140,136 @@ function withTotal(
     : [...rows, { key: "total", cells: total, total: true }];
 }
 
-/** Every statistics table formatted as text, ready for the screen. */
-export function toStatisticsScreen(
-  view: StatisticsView,
-): Omit<StatisticsScreenProps, "teachers"> {
-  const occupancy = view.occupancy.totals;
-  const conversion = view.conversion.totals;
-  const income = view.income.totals;
+/** "Ana · de terceros", or nothing for an activity without a teacher. */
+function teacherCell(
+  name: string | null,
+  modality: "own" | "third_party" | null,
+): string {
+  if (name === null) return "";
+  return modality === null
+    ? name
+    : `${name} · ${stats.activities.modality[modality]}`;
+}
+
+/** The statistics screen: the month's figures and every table as text. */
+export function toStatisticsScreen(view: EarningsView): StatisticsScreenProps {
+  const { totals } = view;
+  const base = "/admin/estadisticas";
+  const figures = stats.figures;
   return {
     period: view.period,
     periodLabel: monthLabel(view.period),
-    occupancy: withTotal(
-      view.occupancy.rows.map((row) => ({
-        key: `${row.workshopId}-${row.turnoId}`,
-        cells: [
-          row.workshopName,
-          row.turnoLabel,
-          text(row.capacity),
-          text(row.confirmed),
-          text(row.free),
-          percent(row.percent),
-        ],
-      })),
-      [
-        TOTAL,
-        "",
-        text(occupancy.capacity),
-        text(occupancy.confirmed),
-        text(occupancy.free),
-        percent(occupancy.percent),
-      ],
-    ),
-    conversion: withTotal(
-      view.conversion.rows.map((row) => ({
-        key: row.workshopId,
-        cells: [
-          row.workshopName,
-          text(row.received),
-          text(row.pending),
-          text(row.confirmed),
-          text(row.cancelled),
-          percent(row.percent),
-        ],
-      })),
-      [
-        TOTAL,
-        text(conversion.received),
-        text(conversion.pending),
-        text(conversion.confirmed),
-        text(conversion.cancelled),
-        percent(conversion.percent),
-      ],
-    ),
-    income: withTotal(
-      view.income.rows.map((row) => ({
-        key: row.workshopId,
-        cells: [
-          row.workshopName,
-          text(row.orders),
-          formatPesos(row.fee),
-          formatPesos(row.materials),
-          formatPesos(row.total),
-        ],
-      })),
-      [
-        TOTAL,
-        text(income.orders),
-        formatPesos(income.fee),
-        formatPesos(income.materials),
-        formatPesos(income.total),
-      ],
-    ),
-    students: [
-      text(view.students.students),
-      text(view.students.recurring),
-      percent(view.students.percent),
+    previousHref: `${base}?mes=${previousPeriod(view.period)}`,
+    nextHref: `${base}?mes=${nextPeriod(view.period)}`,
+    downloadHref: `${base}/planilla?mes=${view.period}`,
+    figures: [
+      {
+        key: "collected",
+        label: figures.collected,
+        value: formatPesos(totals.collected),
+        detail: figures.collectedDetail,
+      },
+      {
+        key: "teachers",
+        label: figures.teachers,
+        value: formatPesos(totals.teacherPay),
+      },
+      {
+        key: "materials",
+        label: figures.materials,
+        value: formatPesos(totals.materialsCost),
+      },
+      {
+        key: "profit",
+        label: figures.profit,
+        value: formatPesos(totals.profit),
+        detail: figures.profitDetail,
+        highlight: true,
+      },
+      {
+        key: "students",
+        label: figures.students,
+        value: text(view.students.students),
+      },
+      {
+        key: "occupancy",
+        label: figures.occupancy,
+        value: percent(totals.occupancyPercent),
+        detail: figures.occupancyDetail(totals.enrolled, totals.capacity),
+      },
     ],
-    materials: view.materials.map((row, index) => ({
-      key: `${String(index)}-${row.status}-${row.workshopId}-${row.materialName}`,
-      cells: [
-        ORDER_STATUS_LABELS[row.status],
-        row.workshopName,
-        row.materialName,
-        row.supplierName,
-        text(row.orders),
-        text(row.units),
-        formatPesos(row.amount),
+    activities: withTotal(
+      view.activities.map((row) => ({
+        key: `${row.kind}-${row.id}`,
+        cells: [
+          row.kind === "intensivo"
+            ? `${row.name} (${stats.activities.intensive})`
+            : row.name,
+          text(row.enrolled),
+          text(row.capacity),
+          formatPesos(row.collected),
+          teacherCell(row.teacherName, row.teacherModality),
+          row.teacherModality === "third_party"
+            ? formatPesos(row.teacherPay)
+            : stats.notSettled,
+          formatPesos(row.materialsCost),
+          formatPesos(row.profit),
+        ],
+      })),
+      [
+        stats.total,
+        text(totals.enrolled),
+        text(totals.capacity),
+        formatPesos(totals.collected),
+        "",
+        formatPesos(totals.teacherPay),
+        formatPesos(totals.materialsCost),
+        formatPesos(totals.profit),
       ],
-    })),
-  };
-}
-
-/** The teachers table of the statistics screen, with a closing totals row. */
-export function toTeacherSettlementRows(
-  view: SettlementsView,
-): readonly StatisticsRow[] {
-  return withTotal(
-    view.rows.map((row) => ({
+    ),
+    teachers: view.teachers.map((row) => ({
       key: row.teacherId,
       cells: [
         row.teacherName,
-        MODALITY[row.modality],
-        percentageOf(row.percentagesBp),
-        text(row.students),
-        formatPesos(row.fee),
-        row.estimate === null ? NO_PERCENTAGE : formatPesos(row.estimate),
+        stats.activities.modality[row.modality],
+        row.activities.join(", "),
+        row.toSettle === null ? stats.notSettled : formatPesos(row.toSettle),
       ],
     })),
-    [
-      TOTAL,
-      "",
-      "",
-      "",
-      formatPesos(view.totals.fee),
-      formatPesos(view.totals.estimate),
+    materials: withTotal(
+      view.suppliers.map((row) => ({
+        key: row.supplierId,
+        cells: [
+          row.supplierName,
+          text(row.orders),
+          text(row.units),
+          formatPesos(row.charged),
+          formatPesos(row.cost),
+        ],
+      })),
+      [
+        stats.total,
+        text(view.suppliers.reduce((sum, row) => sum + row.orders, 0)),
+        text(view.suppliers.reduce((sum, row) => sum + row.units, 0)),
+        pesosOf(view.suppliers.map((row) => row.charged)),
+        pesosOf(view.suppliers.map((row) => row.cost)),
+      ],
+    ),
+    materialsNote: view.materialsAtCost ? stats.materials.atCost : null,
+    students: [
+      {
+        key: "new",
+        cells: [
+          stats.students.newOnes,
+          text(view.students.students - view.students.recurring),
+        ],
+      },
+      {
+        key: "returning",
+        cells: [stats.students.returning, text(view.students.recurring)],
+      },
     ],
-  );
+  };
 }
 
 export function toTeacherSettlement(

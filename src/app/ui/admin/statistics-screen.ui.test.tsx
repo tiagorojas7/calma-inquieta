@@ -9,157 +9,182 @@ import {
 const props: StatisticsScreenProps = {
   period: "2026-10",
   periodLabel: "octubre 2026",
-  occupancy: [
+  previousHref: "/admin/estadisticas?mes=2026-09",
+  nextHref: "/admin/estadisticas?mes=2026-11",
+  downloadHref: "/admin/estadisticas/planilla?mes=2026-10",
+  figures: [
+    { key: "collected", label: "Cobrado", value: "$ 96.000" },
+    { key: "teachers", label: "A pagar a profesoras", value: "$ 12.000" },
+    { key: "materials", label: "Costo de materiales", value: "$ 6.000" },
+    {
+      key: "profit",
+      label: "Ganancia del estudio",
+      value: "$ 78.000",
+      highlight: true,
+    },
+    { key: "students", label: "Alumnas activas", value: "10" },
+    {
+      key: "occupancy",
+      label: "Ocupación",
+      value: "39 %",
+      detail: "9 de 23 lugares",
+    },
+  ],
+  activities: [
     {
       key: "a",
-      cells: ["Cerámica", "Martes", "6", "3", "3", "50 %"],
+      cells: [
+        "Cerámica",
+        "4",
+        "10",
+        "$ 46.000",
+        "Ana Gómez · de terceros",
+        "$ 12.000",
+        "$ 6.000",
+        "$ 28.000",
+      ],
     },
-    { key: "total", cells: ["Total", "", "6", "3", "3", "50 %"], total: true },
+    {
+      key: "total",
+      cells: [
+        "Total",
+        "4",
+        "10",
+        "$ 46.000",
+        "",
+        "$ 12.000",
+        "$ 6.000",
+        "$ 28.000",
+      ],
+      total: true,
+    },
   ],
-  conversion: [{ key: "a", cells: ["Cerámica", "8", "2", "2", "4", "25 %"] }],
-  income: [],
-  students: ["8", "2", "25 %"],
   teachers: [
     {
       key: "t1",
-      cells: ["Ana Gómez", "De terceros", "30 %", "2", "$ 30.000", "$ 9.000"],
+      cells: ["Ana Gómez", "de terceros", "Cerámica", "$ 12.000"],
     },
+    { key: "t2", cells: ["Lola Paz", "propia", "Acuarela", "—"] },
   ],
   materials: [
-    {
-      key: "m",
-      cells: ["Cobrado", "Cerámica", "Taza", "Arcilla SA", "1", "2", "$ 4.000"],
-    },
+    { key: "s1", cells: ["Arcilla SA", "3", "4", "$ 6.000", "$ 6.000"] },
+  ],
+  materialsNote: "Materiales: se cobran al costo, no suman ganancia.",
+  students: [
+    { key: "new", cells: ["Nuevas", "6"] },
+    { key: "returning", cells: ["Que ya venían de otro mes", "4"] },
   ],
 };
 
 describe("StatisticsScreen", () => {
-  it("shows one labelled table per indicator, the totals row and the month", async () => {
+  it("shows the month, the six figures and the profit highlighted", async () => {
     const { container } = render(<StatisticsScreen {...props} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Estadísticas" }),
     ).toBeVisible();
-    expect(screen.getByText("Datos de octubre 2026.")).toBeVisible();
-    const occupancy = screen.getByRole("list", { name: "Ocupación" });
-    const cards = within(occupancy).getAllByRole("listitem");
-    expect(cards).toHaveLength(2);
-    const first = within(cards[0] as HTMLElement);
-    expect(first.getByText("Cerámica")).toBeVisible();
-    expect(
-      ["Turno", "Cupos", "Inscriptas", "Libres", "Ocupación"].map(
-        (label) => first.getByText(label).textContent,
-      ),
-    ).toEqual(["Turno", "Cupos", "Inscriptas", "Libres", "Ocupación"]);
-    expect(cards[1]).toHaveTextContent("Total");
-    expect(cards[1]).toHaveTextContent("50 %");
-    expect(screen.getByRole("list", { name: "Conversión" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Alumnas" })).toBeVisible();
-    expect(screen.getByRole("list", { name: "Materiales" })).toBeVisible();
+    const figures = within(
+      screen.getByRole("list", { name: "octubre 2026" }),
+    ).getAllByRole("listitem");
+    expect(figures.map((item) => item.textContent)).toEqual([
+      "Cobrado$ 96.000",
+      "A pagar a profesoras$ 12.000",
+      "Costo de materiales$ 6.000",
+      "Ganancia del estudio$ 78.000",
+      "Alumnas activas10",
+      "Ocupación39 %9 de 23 lugares",
+    ]);
     await expectNoAxeViolations(container);
   });
 
-  it("also shows each report as a table from lg, hidden below it", () => {
+  it("moves between months with plain links and keeps the month form", () => {
     render(<StatisticsScreen {...props} />);
 
-    for (const name of [
-      "Ocupación",
-      "Conversión",
-      "Alumnas",
-      "Profesores",
-      "Materiales",
-    ]) {
-      expect(
-        screen.getByRole("list", { name }).closest(".lg\\:hidden"),
-      ).not.toBeNull();
-      expect(
-        screen.getByRole("table", { name }).closest(".hidden.lg\\:block"),
-      ).not.toBeNull();
-    }
-    const occupancy = screen.getByRole("table", { name: "Ocupación" });
+    expect(screen.getByRole("link", { name: /Mes anterior/ })).toHaveAttribute(
+      "href",
+      "/admin/estadisticas?mes=2026-09",
+    );
+    expect(screen.getByRole("link", { name: /Mes siguiente/ })).toHaveAttribute(
+      "href",
+      "/admin/estadisticas?mes=2026-11",
+    );
+    expect(screen.getByLabelText("Mes")).toHaveValue("2026-10");
+    expect(screen.getByRole("button", { name: "Ver mes" })).toBeVisible();
+  });
+
+  it("offers the spreadsheet as a plain download link", () => {
+    render(<StatisticsScreen {...props} />);
+
     expect(
-      within(occupancy)
+      screen.getByRole("link", { name: "Descargar planilla" }),
+    ).toHaveAttribute("href", "/admin/estadisticas/planilla?mes=2026-10");
+  });
+
+  it("shows the main table from lg with the spreadsheet columns and a bold totals row", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const table = screen.getByRole("table", { name: "Por taller e intensivo" });
+    expect(table.closest(".hidden.lg\\:block")).not.toBeNull();
+    expect(
+      within(table)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
     ).toEqual([
-      "Taller",
-      "Turno",
-      "Cupos",
+      "Taller o intensivo",
       "Inscriptas",
-      "Libres",
-      "Ocupación",
+      "Lugares",
+      "Cobrado",
+      "Profesora",
+      "A pagar a la profesora",
+      "Materiales",
+      "Ganancia",
     ]);
-    for (const header of within(occupancy).getAllByRole("columnheader"))
-      expect(header).toHaveAttribute("scope", "col");
-    const rows = within(occupancy).getAllByRole("row");
+    const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(3);
-    expect(rows[1]).toHaveTextContent("Cerámica");
+    expect(rows[1]).toHaveTextContent("Ana Gómez · de terceros");
     expect(rows[2]).toHaveTextContent("Total");
-    expect(
-      within(screen.getByRole("table", { name: "Profesores" }))
-        .getAllByRole("columnheader")
-        .map((header) => header.textContent),
-    ).toContain("Importe estimado a liquidar");
-    expect(
-      within(screen.getByRole("table", { name: "Alumnas" })).getAllByRole(
-        "cell",
-      ),
-    ).toHaveLength(3);
+    expect(rows[2]?.querySelectorAll("strong").length).toBeGreaterThan(0);
   });
 
-  it("shows the teachers table with the settlement column and the note about own teachers", () => {
+  it("shows the same rows as cards below lg", () => {
     render(<StatisticsScreen {...props} />);
 
-    const list = screen.getByRole("list", { name: "Profesores" });
-    const card = within(list).getByRole("listitem");
-    expect(card).toHaveTextContent("Ana Gómez");
-    expect(within(card).getByText("Importe estimado a liquidar")).toBeVisible();
-    expect(card).toHaveTextContent("$ 9.000");
-    expect(
-      screen.getByText(/modalidad propia no tienen porcentaje/),
-    ).toBeVisible();
+    const list = screen.getByRole("list", { name: "Por taller e intensivo" });
+    expect(list.closest(".lg\\:hidden")).not.toBeNull();
+    const cards = within(list).getAllByRole("listitem");
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveTextContent("Cerámica");
+    expect(cards[0]).toHaveTextContent("$ 28.000");
   });
 
-  it("explains an indicator with no rows instead of drawing an empty table", () => {
+  it("keeps the secondary tables closed until opened", () => {
+    const { container } = render(<StatisticsScreen {...props} />);
+
+    const sections = container.querySelectorAll("details");
+    expect(
+      [...sections].map((item) => item.querySelector("summary")?.textContent),
+    ).toEqual(["Profesoras", "Materiales", "Alumnas"]);
+    for (const section of sections) expect(section).not.toHaveAttribute("open");
+  });
+
+  it("shows an own teacher as not settled and says materials are charged at cost", () => {
     render(<StatisticsScreen {...props} />);
 
+    const table = screen.getByRole("table", { name: "Profesoras" });
+    expect(within(table).getAllByRole("row")[2]).toHaveTextContent("—");
     expect(
-      screen.queryByRole("list", { name: "Ingresos registrados" }),
+      screen.getByText("Materiales: se cobran al costo, no suman ganancia."),
+    ).toBeTruthy();
+  });
+
+  it("explains a month without activity instead of drawing an empty table", () => {
+    render(<StatisticsScreen {...props} activities={[]} teachers={[]} />);
+
+    expect(
+      screen.queryByRole("table", { name: "Por taller e intensivo" }),
     ).toBeNull();
     expect(
       screen.getAllByText("Todavía no hay datos para este mes").length,
     ).toBeGreaterThan(0);
-  });
-
-  it("shows breadcrumbs back to the panel", () => {
-    render(<StatisticsScreen {...props} />);
-
-    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
-    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
-  });
-
-  it("uses the shared page header without changing its query form", () => {
-    render(<StatisticsScreen {...props} />);
-
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(
-      screen.getByRole("link", { name: "Volver al panel" }),
-    ).toHaveAttribute("href", "/admin");
-    expect(screen.getByText("Datos de octubre 2026.")).toBeVisible();
-  });
-
-  it("filters the month with a GET form and links back with plain anchors", () => {
-    render(<StatisticsScreen {...props} />);
-
-    const form = screen.getByRole("search");
-    expect(form).toHaveAttribute("method", "get");
-    expect(form).toHaveAttribute("action", "/admin/estadisticas");
-    expect(screen.getByLabelText("Mes")).toHaveValue("2026-10");
-    expect(
-      screen.getByRole("link", { name: "Volver al panel" }),
-    ).toHaveAttribute("href", "/admin");
   });
 });

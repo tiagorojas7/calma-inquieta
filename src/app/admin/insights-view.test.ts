@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import type {
+  EarningsView,
   PanelView,
   SettlementsView,
-  StatisticsView,
 } from "~/modules/insights";
 import {
   toPanelSummary,
   toStatisticsScreen,
   toTeacherSettlement,
-  toTeacherSettlementRows,
 } from "./insights-view";
 
 const pesos = (amount: number) => {
@@ -18,167 +17,300 @@ const pesos = (amount: number) => {
   return money.value;
 };
 
-describe("toPanelSummary", () => {
-  it("labels the months and formats the income as pesos", () => {
-    const view: PanelView = {
-      period: "2026-10",
-      nextPeriod: "2026-11",
-      occupancy: { capacity: 10, confirmed: 4, free: 6, percent: 40 },
-      pending: { total: 5, older: 2 },
-      confirmedThisMonth: 3,
-      income: {
-        orders: 3,
-        fee: pesos(25_000),
-        materials: pesos(3_000),
-        total: pesos(28_000),
-      },
-      materialsToOrder: { orders: 3, units: 6 },
-      alerts: {
-        pendingOverdue: 2,
-        withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
-        materialsNotRequested: { orders: 3, units: 6 },
-      },
-    };
+const month = {
+  enrolled: 9,
+  capacity: 23,
+  occupancyPercent: 39,
+  collected: pesos(96_000),
+  teacherPay: pesos(27_000),
+  materialsCost: pesos(6_000),
+  profit: pesos(63_000),
+};
 
-    expect(toPanelSummary(view)).toEqual({
-      period: "2026-10",
-      monthLabel: "octubre 2026",
-      nextMonthLabel: "noviembre 2026",
-      occupancy: { capacity: 10, confirmed: 4, free: 6, percent: 40 },
-      pending: { total: 5, older: 2 },
-      confirmedThisMonth: 3,
-      income: {
-        total: `$ 28.000`,
-        fee: `$ 25.000`,
-        materials: `$ 3.000`,
+const panel: PanelView = {
+  period: "2026-10",
+  nextPeriod: "2026-11",
+  occupancy: { capacity: 10, confirmed: 4, free: 6, percent: 40 },
+  pending: { total: 3, older: 1 },
+  confirmedThisMonth: 3,
+  income: {
+    orders: 3,
+    fee: pesos(25_000),
+    materials: pesos(3_000),
+    total: pesos(28_000),
+  },
+  materialsToOrder: { orders: 3, units: 6 },
+  month,
+  today: {
+    suppliersToOrder: ["Arcilla SA", "Pinceles SRL"],
+    ordersToDeliver: 2,
+    pendingIntensiveRequests: 1,
+  },
+  alerts: {
+    pendingOverdue: 1,
+    withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
+    materialsNotRequested: { orders: 3, units: 6 },
+  },
+};
+
+describe("toPanelSummary", () => {
+  it("lists what is due today in order, each with its one button", () => {
+    const summary = toPanelSummary(panel, { privateEventsUnanswered: 2 });
+
+    expect(
+      summary.tasks.map(({ text, action, href }) => ({ text, action, href })),
+    ).toEqual([
+      {
+        text: "3 inscripciones por cobrar",
+        action: "Cobrar",
+        href: "/admin/inscripciones?estado=pending_confirmation",
       },
-      materialsToOrder: { orders: 3, units: 6 },
-      alerts: {
-        withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
+      {
+        text: "Pedir materiales a Arcilla SA y Pinceles SRL",
+        action: "Ver pedido",
+        href: "/admin/inscripciones/materiales",
       },
+      {
+        text: "Hay 2 pedidos para entregar",
+        action: "Entregar",
+        href: "/admin/inscripciones/materiales?seccion=entregar",
+      },
+      {
+        text: "Abrir inscripciones de noviembre 2026 en Acuarela",
+        action: "Abrir noviembre 2026",
+        href: "/admin/talleres",
+      },
+      {
+        text: "1 reserva de intensivo esperando seña",
+        action: "Ver reservas",
+        href: "/admin/intensivos",
+      },
+      {
+        text: "2 consultas de evento privado sin responder",
+        action: "Responder",
+        href: "/admin/eventos",
+      },
+    ]);
+  });
+
+  it("has no task when nothing is due", () => {
+    const summary = toPanelSummary({
+      ...panel,
+      pending: { total: 0, older: 0 },
+      today: {
+        suppliersToOrder: [],
+        ordersToDeliver: 0,
+        pendingIntensiveRequests: 0,
+      },
+      alerts: { ...panel.alerts, withoutOpenPeriod: [] },
+    });
+
+    expect(summary.tasks).toEqual([]);
+  });
+
+  it("singularizes a single item", () => {
+    const summary = toPanelSummary({
+      ...panel,
+      pending: { total: 1, older: 0 },
+      today: { ...panel.today, ordersToDeliver: 1 },
+    });
+
+    expect(summary.tasks[0]?.text).toBe("1 inscripción por cobrar");
+    expect(summary.tasks[2]?.text).toBe("Hay 1 pedido para entregar");
+  });
+
+  it("formats the four figures of the month as pesos and a percentage", () => {
+    expect(toPanelSummary(panel).figures).toEqual({
+      collected: "$ 96.000",
+      profit: "$ 63.000",
+      teachers: "$ 27.000",
+      occupancy: "39 %",
+      occupancyDetail: "9 de 23 lugares",
     });
   });
 });
 
+const earnings: EarningsView = {
+  period: "2026-01",
+  activities: [
+    {
+      kind: "taller",
+      id: "w1",
+      name: "Cerámica",
+      enrolled: 4,
+      capacity: 10,
+      collected: pesos(46_000),
+      teacherName: "Ana Gómez",
+      teacherModality: "third_party",
+      teacherPay: pesos(12_000),
+      materialsCost: pesos(6_000),
+      profit: pesos(28_000),
+    },
+    {
+      kind: "taller",
+      id: "w2",
+      name: "Acuarela",
+      enrolled: 2,
+      capacity: 5,
+      collected: pesos(20_000),
+      teacherName: "Lola Paz",
+      teacherModality: "own",
+      teacherPay: pesos(0),
+      materialsCost: pesos(0),
+      profit: pesos(20_000),
+    },
+    {
+      kind: "intensivo",
+      id: "i1",
+      name: "Torno",
+      enrolled: 3,
+      capacity: 8,
+      collected: pesos(30_000),
+      teacherName: null,
+      teacherModality: null,
+      teacherPay: pesos(0),
+      materialsCost: pesos(0),
+      profit: pesos(30_000),
+    },
+  ],
+  totals: {
+    enrolled: 9,
+    capacity: 23,
+    occupancyPercent: 39,
+    collected: pesos(96_000),
+    teacherPay: pesos(12_000),
+    materialsCost: pesos(6_000),
+    profit: pesos(78_000),
+  },
+  students: { students: 10, recurring: 4, percent: 40 },
+  teachers: [
+    {
+      teacherId: "t1",
+      teacherName: "Ana Gómez",
+      modality: "third_party",
+      activities: ["Cerámica"],
+      toSettle: pesos(12_000),
+    },
+    {
+      teacherId: "t2",
+      teacherName: "Lola Paz",
+      modality: "own",
+      activities: ["Acuarela"],
+      toSettle: null,
+    },
+  ],
+  suppliers: [
+    {
+      supplierId: "s1",
+      supplierName: "Arcilla SA",
+      orders: 3,
+      units: 4,
+      charged: pesos(6_000),
+      cost: pesos(6_000),
+    },
+  ],
+  materialsAtCost: true,
+};
+
 describe("toStatisticsScreen", () => {
-  const view: StatisticsView = {
-    period: "2026-10",
-    occupancy: {
-      rows: [
-        {
-          workshopId: "w1",
-          workshopName: "Ceramica",
-          turnoId: "t1",
-          turnoLabel: "Martes",
-          capacity: 6,
-          confirmed: 3,
-          free: 3,
-          percent: 50,
-        },
-      ],
-      totals: { capacity: 6, confirmed: 3, free: 3, percent: 50 },
-    },
-    conversion: {
-      rows: [
-        {
-          workshopId: "w1",
-          workshopName: "Ceramica",
-          received: 8,
-          pending: 2,
-          confirmed: 2,
-          cancelled: 4,
-          percent: 25,
-        },
-      ],
-      totals: {
-        received: 8,
-        pending: 2,
-        confirmed: 2,
-        cancelled: 4,
-        percent: 25,
-      },
-    },
-    income: {
-      rows: [
-        {
-          workshopId: "w1",
-          workshopName: "Ceramica",
-          orders: 2,
-          fee: pesos(20_000),
-          materials: pesos(3_000),
-          total: pesos(23_000),
-        },
-      ],
-      totals: {
-        orders: 2,
-        fee: pesos(20_000),
-        materials: pesos(3_000),
-        total: pesos(23_000),
-      },
-    },
-    students: { students: 8, recurring: 2, percent: 25 },
-    materials: [
-      {
-        status: "paid",
-        workshopId: "w1",
-        workshopName: "Ceramica",
-        materialName: "Taza",
-        supplierName: "Arcilla SA",
-        orders: 1,
-        units: 2,
-        amount: pesos(4_000),
-      },
-    ],
-  };
+  it("names the month and links the previous and next ones, rolling over the year", () => {
+    const screen = toStatisticsScreen(earnings);
 
-  it("formats every table as text and closes the ones with totals", () => {
-    const screen = toStatisticsScreen(view);
+    expect(screen.periodLabel).toBe("enero 2026");
+    expect(screen.previousHref).toBe("/admin/estadisticas?mes=2025-12");
+    expect(screen.nextHref).toBe("/admin/estadisticas?mes=2026-02");
+    expect(screen.downloadHref).toBe(
+      "/admin/estadisticas/planilla?mes=2026-01",
+    );
+  });
 
-    expect(screen.periodLabel).toBe("octubre 2026");
-    expect(screen.occupancy.map((row) => row.cells)).toEqual([
-      ["Ceramica", "Martes", "6", "3", "3", "50 %"],
-      ["Total", "", "6", "3", "3", "50 %"],
+  it("shows the six figures with plain labels", () => {
+    const { figures } = toStatisticsScreen(earnings);
+
+    expect(figures.map(({ label, value }) => [label, value])).toEqual([
+      ["Cobrado", "$ 96.000"],
+      ["A pagar a profesoras", "$ 12.000"],
+      ["Costo de materiales", "$ 6.000"],
+      ["Ganancia del estudio", "$ 78.000"],
+      ["Alumnas activas", "10"],
+      ["Ocupación", "39 %"],
     ]);
-    expect(screen.occupancy[1]?.total).toBe(true);
-    expect(screen.conversion[1]?.cells).toEqual([
-      "Total",
-      "8",
-      "2",
-      "2",
-      "4",
-      "25 %",
+    expect(figures.find((figure) => figure.highlight)?.label).toBe(
+      "Ganancia del estudio",
+    );
+  });
+
+  it("builds the main table with the teacher, her settlement and a bold totals row", () => {
+    const { activities } = toStatisticsScreen(earnings);
+
+    expect(activities.map((row) => row.cells)).toEqual([
+      [
+        "Cerámica",
+        "4",
+        "10",
+        "$ 46.000",
+        "Ana Gómez · de terceros",
+        "$ 12.000",
+        "$ 6.000",
+        "$ 28.000",
+      ],
+      [
+        "Acuarela",
+        "2",
+        "5",
+        "$ 20.000",
+        "Lola Paz · propia",
+        "—",
+        "$ 0",
+        "$ 20.000",
+      ],
+      ["Torno (Intensivo)", "3", "8", "$ 30.000", "", "—", "$ 0", "$ 30.000"],
+      ["Total", "9", "23", "$ 96.000", "", "$ 12.000", "$ 6.000", "$ 78.000"],
     ]);
-    expect(screen.income[0]?.cells).toEqual([
-      "Ceramica",
-      "2",
-      `$ 20.000`,
-      `$ 3.000`,
-      `$ 23.000`,
-    ]);
-    expect(screen.students).toEqual(["8", "2", "25 %"]);
-    expect(screen.materials[0]?.cells).toEqual([
-      "Cobrado",
-      "Ceramica",
-      "Taza",
-      "Arcilla SA",
-      "1",
-      "2",
-      `$ 4.000`,
+    expect(activities.at(-1)?.total).toBe(true);
+  });
+
+  it("shows own teachers as not settled and third-party ones with their amount", () => {
+    const { teachers } = toStatisticsScreen(earnings);
+
+    expect(teachers.map((row) => row.cells)).toEqual([
+      ["Ana Gómez", "de terceros", "Cerámica", "$ 12.000"],
+      ["Lola Paz", "propia", "Acuarela", "—"],
     ]);
   });
 
-  it("shows no totals row for an empty table", () => {
-    const empty = toStatisticsScreen({
-      ...view,
-      occupancy: { rows: [], totals: view.occupancy.totals },
-      conversion: { rows: [], totals: view.conversion.totals },
-      income: { rows: [], totals: view.income.totals },
-      materials: [],
+  it("says materials are charged at cost and totals the supplier table", () => {
+    const screen = toStatisticsScreen(earnings);
+
+    expect(screen.materialsNote).toBe(
+      "Materiales: se cobran al costo, no suman ganancia.",
+    );
+    expect(screen.materials.map((row) => row.cells)).toEqual([
+      ["Arcilla SA", "3", "4", "$ 6.000", "$ 6.000"],
+      ["Total", "3", "4", "$ 6.000", "$ 6.000"],
+    ]);
+  });
+
+  it("splits new from returning students", () => {
+    expect(
+      toStatisticsScreen(earnings).students.map((row) => row.cells),
+    ).toEqual([
+      ["Nuevas", "6"],
+      ["Que ya venían de otro mes", "4"],
+    ]);
+  });
+
+  it("keeps an empty month empty, with no totals row", () => {
+    const screen = toStatisticsScreen({
+      ...earnings,
+      activities: [],
+      teachers: [],
+      suppliers: [],
     });
 
-    expect(empty.occupancy).toEqual([]);
-    expect(empty.conversion).toEqual([]);
-    expect(empty.income).toEqual([]);
+    expect(screen.activities).toEqual([]);
+    expect(screen.teachers).toEqual([]);
+    expect(screen.materials).toEqual([]);
   });
 });
 
@@ -210,59 +342,6 @@ const settlements: SettlementsView = {
   ],
   totals: { fee: pesos(40_000), estimate: pesos(9_150) },
 };
-
-describe("toTeacherSettlementRows", () => {
-  it("formats modality, percentage, income and estimate, with a totals row", () => {
-    expect(toTeacherSettlementRows(settlements)).toEqual([
-      {
-        key: "t1",
-        cells: [
-          "Ana Gómez",
-          "De terceros",
-          "30,5 %",
-          "2",
-          "$ 30.000",
-          "$ 9.150",
-        ],
-      },
-      {
-        key: "t2",
-        cells: [
-          "Lola Paz",
-          "Propia",
-          "Sin porcentaje",
-          "1",
-          "$ 10.000",
-          "Sin porcentaje",
-        ],
-      },
-      {
-        key: "total",
-        cells: ["Total", "", "", "", "$ 40.000", "$ 9.150"],
-        total: true,
-      },
-    ]);
-  });
-
-  it("stays empty when no teacher has a period in the month", () => {
-    expect(
-      toTeacherSettlementRows({
-        ...settlements,
-        rows: [],
-      }),
-    ).toEqual([]);
-  });
-
-  it("lists every percentage when the agreement changed inside the month", () => {
-    const [first] = toTeacherSettlementRows({
-      ...settlements,
-      rows: settlements.rows
-        .slice(0, 1)
-        .map((row) => ({ ...row, percentagesBp: [2_000, 4_000] })),
-    });
-    expect(first?.cells[2]).toBe("20 %, 40 %");
-  });
-});
 
 describe("toTeacherSettlement", () => {
   it("picks the teacher's figures for the month", () => {

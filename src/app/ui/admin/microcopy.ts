@@ -28,7 +28,6 @@ export const adminMicrocopy = {
     clearFilters: "Quitar filtros",
     activeFiltersLabel: "Filtros activos",
     chips: {
-      status: (label: string) => `Estado: ${label}`,
       month: (value: string) => `Mes: ${value}`,
       workshop: (name: string) => `Taller: ${name}`,
       search: (value: string) => `Búsqueda: ${value}`,
@@ -40,18 +39,36 @@ export const adminMicrocopy = {
     requestedOn: (date: string) => `Solicitado el ${date}`,
     viewDetail: "Ver detalle",
     viewDetailOf: (number: string) => `Ver detalle del pedido ${number}`,
-    statusGuide: {
-      title: "Qué hacer en cada estado",
-      items: [
-        "Pendiente de confirmación: confirmá el cobro cuando recibas el pago.",
-        "Cobrado: pedí los materiales al proveedor.",
-        "Solicitado al proveedor: marcá como recibido cuando lleguen.",
-        "Recibido: no queda nada por hacer.",
-        "Cancelado: el pedido ya no admite cambios.",
-      ],
+    tabs: {
+      label: "Estados de inscripciones",
+      "por-cobrar": "Por cobrar",
+      pagadas: "Pagadas",
+      canceladas: "Canceladas",
+    },
+    card: {
+      markPaid: "Marcar pagado",
+      otherAmount: "Otro monto",
+      amount: "Monto cobrado",
+      paidOn: "Fecha de pago",
+      note: "Nota (opcional)",
+      saveOther: "Registrar este pago",
+      cancel: "Cancelar",
+      reason: "Motivo",
+      reasonHint: "Entre 3 y 300 caracteres.",
+      cancelSubmit: "Cancelar inscripción",
+      detailAndContact: "Ver detalle y contacto",
+      detailAndContactOf: (number: string) =>
+        `Ver detalle y contacto del pedido ${number}`,
+    },
+    feedback: {
+      paid: (name: string | null) =>
+        name === null ? "Pago registrado" : `Pago de ${name} registrado`,
+      cancelled: (name: string | null) =>
+        name === null
+          ? "Inscripción cancelada"
+          : `Inscripción de ${name} cancelada`,
     },
     filters: {
-      status: "Estado",
       month: "Mes",
       workshop: "Taller",
       anyWorkshop: "Todos los talleres",
@@ -75,9 +92,19 @@ export const adminMicrocopy = {
       next: "Siguiente",
     },
     empty: {
-      title: "No hay inscripciones para este filtro",
-      message: "Probá con otro estado, mes o búsqueda.",
-      action: "Ver pendientes",
+      "por-cobrar": {
+        title: "No hay inscripciones por cobrar",
+        message: "Cuando alguien se inscriba, aparece acá para cobrarla.",
+      },
+      pagadas: {
+        title: "No hay inscripciones pagadas",
+        message: "Probá con otro mes, taller o búsqueda.",
+      },
+      canceladas: {
+        title: "No hay inscripciones canceladas",
+        message: "Probá con otro mes, taller o búsqueda.",
+      },
+      action: "Ver por cobrar",
     },
     consolidationLink: "Materiales a pedir",
     consolidation: {

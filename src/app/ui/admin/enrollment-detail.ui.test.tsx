@@ -24,6 +24,7 @@ const base: EnrollmentDetailProps = {
     fee: "$ 48.000",
     materialsTotal: "$ 10.000",
     total: "$ 58.000",
+    totalPesos: "58000",
     lines: [
       {
         label: "Arcilla 1 kg",
@@ -172,6 +173,7 @@ describe("EnrollmentDetail", () => {
     render(<EnrollmentDetail {...base} />);
 
     const form = screen.getByRole("form", { name: "Confirmar cobro" });
+    expect(within(form).getByLabelText("Monto cobrado")).toHaveValue("58000");
     expect(within(form).getByLabelText("Monto cobrado")).toHaveAttribute(
       "inputmode",
       "numeric",

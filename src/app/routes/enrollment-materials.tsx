@@ -3,6 +3,9 @@ import { data, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import {
   addDraftLine,
+  removeDraftLine,
+  setDraftLineQuantity,
+  type EnrollmentDraft,
   loadEnrollmentDraft,
   saveEnrollmentDraft,
   selectEnrollmentDraft,
@@ -114,6 +117,20 @@ export default function EnrollmentMaterialsRoute() {
     setStored({ slug: loaded.slug, draft: next.value });
   }
 
+  function commit(next: EnrollmentDraft) {
+    saveEnrollmentDraft(window.sessionStorage, loaded.slug, next);
+    setStored({ slug: loaded.slug, draft: next });
+  }
+
+  function onSetQuantity(variantId: string, quantity: number) {
+    if (draft !== null)
+      commit(setDraftLineQuantity(draft, variantId, quantity));
+  }
+
+  function onRemove(variantId: string) {
+    if (draft !== null) commit(removeDraftLine(draft, variantId));
+  }
+
   return (
     <EnrollmentMaterialsPage
       draftState={
@@ -129,6 +146,8 @@ export default function EnrollmentMaterialsRoute() {
       materials={loaded.offer.materials}
       materialsRequired={loaded.offer.materialsRequired}
       onAdd={onAdd}
+      onRemove={onRemove}
+      onSetQuantity={onSetQuantity}
       period={loaded.offer.period}
       recoveryHref={`/talleres/${loaded.slug}/inscripcion?period=${encodeURIComponent(loaded.offer.period)}`}
       studentJson={draft === null ? "" : JSON.stringify(draft.student)}

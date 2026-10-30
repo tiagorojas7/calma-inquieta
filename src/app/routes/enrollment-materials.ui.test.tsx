@@ -32,6 +32,8 @@ describe("EnrollmentMaterialsPage", () => {
         materials={materials}
         materialsRequired
         onAdd={onAdd}
+        onRemove={vi.fn()}
+        onSetQuantity={vi.fn()}
         period="Noviembre 2026"
         total="$ 83.000"
         workshopName="Cerámica inicial"
@@ -49,7 +51,7 @@ describe("EnrollmentMaterialsPage", () => {
     expect(onAdd).toHaveBeenCalledWith("arcilla", "grande", 2);
 
     const total = screen.getByText("$ 83.000");
-    expect(total.closest("aside")).toHaveClass("sticky");
+    expect(total.closest("aside")).toHaveClass("lg:sticky");
   });
 
   it("offers a clear recovery path when the student draft is missing", () => {
@@ -62,6 +64,8 @@ describe("EnrollmentMaterialsPage", () => {
           materials={materials}
           materialsRequired
           onAdd={vi.fn()}
+          onRemove={vi.fn()}
+          onSetQuantity={vi.fn()}
           period="Noviembre 2026"
           recoveryHref="/talleres/ceramica/inscripcion?period=2026-11"
           total="$ 58.000"
@@ -87,6 +91,8 @@ describe("EnrollmentMaterialsPage", () => {
         materials={materials}
         materialsRequired={false}
         onAdd={vi.fn()}
+        onRemove={vi.fn()}
+        onSetQuantity={vi.fn()}
         period="Noviembre 2026"
         total="$ 58.000"
         workshopName="Cerámica inicial"

@@ -2,6 +2,8 @@ import type { Result } from "~/modules/_shared";
 import {
   addToCart,
   buildCart,
+  MAX_LINE_QUANTITY,
+  MIN_LINE_QUANTITY,
   type CartError,
   type CartLine,
 } from "~/modules/enrollments";
@@ -103,4 +105,36 @@ export function addDraftLine(
 ): Result<EnrollmentDraft, CartError> {
   const cart = addToCart(draft.lines, line);
   return cart.ok ? { ok: true, value: { ...draft, lines: cart.value } } : cart;
+}
+
+/**
+ * Sets the quantity of an existing line (no merging): below the minimum the
+ * line is removed, above the maximum it is clamped. Unknown variants and
+ * non-integer quantities leave the draft as it is.
+ */
+export function setDraftLineQuantity(
+  draft: EnrollmentDraft,
+  variantId: string,
+  quantity: number,
+): EnrollmentDraft {
+  if (!Number.isInteger(quantity)) return draft;
+  if (!draft.lines.some((line) => line.variantId === variantId)) return draft;
+  if (quantity < MIN_LINE_QUANTITY) return removeDraftLine(draft, variantId);
+  const clamped = Math.min(quantity, MAX_LINE_QUANTITY);
+  return {
+    ...draft,
+    lines: draft.lines.map((line) =>
+      line.variantId === variantId ? { ...line, quantity: clamped } : line,
+    ),
+  };
+}
+
+export function removeDraftLine(
+  draft: EnrollmentDraft,
+  variantId: string,
+): EnrollmentDraft {
+  return {
+    ...draft,
+    lines: draft.lines.filter((line) => line.variantId !== variantId),
+  };
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { Money } from "~/modules/_shared";
-import type { ConsolidationLine } from "./admin-enrollment-store";
+import type {
+  ConsolidationLine,
+  DeliveryOrder,
+} from "./admin-enrollment-store";
 import {
   createSupplierConsolidationService,
   createUnavailableSupplierConsolidationService,
@@ -35,7 +38,7 @@ function serviceWith(lines: readonly ConsolidationLine[], pendingOrders = 0) {
   return {
     consolidationLines,
     service: createSupplierConsolidationService({
-      store: { consolidationLines },
+      store: { consolidationLines, deliveryOrders: vi.fn() },
     }),
   };
 }
@@ -181,6 +184,7 @@ describe("supplier consolidation", () => {
     const service = createSupplierConsolidationService({
       store: {
         consolidationLines: () => Promise.reject(new Error("read failed")),
+        deliveryOrders: () => Promise.reject(new Error("read failed")),
       },
     });
 
@@ -200,6 +204,60 @@ describe("supplier consolidation", () => {
     await expect(placeholder.consolidate(null, "2026-11")).resolves.toEqual({
       ok: false,
       error: { kind: "denied" },
+    });
+  });
+
+  describe("deliveries", () => {
+    const order = (overrides: Partial<DeliveryOrder>): DeliveryOrder => ({
+      id: "o1",
+      number: "CI-2026-0001",
+      status: "materials_requested",
+      studentName: "Ana Pérez",
+      phoneDigits: "5493515550001",
+      workshopName: "Cerámica",
+      turnoLabel: "Lunes 18:00",
+      lines: [{ materialName: "Arcilla", variantLabel: "Grande", quantity: 2 }],
+      ...overrides,
+    });
+
+    it("returns the month's delivery orders to an admin, validating the period", async () => {
+      const deliveryOrders = vi.fn(() => Promise.resolve([order({})]));
+      const service = createSupplierConsolidationService({
+        store: { consolidationLines: vi.fn(), deliveryOrders },
+      });
+
+      await expect(service.deliveries(admin, "2026-11")).resolves.toEqual({
+        ok: true,
+        value: [order({})],
+      });
+      expect(deliveryOrders).toHaveBeenCalledWith("2026-11");
+      await expect(service.deliveries(admin, "2026-13")).resolves.toEqual({
+        ok: false,
+        error: { kind: "invalid" },
+      });
+    });
+
+    it("denies non-admins before reading and fails closed on store errors", async () => {
+      const deliveryOrders = vi.fn(() => Promise.reject(new Error("db down")));
+      const service = createSupplierConsolidationService({
+        store: { consolidationLines: vi.fn(), deliveryOrders },
+      });
+
+      await expect(service.deliveries(null, "2026-11")).resolves.toEqual({
+        ok: false,
+        error: { kind: "denied" },
+      });
+      expect(deliveryOrders).not.toHaveBeenCalled();
+      await expect(service.deliveries(admin, "2026-11")).resolves.toEqual({
+        ok: false,
+        error: { kind: "unavailable" },
+      });
+      await expect(
+        createUnavailableSupplierConsolidationService().deliveries(
+          admin,
+          "2026-11",
+        ),
+      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     });
   });
 });

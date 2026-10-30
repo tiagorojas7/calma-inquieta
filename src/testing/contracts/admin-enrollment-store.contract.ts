@@ -252,6 +252,7 @@ export function runAdminEnrollmentStoreContract(
           {
             number: order.number,
             studentName: order.student.fullName,
+            phoneDigits: order.student.phoneDigits,
             workshopName: order.workshopName,
             period: order.period,
             turnoLabel: order.turnoLabel,
@@ -438,6 +439,118 @@ export function runAdminEnrollmentStoreContract(
       await expect(
         harness.store.consolidationLines("2026-12"),
       ).resolves.toEqual({ lines: [], pendingOrders: 0 });
+    });
+
+    it("lists, per order, the students whose materials were requested or received", async () => {
+      const harness = await setup();
+      const withLine = (
+        period: string,
+        materialName: string,
+        quantity: number,
+        overrides: Partial<OrderDraft> = {},
+      ) =>
+        harness.createOrder({
+          period,
+          lines: [
+            {
+              materialId: "m-1",
+              variantId: "v-1",
+              materialName,
+              variantLabel: "Grande",
+              unitPrice: pesos(1_000),
+              quantity,
+              supplierId: "supplier-1",
+              supplierName: "Papelería Sur",
+            },
+          ],
+          materialsTotal: pesos(1_000 * quantity),
+          total: pesos(58_000 + 1_000 * quantity),
+          ...overrides,
+        });
+      const paid = await withLine("2026-11", "Arcilla", 2, {
+        student: {
+          fullName: "Ana Paga",
+          email: "ana-paga@example.com",
+          phoneDigits: "5493515550001",
+        },
+      });
+      const requested = await withLine("2026-11", "Esmalte", 1, {
+        turnoId: "t-2",
+        student: {
+          fullName: "Bea Pedida",
+          email: "bea@example.com",
+          phoneDigits: "5493515550002",
+        },
+      });
+      const received = await withLine("2026-11", "Pincel", 3, {
+        turnoId: "t-2",
+        student: {
+          fullName: "Cata Recibida",
+          email: "cata@example.com",
+          phoneDigits: "5493515550003",
+        },
+      });
+      await withLine("2026-11", "Torno", 1);
+      const cancelled = await withLine("2026-11", "Horno", 1);
+      const noLines = await harness.createOrder({ period: "2026-11" });
+      const otherPeriod = await withLine("2026-10", "Arcilla", 5);
+      for (const order of [paid, requested, received, noLines, otherPeriod])
+        await confirm(harness.store, order);
+      for (const [order, to] of [
+        [requested, "materials_requested"],
+        [received, "materials_requested"],
+        [received, "materials_received"],
+      ] as const)
+        await harness.store.markMaterials({
+          orderId: order.id,
+          to,
+          actor,
+          now,
+        });
+      await cancel(harness.store, cancelled);
+
+      const november = await harness.store.deliveryOrders("2026-11");
+
+      expect(
+        november.map((order) => ({
+          id: order.id,
+          number: order.number,
+          status: order.status,
+          studentName: order.studentName,
+          phoneDigits: order.phoneDigits,
+          workshopName: order.workshopName,
+          turnoLabel: order.turnoLabel,
+          lines: order.lines,
+        })),
+      ).toEqual([
+        {
+          id: requested.id,
+          number: requested.number,
+          status: "materials_requested",
+          studentName: "Bea Pedida",
+          phoneDigits: "5493515550002",
+          workshopName: requested.workshopName,
+          turnoLabel: requested.turnoLabel,
+          lines: [
+            { materialName: "Esmalte", variantLabel: "Grande", quantity: 1 },
+          ],
+        },
+        {
+          id: received.id,
+          number: received.number,
+          status: "materials_received",
+          studentName: "Cata Recibida",
+          phoneDigits: "5493515550003",
+          workshopName: received.workshopName,
+          turnoLabel: received.turnoLabel,
+          lines: [
+            { materialName: "Pincel", variantLabel: "Grande", quantity: 3 },
+          ],
+        },
+      ]);
+      await expect(harness.store.deliveryOrders("2026-12")).resolves.toEqual(
+        [],
+      );
     });
 
     it("allows different turnos to progress independently", async () => {

@@ -8,6 +8,7 @@ import {
   type AdminListQuery,
   type Cancelled,
   type ConsolidationLine,
+  type DeliveryOrder,
   type Confirmed,
 } from "~/modules/enrollments/application/admin-enrollment-store";
 import type {
@@ -359,6 +360,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
         id: order.id,
         number: order.number,
         studentName: order.student.fullName,
+        phoneDigits: order.student.phoneDigits,
         workshopName: order.workshopName,
         period: order.period,
         turnoLabel: order.turnoLabel,
@@ -401,6 +403,42 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
       if (rows.length < 50) break;
     }
     return { lines, pendingOrders };
+  }
+  async deliveryOrders(period: string): Promise<readonly DeliveryOrder[]> {
+    const found: DeliveryOrder[] = [];
+    for (const status of [
+      "materials_requested",
+      "materials_received",
+    ] as const) {
+      for (let page = 1; ; page += 1) {
+        const rows = await this.orders.listForAdmin({ status, period, page });
+        for (const order of rows)
+          if (order.lines.length > 0)
+            found.push({
+              id: order.id,
+              number: order.number,
+              status,
+              studentName: order.student.fullName,
+              phoneDigits: order.student.phoneDigits,
+              workshopName: order.workshopName,
+              turnoLabel: order.turnoLabel,
+              lines: order.lines.map((line) => ({
+                materialName: line.materialName,
+                variantLabel: line.variantLabel,
+                quantity: line.quantity,
+              })),
+            });
+        if (rows.length < 50) break;
+      }
+    }
+    return found.sort(
+      (a, b) =>
+        (a.studentName < b.studentName
+          ? -1
+          : a.studentName > b.studentName
+            ? 1
+            : 0) || (a.number < b.number ? -1 : a.number > b.number ? 1 : 0),
+    );
   }
   async detail(
     orderId: string,

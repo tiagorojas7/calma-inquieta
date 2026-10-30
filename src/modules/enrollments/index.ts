@@ -22,6 +22,7 @@ export type {
   AdminEnrollmentStore,
   AdminListItem,
   ConsolidationLine,
+  DeliveryOrder,
   AdminListQuery,
 } from "./application/admin-enrollment-store";
 export {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -90,6 +90,24 @@ describe("intensive admin screens", () => {
     expect(screen.getByLabelText("Fecha")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Incluye materiales")).not.toBeChecked();
     expect(screen.getAllByLabelText("Imagen")).toHaveLength(6);
+    for (const name of [
+      "Datos principales",
+      "Fecha y horario",
+      "Profesor y precio",
+      "Cupos y condiciones",
+      "Imágenes",
+    ])
+      expect(screen.getByRole("group", { name })).toBeInTheDocument();
+    const more = screen
+      .getByText("Agregar más imágenes")
+      .closest("details") as HTMLDetailsElement;
+    expect(more.open).toBe(false);
+    expect(within(more).getAllByLabelText("Imagen")).toHaveLength(4);
+    expect(
+      within(screen.getByRole("group", { name: "Imágenes" })).getAllByLabelText(
+        "Imagen",
+      ),
+    ).toHaveLength(6);
     expect(container.querySelector("form")).toHaveAttribute("method", "post");
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
       "href",

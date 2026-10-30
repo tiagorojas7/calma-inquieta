@@ -1,6 +1,14 @@
-import { Button } from "../atoms/button";
+import { Button, ButtonLink } from "../atoms/button";
+import { Icon } from "../atoms/icons";
 import { Heading } from "../atoms/heading";
 import { Text } from "../atoms/text";
+import { ErrorSummary } from "../molecules/error-summary";
+import {
+  PublicCheckboxField,
+  PublicSelectField,
+  PublicTextField,
+} from "../molecules/public-fields";
+import { StepIndicator } from "../molecules/step-indicator";
 
 export type EnrollmentPageProps =
   | { state: "paused" }
@@ -23,6 +31,8 @@ export type EnrollmentPageProps =
         Record<"fullName" | "email" | "phone" | "policy", string>
       >;
       formError?: string;
+      /** Where the back link leads (the workshop being enrolled in). */
+      backHref?: string;
       needsMaterials?: true;
       onContinueToMaterials?: () => void;
     };
@@ -43,11 +53,30 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     values,
     errors,
     formError,
+    backHref,
     needsMaterials,
     onContinueToMaterials,
   } = props;
+  const steps = offer.materialsRequired
+    ? ["Tus datos", "Materiales", "Pedido"]
+    : ["Tus datos", "Pedido"];
+  const summary = (
+    [
+      ["fullName", errors.fullName],
+      ["email", errors.email],
+      ["phone", errors.phone],
+      ["policy", errors.policy],
+    ] as const
+  ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
   return (
     <main className="flex max-w-prose flex-col gap-6 py-section">
+      {backHref ? (
+        <ButtonLink href={backHref} variant="tertiary" className="self-start">
+          <Icon name="chevron-left" aria-hidden="true" className="size-5" />
+          Volver al taller
+        </ButtonLink>
+      ) : null}
+      <StepIndicator steps={steps} current={1} />
       <header className="flex flex-col gap-2">
         <Heading level={1}>{offer.workshopName}</Heading>
         <Text>{offer.period}</Text>
@@ -65,8 +94,13 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
         </section>
       ) : (
         <>
-          {formError ? <p role="alert">{formError}</p> : null}
-          <form className="flex flex-col gap-4" method="post">
+          {formError ? (
+            <p role="alert" className="font-semibold text-terracotta-700">
+              {formError}
+            </p>
+          ) : null}
+          <ErrorSummary title="Revisá estos datos" errors={summary} />
+          <form className="flex flex-col gap-5" method="post">
             <input name="period" type="hidden" value={offer.period} />
             <label className="sr-only" htmlFor="honeypot">
               No completes este campo
@@ -79,63 +113,61 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
               tabIndex={-1}
               type="text"
             />
-            <div className="flex flex-col gap-1">
-              <label htmlFor="fullName">Nombre completo</label>
-              <input
-                defaultValue={values.fullName}
-                id="fullName"
-                name="fullName"
-                required
-                type="text"
-              />
-              {errors.fullName ? (
-                <span role="alert">{errors.fullName}</span>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="email">Email</label>
-              <input
-                defaultValue={values.email}
-                id="email"
-                name="email"
-                required
-                type="email"
-              />
-              {errors.email ? <span role="alert">{errors.email}</span> : null}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="phone">Teléfono argentino</label>
-              <input
-                defaultValue={values.phone}
-                id="phone"
-                name="phone"
-                required
-                type="tel"
-              />
-              {errors.phone ? <span role="alert">{errors.phone}</span> : null}
-            </div>
-            <label className="flex flex-col gap-1" htmlFor="turnoId">
-              Turno
-              <select
-                defaultValue={values.turnoId}
-                id="turnoId"
-                name="turnoId"
-                required
-              >
-                <option value="">Elegí un turno</option>
-                {offer.turnos.map((turno) => (
-                  <option key={turno.id} value={turno.id}>
-                    {turno.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2" htmlFor="policy">
-              <input id="policy" name="policy" required type="checkbox" />
-              Acepto la política de privacidad.
-            </label>
-            {errors.policy ? <span role="alert">{errors.policy}</span> : null}
-            <Button type="submit">Continuar</Button>
+            <PublicTextField
+              id="fullName"
+              label="Nombre completo"
+              name="fullName"
+              autoComplete="name"
+              defaultValue={values.fullName}
+              error={errors.fullName}
+              required
+            />
+            <PublicTextField
+              id="email"
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={values.email}
+              error={errors.email}
+              required
+            />
+            <PublicTextField
+              id="phone"
+              label="Teléfono argentino"
+              hint="Con código de área, por ejemplo 351 555 0101."
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              defaultValue={values.phone}
+              error={errors.phone}
+              required
+            />
+            <PublicSelectField
+              id="turnoId"
+              label="Turno"
+              name="turnoId"
+              defaultValue={values.turnoId}
+              options={[
+                { value: "", label: "Elegí un turno" },
+                ...offer.turnos.map((turno) => ({
+                  value: turno.id,
+                  label: turno.label,
+                })),
+              ]}
+              required
+            />
+            <PublicCheckboxField
+              id="policy"
+              label="Acepto la política de privacidad."
+              name="policy"
+              error={errors.policy}
+              required
+            />
+            <Button type="submit" className="w-full sm:w-auto sm:self-start">
+              Continuar
+            </Button>
           </form>
         </>
       )}

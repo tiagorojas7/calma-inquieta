@@ -64,7 +64,7 @@ describe("EnrollmentPage", () => {
       "Ingresá un teléfono argentino válido.",
       "Tenés que aceptar la política de privacidad.",
     ])
-      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.getAllByText(message)).toHaveLength(2);
     expect(screen.getByLabelText("Nombre completo")).toHaveValue("Ana");
   });
 

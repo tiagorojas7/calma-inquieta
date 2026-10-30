@@ -205,6 +205,7 @@ export default function EnrollmentRoute() {
       offer={offer}
       values={rejected?.values ?? EMPTY_VALUES}
       errors={rejected?.errors ?? {}}
+      backHref={`/talleres/${slug}`}
       {...(rejected?.formError ? { formError: rejected.formError } : {})}
       {...(rejected?.needsMaterials
         ? { needsMaterials: true, onContinueToMaterials: continueToMaterials }

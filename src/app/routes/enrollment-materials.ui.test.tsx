@@ -14,6 +14,85 @@ const materials = [
   },
 ];
 
+const baseProps = {
+  fee: "$ 58.000",
+  lines: [],
+  materialsRequired: true,
+  onAdd: vi.fn(),
+  onRemove: vi.fn(),
+  onSetQuantity: vi.fn(),
+  period: "Noviembre 2026",
+  total: "$ 58.000",
+  workshopName: "Cerámica inicial",
+};
+
+describe("EnrollmentMaterialsPage photos", () => {
+  it("shows the material photo with its alt, fixed size and lazy loading, plus the swatch", () => {
+    const { container } = render(
+      <EnrollmentMaterialsPage
+        {...baseProps}
+        materials={[
+          {
+            materialId: "arcilla",
+            name: "Arcilla",
+            image: {
+              src: "/media/arcilla.webp",
+              alt: "Arcilla blanca",
+              width: 800,
+              height: 600,
+            },
+            variants: [
+              {
+                variantId: "grande",
+                label: "Grande",
+                unitPrice: "$ 12.500",
+                swatch: "#aabbcc",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    const photo = screen.getByRole("img", { name: "Arcilla blanca" });
+    expect(photo).toHaveAttribute("src", "/media/arcilla.webp");
+    expect(photo).toHaveAttribute("loading", "lazy");
+    expect(photo).toHaveAttribute("width", "800");
+    expect(photo).toHaveAttribute("height", "600");
+    expect(photo).toHaveClass("object-cover");
+    const swatch = container.querySelector("[data-swatch]");
+    expect(swatch).toHaveStyle({ backgroundColor: "#aabbcc" });
+    expect(swatch).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("shows an aria-hidden placeholder and no image when there is no photo", () => {
+    const { container } = render(
+      <EnrollmentMaterialsPage
+        {...baseProps}
+        materials={[
+          {
+            materialId: "arcilla",
+            name: "Arcilla",
+            image: null,
+            variants: [
+              {
+                variantId: "grande",
+                label: "Grande",
+                unitPrice: "$ 12.500",
+                swatch: null,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    const placeholder = container.querySelector("[data-material-placeholder]");
+    expect(placeholder).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("[data-swatch]")).toBeNull();
+  });
+});
+
 describe("EnrollmentMaterialsPage", () => {
   it("shows offered variants, adds a selected quantity and keeps the total visible", () => {
     const onAdd = vi.fn();

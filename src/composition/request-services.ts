@@ -280,6 +280,7 @@ export function createRequestServices(
             }),
             createOfferedMaterialSnapshotsLookup({
               materials: materialRepository,
+              media,
             }),
           ),
           orders: createDrizzleOrderRepository(openSession),

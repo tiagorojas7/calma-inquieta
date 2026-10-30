@@ -561,6 +561,35 @@ describe("getOffer", () => {
     expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
   });
 
+  it("carries the material image and variant swatch, and null when unset", async () => {
+    const image = {
+      src: "/media/arcilla.webp",
+      alt: "Arcilla blanca",
+      width: 800,
+      height: 600,
+    };
+    const [firstVariant] = materialFixture().variants;
+    if (!firstVariant) throw new Error("fixture variant");
+    const materials = new InMemoryOfferedMaterials({
+      "p-1": [
+        materialFixture({
+          image,
+          variants: [{ ...firstVariant, swatch: "#aabbcc" }],
+        }),
+        materialFixture({ materialId: "m-2", name: "Pintura" }),
+      ],
+    });
+    const { service } = setup({ materials });
+    const result = await service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const [first, second] = result.value.materials;
+    expect(first?.image).toEqual(image);
+    expect(first?.variants[0]?.swatch).toBe("#aabbcc");
+    expect(second?.image).toBeNull();
+    expect(second?.variants[0]?.swatch).toBeNull();
+    expect(JSON.stringify(result.value)).not.toContain("assetId");
+  });
+
   it("filters disappeared material sentinels from the public offer", async () => {
     const materials = createOfferedMaterialsAdapter(
       { listOfferedMaterialIds: () => Promise.resolve(["m-1"]) },

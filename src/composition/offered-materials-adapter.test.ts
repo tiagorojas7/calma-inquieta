@@ -28,12 +28,19 @@ describe("offered materials adapter", () => {
                   available: true,
                   supplierId: "supplier-1",
                   supplierName: "Casa",
+                  image: {
+                    src: "/media/a.webp",
+                    alt: "Arcilla",
+                    width: 800,
+                    height: 600,
+                  },
                   variants: [
                     {
                       variantId: "variant-1",
                       label: "Small",
                       unitPrice,
                       available: true,
+                      swatch: "#aabbcc",
                     },
                   ],
                 },
@@ -47,6 +54,7 @@ describe("offered materials adapter", () => {
                   available: false,
                   supplierId: "supplier-2",
                   supplierName: "Color",
+                  image: null,
                   variants: [],
                 },
               ],
@@ -62,6 +70,7 @@ describe("offered materials adapter", () => {
         active: false,
         supplierId: "supplier-2",
         supplierName: "Color",
+        image: null,
         variants: [],
       },
       {
@@ -70,12 +79,19 @@ describe("offered materials adapter", () => {
         active: true,
         supplierId: "supplier-1",
         supplierName: "Casa",
+        image: {
+          src: "/media/a.webp",
+          alt: "Arcilla",
+          width: 800,
+          height: 600,
+        },
         variants: [
           {
             variantId: "variant-1",
             label: "Small",
             unitPrice,
             available: true,
+            swatch: "#aabbcc",
           },
         ],
       },

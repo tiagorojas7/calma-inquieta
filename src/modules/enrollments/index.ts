@@ -62,6 +62,7 @@ export type {
 } from "./application/offer-lookup";
 export type {
   OfferedMaterial,
+  OfferedMaterialImage,
   OfferedMaterialsLookup,
   OfferedVariant,
 } from "./application/offered-materials";

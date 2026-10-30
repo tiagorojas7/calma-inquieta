@@ -104,7 +104,7 @@ function Alerts({ summary }: { summary: AdminPanelSummary }) {
           {items.map((item) => (
             <li
               key={item.key}
-              className="flex flex-col gap-1 rounded-md bg-surface p-4 shadow-card"
+              className="flex flex-col gap-1 rounded-md border-l-4 border-terracotta-700 bg-surface p-4 shadow-card"
             >
               <p className="text-base text-ink-900">{item.text}</p>
               <a href={item.href} className={linkClasses}>
@@ -140,6 +140,7 @@ export function AdminLanding({
         <Text>{copy.greeting(email)}</Text>
         <Text tone="muted">{copy.intro}</Text>
       </div>
+      <Alerts summary={summary} />
       <section aria-labelledby="panel-summary" className="flex flex-col gap-3">
         <Heading level={2} size="h3" id="panel-summary">
           {copy.summaryTitle(summary.monthLabel)}
@@ -192,20 +193,27 @@ export function AdminLanding({
           />
         </ul>
       </section>
-      <Alerts summary={summary} />
       <section aria-labelledby="panel-areas" className="flex flex-col gap-3">
         <Heading level={2} size="h3" id="panel-areas">
           {copy.areasTitle}
         </Heading>
         <ul className="grid gap-3 sm:grid-cols-2">
           {ADMIN_NAV.map((entry) => (
-            <li key={entry.href}>
+            <li
+              key={entry.href}
+              className="flex flex-col gap-1 rounded-md bg-surface p-4 shadow-card"
+            >
               <a
                 href={entry.href}
-                className="flex min-h-11 items-center rounded-md bg-surface p-4 font-display text-h3 text-ink-900 shadow-card hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+                className="flex min-h-11 items-center font-display text-h3 text-ink-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
               >
                 {entry.label}
               </a>
+              {copy.areaHints[entry.href] ? (
+                <p className="text-base text-ink-700">
+                  {copy.areaHints[entry.href]}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

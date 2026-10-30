@@ -97,6 +97,10 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
       <AdminPageHeader
         title={copy.title}
         description={copy.subtitle(props.periodLabel)}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title },
+        ]}
         back={{ href: "/admin", label: copy.backToPanel }}
       />
       <form

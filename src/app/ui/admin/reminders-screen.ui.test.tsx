@@ -55,6 +55,48 @@ afterEach(() => {
 });
 
 describe("RemindersScreen", () => {
+  it("shows breadcrumbs and the two steps, with the audience collapsed", () => {
+    render(<RemindersScreen {...base} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+    expect(
+      screen.getByText("1. Qué querés avisar", { selector: "legend" }),
+    ).toBeVisible();
+    const audience = screen.getByText("2. A quiénes (opcional)");
+    expect(audience.closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("shows only the fields the chosen message needs", () => {
+    render(
+      <RemindersScreen
+        {...base}
+        kinds={[
+          ...base.kinds,
+          { value: "intensive", label: "Reserva de intensivo" },
+          { value: "notice", label: "Aviso libre" },
+        ]}
+      />,
+    );
+    expect(screen.queryByLabelText("Cuándo")).toBeNull();
+    expect(screen.queryByLabelText("Texto del aviso")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "intensive" },
+    });
+    expect(screen.getByLabelText("Cuándo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre del intensivo")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "notice" },
+    });
+    expect(screen.getByLabelText("Texto del aviso")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Cuándo")).toBeNull();
+  });
+
   it("states that automatic emails are off until the domain is set up", () => {
     render(<RemindersScreen {...base} />);
     expect(
@@ -112,7 +154,9 @@ describe("RemindersScreen", () => {
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    const bea = screen.getByRole("row", { name: /Bea Gómez/ });
+    const bea = screen
+      .getByRole("list", { name: "Recordatorios" })
+      .querySelectorAll("li")[1] as HTMLElement;
     expect(within(bea).getByText("Sin teléfono válido")).toBeVisible();
     expect(within(bea).queryByRole("link")).toBeNull();
     await expectNoAxeViolations(container);
@@ -145,6 +189,11 @@ describe("RemindersScreen", () => {
     render(
       <RemindersScreen
         {...base}
+        values={{ ...base.values, mensaje: "intensive" }}
+        kinds={[
+          ...base.kinds,
+          { value: "intensive", label: "Reserva de intensivo" },
+        ]}
         errors={{ actividad: "Escribí el nombre del intensivo." }}
       />,
     );

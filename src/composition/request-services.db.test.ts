@@ -11,6 +11,7 @@ import {
   seedPeriod,
   seedTaller,
   seedTurno,
+  SEED_ASSET_ID,
 } from "~/testing/fakes/catalog-seed";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { createIsolateState, createRequestServices } from "./request-services";
@@ -216,8 +217,10 @@ describe("createRequestServices", () => {
     expect(listed.map((item) => item.slug)).toEqual(["intensivo-demo"]);
     expect(listed[0]?.date).toBe("2099-01-01");
     expect(listed[0]?.teacher?.name).toBe("Lucía Demo");
-    // The media lookup is still the empty placeholder (C4-B5): no image resolves yet.
-    expect(listed[0]?.images).toEqual([]);
+    // The real media lookup is wired: the stored photo resolves.
+    expect(listed[0]?.images.map((image) => image.alt)).toEqual([
+      "Manos en el torno",
+    ]);
     expect(
       (await services.publicCatalog.intensivos.findBySlug("intensivo-demo"))
         ?.slug,
@@ -241,6 +244,7 @@ describe("createRequestServices", () => {
           seedTaller({
             slug: "ceramica",
             teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            images: [{ assetId: SEED_ASSET_ID, alt: "Mesa de trabajo" }],
             turnos: [turno],
             periods: [
               seedPeriod({
@@ -266,6 +270,9 @@ describe("createRequestServices", () => {
     expect(listed[0]?.offering?.period).toBe("2099-01");
     expect(listed[0]?.turnos.map((t) => t.seats.capacity)).toEqual([8]);
     expect(listed[0]?.project?.title).toBe("Taza");
+    expect(listed[0]?.images.map((image) => image.alt)).toEqual([
+      "Mesa de trabajo",
+    ]);
     expect(
       (await services.publicCatalog.talleres.findBySlug("ceramica"))?.slug,
     ).toBe("ceramica");
@@ -275,6 +282,37 @@ describe("createRequestServices", () => {
     expect(await services.publicCatalog.talleres.listSlugs()).toEqual([
       "ceramica",
     ]);
+  });
+
+  it("lets the admin save a taller with an uploaded photo", async () => {
+    const database = await newDatabase();
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      fullyPopulatedSeed(),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+
+    const created = await services.monthlyWorkshops.create(
+      { kind: "admin-actor", email: "owner@example.test" },
+      {
+        name: "Telar",
+        slug: "telar",
+        summary: "Tejido en telar.",
+        description: "Tejido en telar de bajo lizo.",
+        technique: "Telar",
+        defaultFee: "30000",
+        teacherId: "",
+        percentage: "",
+        images: [{ assetId: SEED_ASSET_ID, alt: "Telar en uso" }],
+        confirmSlugChange: false,
+      },
+    );
+
+    expect(created.ok).toBe(true);
   });
 
   it("shares one content reader across requests of the same isolate", () => {

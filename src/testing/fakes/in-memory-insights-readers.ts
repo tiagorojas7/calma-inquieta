@@ -11,6 +11,13 @@ import type {
   PeriodRegistrationRow,
 } from "~/modules/enrollments";
 import type {
+  IntensiveRegistrationRow,
+  IntensiveRequestInsightsReader,
+} from "~/modules/intensive-requests";
+import type { Teacher, TeacherLookup } from "~/modules/teachers";
+import type {
+  IntensiveActivityRow,
+  IntensiveInsightsReader,
   PeriodCapacityRow,
   PeriodTeacherRow,
   PublishedWorkshopRow,
@@ -98,5 +105,59 @@ export class InMemoryWorkshopInsightsReader implements WorkshopInsightsReader {
     return Promise.resolve(
       this.teacherRows.filter((row) => row.period === period),
     );
+  }
+}
+
+export class InMemoryIntensiveInsightsReader implements IntensiveInsightsReader {
+  rows: IntensiveActivityRow[] = [];
+
+  intensives(period: string) {
+    return Promise.resolve(
+      this.rows.filter((row) => row.eventDate.startsWith(`${period}-`)),
+    );
+  }
+}
+
+export class InMemoryIntensiveRequestInsightsReader implements IntensiveRequestInsightsReader {
+  registrationRows: IntensiveRegistrationRow[] = [];
+  pending = 0;
+
+  registrations(intensiveIds: readonly string[]) {
+    return Promise.resolve(
+      this.registrationRows.filter((row) =>
+        intensiveIds.includes(row.intensiveId),
+      ),
+    );
+  }
+
+  pendingRequests() {
+    return Promise.resolve(this.pending);
+  }
+}
+
+/** Teachers by id: only the name and modality the statistics read. */
+export class InMemoryTeacherDirectory implements TeacherLookup {
+  readonly teachers = new Map<string, Teacher>();
+
+  add(id: string, name: string, modality: Teacher["modality"]) {
+    this.teachers.set(id, {
+      id,
+      name,
+      bioLine: "",
+      phone: null,
+      email: null,
+      modality,
+      active: true,
+      audit: { updatedBy: "owner@example.com", updatedAt: new Date(0) },
+    });
+  }
+
+  findByIds(ids: readonly string[]) {
+    const found = new Map<string, Teacher>();
+    for (const id of ids) {
+      const teacher = this.teachers.get(id);
+      if (teacher) found.set(id, teacher);
+    }
+    return Promise.resolve<ReadonlyMap<string, Teacher>>(found);
   }
 }

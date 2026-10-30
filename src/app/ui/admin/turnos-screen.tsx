@@ -1,4 +1,4 @@
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";

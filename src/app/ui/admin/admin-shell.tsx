@@ -1,7 +1,12 @@
 import { useState, type PropsWithChildren } from "react";
 import { Icon } from "../atoms/icon";
 import { SkipLink } from "../atoms/skip-link";
-import { ADMIN_NAV, isActiveAdminEntry } from "./admin-nav";
+import {
+  ADMIN_NAV_MAIN,
+  ADMIN_NAV_MORE,
+  activeAdminEntry,
+  type AdminNavEntry,
+} from "./admin-nav";
 import { adminMicrocopy } from "./microcopy";
 
 export const ADMIN_SIGN_OUT_HREF = "/cdn-cgi/access/logout";
@@ -11,17 +16,26 @@ export function AdminNoIndex() {
   return <meta name="robots" content="noindex, nofollow" />;
 }
 
-function NavList({ pathname }: { pathname: string }) {
+const linkBase =
+  "flex min-h-11 items-center rounded-md px-3 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+function NavLinks({
+  entries,
+  activeHref,
+}: {
+  entries: readonly AdminNavEntry[];
+  activeHref: string | undefined;
+}) {
   return (
     <ul className="flex flex-col gap-1">
-      {ADMIN_NAV.map((entry) => {
-        const active = isActiveAdminEntry(entry, pathname);
+      {entries.map((entry) => {
+        const active = entry.href === activeHref;
         return (
           <li key={entry.href}>
             <a
               href={entry.href}
               {...(active ? { "aria-current": "page" as const } : {})}
-              className={`flex min-h-11 items-center rounded-md px-3 text-ink-900 hover:bg-sand-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${active ? "bg-sand-200 font-semibold" : ""}`}
+              className={`${linkBase} ${active ? "bg-clay-800 font-semibold text-white hover:bg-clay-800" : "text-ink-900"}`}
             >
               {entry.label}
             </a>
@@ -29,6 +43,28 @@ function NavList({ pathname }: { pathname: string }) {
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Six main entries plus a native `<details>` "Más" group: no JavaScript is
+ * needed to open it, and it starts open on one of its own pages.
+ */
+function NavList({ pathname }: { pathname: string }) {
+  const activeHref = activeAdminEntry(pathname)?.href;
+  const moreActive = ADMIN_NAV_MORE.some((entry) => entry.href === activeHref);
+  return (
+    <div className="flex flex-col gap-1">
+      <NavLinks entries={ADMIN_NAV_MAIN} activeHref={activeHref} />
+      <details data-more open={moreActive || undefined} className="mt-1">
+        <summary className="flex min-h-11 cursor-pointer items-center rounded-md px-3 font-semibold text-ink-900 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
+          {adminMicrocopy.shell.more}
+        </summary>
+        <div className="mt-1 border-l-2 border-admin-line pl-2">
+          <NavLinks entries={ADMIN_NAV_MORE} activeHref={activeHref} />
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -45,10 +81,10 @@ export function AdminShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const copy = adminMicrocopy.shell;
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="admin-root min-h-screen bg-admin-page">
       <AdminNoIndex />
       <SkipLink />
-      <header className="border-b border-sand-200 bg-surface">
+      <header className="border-b border-admin-line bg-surface">
         <div className="flex items-center justify-between gap-4 px-gutter py-3">
           <a href="/admin" className="font-display text-xl text-ink-900">
             {copy.brand}
@@ -106,7 +142,7 @@ export function AdminShell({
       <div className="lg:flex">
         <nav
           aria-label={copy.sections}
-          className="hidden w-60 shrink-0 border-r border-sand-200 bg-surface p-4 lg:block"
+          className="hidden w-60 shrink-0 border-r border-admin-line bg-surface p-4 lg:block"
         >
           <NavList pathname={pathname} />
         </nav>

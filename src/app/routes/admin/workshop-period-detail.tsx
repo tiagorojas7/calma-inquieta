@@ -13,7 +13,7 @@ import { servicesContext } from "~/app/context";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { monthName } from "~/app/admin/workshop-readiness";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
-import { Button } from "~/app/ui/atoms/button";
+import { AdminButton as Button } from "~/app/ui/admin/admin-button";
 import { Heading } from "~/app/ui/atoms/heading";
 import { ConfirmedSubmit } from "~/app/ui/admin/confirmed-submit";
 import { FormError } from "~/app/ui/admin/form-fields";

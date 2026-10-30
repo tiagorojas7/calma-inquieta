@@ -5,11 +5,11 @@ import { StatusBadge, type AdminStatus } from "./status-badge";
 
 const labels: readonly (readonly [AdminStatus, string, string])[] = [
   ["draft", "Borrador", "neutral"],
-  ["published", "Publicado", "positive"],
-  ["paused", "Pausado", "attention"],
-  ["cancelled", "Cancelado", "attention"],
-  ["archived", "Archivado", "neutral"],
-  ["active", "Activo", "positive"],
+  ["published", "Publicado", "green"],
+  ["paused", "Pausado", "orange"],
+  ["cancelled", "Cancelado", "grey"],
+  ["archived", "Archivado", "grey"],
+  ["active", "Activo", "green"],
 ];
 
 describe("StatusBadge", () => {

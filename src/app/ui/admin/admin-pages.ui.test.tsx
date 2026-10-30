@@ -139,16 +139,18 @@ describe("AdminLanding", () => {
         .getAllByRole("link")
         .map((link) => link.textContent),
     ).toEqual([
+      "Inscripciones",
       "Talleres",
       "Intensivos",
-      "Profesores",
-      "Inscripciones",
-      "Alumnas",
-      "Asistencia",
       "Materiales",
+      "Asistencia",
+      "Profesoras",
+      "Proveedores",
+      "Alumnas",
       "Eventos privados",
-      "Estadísticas",
       "Recordatorios",
+      "Estadísticas",
+      "Catálogo de materiales",
     ]);
   });
 

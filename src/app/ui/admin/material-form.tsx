@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { ImageField, type ImageFieldUpload } from "./image-field";
 import {

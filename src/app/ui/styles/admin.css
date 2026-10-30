@@ -1,0 +1,37 @@
+/*
+ * Admin visual system. Admin-only: tokens are new names (public utilities are
+ * untouched) and every rule is scoped under `.admin-root`, the admin shell.
+ * Light grey page, white bordered cards, one strong primary action, fixed
+ * status colors. Contrast of every pair is asserted in admin-colors.test.ts.
+ */
+@theme {
+  /* Page and card separation. */
+  --color-admin-page: #eceef1; /* light grey page background */
+  --color-admin-line: #c9ced6; /* card border on the grey page */
+  --color-admin-danger: #a32020; /* delete and cancel only */
+  --color-admin-danger-soft: #fdeceb;
+
+  /* Fixed status colors: fg on bg, all above 4.5:1. */
+  --color-status-orange-bg: #ffe3c2; /* Por cobrar, pendiente */
+  --color-status-orange-fg: #7c2d00;
+  --color-status-green-bg: #d3f0d9; /* Pagado, Publicado, Activo */
+  --color-status-green-fg: #11502a;
+  --color-status-blue-bg: #d6e6ff; /* Pedido, solicitado */
+  --color-status-blue-fg: #12408f;
+  --color-status-teal-bg: #c4ece6; /* Recibido, completo */
+  --color-status-teal-fg: #0b4a44;
+  --color-status-grey-bg: #e2e4e8; /* Cancelado */
+  --color-status-grey-fg: #3b414a;
+  --color-status-neutral-bg: #f7f5f2; /* Borrador */
+  --color-status-neutral-fg: #3a3631;
+}
+
+/* Every raised card gets a visible edge against the grey page. */
+.admin-root .shadow-card {
+  border: 1px solid var(--color-admin-line);
+}
+
+/* Titles carry the hierarchy: heavier than the public headings. */
+.admin-root h1 {
+  font-weight: 600;
+}

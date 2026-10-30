@@ -5,6 +5,7 @@ import type {
   IntensiveWorkshopField,
   IntensiveStatus,
 } from "~/modules/workshops";
+import { parseGallery } from "./gallery-form-data";
 import { fieldErrors, INTENSIVE_FIELD_MESSAGES } from "./issue-messages";
 
 function text(form: FormData, key: string): string {
@@ -38,9 +39,6 @@ export function parseIntensiveSchedule(form: FormData) {
 }
 
 export function parseIntensiveDraft(form: FormData): IntensiveWorkshopDraft {
-  const assetIds = form.getAll("galleryAssetId");
-  const sources = form.getAll("gallerySrc");
-  const alts = form.getAll("galleryAlt");
   return {
     name: text(form, "name"),
     slug: text(form, "slug"),
@@ -57,14 +55,7 @@ export function parseIntensiveDraft(form: FormData): IntensiveWorkshopDraft {
     minSeats: text(form, "minSeats"),
     policyText: text(form, "policyText"),
     materialsIncluded: form.has("materialsIncluded"),
-    images: assetIds.map((assetId, index) => {
-      const src = sources[index];
-      return {
-        assetId: typeof assetId === "string" ? assetId : "",
-        ...(typeof src === "string" ? { src } : {}),
-        alt: typeof alts[index] === "string" ? alts[index] : "",
-      };
-    }),
+    images: parseGallery(form),
   };
 }
 

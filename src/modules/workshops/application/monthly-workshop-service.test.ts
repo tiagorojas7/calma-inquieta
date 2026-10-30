@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { MediaAsset } from "~/modules/media";
 import type { Teacher } from "~/modules/teachers";
 import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
 import { InMemoryTurnoRepository } from "~/testing/fakes/in-memory-turno-repository";
@@ -34,6 +35,26 @@ function teacher(overrides: Partial<Teacher> = {}): Teacher {
   };
 }
 
+const assetOf = (id: string): MediaAsset => ({
+  id,
+  fileName: `${id}.jpg`,
+  src: `/media/${id}.jpg`,
+  contentType: "image/jpeg",
+  byteSize: 1,
+  width: 800,
+  height: 600,
+  createdBy: "seed",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+});
+const findKnownAssets = (ids: readonly string[]) =>
+  Promise.resolve(
+    new Map(
+      ids
+        .filter((id) => id.startsWith("asset-"))
+        .map((id) => [id, assetOf(id)]),
+    ),
+  );
+
 function service(
   teachers: readonly Teacher[] = [],
   repository = new InMemoryMonthlyWorkshopRepository(),
@@ -56,7 +77,7 @@ function service(
             ),
           ),
       },
-      media: { findAssets: () => Promise.resolve(new Map()) },
+      media: { findAssets: findKnownAssets },
       turnos,
       turnoUsage: { isUsed: () => Promise.resolve(false) },
       periods: { hasPeriods: () => Promise.resolve(hasPeriods) },
@@ -255,14 +276,91 @@ describe("monthly workshops service", () => {
     });
   });
 
-  it("returns unavailable for deferred non-empty gallery input", async () => {
+  it("stores the gallery in order and reads it back with its assets", async () => {
+    const { service: subject, repository } = service();
+    const images = [
+      { assetId: "asset-2", alt: " Segunda " },
+      { assetId: "asset-1", alt: "Primera" },
+    ];
+    const created = await subject.create(actor, draft({ images }));
+    if (!created.ok) throw new Error("create failed");
+
+    expect(repository.items.get(created.value.id)?.images).toEqual([
+      { assetId: "asset-2", alt: "Segunda" },
+      { assetId: "asset-1", alt: "Primera" },
+    ]);
+    expect(created.value.images).toEqual([
+      { assetId: "asset-2", alt: "Segunda", asset: assetOf("asset-2") },
+      { assetId: "asset-1", alt: "Primera", asset: assetOf("asset-1") },
+    ]);
+    const fetched = await subject.get(actor, created.value.id);
+    expect(fetched.ok && fetched.value.images.map((i) => i.assetId)).toEqual([
+      "asset-2",
+      "asset-1",
+    ]);
+  });
+
+  it("rejects an unknown asset, a blank alt and more than six images", async () => {
     const { service: subject } = service();
+    const invalid = async (images: { assetId: string; alt: string }[]) => {
+      const result = await subject.create(actor, draft({ images }));
+      return !result.ok && result.error.kind === "invalid"
+        ? result.error.issues.map((issue) => issue.field + ":" + issue.code)
+        : result;
+    };
+
+    expect(await invalid([{ assetId: "missing", alt: "x" }])).toEqual([
+      "images:unknown-reference",
+    ]);
+    expect(await invalid([{ assetId: "asset-1", alt: "  " }])).toEqual([
+      "images:required",
+    ]);
     expect(
-      await subject.create(
-        actor,
-        draft({ images: [{ assetId: "asset-1", alt: "Cerámica" }] }),
+      await invalid([{ assetId: "asset-1", alt: "x".repeat(201) }]),
+    ).toEqual(["images:too-long"]);
+    expect(
+      await invalid(
+        Array.from({ length: 7 }, (_, i) => ({
+          assetId: `asset-${String(i)}`,
+          alt: "x",
+        })),
       ),
-    ).toEqual({ ok: false, error: { kind: "unavailable" } });
+    ).toContain("images:too-many");
+  });
+
+  it("replaces the gallery on update and clears it when none is sent", async () => {
+    const { service: subject, repository } = service();
+    const created = await subject.create(
+      actor,
+      draft({ images: [{ assetId: "asset-1", alt: "Primera" }] }),
+    );
+    if (!created.ok) throw new Error("create failed");
+
+    await subject.update(
+      actor,
+      created.value.id,
+      draft({ images: [{ assetId: "asset-2", alt: "Otra" }] }),
+    );
+    expect(repository.items.get(created.value.id)?.images).toEqual([
+      { assetId: "asset-2", alt: "Otra" },
+    ]);
+
+    await subject.update(actor, created.value.id, draft());
+    expect(repository.items.get(created.value.id)?.images).toEqual([]);
+  });
+
+  it("keeps the gallery through a status change", async () => {
+    const { service: subject, repository } = service();
+    const created = await subject.create(
+      actor,
+      draft({ images: [{ assetId: "asset-1", alt: "Primera" }] }),
+    );
+    if (!created.ok) throw new Error("create failed");
+
+    await subject.archive(actor, created.value.id);
+    await subject.restore(actor, created.value.id);
+
+    expect(repository.items.get(created.value.id)?.images).toHaveLength(1);
   });
 
   it("publishes when the turno repository has an active turno", async () => {

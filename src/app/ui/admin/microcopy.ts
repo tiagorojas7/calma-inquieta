@@ -861,6 +861,11 @@ export const adminMicrocopy = {
       percentage: "Porcentaje acordado",
       percentageHint:
         "Solo para profesores de terceros, de 0 a 100 con hasta dos decimales. Ejemplo: 35,5.",
+      photosTitle: "Fotos",
+      photosHint:
+        "Hasta 4 fotos. La primera es la que se ve en la tarjeta del taller.",
+      photo: "Foto",
+      morePhotos: "Agregar más fotos",
       save: "Guardar",
       cancel: "Cancelar",
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",

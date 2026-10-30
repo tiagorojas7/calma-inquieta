@@ -42,6 +42,7 @@ async function setup(
     defaultFee: fee,
     teacherId: "teacher-1",
     percentage: { basisPoints: 3000 },
+    images: [],
     status: "published",
     audit: { updatedBy: "old", updatedAt: new Date(0) },
   });
@@ -294,7 +295,7 @@ describe("WorkshopPeriodsService", () => {
     });
   });
 
-  it("does not silently discard deferred source images while opening", async () => {
+  it("opens a month even when the previous period holds project images, copying none", async () => {
     const { service, periods } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
     const stored = periods.items.get("p");
@@ -307,11 +308,12 @@ describe("WorkshopPeriodsService", () => {
       ],
     });
 
-    expect(await service.openMonth(testAdminActor(), "w", "2026-11")).toEqual({
-      ok: false,
-      error: { kind: "unavailable" },
-    });
-    expect(await periods.findByWorkshopPeriod("w", "2026-11")).toBeNull();
+    const opened = await service.openMonth(testAdminActor(), "w", "2026-11");
+
+    expect(opened.ok).toBe(true);
+    const next = await periods.findByWorkshopPeriod("w", "2026-11");
+    expect(next?.project.images).toEqual([]);
+    expect(periods.items.get("p")?.project.images).toHaveLength(1);
   });
 
   it("prefills only the latest earlier period and the current active turno set", async () => {

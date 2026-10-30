@@ -133,6 +133,7 @@ describe("runMigrations", () => {
       { table_name: "supplier" },
       { table_name: "teacher" },
       { table_name: "turno_seat_counter" },
+      { table_name: "workshop_image" },
       { table_name: "workshop_period" },
       { table_name: "workshop_turno" },
     ]);

@@ -55,6 +55,19 @@ describe("parseQuickWorkshop", () => {
     });
   });
 
+  it("carries the chosen photos into the draft and the values", () => {
+    const data = form({ ...BASE, ...EMPTY_ROWS });
+    data.append("galleryAssetId", "a1");
+    data.append("gallerySrc", "/media/a1.jpg");
+    data.append("galleryAlt", "Mesa");
+
+    const parsed = parseQuickWorkshop(data);
+
+    const expected = [{ assetId: "a1", src: "/media/a1.jpg", alt: "Mesa" }];
+    expect(parsed.draft.images).toEqual(expected);
+    expect(parsed.values.images).toEqual(expected);
+  });
+
   it("keeps a typed summary and technique when the form carries them", () => {
     const parsed = parseQuickWorkshop(
       form({ ...BASE, ...EMPTY_ROWS, summary: "Mi frase", technique: "Torno" }),

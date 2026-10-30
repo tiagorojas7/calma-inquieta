@@ -30,6 +30,7 @@ const EMPTY: QuickValues = {
   teacherId: "",
   defaultFee: "",
   percentage: "",
+  images: [],
   rows: Array.from({ length: QUICK_TURNO_ROWS }, () => ({
     weekday: "",
     startsAt: "",
@@ -45,6 +46,7 @@ const FORM_FIELDS = [
   "defaultFee",
   "teacherId",
   "percentage",
+  "images",
 ] as const satisfies readonly QuickWorkshopFormField[];
 
 export function meta() {

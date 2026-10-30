@@ -1,19 +1,21 @@
 import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
+import { WORKSHOP_PHOTO_SLOTS } from "./workshop-form";
 import {
   FormError,
   SelectField,
   TextAreaField,
   TextField,
 } from "./form-fields";
+import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
 
 export type QuickWorkshopFormField =
-  "name" | "description" | "defaultFee" | "teacherId" | "percentage";
+  "name" | "description" | "defaultFee" | "teacherId" | "percentage" | "images";
 
 export interface QuickTurnoValues {
   readonly weekday: string;
@@ -28,6 +30,7 @@ export interface QuickFormValues {
   readonly teacherId: string;
   readonly defaultFee: string;
   readonly percentage: string;
+  readonly images: readonly GalleryFieldImage[];
   readonly rows: readonly QuickTurnoValues[];
   readonly materialIds: readonly string[];
 }
@@ -199,6 +202,15 @@ export function QuickWorkshopForm({
         inputMode="numeric"
         defaultValue={values.defaultFee}
         error={errors.defaultFee}
+      />
+      <GalleryFields
+        images={values.images}
+        slots={WORKSHOP_PHOTO_SLOTS}
+        title={copy.form.photosTitle}
+        hint={copy.form.photosHint}
+        label={copy.form.photo}
+        moreLabel={copy.form.morePhotos}
+        error={errors.images}
       />
       <section className="flex flex-col gap-3" aria-label={quick.sectionTurnos}>
         <h2 className="font-display text-xl text-ink-900">

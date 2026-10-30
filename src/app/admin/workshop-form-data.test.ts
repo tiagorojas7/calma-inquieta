@@ -44,6 +44,17 @@ describe("parseWorkshopDraft", () => {
     });
   });
 
+  it("reads the chosen photos in order", () => {
+    const data = form({ name: "Cerámica" });
+    data.append("galleryAssetId", "a1");
+    data.append("gallerySrc", "/media/a1.jpg");
+    data.append("galleryAlt", "Mesa");
+
+    expect(parseWorkshopDraft(data).images).toEqual([
+      { assetId: "a1", src: "/media/a1.jpg", alt: "Mesa" },
+    ]);
+  });
+
   it("treats missing fields as empty and a ticked confirmation as true", () => {
     const draft = parseWorkshopDraft(form({ confirmSlugChange: "on" }));
     expect(draft.name).toBe("");

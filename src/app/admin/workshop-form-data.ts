@@ -5,6 +5,8 @@ import type {
   WorkshopStatus,
 } from "~/modules/workshops";
 
+import { parseGallery } from "./gallery-form-data";
+
 function text(form: FormData, key: string): string {
   const value = form.get(key);
   return typeof value === "string" ? value : "";
@@ -12,7 +14,7 @@ function text(form: FormData, key: string): string {
 
 /**
  * The workshop form's text parts as a draft; validation is the service's job.
- * The gallery is not part of this form yet (see the F3 log), so no images.
+ * The gallery comes from the `ImageField` slots; the service validates it.
  */
 export function parseWorkshopDraft(form: FormData): MonthlyWorkshopDraft {
   return {
@@ -24,7 +26,7 @@ export function parseWorkshopDraft(form: FormData): MonthlyWorkshopDraft {
     defaultFee: text(form, "defaultFee"),
     teacherId: text(form, "teacherId"),
     percentage: text(form, "percentage"),
-    images: [],
+    images: parseGallery(form),
     confirmSlugChange: form.has("confirmSlugChange"),
   };
 }

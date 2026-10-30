@@ -77,6 +77,11 @@ export const WORKSHOP_FIELD_MESSAGES = {
   teacherId: {
     required: "Elegí un profesor para poder cargar el porcentaje.",
   },
+  images: {
+    required: "Describí cada foto en el campo de texto alternativo.",
+    "too-many": "Podés cargar hasta 4 fotos.",
+    "unknown-reference": "Una de las fotos ya no existe. Volvé a subirla.",
+  },
 } as const satisfies FieldMessages<string>;
 
 const RULE_MESSAGES = {

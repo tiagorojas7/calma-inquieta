@@ -13,6 +13,8 @@ import {
   intensivoToDetail,
   intensivoToUpcomingItem,
   tallerToActivityCard,
+  tallerToCard,
+  tallerToDetail,
 } from "./mappers";
 
 const content = catalogContent;
@@ -363,5 +365,38 @@ describe("intensivoToDetail", () => {
       heading: "Quién lo guía",
       name: "Docente",
     });
+  });
+});
+
+describe("taller photos on the card and the detail", () => {
+  const first = buildPublicImage({ src: "/media/1.jpg", alt: "Primera" });
+  const second = buildPublicImage({ src: "/media/2.jpg", alt: "Segunda" });
+  const links = {
+    main: { href: "https://wa.me/1", label: "Consultar" },
+    turnos: [],
+  };
+
+  it("shows the first photo on the card and the stand-in only when there are none", () => {
+    expect(
+      tallerToCard(buildPublicTaller({ images: [first, second] }), content)
+        .image,
+    ).toEqual(first);
+    expect(tallerToCard(buildPublicTaller(), content).image).toEqual(
+      content.fallbackImage,
+    );
+  });
+
+  it("uses the first photo as the detail hero and the rest as the gallery", () => {
+    const detail = tallerToDetail(
+      buildPublicTaller({ images: [first, second] }),
+      content,
+      links,
+    );
+
+    expect(detail.image).toEqual(first);
+    expect(detail.gallery.map((entry) => entry.alt)).toEqual(["Segunda"]);
+    expect(tallerToDetail(buildPublicTaller(), content, links).gallery).toEqual(
+      [],
+    );
   });
 });

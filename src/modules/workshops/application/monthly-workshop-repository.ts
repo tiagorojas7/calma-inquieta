@@ -1,4 +1,5 @@
 import type { Audit, Money, NotFound, Result } from "~/modules/_shared";
+import type { ImageUseDraft } from "~/modules/media";
 import type { Percentage, WorkshopStatus } from "./contracts";
 
 export interface StoredMonthlyWorkshop {
@@ -11,6 +12,8 @@ export interface StoredMonthlyWorkshop {
   readonly defaultFee: Money;
   readonly teacherId: string | null;
   readonly percentage: Percentage | null;
+  /** The gallery in position order; the first image is the cover. */
+  readonly images: readonly ImageUseDraft[];
   readonly status: WorkshopStatus;
   readonly audit: Audit;
 }

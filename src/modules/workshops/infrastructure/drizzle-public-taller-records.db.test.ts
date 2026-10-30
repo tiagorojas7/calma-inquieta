@@ -59,7 +59,7 @@ function counting(connectionString: string) {
   return { open, statements: () => statements };
 }
 
-// The change-3 schema has no image tables for workshops yet (B5, B6b).
+// Taller images are stored; period project images are still deferred (B6b).
 runPublicTalleresContract(
   async (seed) => createDrizzlePublicTallerRecords(await seededDatabase(seed)),
   { storesImages: false },
@@ -114,14 +114,39 @@ describe("the Drizzle public taller records", () => {
     expect(JSON.stringify(record)).not.toContain("DRAFT-PROJECT-TEXT");
   });
 
-  it("returns empty galleries because the schema stores no workshop images yet", async () => {
+  it("returns the taller gallery in position order and no project images", async () => {
+    const seed = fullyPopulatedSeed();
+    const [taller] = seed.talleres;
+    const asset = seed.assets[0];
+    if (!taller || !asset) throw new Error("fixture");
+    const second = {
+      ...asset,
+      id: "00000000-0000-4000-8000-0000000000b2",
+      fileName: "second.jpg",
+    };
     const records = createDrizzlePublicTallerRecords(
-      await seededDatabase(fullyPopulatedSeed()),
+      await seededDatabase({
+        ...seed,
+        assets: [...seed.assets, second],
+        talleres: [
+          {
+            ...taller,
+            images: [
+              { assetId: asset.id, alt: "Mesa de trabajo" },
+              { assetId: second.id, alt: "Detalle" },
+            ],
+          },
+          ...seed.talleres.slice(1),
+        ],
+      }),
     );
 
     const [record] = await records.listVisible(FROM);
 
-    expect(record?.images).toEqual([]);
+    expect(record?.images).toEqual([
+      { assetId: asset.id, alt: "Mesa de trabajo" },
+      { assetId: second.id, alt: "Detalle" },
+    ]);
     expect(record?.openPeriods[0]?.project.images).toEqual([]);
   });
 
@@ -211,9 +236,9 @@ describe("the Drizzle public taller records", () => {
       );
       await createDrizzlePublicTallerRecords(slugs.open).listVisibleSlugs();
 
-      // workshops, turnos, periods, capacities: independent of the catalog size.
-      expect(list.statements()).toBe(4);
-      expect(bySlug.statements()).toBe(4);
+      // workshops, turnos, periods, images, capacities: independent of the catalog size.
+      expect(list.statements()).toBe(5);
+      expect(bySlug.statements()).toBe(5);
       expect(slugs.statements()).toBe(1);
     },
   );

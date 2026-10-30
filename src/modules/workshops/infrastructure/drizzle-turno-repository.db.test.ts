@@ -57,6 +57,7 @@ function storedWorkshop(
     defaultFee: fee,
     teacherId: null,
     percentage: null,
+    images: [],
     status: "draft",
     audit: {
       updatedBy: "old@example.com",

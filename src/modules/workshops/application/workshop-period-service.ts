@@ -200,9 +200,8 @@ export function createWorkshopPeriodsService(
       // All required facts have passed: teacher exists and is active.
       if (!teacher) throw new Error("unreachable missing teacher");
       const source = await deps.repository.latestBefore(workshopId, period);
-      // Images belong to a later persistence slice. Never create a successor
-      // by silently losing already-stored deferred data.
-      if (source?.project.images.length) return err({ kind: "unavailable" });
+      // Period project images stay deferred, so a successor copies none; the
+      // taller gallery lives on the workshop and never blocks a new month.
       const sourceMaterialIds = source?.materials.map(
         (material) => material.id,
       );

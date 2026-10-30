@@ -22,12 +22,13 @@ import {
   transitionRefusedMessage,
   workshopRuleMessage,
 } from "./issue-messages";
+import type { GalleryFormImage } from "./gallery-form-data";
 import { formatPercentage, formatWholePesos } from "./workshop-form-data";
 
 export type WorkshopFormValues = Omit<
   MonthlyWorkshopDraft,
   "images" | "confirmSlugChange"
->;
+> & { readonly images: readonly GalleryFormImage[] };
 
 /** What a rejected workshop form hands back to its screen. */
 export interface WorkshopActionData {
@@ -61,6 +62,7 @@ export function invalidWorkshopResponse(
         defaultFee: draft.defaultFee,
         teacherId: draft.teacherId,
         percentage: draft.percentage,
+        images: draft.images,
       },
       errors: fieldErrors(issues, WORKSHOP_FIELD_MESSAGES),
       formError: adminMicrocopy.workshops.form.saveFailed,
@@ -111,6 +113,11 @@ export function workshopFormValues(
     defaultFee: formatWholePesos(workshop.defaultFee),
     teacherId: workshop.assignment?.teacher.id ?? "",
     percentage: formatPercentage(workshop.assignment?.percentage ?? null),
+    images: workshop.images.flatMap((image) =>
+      image.asset
+        ? [{ assetId: image.assetId, src: image.asset.src, alt: image.alt }]
+        : [],
+    ),
   };
 }
 

@@ -6,7 +6,11 @@ import {
   createDbSessionFactory,
   type DbSessionFactory,
 } from "~/platform/db/session";
-import { runMonthlyWorkshopRepositoryContract } from "~/testing/contracts/monthly-workshop-repository.contract";
+import {
+  runMonthlyWorkshopRepositoryContract,
+  WORKSHOP_ASSET_1,
+  WORKSHOP_ASSET_2,
+} from "~/testing/contracts/monthly-workshop-repository.contract";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -27,6 +31,13 @@ async function freshRepository() {
     await session.db.execute(sql`
       INSERT INTO teacher (id, name, name_key, bio_line, modality, active, updated_by, updated_at)
       VALUES ('00000000-0000-4000-8000-000000000099', 'Teacher', 'teacher', '', 'third_party', true, 'seed', now())`);
+    for (const [id, key] of [
+      [WORKSHOP_ASSET_1, "img/w1.jpg"],
+      [WORKSHOP_ASSET_2, "img/w2.jpg"],
+    ] as const)
+      await session.db.execute(sql`
+        INSERT INTO media_asset (id, storage_key, content_type, byte_size, width, height, created_by, created_at)
+        VALUES (${id}, ${key}, 'image/jpeg', 1, 1, 1, 'seed', now())`);
   } finally {
     await session.close();
   }
@@ -48,6 +59,7 @@ function workshop(id: string, slug: string): StoredMonthlyWorkshop {
     defaultFee: fee,
     teacherId: null,
     percentage: null,
+    images: [],
     status: "draft",
     audit: {
       updatedBy: "admin@example.com",
@@ -92,6 +104,22 @@ describe("DrizzleMonthlyWorkshopRepository PostgreSQL conflict mapping", () => {
     });
   });
 
+  it("removes the gallery with a deleted draft and keeps the assets", async () => {
+    const repo = await freshRepository();
+    await repo.insert({
+      ...workshop(ID_A, "gallery"),
+      images: [{ assetId: WORKSHOP_ASSET_1, alt: "Primera" }],
+    });
+
+    expect(await repo.deleteDraft(ID_A)).toBe("deleted");
+    expect(await repo.findById(ID_A)).toBeNull();
+    await repo.insert({
+      ...workshop(ID_A, "gallery"),
+      images: [{ assetId: WORKSHOP_ASSET_1, alt: "Otra vez" }],
+    });
+    expect((await repo.findById(ID_A))?.images).toHaveLength(1);
+  });
+
   it("rejects a primary-key 23505 instead of mapping it", async () => {
     const repo = await freshRepository();
     await repo.insert(workshop(ID_A, "one"));
@@ -110,10 +138,15 @@ describe("DrizzleMonthlyWorkshopRepository PostgreSQL conflict mapping", () => {
       cause: { code: "23505", constraint: "monthly_workshop_pkey" },
     });
     const repositoryRejectingInsert = (error: Error) => {
+      const failing = {
+        insert: () => ({ values: () => Promise.reject(error) }),
+      };
       const openSession: DbSessionFactory = () =>
         Promise.resolve({
           db: {
-            insert: () => ({ values: () => Promise.reject(error) }),
+            ...failing,
+            transaction: (run: (tx: typeof failing) => Promise<unknown>) =>
+              run(failing),
           },
           close: () => Promise.resolve(),
         } as never);

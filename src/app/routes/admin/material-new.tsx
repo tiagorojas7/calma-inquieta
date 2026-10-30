@@ -5,13 +5,14 @@ import {
 } from "~/app/admin/material-form-data";
 import { failureResponse } from "~/app/admin/failure-response";
 import { uploadChosenImage } from "~/app/admin/upload-chosen-image";
+import { withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
-import { Heading } from "~/app/ui/atoms/heading";
+import { AdminPageHeader } from "~/app/ui/admin/admin-page";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
   MaterialForm,
   type MaterialFormValues,
 } from "~/app/ui/admin/material-form";
-import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/material-new";
 
@@ -66,7 +67,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const created = await context
     .get(servicesContext)
     .materials.create(actor, parseMaterialDraft(form));
-  if (created.ok) return redirect(LIST);
+  if (created.ok) return redirect(withFeedback(LIST, "created"));
   if (created.error.kind === "invalid") {
     return data(
       {
@@ -87,7 +88,15 @@ export default function AdminMaterialNew() {
   const rejected = useActionData<typeof action>();
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>Nuevo material</Heading>
+      <AdminPageHeader
+        title={adminMicrocopy.materials.newTitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.materials.title, href: LIST },
+          { label: adminMicrocopy.materials.newTitle },
+        ]}
+        back={{ href: LIST, label: adminMicrocopy.materials.back }}
+      />
       <MaterialForm
         values={rejected?.values ?? EMPTY}
         errors={rejected?.errors ?? {}}

@@ -1,4 +1,6 @@
 import { Heading, Text } from "../atoms/heading";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminDangerZone } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError } from "./form-fields";
 import { MaterialForm, type MaterialFormErrors } from "./material-form";
@@ -47,6 +49,7 @@ export function MaterialDetail({
   errors,
   formError,
   stateError,
+  feedback = null,
 }: {
   name: string;
   description: string;
@@ -83,6 +86,8 @@ export function MaterialDetail({
   errors: MaterialFormErrors;
   formError: string | undefined;
   stateError: string | undefined;
+  /** Success text from the redirect that brought the owner here. */
+  feedback?: string | null | undefined;
 }) {
   const supplier = suppliers.find((choice) => choice.id === supplierId);
   const formValues = {
@@ -97,15 +102,18 @@ export function MaterialDetail({
   };
   return (
     <section className="flex max-w-3xl flex-col gap-6">
-      <a
-        href="/admin/materiales"
-        className="w-fit text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
-      >
-        {copy.back}
-      </a>
+      <AdminPageHeader
+        title={name}
+        description={description}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: "Materiales", href: "/admin/materiales" },
+          { label: name },
+        ]}
+        back={{ href: "/admin/materiales", label: copy.back }}
+      />
+      {feedback ? <AdminFeedback tone="success" title={feedback} /> : null}
       <header className="flex flex-col gap-2">
-        <Heading level={1}>{name}</Heading>
-        <Text>{description}</Text>
         <dl className="grid gap-2 sm:grid-cols-3">
           <div>
             <dt className="font-semibold">{copy.category}</dt>
@@ -208,11 +216,8 @@ export function MaterialDetail({
         </div>
       </section>
 
-      <section aria-labelledby="material-lifecycle-title">
-        <Heading level={2} id="material-lifecycle-title">
-          {copy.lifecycle.title}
-        </Heading>
-        <div className="mt-2 flex flex-col gap-3">
+      <AdminDangerZone title={copy.lifecycle.title}>
+        <div className="flex flex-col gap-3">
           <FormError message={stateError} />
           <ConfirmedSubmit
             intent={active ? "deactivate" : "reactivate"}
@@ -232,7 +237,7 @@ export function MaterialDetail({
             }
           />
         </div>
-      </section>
+      </AdminDangerZone>
     </section>
   );
 }

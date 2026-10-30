@@ -1,10 +1,13 @@
 import { useLoaderData } from "react-router";
+import { feedbackCode } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import { parseMaterialListQuery } from "~/app/admin/material-list-query";
 import { MaterialsList } from "~/app/ui/admin/materials-list";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/materials";
+
+const FEEDBACK = ["created", "saved"] as const;
 
 export function meta() {
   return [{ title: "Materiales | Panel | Calma Inquieta" }];
@@ -24,6 +27,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!suppliers.ok) throw failureResponse(suppliers.error);
   return {
     filter: query.filter,
+    feedback: feedbackCode(request, FEEDBACK),
     category: query.category,
     supplierId: query.supplierId,
     categories: [...categories.value],

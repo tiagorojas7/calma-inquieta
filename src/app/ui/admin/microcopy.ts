@@ -905,7 +905,15 @@ export const adminMicrocopy = {
   },
   materials: {
     title: "Materiales",
+    newTitle: "Nuevo material",
     newAction: "Nuevo material",
+    back: "Volver a materiales",
+    variantCount: (count: number) =>
+      `${String(count)} ${count === 1 ? "variante" : "variantes"}`,
+    feedback: {
+      created: { title: "Material creado" },
+      saved: { title: "Cambios guardados" },
+    },
     suppliersLink: "Proveedores",
     filterLabel: "Mostrar materiales",
     filters: {
@@ -936,6 +944,11 @@ export const adminMicrocopy = {
   },
   materialDetail: {
     back: "Volver a materiales",
+    feedback: {
+      saved: "Cambios guardados",
+      deactivated: "Material desactivado",
+      reactivated: "Material reactivado",
+    },
     edit: {
       title: "Editar material",
       save: "Guardar cambios",
@@ -963,7 +976,7 @@ export const adminMicrocopy = {
       at: "Fecha y hora",
     },
     lifecycle: {
-      title: "Acciones",
+      title: "Zona de riesgo",
       deactivate: "Desactivar",
       reactivate: "Reactivar",
       failed: "No se pudo actualizar el estado del material. Probá de nuevo.",

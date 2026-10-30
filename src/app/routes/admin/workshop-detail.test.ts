@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
-import { err } from "~/modules/_shared";
+import { ok } from "~/modules/_shared";
 import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
@@ -19,6 +19,11 @@ import {
   seedWorkshop,
 } from "~/testing/admin/workshop-seed";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
+import { monthName } from "~/app/admin/workshop-readiness";
+import {
+  FLOW_MONTH,
+  workshopFlowFixture,
+} from "~/testing/admin/workshop-flow-kit";
 import { action, loader } from "./workshop-detail";
 
 type Fixture = ReturnType<typeof workshopsFixture>;
@@ -34,7 +39,7 @@ const TURNO = {
 const noPeriods = withOverrides(
   createUnavailableService<WorkshopPeriodsService>(),
   {
-    get: () => Promise.resolve(err({ kind: "not-found" })),
+    list: () => Promise.resolve(ok({ periods: [], suggestedNext: null })),
   },
 );
 
@@ -114,14 +119,21 @@ describe("admin workshop detail loader", () => {
       teachers: [{ id: teacher, name: "Beto Ruiz", modality: "third_party" }],
       activeTurnos: 1,
       feedback: null,
-      readiness: {
-        summary: "Falta publicar el taller",
-        complete: false,
-        next: {
-          cta: "Publicar el taller",
-          href: `/admin/talleres/${id}#estado`,
-        },
+      failure: null,
+      summary: "Borrador. Todavía no se ve en el sitio.",
+      enrollmentOpen: false,
+      next: {
+        cta: "Publicar el taller",
+        href: `/admin/talleres/${id}#estado`,
       },
+      turnos: [
+        {
+          label: "Mañana",
+          when: "Martes 10:00 a 12:00",
+          capacity: 8,
+        },
+      ],
+      months: [],
     });
   });
 
@@ -319,5 +331,61 @@ describe("admin workshop detail action", () => {
       ),
     ).toBe(403);
     expect(stored(fixture, id).status).toBe("draft");
+  });
+});
+
+describe("admin workshop detail overview", () => {
+  async function openWorkshop() {
+    const flow = workshopFlowFixture();
+    const teacher = await seedTeacher(flow, { name: "Ana", modality: "own" });
+    const id = await seedWorkshop(flow, { teacherId: teacher });
+    await flow.service.addTurno(testAdminActor(), id, TURNO);
+    await flow.service.publish(testAdminActor(), id);
+    const opened = await flow.periods.openMonth(
+      testAdminActor(),
+      id,
+      FLOW_MONTH,
+    );
+    if (!opened.ok) throw new Error("open failed");
+    await flow.periods.publish(testAdminActor(), opened.value.id);
+    return { flow, id };
+  }
+  const load = (
+    flow: Awaited<ReturnType<typeof openWorkshop>>["flow"],
+    id: string,
+    query = "",
+  ) =>
+    loader({
+      request: getRequest(`/admin/talleres/${id}${query}`),
+      params: { id },
+      context: adminContext({
+        monthlyWorkshops: flow.service,
+        teachers: flow.teachers.service,
+        workshopPeriods: flow.periods,
+      }),
+    } as never);
+
+  it("summarizes an enrolling taller with its turnos and month list and no further step", async () => {
+    const { flow, id } = await openWorkshop();
+    expect(await load(flow, id)).toMatchObject({
+      summary: `Publicado. Inscripciones abiertas en ${monthName(FLOW_MONTH)}.`,
+      enrollmentOpen: true,
+      next: null,
+      turnos: [{ label: "Mañana", when: "Martes 10:00 a 12:00", capacity: 8 }],
+      months: [
+        {
+          period: FLOW_MONTH,
+          label: monthName(FLOW_MONTH),
+          status: "open",
+          href: `/admin/talleres/${id}/periodos/${FLOW_MONTH}`,
+        },
+      ],
+    });
+  });
+
+  it("reports the step that stopped the one-click flow only when it is declared", async () => {
+    const { flow, id } = await openWorkshop();
+    expect((await load(flow, id, "?fallo=month")).failure).toBe("month");
+    expect((await load(flow, id, "?fallo=nope")).failure).toBeNull();
   });
 });

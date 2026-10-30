@@ -6,36 +6,85 @@ import {
   getRequest,
   postRequest,
   thrownStatus,
-  workshopsFixture,
 } from "~/testing/admin/route-kit";
-import { WORKSHOP_FIELDS, seedTeacher } from "~/testing/admin/workshop-seed";
+import {
+  FLOW_MONTH,
+  buildMaterial,
+  workshopFlowFixture,
+} from "~/testing/admin/workshop-flow-kit";
+import { seedTeacher } from "~/testing/admin/workshop-seed";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { action, loader } from "./workshop-new";
 
-type Fixture = ReturnType<typeof workshopsFixture>;
+type Fixture = ReturnType<typeof workshopFlowFixture>;
 
 function context(fixture: Fixture, options: { admin?: boolean } = {}) {
   return adminContext(
-    { monthlyWorkshops: fixture.service, teachers: fixture.teachers.service },
+    {
+      monthlyWorkshops: fixture.service,
+      workshopPeriods: fixture.periods,
+      teachers: fixture.teachers.service,
+      materials: fixture.materials,
+    },
     options,
   );
 }
 
+const FIELDS = {
+  name: "Cerámica Creativa",
+  description: "Un taller para empezar de cero.",
+  teacherId: "",
+  defaultFee: "12000",
+  percentage: "",
+  turnoWeekday: "2",
+  turnoStartsAt: "10:00",
+  turnoEndsAt: "12:00",
+  turnoCapacity: "8",
+};
+
+/** The fields as a browser posts them: one value per turno row, five rows. */
+function post(
+  fields: Record<string, string | string[]>,
+  headers?: Record<string, string>,
+) {
+  const merged: Record<string, string | string[]> = { ...FIELDS, ...fields };
+  const body = new URLSearchParams();
+  for (const [key, value] of Object.entries(merged)) {
+    if (key.startsWith("turno")) {
+      const first = Array.isArray(value) ? value : [value];
+      for (let row = 0; row < 5; row += 1) body.append(key, first[row] ?? "");
+    } else
+      for (const item of Array.isArray(value) ? value : [value])
+        body.append(key, item);
+  }
+  const request = postRequest("/admin/talleres/nuevo", {}, headers);
+  return new Request(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body,
+  });
+}
+
 function submit(
   fixture: Fixture,
-  fields: Record<string, string>,
+  fields: Record<string, string | string[]>,
   options: { admin?: boolean; headers?: Record<string, string> } = {},
 ) {
   return action({
-    request: postRequest("/admin/talleres/nuevo", fields, options.headers),
+    request: post(fields, options.headers),
     params: {},
     context: context(fixture, options),
   } as never);
 }
 
+const location = (response: unknown) =>
+  (response as Response).headers.get("Location");
+
 describe("admin workshop create loader", () => {
-  it("offers only active teachers to assign, with their modality", async () => {
-    const fixture = workshopsFixture();
+  it("offers active teachers with their modality and the selectable materials", async () => {
+    const fixture = workshopFlowFixture([
+      buildMaterial({ id: "m1", name: "Arcilla" }),
+    ]);
     await seedTeacher(fixture, { name: "Beto Ruiz", modality: "third_party" });
     const archived = await seedTeacher(fixture, {
       name: "Caro Paz",
@@ -50,6 +99,7 @@ describe("admin workshop create loader", () => {
     expect(result.teachers).toEqual([
       { id: "t1", name: "Beto Ruiz", modality: "third_party" },
     ]);
+    expect(result.materials).toEqual([{ id: "m1", name: "Arcilla" }]);
   });
 
   it("is denied for a non-admin", async () => {
@@ -58,7 +108,7 @@ describe("admin workshop create loader", () => {
         loader({
           request: getRequest("/admin/talleres/nuevo"),
           params: {},
-          context: context(workshopsFixture(), { admin: false }),
+          context: context(workshopFlowFixture(), { admin: false }),
         } as never),
       ),
     ).toBe(403);
@@ -66,43 +116,82 @@ describe("admin workshop create loader", () => {
 });
 
 describe("admin workshop create action", () => {
-  it("creates a draft as the admin, assigned to a third-party teacher with its percentage", async () => {
-    const fixture = workshopsFixture();
+  it("publishes in one click: taller, turno, open month with its capacity, and a success banner", async () => {
+    const fixture = workshopFlowFixture();
     const teacherId = await seedTeacher(fixture, {
-      name: "Beto Ruiz",
-      modality: "third_party",
+      name: "Ana",
+      modality: "own",
     });
-    const response = await submit(fixture, {
-      ...WORKSHOP_FIELDS,
-      teacherId,
-      percentage: "35,5",
-    });
+    const response = await submit(fixture, { teacherId, intent: "publish" });
     expect((response as Response).status).toBe(302);
-    expect((response as Response).headers.get("Location")).toBe(
-      `/admin/talleres/${[...fixture.repository.items.keys()][0] ?? ""}?ok=created`,
-    );
+    expect(location(response)).toBe("/admin/talleres/w1?ok=published-open");
     expect([...fixture.repository.items.values()]).toMatchObject([
       {
         slug: "ceramica-creativa",
-        status: "draft",
-        teacherId,
-        percentage: { basisPoints: 3550 },
+        status: "published",
+        summary: "Un taller para empezar de cero.",
         audit: { updatedBy: "a@x.test" },
       },
     ]);
+    expect(
+      await fixture.periods.get(testAdminActor(), "w1", FLOW_MONTH),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        status: "open",
+        turnos: [{ weekday: 2, startsAt: "10:00", capacity: 8 }],
+      },
+    });
+  });
+
+  it("opens the month with the chosen materials and a third-party percentage", async () => {
+    const fixture = workshopFlowFixture([
+      buildMaterial({ id: "m1", name: "Arcilla" }),
+    ]);
+    const teacherId = await seedTeacher(fixture, {
+      name: "Beto",
+      modality: "third_party",
+    });
+    const response = await submit(fixture, {
+      teacherId,
+      percentage: "35,5",
+      materialIds: ["m1"],
+      intent: "publish",
+    });
+    expect(location(response)).toBe("/admin/talleres/w1?ok=published-open");
+    expect(
+      await fixture.periods.get(testAdminActor(), "w1", FLOW_MONTH),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        status: "open",
+        materials: [{ id: "m1" }],
+        snapshot: { percentage: { basisPoints: 3550 } },
+      },
+    });
+  });
+
+  it("saves only a draft for the secondary button and lands on the taller", async () => {
+    const fixture = workshopFlowFixture();
+    const response = await submit(fixture, { intent: "draft" });
+    expect(location(response)).toBe("/admin/talleres/w1?ok=created");
+    expect([...fixture.repository.items.values()]).toMatchObject([
+      { status: "draft" },
+    ]);
+    expect(fixture.periodRepository.items.size).toBe(0);
   });
 
   it("returns 422 with the typed values and Spanish field errors, storing nothing", async () => {
-    const fixture = workshopsFixture();
+    const fixture = workshopFlowFixture();
     const result = await submit(fixture, {
-      ...WORKSHOP_FIELDS,
       name: "  ",
       defaultFee: "12,5",
+      intent: "publish",
     });
     expect(result).toMatchObject({
       init: { status: 422 },
       data: {
-        values: { name: "  ", defaultFee: "12,5", technique: "Cerámica" },
+        values: { name: "", defaultFee: "12,5" },
         errors: {
           name: "Completá este campo.",
           defaultFee: "El formato no es válido. Revisalo.",
@@ -113,64 +202,84 @@ describe("admin workshop create action", () => {
     expect(fixture.repository.items.size).toBe(0);
   });
 
-  it("rejects a fee of zero as out of range", async () => {
-    const fixture = workshopsFixture();
-    const result = await submit(fixture, {
-      ...WORKSHOP_FIELDS,
-      defaultFee: "0",
-    });
-    expect(result).toMatchObject({
-      init: { status: 422 },
-      data: {
-        errors: { defaultFee: "El valor está fuera del rango permitido." },
-      },
-    });
-  });
-
-  it("words a duplicate slug on the slug field, and a percentage for an own teacher", async () => {
-    const fixture = workshopsFixture();
-    const own = await seedTeacher(fixture, { name: "Ana", modality: "own" });
-    await submit(fixture, WORKSHOP_FIELDS);
-    const result = await submit(fixture, {
-      ...WORKSHOP_FIELDS,
-      teacherId: own,
-      percentage: "30",
-    });
-    expect(result).toMatchObject({
-      init: { status: 422 },
-      data: {
-        errors: {
-          slug: "Ese enlace ya lo usa otro taller.",
-          percentage: "El porcentaje no corresponde en este caso.",
-        },
-      },
-    });
-  });
-
-  it("asks for a percentage when a third-party teacher has none", async () => {
-    const fixture = workshopsFixture();
-    const teacherId = await seedTeacher(fixture, {
+  it("asks for the percentage of a third-party teacher and an own teacher cannot have one", async () => {
+    const fixture = workshopFlowFixture();
+    const third = await seedTeacher(fixture, {
       name: "Beto",
       modality: "third_party",
     });
-    const result = await submit(fixture, { ...WORKSHOP_FIELDS, teacherId });
-    expect(result).toMatchObject({
+    const own = await seedTeacher(fixture, { name: "Ana", modality: "own" });
+    expect(await submit(fixture, { teacherId: third })).toMatchObject({
       data: { errors: { percentage: "Completá este campo." } },
     });
+    expect(
+      await submit(fixture, { teacherId: own, percentage: "30" }),
+    ).toMatchObject({
+      data: {
+        errors: { percentage: "El porcentaje no corresponde en este caso." },
+      },
+    });
+    expect(fixture.repository.items.size).toBe(0);
+  });
+
+  it("asks for a turno before publishing and stores nothing", async () => {
+    const fixture = workshopFlowFixture();
+    const result = await submit(fixture, {
+      turnoWeekday: [],
+      turnoStartsAt: [],
+      turnoEndsAt: [],
+      turnoCapacity: [],
+      intent: "publish",
+    });
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        turnosError: "Agregá al menos un turno para poder publicar.",
+      },
+    });
+    expect(fixture.repository.items.size).toBe(0);
+  });
+
+  it("flags a half-filled turno row and stores nothing", async () => {
+    const fixture = workshopFlowFixture();
+    const result = await submit(fixture, {
+      turnoEndsAt: ["", "", ""],
+      intent: "publish",
+    });
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        turnoErrors: {
+          0: "Revisá este turno: elegí el día, un horario válido (desde antes que hasta) y cupos de 1 a 500.",
+        },
+      },
+    });
+    expect(fixture.repository.items.size).toBe(0);
+  });
+
+  it("keeps the taller as a draft and names the failed step when it cannot be published", async () => {
+    const fixture = workshopFlowFixture();
+    // No teacher: create and the turno persist, publishing is refused.
+    const response = await submit(fixture, { intent: "publish" });
+    expect(location(response)).toBe("/admin/talleres/w1?fallo=publish");
+    expect([...fixture.repository.items.values()]).toMatchObject([
+      { status: "draft" },
+    ]);
+    expect(fixture.periodRepository.items.size).toBe(0);
   });
 
   it("is denied for a non-admin and for a cross-site post", async () => {
-    const fixture = workshopsFixture();
+    const fixture = workshopFlowFixture();
     expect(
-      await thrownStatus(() =>
-        submit(fixture, WORKSHOP_FIELDS, { admin: false }),
-      ),
+      await thrownStatus(() => submit(fixture, {}, { admin: false })),
     ).toBe(403);
     expect(
       await thrownStatus(() =>
-        submit(fixture, WORKSHOP_FIELDS, {
-          headers: { Origin: "https://evil.example.test" },
-        }),
+        submit(
+          fixture,
+          {},
+          { headers: { Origin: "https://evil.example.test" } },
+        ),
       ),
     ).toBe(403);
     expect(fixture.repository.items.size).toBe(0);
@@ -179,7 +288,7 @@ describe("admin workshop create action", () => {
   it("answers 503 when the workshops service is unavailable", async () => {
     const status = await thrownStatus(() =>
       action({
-        request: postRequest("/admin/talleres/nuevo", WORKSHOP_FIELDS),
+        request: post({ intent: "draft" }),
         params: {},
         context: adminContext({
           monthlyWorkshops: createUnavailableService<MonthlyWorkshopsService>(),

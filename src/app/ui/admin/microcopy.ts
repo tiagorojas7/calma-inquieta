@@ -648,19 +648,10 @@ export const adminMicrocopy = {
     noTeacher: "Sin profesor",
     backToList: "Volver a talleres",
     enrollment: "Inscripciones",
-    readiness: {
-      title: (month: string) => `Para abrir las inscripciones de ${month}`,
-      progress: (done: number, total: number) =>
-        `${String(done)} de ${String(total)} pasos listos`,
-      done: "Listo",
-      pending: "Pendiente",
-      complete: "Las inscripciones están abiertas.",
-    },
     feedback: {
       created: {
-        title: "Taller creado",
-        message:
-          "Siguiente paso: agregá un turno para que se pueda reservar un lugar.",
+        title: "Taller guardado como borrador",
+        message: "Todavía no se ve en el sitio. Publicalo cuando esté listo.",
       },
       saved: { title: "Cambios guardados" },
       deleted: { title: "Borrador eliminado" },
@@ -668,6 +659,14 @@ export const adminMicrocopy = {
       paused: { title: "Taller pausado" },
       archived: { title: "Taller archivado" },
       restored: { title: "Taller restaurado como borrador" },
+      opened: {
+        title: "Mes abierto",
+        message: "Ya acepta inscripciones, con lo mismo del mes anterior.",
+      },
+      "published-open": {
+        title: "Listo: taller publicado",
+        message: "Las inscripciones del mes ya están abiertas.",
+      },
     },
     periods: {
       manage: "Administrar períodos",
@@ -865,6 +864,66 @@ export const adminMicrocopy = {
       save: "Guardar",
       cancel: "Cancelar",
       saveFailed: "Revisá los campos marcados e intentá de nuevo.",
+    },
+    quick: {
+      sectionTurnos: "Turnos",
+      turnosHint: "Completá los que ofrezcas. Las filas vacías se ignoran.",
+      weekday: "Día",
+      weekdayPlaceholder: "Elegí el día",
+      startsAt: "Desde",
+      endsAt: "Hasta",
+      capacity: "Cupos",
+      timeHint: "Formato 24 h, por ejemplo 10:00.",
+      row: (index: number) => `Turno ${String(index)}`,
+      moreTurnos: "+ otro turno",
+      rowInvalid:
+        "Revisá este turno: elegí el día, un horario válido (desde antes que hasta) y cupos de 1 a 500.",
+      rowDuplicate: "Ya cargaste un turno con el mismo día y horario.",
+      turnosRequired: "Agregá al menos un turno para poder publicar.",
+      sectionMaterials: "Materiales (opcional)",
+      materialsHint: "Marcá los materiales que las alumnas pueden sumar.",
+      noMaterials: "Todavía no hay materiales en el catálogo.",
+      percentageDetails: "Profesor de terceros: porcentaje acordado",
+      percentageSummary: "Porcentaje (solo profesores de terceros)",
+      publish: "Publicar y abrir inscripciones",
+      saveDraft: "Guardar borrador",
+      derivedNote:
+        "El enlace se arma solo con el nombre. El resumen sale de la descripción.",
+      techniqueDetails: "Más opciones",
+    },
+    failures: {
+      turnos:
+        "El taller quedó como borrador, pero no se pudieron guardar los turnos. Revisalos y volvé a intentar.",
+      publish:
+        "El taller quedó como borrador porque no se pudo publicar. Revisá los datos del taller.",
+      month:
+        "El taller está publicado, pero no se pudo abrir el mes. Abrilo desde la lista de meses.",
+      materials:
+        "El taller está publicado y el mes abierto, pero no se pudieron guardar los materiales. Elegilos en el mes.",
+      enroll:
+        "El mes quedó abierto en borrador y todavía no acepta inscripciones. Publicalo desde el mes.",
+    },
+    summaryLine: {
+      draft: "Borrador. Todavía no se ve en el sitio.",
+      noMonth: (month: string) =>
+        `Publicado. Falta abrir las inscripciones de ${month}.`,
+      open: (month: string) => `Publicado. Inscripciones abiertas en ${month}.`,
+      monthDraft: (month: string) =>
+        `Publicado. ${month} está en borrador y todavía no acepta inscripciones.`,
+      paused: "Pausado. No acepta inscripciones nuevas.",
+      archived: "Archivado.",
+      noTurnos: "Falta agregar un turno.",
+    },
+    openMonth: (month: string) => `Abrir ${month}`,
+    openedMonth: (month: string) => `Inscripciones abiertas en ${month}`,
+    openFailed: "No se pudo abrir el mes. Entrá al taller para ver qué falta.",
+    detailSections: {
+      turnos: "Turnos",
+      months: "Meses",
+      edit: "Editar datos",
+      manageTurnos: "Editar turnos",
+      manageMonths: "Editar meses",
+      noMonths: "Todavía no abriste ningún mes.",
     },
     state: {
       status: "Estado",

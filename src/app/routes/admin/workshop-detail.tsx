@@ -13,11 +13,12 @@ import {
   parseWorkshopIntent,
 } from "~/app/admin/workshop-form-data";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
-import { workshopReadiness } from "~/app/admin/workshop-readiness";
+import { failureStep } from "~/app/admin/failure-code";
+import { formatTimeRange, weekdayName } from "~/app/admin/turno-form-data";
+import { monthName, workshopReadiness } from "~/app/admin/workshop-readiness";
 import { cordobaMonthOf } from "~/modules/workshops";
-import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
-import { ReadinessChecklist } from "~/app/ui/admin/workshop-readiness";
+import { WorkshopOverview } from "~/app/ui/admin/workshop-overview";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { WorkshopForm, WorkshopStatePanel } from "~/app/ui/admin/workshop-form";
 import { requireAdmin } from "./require-admin";
@@ -32,6 +33,7 @@ const FEEDBACK = [
   "paused",
   "archived",
   "restored",
+  "published-open",
 ] as const;
 const CHANGED_CODE = {
   publish: "published",
@@ -53,49 +55,68 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const teachers = await loadTeacherOptions(services.teachers, actor, workshop);
   if (!teachers.ok) throw failureResponse(teachers.error);
   const month = cordobaMonthOf(new Date());
-  const period = await services.workshopPeriods.get(actor, workshop.id, month);
-  if (!period.ok && period.error.kind !== "not-found")
-    throw failureResponse(period.error);
+  const periods = await services.workshopPeriods.list(actor, workshop.id);
+  if (!periods.ok) throw failureResponse(periods.error);
+  const current = periods.value.periods.find(
+    (period) => period.period === month,
+  );
+  const activeTurnos = workshop.turnos.filter((turno) => turno.active);
   const readiness = workshopReadiness({
     workshopId: workshop.id,
     status: workshop.status,
-    activeTurnos: workshop.turnos.filter((turno) => turno.active).length,
+    activeTurnos: activeTurnos.length,
     month,
-    period: period.ok
+    period: current
       ? {
-          status: period.value.status,
-          totalCapacity: period.value.turnos.reduce(
-            (sum, turno) => sum + turno.capacity,
-            0,
-          ),
-          materialsRequired: period.value.materialsRequired,
-          materialsCount: period.value.materials.length,
+          status: current.status,
+          totalCapacity: current.totalCapacity,
+          materialsRequired: false,
+          materialsCount: null,
         }
       : null,
   });
+  const line = copy.summaryLine;
+  const summary =
+    workshop.status === "archived"
+      ? line.archived
+      : workshop.status === "paused"
+        ? line.paused
+        : workshop.status === "draft"
+          ? activeTurnos.length === 0
+            ? line.noTurnos
+            : line.draft
+          : current?.status === "open"
+            ? line.open(monthName(month))
+            : current
+              ? line.monthDraft(monthName(month))
+              : line.noMonth(monthName(month));
   return {
     feedback: feedbackCode(request, FEEDBACK),
-    readiness: {
-      monthName: readiness.monthName,
-      summary: readiness.summary,
-      complete: readiness.complete,
-      steps: readiness.steps.map(({ key, label, done, href }) => ({
-        key,
-        label,
-        done,
-        href,
-      })),
-      next: readiness.next
-        ? { cta: readiness.next.cta, href: readiness.next.href }
-        : null,
-    },
+    failure: failureStep(request),
+    summary,
+    enrollmentOpen: current?.status === "open",
+    next: readiness.next
+      ? { cta: readiness.next.cta, href: readiness.next.href }
+      : null,
+    turnos: activeTurnos.map((turno) => ({
+      id: turno.id,
+      label: turno.label,
+      when: `${weekdayName(turno.weekday)} ${formatTimeRange(turno.startsAt, turno.endsAt)}`,
+      capacity: turno.defaultCapacity,
+    })),
+    months: periods.value.periods.map((period) => ({
+      period: period.period,
+      label: monthName(period.period),
+      status: period.status,
+      href: `${LIST}/${workshop.id}/periodos/${period.period}`,
+    })),
     id: workshop.id,
     name: workshop.name,
     status: workshop.status,
     published: workshop.status === "published",
     values: workshopFormValues(workshop),
     teachers: teachers.value,
-    activeTurnos: workshop.turnos.filter((turno) => turno.active).length,
+    activeTurnos: activeTurnos.length,
   };
 }
 
@@ -151,6 +172,7 @@ export default function AdminWorkshopDetail() {
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const saved = workshop.feedback ? copy.feedback[workshop.feedback] : null;
+  const failure = workshop.failure;
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -161,23 +183,10 @@ export default function AdminWorkshopDetail() {
           { label: workshop.name },
         ]}
         back={{ href: LIST, label: copy.backToList }}
-        actions={
-          <div className="flex flex-wrap gap-3">
-            <AdminButtonLink
-              href={`${LIST}/${workshop.id}/turnos`}
-              variant="outline"
-            >
-              {copy.turnos.manage}
-            </AdminButtonLink>
-            <AdminButtonLink
-              href={`${LIST}/${workshop.id}/periodos`}
-              variant="outline"
-            >
-              {copy.periods.manage}
-            </AdminButtonLink>
-          </div>
-        }
       />
+      {failure ? (
+        <AdminFeedback tone="error" title={copy.failures[failure]} />
+      ) : null}
       {saved ? (
         <AdminFeedback
           tone="success"
@@ -185,7 +194,15 @@ export default function AdminWorkshopDetail() {
           message={"message" in saved ? saved.message : undefined}
         />
       ) : null}
-      <ReadinessChecklist {...workshop.readiness} />
+      <WorkshopOverview
+        summary={workshop.summary}
+        open={workshop.enrollmentOpen}
+        next={workshop.next}
+        turnos={workshop.turnos}
+        months={workshop.months}
+        turnosHref={`${LIST}/${workshop.id}/turnos`}
+        monthsHref={`${LIST}/${workshop.id}/periodos`}
+      />
       <div id="estado">
         <WorkshopStatePanel
           status={workshop.status}

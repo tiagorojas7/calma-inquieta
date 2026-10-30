@@ -1,4 +1,5 @@
 import { Text } from "../atoms/heading";
+import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { AdminEmptyState } from "./empty-state";
@@ -18,6 +19,11 @@ export interface WorkshopRow {
     readonly cta: string | null;
     readonly href: string | null;
   };
+  /** The next month nobody has opened yet, opened in one click. */
+  readonly openNext?: {
+    readonly period: string;
+    readonly label: string;
+  } | null;
 }
 
 export type WorkshopFilterKey = keyof typeof adminMicrocopy.workshops.filters;
@@ -40,8 +46,11 @@ export function WorkshopsList({
 }: {
   rows: readonly WorkshopRow[];
   filter: WorkshopFilterKey;
-  feedback?: "deleted" | null;
+  feedback?: "deleted" | "opened" | null;
 }) {
+  const saved: { title: string; message?: string } | null = feedback
+    ? copy.feedback[feedback]
+    : null;
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
@@ -56,8 +65,12 @@ export function WorkshopsList({
           </AdminButtonLink>
         }
       />
-      {feedback === "deleted" ? (
-        <AdminFeedback tone="success" title={copy.feedback.deleted.title} />
+      {saved ? (
+        <AdminFeedback
+          tone="success"
+          title={saved.title}
+          message={saved.message}
+        />
       ) : null}
       <nav aria-label={copy.filterLabel}>
         <ul className="flex flex-wrap gap-4">
@@ -113,6 +126,20 @@ export function WorkshopsList({
                     {row.enrollment.cta}
                   </AdminButtonLink>
                 </div>
+              ) : null}
+              {row.openNext ? (
+                <form method="post" className="flex">
+                  <input type="hidden" name="intent" value="open-month" />
+                  <input type="hidden" name="workshopId" value={row.id} />
+                  <input
+                    type="hidden"
+                    name="period"
+                    value={row.openNext.period}
+                  />
+                  <AdminButton type="submit">
+                    {copy.openMonth(row.openNext.label)}
+                  </AdminButton>
+                </form>
               ) : null}
             </li>
           ))}

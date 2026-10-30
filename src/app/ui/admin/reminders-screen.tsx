@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
 import { AdminCardList } from "./admin-sections";

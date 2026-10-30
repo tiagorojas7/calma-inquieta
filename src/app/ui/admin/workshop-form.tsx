@@ -1,4 +1,4 @@
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { ConfirmedSubmit } from "./confirmed-submit";

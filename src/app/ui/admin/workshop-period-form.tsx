@@ -1,4 +1,4 @@
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import {
   CheckboxField,
   FormError,

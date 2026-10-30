@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { Heading, Text } from "../atoms/heading";
 import { adminMicrocopy } from "./microcopy";
 

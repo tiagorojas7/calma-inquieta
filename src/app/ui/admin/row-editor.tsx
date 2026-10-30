@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { adminMicrocopy } from "./microcopy";
 
 const { rowEditor: copy } = adminMicrocopy;

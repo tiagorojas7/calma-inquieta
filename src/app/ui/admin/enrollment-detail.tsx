@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Button } from "../atoms/button";
+import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { AdminDangerZone } from "./admin-sections";

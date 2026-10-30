@@ -10,6 +10,7 @@
 @import "./motifs.css";
 @import "./motion.css";
 @import "./layout.css";
+@import "./admin.css";
 
 @layer base {
   /* Page background and body text (§3.3). */

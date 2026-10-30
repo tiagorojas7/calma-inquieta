@@ -3,18 +3,26 @@ import { servicesContext } from "~/app/context";
 import { enrollmentRefusalMessage } from "~/app/admin/enrollment-action-data";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { whatsappHref } from "~/app/admin/whatsapp-href";
 import { monthLabel } from "~/app/enrollment/order-labels";
-import { EnrollmentConsolidation } from "~/app/ui/admin/enrollment-consolidation";
-import { formatPesos } from "~/modules/enrollments";
+import {
+  EnrollmentConsolidation,
+  type DeliveryCardView,
+  type MaterialsSection,
+} from "~/app/ui/admin/enrollment-consolidation";
+import { formatPesos, type DeliveryOrder } from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-consolidation";
 
 const CORDOBA_OFFSET_MS = 10_800_000;
 const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_ORDERS = 200;
+const BASE_PATH = "/admin/inscripciones/materiales";
+const FEEDBACK = ["requested", "received"] as const;
 
 export function meta() {
-  return [{ title: "Materiales a pedir | Panel | Calma Inquieta" }];
+  return [{ title: "Materiales | Panel | Calma Inquieta" }];
 }
 
 function periodOf(value: string | null): string {
@@ -23,25 +31,63 @@ function periodOf(value: string | null): string {
     : new Date(Date.now() - CORDOBA_OFFSET_MS).toISOString().slice(0, 7);
 }
 
+function sectionOf(value: string | null): MaterialsSection {
+  return value === "entregar" ? "entregar" : "pedir";
+}
+
+function cardOf(order: DeliveryOrder): DeliveryCardView {
+  return {
+    id: order.id,
+    studentName: order.studentName,
+    detail: `${order.workshopName} · ${order.turnoLabel}`,
+    lines: order.lines.map((line) => ({
+      label: `${line.materialName} ${line.variantLabel}`,
+      quantity: line.quantity,
+    })),
+    whatsappHref: whatsappHref(order.phoneDigits),
+  };
+}
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const params = new URL(request.url).searchParams;
-  const requested = Number(params.get("solicitados"));
-  const found = await context
-    .get(servicesContext)
-    .consolidation.consolidate(actor, periodOf(params.get("mes")));
-  if (!found.ok)
-    throw found.error.kind === "invalid"
-      ? data(null, { status: 400 })
-      : enrollmentFailureResponse(found.error);
+  const period = periodOf(params.get("mes"));
+  const count = Number(params.get("n"));
+  const code = feedbackCode(request, FEEDBACK);
+  const services = context.get(servicesContext);
+  const [found, delivered] = await Promise.all([
+    services.consolidation.consolidate(actor, period),
+    services.consolidation.deliveries(actor, period),
+  ]);
+  for (const outcome of [found, delivered])
+    if (!outcome.ok)
+      throw outcome.error.kind === "invalid"
+        ? data(null, { status: 400 })
+        : enrollmentFailureResponse(outcome.error);
+  if (!found.ok || !delivered.ok) throw data(null, { status: 503 });
   const consolidation = found.value;
+  const toDeliver = delivered.value
+    .filter((order) => order.status === "materials_requested")
+    .map(cardOf);
+  const requestable = new Set(
+    consolidation.suppliers.flatMap(
+      (supplier) => supplier.pendingRequestOrderIds,
+    ),
+  );
   return {
     period: consolidation.period,
     periodLabel: monthLabel(consolidation.period),
+    section: sectionOf(params.get("seccion")),
+    counts: { pedir: requestable.size, entregar: toDeliver.length },
     grandTotal: formatPesos(consolidation.grandTotal),
     pendingOrders: consolidation.pendingOrders,
-    requestedCount:
-      Number.isInteger(requested) && requested > 0 ? requested : 0,
+    notice:
+      code !== null &&
+      Number.isInteger(count) &&
+      count > 0 &&
+      count <= MAX_ORDERS
+        ? { kind: code, count }
+        : null,
     suppliers: consolidation.suppliers.map((supplier) => ({
       supplierId: supplier.supplierId,
       supplierName: supplier.supplierName,
@@ -54,17 +100,33 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       summary: supplier.summary,
       orderIds: supplier.pendingRequestOrderIds,
     })),
+    toDeliver,
+    delivered: delivered.value
+      .filter((order) => order.status === "materials_received")
+      .map(cardOf),
   };
 }
+
+const INTENTS = {
+  "mark-requested": { code: "requested", method: "markMaterialsRequestedBulk" },
+  "mark-received": { code: "received", method: "markMaterialsReceivedBulk" },
+} as const;
 
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData().catch(() => null);
   if (form === null) throw data(null, { status: 400 });
-  if (form.get("intent") !== "mark-requested")
+  const intent = form.get("intent");
+  if (intent !== "mark-requested" && intent !== "mark-received")
     throw data(null, { status: 400 });
+  const { code, method } = INTENTS[intent];
   const period = periodOf(
     typeof form.get("mes") === "string" ? (form.get("mes") as string) : null,
+  );
+  const section = sectionOf(
+    typeof form.get("seccion") === "string"
+      ? (form.get("seccion") as string)
+      : null,
   );
   const orderIds = [
     ...new Set(
@@ -78,14 +140,14 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const outcomes = await context
     .get(servicesContext)
-    .enrollments.markMaterialsRequestedBulk(actor, orderIds);
+    .enrollments[method](actor, orderIds);
   const failures = outcomes.flatMap((outcome) =>
     outcome.result.ok ? [] : [outcome.result.error],
   );
   const done = outcomes.length - failures.length;
   if (failures.length === 0)
     return redirect(
-      `/admin/inscripciones/materiales?mes=${period}&solicitados=${String(done)}`,
+      `${withFeedback(`${BASE_PATH}?mes=${period}&seccion=${section}`, code)}&n=${String(done)}`,
     );
 
   const denied = failures.find((failure) => failure.kind === "denied");
@@ -110,5 +172,11 @@ export async function action({ request, context }: Route.ActionArgs) {
 export default function AdminEnrollmentConsolidation() {
   const loaded = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
-  return <EnrollmentConsolidation {...loaded} formError={result?.formError} />;
+  return (
+    <EnrollmentConsolidation
+      {...loaded}
+      notice={loaded.notice ?? undefined}
+      formError={result?.formError}
+    />
+  );
 }

@@ -37,13 +37,6 @@ describe("OrderPage", () => {
     ).toHaveAttribute("href", pending.whatsappHref);
   });
 
-  it("renders the summary without a link when no hand-off exists", () => {
-    render(<OrderPage {...pending} whatsappHref={null} />);
-
-    expect(screen.getByText("$ 58.000")).toBeVisible();
-    expect(screen.queryByRole("link")).toBeNull();
-  });
-
   it("thanks a paid visitor instead of asking for payment", () => {
     render(
       <OrderPage

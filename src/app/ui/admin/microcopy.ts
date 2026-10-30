@@ -424,164 +424,142 @@ export const adminMicrocopy = {
     more: "Más",
   },
   landing: {
-    title: "Panel de administración",
+    title: "Inicio",
     greeting: (email: string) => `Hola, ${email}`,
-    intro: "Mirá cómo viene el mes y elegí qué querés administrar.",
-    summaryTitle: (month: string) => `Resumen de ${month}`,
-    areasTitle: "Secciones",
-    areaHints: {
-      "/admin/talleres": "Publicá talleres, turnos y abrí las inscripciones.",
-      "/admin/intensivos": "Encuentros únicos con fecha y reservas.",
-      "/admin/profesores": "Quiénes dan las clases y sus liquidaciones.",
-      "/admin/materiales/proveedores": "A quién le pedís cada material.",
-      "/admin/inscripciones": "Solicitudes, cobros y materiales a pedir.",
-      "/admin/alumnas": "Datos, pedidos y observaciones de cada alumna.",
-      "/admin/asistencia": "Planilla de cada clase y recuperaciones.",
-      "/admin/inscripciones/materiales": "Qué pedir y qué entregar.",
-      "/admin/materiales": "Lista de materiales que ofrecés.",
-      "/admin/eventos": "Consultas para eventos privados.",
-      "/admin/estadisticas": "Ocupación e ingresos mes a mes.",
-      "/admin/recordatorios": "Mensajes de WhatsApp listos para enviar.",
-    } as Record<string, string>,
-    cards: {
-      occupancy: {
-        label: "Ocupación",
-        value: (percent: number) => `${String(percent)} %`,
-        detail: (confirmed: number, capacity: number, free: number) =>
-          `${String(confirmed)} inscriptas de ${String(capacity)} cupos, ${String(free)} libres.`,
-        action: "Ver ocupación",
+    todayTitle: "Hoy tenés que…",
+    allDone: "Todo al día. No hay nada pendiente para hoy.",
+    tasks: {
+      charge: {
+        text: (count: number) =>
+          count === 1
+            ? "1 inscripción por cobrar"
+            : `${String(count)} inscripciones por cobrar`,
+        action: "Cobrar",
+        hint: "Ver inscripciones por cobrar",
       },
-      pending: {
-        label: "Solicitudes pendientes",
-        detail: (older: number) =>
-          older === 0
-            ? "Ninguna espera hace más de 48 horas."
-            : `${String(older)} esperan hace más de 48 horas.`,
-        action: "Revisar solicitudes",
+      orderMaterials: {
+        text: (suppliers: string) => `Pedir materiales a ${suppliers}`,
+        action: "Ver pedido",
+        hint: "Ver el pedido de materiales",
       },
-      confirmed: {
-        label: "Confirmadas este mes",
-        detail: "Pagos registrados durante el mes.",
-        action: "Ver confirmadas",
+      deliver: {
+        text: (count: number) =>
+          count === 1
+            ? "Hay 1 pedido para entregar"
+            : `Hay ${String(count)} pedidos para entregar`,
+        action: "Entregar",
+        hint: "Ver pedidos para entregar",
       },
-      income: {
-        label: "Ingresos registrados",
-        detail: (fee: string, materials: string) =>
-          `Cuotas y señas ${fee}, materiales ${materials}.`,
-        action: "Ver ingresos",
+      openMonth: {
+        text: (month: string, workshop: string) =>
+          `Abrir inscripciones de ${month} en ${workshop}`,
+        action: (month: string) => `Abrir ${month}`,
+        hint: (workshop: string) => `Abrir inscripciones de ${workshop}`,
       },
-      materials: {
-        label: "Materiales a pedir",
-        detail: (orders: number, units: number) =>
-          `${String(units)} unidades en ${String(orders)} pedidos.`,
-        action: "Armar el pedido a proveedores",
+      intensiveDeposit: {
+        text: (count: number) =>
+          count === 1
+            ? "1 reserva de intensivo esperando seña"
+            : `${String(count)} reservas de intensivo esperando seña`,
+        action: "Ver reservas",
+        hint: "Ver reservas de intensivos",
+      },
+      privateEvent: {
+        text: (count: number) =>
+          count === 1
+            ? "1 consulta de evento privado sin responder"
+            : `${String(count)} consultas de evento privado sin responder`,
+        action: "Responder",
+        hint: "Ver consultas de eventos privados",
       },
     },
-    alerts: {
-      title: "Alertas pendientes",
-      empty: "No hay alertas pendientes. Está todo al día.",
-      overdue: (count: number) =>
-        count === 1
-          ? "Una solicitud espera confirmación hace más de 48 horas."
-          : `${String(count)} solicitudes esperan confirmación hace más de 48 horas.`,
-      overdueAction: "Revisar solicitudes",
-      withoutPeriod: (name: string, month: string) =>
-        `${name} no tiene inscripción abierta para ${month}.`,
-      withoutPeriodAction: (name: string) => `Abrir inscripción de ${name}`,
-      materials: (orders: number) =>
-        orders === 1
-          ? "Un pedido con materiales todavía sin pedir al proveedor."
-          : `${String(orders)} pedidos con materiales todavía sin pedir al proveedor.`,
-      materialsAction: "Ver materiales a pedir",
+    monthTitle: (month: string) => `Tu mes: ${month}`,
+    figures: {
+      collected: "Cobrado",
+      profit: "Ganancia del estudio",
+      occupancy: "Ocupación",
+      occupancyDetail: (enrolled: number, capacity: number) =>
+        `${String(enrolled)} de ${String(capacity)} lugares`,
+      teachers: "A pagar a profesoras",
     },
+    seeStatistics: "Ver estadísticas",
   },
   statistics: {
     title: "Estadísticas",
-    subtitle: (month: string) => `Datos de ${month}.`,
+    subtitle: (month: string) => `Todo lo de ${month}, en un solo lugar.`,
     month: "Mes",
     apply: "Ver mes",
-    backToPanel: "Volver al panel",
+    previous: "Mes anterior",
+    next: "Mes siguiente",
+    download: "Descargar planilla",
+    backToPanel: "Volver al inicio",
     total: "Total",
+    notSettled: "—",
     empty: {
       title: "Todavía no hay datos para este mes",
       message: "Probá con otro mes o revisá las inscripciones.",
       action: "Ver inscripciones",
     },
-    occupancy: {
-      title: "Ocupación",
-      intro:
-        "Inscriptas, cupos libres y porcentaje de ocupación por taller y turno.",
-      columns: {
-        workshop: "Taller",
-        turno: "Turno",
-        capacity: "Cupos",
-        confirmed: "Inscriptas",
-        free: "Libres",
-        percent: "Ocupación",
-      },
+    figures: {
+      collected: "Cobrado",
+      collectedDetail: "Cuotas, señas y materiales cobrados",
+      teachers: "A pagar a profesoras",
+      materials: "Costo de materiales",
+      profit: "Ganancia del estudio",
+      profitDetail: "Cobrado menos profesoras y materiales",
+      students: "Alumnas activas",
+      occupancy: "Ocupación",
+      occupancyDetail: (enrolled: number, capacity: number) =>
+        `${String(enrolled)} de ${String(capacity)} lugares`,
     },
-    conversion: {
-      title: "Conversión",
-      intro:
-        "Solicitudes recibidas, pendientes y confirmadas para detectar consultas sin concretar.",
+    activities: {
+      title: "Por taller e intensivo",
+      intro: "Cada taller e intensivo con movimiento en el mes.",
+      intensive: "Intensivo",
       columns: {
-        workshop: "Taller",
-        received: "Recibidas",
-        pending: "Pendientes",
-        confirmed: "Confirmadas",
-        cancelled: "Canceladas",
-        percent: "Concretadas",
-      },
-    },
-    income: {
-      title: "Ingresos registrados",
-      intro: "Cuotas, señas y materiales cobrados en el mes, por taller.",
-      columns: {
-        workshop: "Taller",
-        orders: "Cobros",
-        fee: "Cuotas y señas",
+        name: "Taller o intensivo",
+        enrolled: "Inscriptas",
+        capacity: "Lugares",
+        collected: "Cobrado",
+        teacher: "Profesora",
+        teacherPay: "A pagar a la profesora",
         materials: "Materiales",
-        total: "Total",
+        profit: "Ganancia",
+      },
+      modality: { own: "propia", third_party: "de terceros" },
+    },
+    teachers: {
+      title: "Profesoras",
+      intro: "Lo que se le paga a cada profesora de terceros en el mes.",
+      noPercentage: "Sin porcentaje",
+      columns: {
+        teacher: "Profesora",
+        modality: "Modalidad",
+        activities: "Talleres e intensivos",
+        toSettle: "A pagar",
+      },
+    },
+    materials: {
+      title: "Materiales",
+      intro: "Lo cobrado y lo pagado a cada proveedor.",
+      atCost: "Materiales: se cobran al costo, no suman ganancia.",
+      columns: {
+        supplier: "Proveedor",
+        orders: "Pedidos",
+        units: "Unidades",
+        charged: "Cobrado",
+        cost: "Costo",
       },
     },
     students: {
       title: "Alumnas",
-      intro:
-        "Participación y recurrencia de las alumnas con inscripción confirmada.",
+      intro: "Alumnas con inscripción confirmada en talleres del mes.",
       columns: {
-        students: "Participantes",
-        recurring: "También en otro mes",
-        percent: "Recurrencia",
+        group: "Grupo",
+        count: "Alumnas",
       },
-      note: "Las asistencias, faltas y recuperaciones se suman cuando esté el control de asistencia.",
-    },
-    teachers: {
-      title: "Profesores",
-      intro:
-        "Alumnas vinculadas, ingresos asociados y liquidación estimada según porcentaje.",
-      columns: {
-        teacher: "Profesor",
-        modality: "Modalidad",
-        percentage: "Porcentaje",
-        students: "Alumnas vinculadas",
-        income: "Ingresos asociados",
-        estimate: "Importe estimado a liquidar",
-      },
-      noPercentage: "Sin porcentaje",
-      note: "El importe es el porcentaje acordado de cada período sobre las cuotas cobradas en el mes, sin materiales. Los profesores de modalidad propia no tienen porcentaje acordado, por eso no suman importe. Las señas de los intensivos se suman cuando se registren.",
-    },
-    materials: {
-      title: "Materiales",
-      intro: "Pedidos por estado, taller, proyecto y proveedor.",
-      columns: {
-        status: "Estado",
-        workshop: "Taller",
-        project: "Proyecto",
-        supplier: "Proveedor",
-        orders: "Pedidos",
-        units: "Unidades",
-        amount: "Importe",
-      },
+      newOnes: "Nuevas",
+      returning: "Que ya venían de otro mes",
     },
   },
   denied: {

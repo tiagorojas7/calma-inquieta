@@ -29,3 +29,7 @@ export type {
   IntensiveOffer,
   IntensiveOfferLookup,
 } from "./application/intensive-offer-lookup";
+export type {
+  IntensiveRegistrationRow,
+  IntensiveRequestInsightsReader,
+} from "./application/intensive-request-insights-reader";

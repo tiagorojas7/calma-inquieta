@@ -9,6 +9,9 @@ import type { PeriodCapacityRow, PeriodTeacherRow } from "~/modules/workshops";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import {
   InMemoryEnrollmentInsightsReader,
+  InMemoryIntensiveInsightsReader,
+  InMemoryIntensiveRequestInsightsReader,
+  InMemoryTeacherDirectory,
   InMemoryWorkshopInsightsReader,
 } from "~/testing/fakes/in-memory-insights-readers";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
@@ -24,12 +27,25 @@ const actor = testAdminActor();
 function fixture() {
   const orders = new InMemoryEnrollmentInsightsReader();
   const workshops = new InMemoryWorkshopInsightsReader();
+  const intensives = new InMemoryIntensiveInsightsReader();
+  const intensiveRequests = new InMemoryIntensiveRequestInsightsReader();
+  const teachers = new InMemoryTeacherDirectory();
   const service = createInsightsService({
     orders,
     workshops,
+    intensives,
+    intensiveRequests,
+    teachers,
     clock: fixedClock(NOW),
   });
-  return { orders, workshops, service };
+  return {
+    orders,
+    workshops,
+    intensives,
+    intensiveRequests,
+    teachers,
+    service,
+  };
 }
 
 const capacity = (

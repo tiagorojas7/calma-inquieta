@@ -3,6 +3,7 @@ import {
   isPeriod,
   nextPeriod,
   percentOf,
+  previousPeriod,
   periodBounds,
   settlementCentavos,
 } from "./insights-core";
@@ -69,5 +70,12 @@ describe("settlementCentavos", () => {
   it("keeps a whole fee at 100 % and nothing at 0 %", () => {
     expect(settlementCentavos(123_457, 10_000)).toBe(123_457);
     expect(settlementCentavos(123_457, 0)).toBe(0);
+  });
+});
+
+describe("previousPeriod", () => {
+  it("moves to the month before and rolls back over the year", () => {
+    expect(previousPeriod("2026-10")).toBe("2026-09");
+    expect(previousPeriod("2026-01")).toBe("2025-12");
   });
 });

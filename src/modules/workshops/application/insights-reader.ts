@@ -38,3 +38,21 @@ export interface WorkshopInsightsReader {
   /** The teacher snapshot of every period of a month, drafts included. */
   periodTeachers(period: string): Promise<readonly PeriodTeacherRow[]>;
 }
+
+/** An intensivo held in a month; its teacher is resolved by the consumer. */
+export interface IntensiveActivityRow {
+  readonly intensiveId: string;
+  readonly name: string;
+  /** `YYYY-MM-DD`. */
+  readonly eventDate: string;
+  readonly capacity: number;
+  readonly teacherId: string | null;
+  /** Basis points; only a third-party assignment carries one. */
+  readonly percentageBp: number | null;
+}
+
+/** Aggregations of the intensivos other modules read for statistics. */
+export interface IntensiveInsightsReader {
+  /** Intensivos held in a month, drafts and cancelled ones excluded. */
+  intensives(period: string): Promise<readonly IntensiveActivityRow[]>;
+}

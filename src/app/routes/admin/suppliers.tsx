@@ -1,4 +1,5 @@
 import { useLoaderData } from "react-router";
+import { feedbackCode } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
@@ -8,6 +9,8 @@ import {
 import { SuppliersList } from "~/app/ui/admin/suppliers-list";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/suppliers";
+
+const FEEDBACK = ["created", "saved"] as const;
 
 export function meta() {
   return [{ title: "Proveedores | Panel | Calma Inquieta" }];
@@ -22,6 +25,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!listed.ok) throw failureResponse(listed.error);
   return {
     filter: parseSupplierFilterKey(estado),
+    feedback: feedbackCode(request, FEEDBACK),
     rows: listed.value.map((supplier) => ({
       id: supplier.id,
       name: supplier.name,
@@ -32,6 +36,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export default function AdminSuppliers() {
-  const { filter, rows } = useLoaderData<typeof loader>();
-  return <SuppliersList rows={rows} filter={filter} />;
+  const { filter, rows, feedback } = useLoaderData<typeof loader>();
+  return <SuppliersList rows={rows} filter={filter} feedback={feedback} />;
 }

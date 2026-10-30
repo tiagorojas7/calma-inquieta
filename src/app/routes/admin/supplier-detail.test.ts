@@ -53,6 +53,7 @@ describe("admin supplier detail loader", () => {
     expect(await load(service, id)).toEqual({
       id,
       active: true,
+      feedback: null,
       values: DRAFT,
     });
     const bare = await service.create(testAdminActor(), {
@@ -87,7 +88,9 @@ describe("admin supplier detail action", () => {
       notes: "Cambió el horario",
     });
     expect((response as Response).status).toBe(302);
-    expect((response as Response).headers.get("Location")).toBe(LIST);
+    expect((response as Response).headers.get("Location")).toBe(
+      `${LIST}?ok=saved`,
+    );
     expect(repository.suppliers.get(id)).toMatchObject({
       notes: "Cambió el horario",
       audit: { updatedBy: "a@x.test" },
@@ -115,7 +118,7 @@ describe("admin supplier detail action", () => {
     const { service, repository, id } = await withSupplier();
     const response = await submit(service, id, { intent: "archive" });
     expect((response as Response).headers.get("Location")).toBe(
-      `${LIST}/${id}`,
+      `${LIST}/${id}?ok=archived`,
     );
     expect(repository.suppliers.get(id)?.active).toBe(false);
   });
@@ -124,7 +127,9 @@ describe("admin supplier detail action", () => {
     const { service, repository, id } = await withSupplier();
     await service.archive(testAdminActor(), id);
     const response = await submit(service, id, { intent: "reactivate" });
-    expect((response as Response).status).toBe(302);
+    expect((response as Response).headers.get("Location")).toBe(
+      `${LIST}/${id}?ok=restored`,
+    );
     expect(repository.suppliers.get(id)?.active).toBe(true);
   });
 

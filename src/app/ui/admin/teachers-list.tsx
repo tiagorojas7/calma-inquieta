@@ -1,6 +1,7 @@
-import { Heading } from "../atoms/heading";
+import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge } from "./status-badge";
 
@@ -24,28 +25,6 @@ const linkClasses =
 
 const copy = adminMicrocopy.teachers;
 
-const columns: readonly DataTableColumn<TeacherRow>[] = [
-  {
-    key: "name",
-    header: copy.columns.name,
-    cell: (row) => (
-      <a href={`/admin/profesores/${row.id}`} className={linkClasses}>
-        {row.name}
-      </a>
-    ),
-  },
-  {
-    key: "modality",
-    header: copy.columns.modality,
-    cell: (row) => copy.modality[row.modality],
-  },
-  {
-    key: "state",
-    header: copy.columns.state,
-    cell: (row) => <StatusBadge status={row.active ? "active" : "archived"} />,
-  },
-];
-
 /**
  * Profesores list. Every link is a plain anchor: the Worker gate refuses the
  * `.data` requests a client navigation would make.
@@ -53,18 +32,29 @@ const columns: readonly DataTableColumn<TeacherRow>[] = [
 export function TeachersList({
   rows,
   filter,
+  feedback = null,
 }: {
   rows: readonly TeacherRow[];
   filter: TeacherFilterKey;
+  feedback?: keyof typeof copy.feedback | null | undefined;
 }) {
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={1}>{copy.title}</Heading>
-        <AdminButtonLink href="/admin/profesores/nuevo">
-          {copy.newAction}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={copy.title}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title },
+        ]}
+        actions={
+          <AdminButtonLink href="/admin/profesores/nuevo">
+            {copy.newAction}
+          </AdminButtonLink>
+        }
+      />
+      {feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[feedback].title} />
+      ) : null}
       <nav aria-label={copy.filterLabel}>
         <ul className="flex flex-wrap gap-4">
           {FILTER_KEYS.map((key) => (
@@ -80,11 +70,21 @@ export function TeachersList({
           ))}
         </ul>
       </nav>
-      <DataTable
-        caption={copy.title}
-        columns={columns}
+      <AdminCardList
+        label={copy.title}
         rows={rows}
         rowKey={(row) => row.id}
+        card={(row) => (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <a href={`/admin/profesores/${row.id}`} className={linkClasses}>
+                {row.name}
+              </a>
+              <StatusBadge status={row.active ? "active" : "archived"} />
+            </div>
+            <Text tone="muted">{copy.modality[row.modality]}</Text>
+          </>
+        )}
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,

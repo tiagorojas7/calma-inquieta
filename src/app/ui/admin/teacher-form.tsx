@@ -1,6 +1,8 @@
 import { Button } from "../atoms/button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
+import { AdminDangerZone } from "./admin-sections";
+import { ConfirmedSubmit } from "./confirmed-submit";
 import {
   FormError,
   SelectField,
@@ -75,6 +77,7 @@ export function TeacherForm({
         label={copy.form.modality}
         name="modality"
         options={MODALITY_OPTIONS}
+        hint={copy.modalityHint}
         defaultValue={values.modality}
         error={errors.modality}
       />
@@ -89,47 +92,51 @@ export function TeacherForm({
 }
 
 /**
- * Archive or reactivate, as its own post form. For an archived teacher it
- * names the activities that still keep her, because archiving never removes
- * existing assignments or period snapshots.
+ * Archived teachers: why she is unavailable, who still keeps her, and the one
+ * way back. Active teachers are archived from `TeacherArchiveZone`.
  */
 export function TeacherStatePanel({
-  active,
   assignedTo,
   error,
 }: {
-  active: boolean;
   assignedTo: readonly string[];
   error: string | undefined;
 }) {
   const state = copy.state;
   return (
     <section className="flex max-w-prose flex-col gap-3">
-      {!active && (
-        <>
-          <Text>{state.archivedNotice}</Text>
-          <Text tone="muted">{state.archivedHint}</Text>
-          {assignedTo.length > 0 && (
-            <p
-              role="status"
-              className="rounded-md bg-sand-200 p-3 font-semibold text-ink-900"
-            >
-              {state.assignedWarning(assignedTo.join(", "))}
-            </p>
-          )}
-        </>
+      <Text>{state.archivedNotice}</Text>
+      <Text tone="muted">{state.archivedHint}</Text>
+      {assignedTo.length > 0 && (
+        <p
+          role="status"
+          className="rounded-md bg-sand-200 p-3 font-semibold text-ink-900"
+        >
+          {state.assignedWarning(assignedTo.join(", "))}
+        </p>
       )}
       <FormError message={error} />
       <form method="post">
-        <input
-          type="hidden"
-          name="intent"
-          value={active ? "archive" : "reactivate"}
-        />
-        <Button type="submit" variant="outline">
-          {active ? state.archive : state.reactivate}
-        </Button>
+        <input type="hidden" name="intent" value="reactivate" />
+        <Button type="submit">{state.reactivate}</Button>
       </form>
     </section>
+  );
+}
+
+/** Archiving asks first and lives apart from the save button. */
+export function TeacherArchiveZone({ error }: { error: string | undefined }) {
+  const state = copy.state;
+  return (
+    <AdminDangerZone title={state.dangerTitle}>
+      <FormError message={error} />
+      <ConfirmedSubmit
+        intent="archive"
+        label={state.archive}
+        title={state.archiveTitle}
+        message={state.archiveMessage}
+        tone="destructive"
+      />
+    </AdminDangerZone>
   );
 }

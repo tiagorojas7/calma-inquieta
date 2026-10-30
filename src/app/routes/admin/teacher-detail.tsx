@@ -1,4 +1,5 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import { issueMessage } from "~/app/admin/issue-messages";
@@ -8,16 +9,21 @@ import {
   parseTeacherIntent,
 } from "~/app/admin/teacher-form-data";
 import { toTeacherSettlement } from "~/app/admin/insights-view";
-import { Heading } from "~/app/ui/atoms/heading";
+import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { TeacherSettlementPanel } from "~/app/ui/admin/teacher-settlement";
 import { isPeriod } from "~/modules/insights";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
-import { TeacherForm, TeacherStatePanel } from "~/app/ui/admin/teacher-form";
+import {
+  TeacherArchiveZone,
+  TeacherForm,
+  TeacherStatePanel,
+} from "~/app/ui/admin/teacher-form";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/teacher-detail";
 
 const copy = adminMicrocopy.teachers;
 const LIST = "/admin/profesores";
+const FEEDBACK = ["archived", "restored"] as const;
 
 export function meta() {
   return [{ title: "Editar profesor | Panel | Calma Inquieta" }];
@@ -46,6 +52,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   return {
     id: teacher.id,
     active: teacher.active,
+    feedback: feedbackCode(request, FEEDBACK),
     settlement: settled.ok
       ? toTeacherSettlement(settled.value, teacher.id)
       : null,
@@ -74,7 +81,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "save") {
     const draft = parseTeacherDraft(form);
     const saved = await teachers.update(actor, params.id, draft);
-    if (saved.ok) return redirect(LIST);
+    if (saved.ok) return redirect(withFeedback(LIST, "saved"));
     if (saved.error.kind === "invalid")
       return invalidTeacherResponse(draft, saved.error.issues);
     throw failureResponse(saved.error);
@@ -84,7 +91,13 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     intent === "archive"
       ? await teachers.archive(actor, params.id)
       : await teachers.reactivate(actor, params.id);
-  if (toggled.ok) return redirect(`${LIST}/${params.id}`);
+  if (toggled.ok)
+    return redirect(
+      withFeedback(
+        `${LIST}/${params.id}`,
+        intent === "archive" ? "archived" : "restored",
+      ),
+    );
   if (toggled.error.kind === "invalid") {
     const [first] = toggled.error.issues;
     return data(
@@ -101,14 +114,22 @@ export default function AdminTeacherDetail() {
   const formRejected = rejected && "values" in rejected ? rejected : null;
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
+  const saved = teacher.feedback ? copy.feedback[teacher.feedback] : null;
   return (
     <section className="flex flex-col gap-6">
-      <Heading level={1}>{copy.editTitle}</Heading>
-      <TeacherStatePanel
-        active={teacher.active}
-        assignedTo={teacher.assignedTo}
-        error={stateError}
+      <AdminPageHeader
+        title={teacher.values.name}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: LIST },
+          { label: teacher.values.name },
+        ]}
+        back={{ href: LIST, label: copy.back }}
       />
+      {saved ? <AdminFeedback tone="success" title={saved.title} /> : null}
+      {teacher.active ? null : (
+        <TeacherStatePanel assignedTo={teacher.assignedTo} error={stateError} />
+      )}
       {teacher.settlement && (
         <TeacherSettlementPanel
           teacherId={teacher.id}
@@ -123,6 +144,7 @@ export default function AdminTeacherDetail() {
         submitLabel={copy.form.save}
         cancelHref={LIST}
       />
+      {teacher.active ? <TeacherArchiveZone error={stateError} /> : null}
     </section>
   );
 }

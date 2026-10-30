@@ -45,6 +45,27 @@ const student: StudentDetailProps["student"] = {
 };
 
 describe("StudentDetail", () => {
+  it("shows breadcrumbs, a top back link and the order history as cards", () => {
+    render(<StudentDetail student={student} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(
+      within(crumbs).getByRole("link", { name: "Alumnas" }),
+    ).toHaveAttribute("href", "/admin/alumnas");
+    expect(
+      screen.getByRole("link", { name: "Volver a alumnas" }),
+    ).toHaveAttribute("href", "/admin/alumnas");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("confirms a saved note with a status message", () => {
+    render(<StudentDetail student={student} feedback="note-saved" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Observaciones guardadas",
+    );
+  });
+
   it("shows her data, activities and order history with links to each order", async () => {
     const { container } = render(<StudentDetail student={student} />);
 

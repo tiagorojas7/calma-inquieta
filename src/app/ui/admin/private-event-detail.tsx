@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Heading } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { FormError, SelectField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { PrivateEventStatusBadge } from "./private-event-status-badge";
@@ -41,22 +40,32 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 export function PrivateEventDetail({
   request,
   formError,
+  feedback = null,
 }: {
   request: PrivateEventDetailData;
   formError?: string | undefined;
+  feedback?: keyof typeof copy.feedback | null | undefined;
 }) {
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Heading level={1}>{copy.detailTitle}</Heading>
-        <PrivateEventStatusBadge
-          status={request.status}
-          label={request.statusLabel}
-        />
-      </div>
-      <AdminButtonLink variant="outline" href="/admin/eventos">
-        {copy.back}
-      </AdminButtonLink>
+      <AdminPageHeader
+        title={copy.detailTitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: "/admin/eventos" },
+          { label: request.name },
+        ]}
+        back={{ href: "/admin/eventos", label: copy.back }}
+        actions={
+          <PrivateEventStatusBadge
+            status={request.status}
+            label={request.statusLabel}
+          />
+        }
+      />
+      {feedback ? (
+        <AdminFeedback tone="success" title={copy.feedback[feedback]} />
+      ) : null}
 
       <dl className="grid gap-4 md:grid-cols-2">
         <Fact label={copy.fields.name}>{request.name}</Fact>

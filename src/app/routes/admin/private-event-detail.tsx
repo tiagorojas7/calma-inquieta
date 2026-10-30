@@ -1,5 +1,6 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { failureResponse } from "~/app/admin/failure-response";
 import { privateEventDetail } from "~/app/private-events/admin-view";
@@ -8,6 +9,8 @@ import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { isPrivateEventStatus } from "~/modules/private-events";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/private-event-detail";
+
+const FEEDBACK = ["status-saved"] as const;
 
 export function meta() {
   return [{ title: "Consulta de evento | Panel | Calma Inquieta" }];
@@ -20,7 +23,10 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .get(servicesContext)
     .privateEvents.get(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
-  return privateEventDetail(found.value);
+  return {
+    ...privateEventDetail(found.value),
+    feedback: feedbackCode(request, FEEDBACK),
+  };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -38,13 +44,17 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     .get(servicesContext)
     .privateEvents.setStatus(actor, params.id, status);
   if (!updated.ok) throw failureResponse(updated.error);
-  return redirect(`/admin/eventos/${params.id}`);
+  return redirect(withFeedback(`/admin/eventos/${params.id}`, "status-saved"));
 }
 
 export default function AdminPrivateEventDetail() {
-  const request = useLoaderData<typeof loader>();
+  const { feedback, ...request } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
-    <PrivateEventDetail request={request} formError={rejected?.formError} />
+    <PrivateEventDetail
+      request={request}
+      feedback={feedback}
+      formError={rejected?.formError}
+    />
   );
 }

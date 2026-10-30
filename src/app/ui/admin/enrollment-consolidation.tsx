@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "../atoms/button";
 import { Heading } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -30,8 +30,6 @@ export interface EnrollmentConsolidationProps {
 }
 
 const copy = adminMicrocopy.enrollments.consolidation;
-const cell = "px-4 py-3";
-const head = "px-4 py-3 font-semibold";
 
 function CopySummary({ summary }: { summary: string }) {
   const [copied, setCopied] = useState(false);
@@ -72,38 +70,21 @@ function SupplierSection({
       <Heading level={2} size="h3">
         {supplier.supplierName}
       </Heading>
-      <div
-        role="region"
+      <ul
         aria-label={`${supplier.supplierName}: ${copy.columns.material}`}
-        tabIndex={0}
-        className="overflow-x-auto"
+        className="flex flex-col gap-2"
       >
-        <table className="w-full text-left text-base text-ink-700">
-          <caption className="sr-only">{supplier.supplierName}</caption>
-          <thead className="bg-sand-100 text-ink-900">
-            <tr>
-              <th scope="col" className={head}>
-                {copy.columns.material}
-              </th>
-              <th scope="col" className={head}>
-                {copy.columns.quantity}
-              </th>
-              <th scope="col" className={head}>
-                {copy.columns.total}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {supplier.materials.map((item) => (
-              <tr key={item.label} className="border-t border-sand-200">
-                <td className={cell}>{item.label}</td>
-                <td className={cell}>{String(item.quantity)}</td>
-                <td className={cell}>{item.total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {supplier.materials.map((item) => (
+          <li
+            key={item.label}
+            className="flex flex-wrap items-center justify-between gap-x-4 border-t border-sand-200 pt-2"
+          >
+            <span className="text-ink-900">{item.label}</span>
+            <span className="text-ink-700">{copy.quantity(item.quantity)}</span>
+            <span className="text-ink-900">{item.total}</span>
+          </li>
+        ))}
+      </ul>
       <p className="font-semibold text-ink-900">
         {copy.supplierTotal}: {supplier.total}
       </p>
@@ -121,6 +102,9 @@ function SupplierSection({
           {supplier.orderIds.map((id) => (
             <input key={id} type="hidden" name="orderId" value={id} />
           ))}
+          <p className="mb-3 text-ink-700">
+            {copy.consequence(supplier.orderIds.length)}
+          </p>
           <Button type="submit">{copy.markRequested}</Button>
         </form>
       ) : null}
@@ -132,10 +116,34 @@ function SupplierSection({
 export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{copy.title(props.periodLabel)}</Heading>
-      <AdminButtonLink variant="outline" href="/admin/inscripciones">
-        {adminMicrocopy.enrollments.detail.back}
-      </AdminButtonLink>
+      <AdminPageHeader
+        title={copy.title(props.periodLabel)}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          {
+            label: adminMicrocopy.enrollments.title,
+            href: "/admin/inscripciones",
+          },
+          { label: adminMicrocopy.enrollments.consolidationLink },
+        ]}
+        back={{
+          href: "/admin/inscripciones",
+          label: adminMicrocopy.enrollments.detail.back,
+        }}
+      />
+      <ol aria-label={copy.workflowLabel} className="grid gap-2 md:grid-cols-3">
+        {Object.values(adminMicrocopy.enrollments.detail.steps).map(
+          (label, index) => (
+            <li
+              key={label}
+              aria-current={index === 1 ? "step" : undefined}
+              className={`rounded-md p-3 ${index === 1 ? "bg-sand-200 font-semibold text-ink-900" : "bg-surface text-ink-700 shadow-card"}`}
+            >
+              {label}
+            </li>
+          ),
+        )}
+      </ol>
       <form
         role="search"
         method="get"
@@ -156,9 +164,11 @@ export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
         </button>
       </form>
       {props.requestedCount ? (
-        <p role="status" className="text-olive-800">
-          {copy.requested(props.requestedCount)}
-        </p>
+        <AdminFeedback
+          tone="success"
+          title={copy.requested(props.requestedCount)}
+          message={copy.afterRequested}
+        />
       ) : null}
       <FormError message={props.formError} />
       {props.pendingOrders > 0 ? (

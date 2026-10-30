@@ -22,16 +22,18 @@ describe("denial route", () => {
     ).toBe(true);
   });
 
-  it("answers 403 and carries the verified identity email", () => {
-    const result = run("typo@example.com");
+  it("answers 403 and carries the verified identity email and an access request link", async () => {
+    const result = await run("typo@example.com");
     expect(result.init?.status).toBe(403);
-    expect(result.data).toEqual({ email: "typo@example.com" });
+    expect(result.data.email).toBe("typo@example.com");
+    expect(result.data.whatsappHref).toContain("typo%40example.com");
   });
 
-  it("answers 403 without email when there is none", () => {
-    const result = run(null);
+  it("answers 403 without email when there is none", async () => {
+    const result = await run(null);
     expect(result.init?.status).toBe(403);
-    expect(result.data).toEqual({ email: null });
+    expect(result.data).toMatchObject({ email: null });
+    expect(result.data.whatsappHref).toContain("https://wa.me/");
   });
 
   it("is never cached or indexed", () => {

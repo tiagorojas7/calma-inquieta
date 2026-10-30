@@ -20,6 +20,28 @@ describe("AdminDeniedPage", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("offers to switch account and to ask for access on WhatsApp", () => {
+    render(
+      <AdminDeniedPage
+        email="mal@example.com"
+        whatsappHref="https://wa.me/549351?text=Hola"
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: "Cerrar sesión y usar otra cuenta" }),
+    ).toHaveAttribute("href", "/cdn-cgi/access/logout");
+    expect(
+      screen.getByRole("link", { name: "Pedir acceso por WhatsApp" }),
+    ).toHaveAttribute("href", "https://wa.me/549351?text=Hola");
+  });
+
+  it("omits the WhatsApp request when there is no link", () => {
+    render(<AdminDeniedPage email={null} />);
+    expect(
+      screen.queryByRole("link", { name: "Pedir acceso por WhatsApp" }),
+    ).toBeNull();
+  });
+
   it("omits the email when none was verified", () => {
     render(<AdminDeniedPage email={null} />);
     expect(screen.queryByText(/Iniciaste sesión/)).toBeNull();
@@ -127,6 +149,20 @@ describe("AdminLanding", () => {
 });
 
 describe("AdminErrorState", () => {
+  it("offers to retry the same screen and to go back", () => {
+    render(
+      <AdminErrorState status={500} retryHref="/admin/inscripciones?q=a" />,
+    );
+    expect(screen.getByRole("link", { name: "Reintentar" })).toHaveAttribute(
+      "href",
+      "/admin/inscripciones?q=a",
+    );
+    expect(
+      screen.getByRole("link", { name: "Volver al panel" }),
+    ).toHaveAttribute("href", "/admin");
+    expect(screen.getByText(/avisale a quien administra/)).toBeVisible();
+  });
+
   it("says the section is under construction for 503", () => {
     render(<AdminErrorState status={503} />);
     expect(

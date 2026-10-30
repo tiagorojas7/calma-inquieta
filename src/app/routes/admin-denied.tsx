@@ -1,6 +1,8 @@
 import { data, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { AdminDeniedPage } from "~/app/ui/admin/admin-denied-page";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { buildWhatsAppUrl } from "~/modules/site-content";
 import type { Route } from "./+types/admin-denied";
 
 /**
@@ -8,10 +10,19 @@ import type { Route } from "./+types/admin-denied";
  * and answerable directly: always 403, and the email shows only for an identity
  * the gate verified.
  */
-export function loader({ context }: Route.LoaderArgs) {
-  const access = context.get(servicesContext).adminAccess;
+export async function loader({ context }: Route.LoaderArgs) {
+  const services = context.get(servicesContext);
+  const access = services.adminAccess;
   const email = access.kind === "denied" ? access.identityEmail : null;
-  return data({ email }, { status: 403 });
+  const profile = await services.siteContent.getBusinessProfile();
+  const whatsapp = buildWhatsAppUrl(
+    profile.whatsapp.display,
+    adminMicrocopy.denied.whatsappMessage(email),
+  );
+  return data(
+    { email, whatsappHref: whatsapp.ok ? whatsapp.value : null },
+    { status: 403 },
+  );
 }
 
 export function headers() {
@@ -22,6 +33,6 @@ export function headers() {
 }
 
 export default function AdminDenied() {
-  const { email } = useLoaderData<typeof loader>();
-  return <AdminDeniedPage email={email} />;
+  const { email, whatsappHref } = useLoaderData<typeof loader>();
+  return <AdminDeniedPage email={email} whatsappHref={whatsappHref} />;
 }

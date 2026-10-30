@@ -37,10 +37,31 @@ describe("EnrollmentConsolidation", () => {
     ).toBeVisible();
     const section = screen.getByRole("region", { name: "Papelería Sur" });
     expect(within(section).getByText("Arcilla Grande")).toBeVisible();
-    expect(within(section).getByText("3")).toBeVisible();
+    expect(within(section).getByText("Cantidad: 3")).toBeVisible();
+    expect(within(section).queryByRole("table")).toBeNull();
     expect(within(section).getAllByText("$ 3.000").length).toBeGreaterThan(0);
     expect(screen.getByText(/2 pedidos a confirmar/)).toBeVisible();
     await expectNoAxeViolations(container);
+  });
+
+  it("shows breadcrumbs, the order workflow and the consequence of the bulk action", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(
+      within(crumbs).getByRole("link", { name: "Inscripciones" }),
+    ).toHaveAttribute("href", "/admin/inscripciones");
+    const steps = screen.getByRole("list", { name: "Pasos del pedido" });
+    expect(
+      within(steps)
+        .getByText(/Solicitar materiales/)
+        .closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.getByText(
+        "Marca 2 pedidos cobrados como solicitados al proveedor. Después los marcás como recibidos cuando lleguen.",
+      ),
+    ).toBeVisible();
   });
 
   it("offers a readonly summary and a bulk form with one hidden id per order", () => {
@@ -110,7 +131,14 @@ describe("EnrollmentConsolidation", () => {
     );
 
     expect(
-      screen.getByText("Se marcaron 2 pedidos como solicitados."),
+      screen
+        .getByText("Se marcaron 2 pedidos como solicitados.")
+        .closest("[role=status]"),
+    ).not.toBeNull();
+    expect(
+      screen.getByText(
+        "Siguiente: cuando lleguen los materiales, marcá cada pedido como recibido.",
+      ),
     ).toBeVisible();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Se marcaron 1 de 2 pedidos.",

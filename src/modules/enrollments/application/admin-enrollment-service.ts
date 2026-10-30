@@ -38,6 +38,11 @@ export interface CancelEnrollmentInput {
   readonly orderId: string;
   readonly reason: string;
 }
+export type BulkOutcomes = readonly {
+  readonly orderId: string;
+  readonly result: Result<void, AdminEnrollmentError>;
+}[];
+
 export interface AdminEnrollmentUseCases {
   confirmPayment(
     actor: Actor,
@@ -58,12 +63,11 @@ export interface AdminEnrollmentUseCases {
   markMaterialsRequestedBulk(
     actor: Actor,
     orderIds: readonly string[],
-  ): Promise<
-    readonly {
-      readonly orderId: string;
-      readonly result: Result<void, AdminEnrollmentError>;
-    }[]
-  >;
+  ): Promise<BulkOutcomes>;
+  markMaterialsReceivedBulk(
+    actor: Actor,
+    orderIds: readonly string[],
+  ): Promise<BulkOutcomes>;
   list(
     actor: Actor,
     query?: AdminListQuery,
@@ -99,15 +103,17 @@ export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCas
     return admin.ok ? err({ kind: "unavailable" }) : admin;
   };
   const fail = (actor: Actor) => Promise.resolve(unavailableFor(actor));
+  const unavailableBulk = (actor: Actor, orderIds: readonly string[]) => {
+    const result = unavailableFor(actor);
+    return Promise.resolve(orderIds.map((orderId) => ({ orderId, result })));
+  };
   return {
     confirmPayment: fail,
     cancel: fail,
     markMaterialsRequested: fail,
     markMaterialsReceived: fail,
-    markMaterialsRequestedBulk: (actor, orderIds) => {
-      const result = unavailableFor(actor);
-      return Promise.resolve(orderIds.map((orderId) => ({ orderId, result })));
-    },
+    markMaterialsRequestedBulk: unavailableBulk,
+    markMaterialsReceivedBulk: unavailableBulk,
     list: fail,
     detail: fail,
   };
@@ -125,6 +131,27 @@ export function createAdminEnrollmentService(
     if (!admin.ok) return Promise.resolve(admin);
     const now = deps.clock.now();
     return deps.store.markMaterials({ orderId, to, actor: admin.value, now });
+  };
+  const materialBulk = async (
+    actor: Actor,
+    orderIds: readonly string[],
+    to: "materials_requested" | "materials_received",
+  ): Promise<BulkOutcomes> => {
+    const admin = requireAdminActor(actor);
+    if (!admin.ok)
+      return orderIds.map((orderId) => ({ orderId, result: admin }));
+    const now = deps.clock.now();
+    return Promise.all(
+      orderIds.map(async (orderId) => ({
+        orderId,
+        result: await deps.store.markMaterials({
+          orderId,
+          to,
+          actor: admin.value,
+          now,
+        }),
+      })),
+    );
   };
   return {
     async confirmPayment(actor, input) {
@@ -169,23 +196,10 @@ export function createAdminEnrollmentService(
       material(actor, orderId, "materials_requested"),
     markMaterialsReceived: (actor, orderId) =>
       material(actor, orderId, "materials_received"),
-    async markMaterialsRequestedBulk(actor, orderIds) {
-      const admin = requireAdminActor(actor);
-      if (!admin.ok)
-        return orderIds.map((orderId) => ({ orderId, result: admin }));
-      const now = deps.clock.now();
-      return Promise.all(
-        orderIds.map(async (orderId) => ({
-          orderId,
-          result: await deps.store.markMaterials({
-            orderId,
-            to: "materials_requested",
-            actor: admin.value,
-            now,
-          }),
-        })),
-      );
-    },
+    markMaterialsRequestedBulk: (actor, orderIds) =>
+      materialBulk(actor, orderIds, "materials_requested"),
+    markMaterialsReceivedBulk: (actor, orderIds) =>
+      materialBulk(actor, orderIds, "materials_received"),
     async list(actor, query = {}) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;

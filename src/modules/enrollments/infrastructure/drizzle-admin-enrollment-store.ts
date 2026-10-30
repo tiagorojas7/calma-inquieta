@@ -35,6 +35,7 @@ import type {
   Cancelled,
   Confirmed,
   ConsolidationLine,
+  DeliveryOrder,
 } from "../application/admin-enrollment-store";
 import type {
   AuditEntry,
@@ -410,6 +411,61 @@ export function createDrizzleAdminEnrollmentStore(
       });
     },
 
+    async deliveryOrders(period: string): Promise<readonly DeliveryOrder[]> {
+      return withSession(async (db) => {
+        const orders = await db
+          .select()
+          .from(enrollmentOrder)
+          .where(
+            and(
+              eq(enrollmentOrder.period, period),
+              inArray(enrollmentOrder.status, [
+                "materials_requested",
+                "materials_received",
+              ]),
+            ),
+          )
+          .orderBy(
+            asc(enrollmentOrder.studentName),
+            asc(enrollmentOrder.number),
+          );
+        if (orders.length === 0) return [];
+        const lineRows = await db
+          .select()
+          .from(orderLine)
+          .where(
+            inArray(
+              orderLine.orderId,
+              orders.map((order) => order.id),
+            ),
+          )
+          .orderBy(asc(orderLine.orderId), asc(orderLine.position));
+        return orders.flatMap((order): DeliveryOrder[] => {
+          const lines = lineRows
+            .filter((line) => line.orderId === order.id)
+            .map((line) => ({
+              materialName: line.materialName,
+              variantLabel: line.variantLabel,
+              quantity: line.quantity,
+            }));
+          return lines.length === 0
+            ? []
+            : [
+                {
+                  id: order.id,
+                  number: order.number,
+                  status: order.status as DeliveryOrder["status"],
+                  studentName: order.studentName,
+                  phoneDigits: order.studentPhoneDigits,
+                  workshopName: order.workshopName,
+                  turnoLabel: order.turnoLabel,
+                  lines,
+                },
+              ];
+        });
+      });
+    },
+
     async list(query: AdminListQuery) {
       const page = Math.max(1, query.page ?? 1);
       const conditions: SQL[] = [
@@ -441,6 +497,7 @@ export function createDrizzleAdminEnrollmentStore(
         id: row.id,
         number: row.number,
         studentName: row.studentName,
+        phoneDigits: row.studentPhoneDigits,
         workshopName: row.workshopName,
         period: row.period,
         turnoLabel: row.turnoLabel,

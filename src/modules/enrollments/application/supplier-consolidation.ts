@@ -4,6 +4,7 @@ import { monthLabel } from "../domain/whatsapp-message";
 import type {
   AdminEnrollmentStore,
   ConsolidationLine,
+  DeliveryOrder,
 } from "./admin-enrollment-store";
 
 type Actor = AdminActor | Record<string, unknown> | null | undefined;
@@ -45,6 +46,11 @@ export interface SupplierConsolidationUseCases {
     actor: Actor,
     period: string,
   ): Promise<Result<SupplierConsolidation, ConsolidationError>>;
+  /** Orders of the month whose materials were requested or already handed, one per order. */
+  deliveries(
+    actor: Actor,
+    period: string,
+  ): Promise<Result<readonly DeliveryOrder[], ConsolidationError>>;
 }
 
 const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -108,18 +114,32 @@ function sectionOf(
 }
 
 export function createUnavailableSupplierConsolidationService(): SupplierConsolidationUseCases {
-  return {
-    consolidate: (actor) => {
-      const admin = requireAdminActor(actor);
-      return Promise.resolve(admin.ok ? err({ kind: "unavailable" }) : admin);
-    },
+  const unavailable = (actor: Actor) => {
+    const admin = requireAdminActor(actor);
+    return Promise.resolve(
+      admin.ok ? err({ kind: "unavailable" as const }) : admin,
+    );
   };
+  return { consolidate: unavailable, deliveries: unavailable };
 }
 
 export function createSupplierConsolidationService(deps: {
-  readonly store: Pick<AdminEnrollmentStore, "consolidationLines">;
+  readonly store: Pick<
+    AdminEnrollmentStore,
+    "consolidationLines" | "deliveryOrders"
+  >;
 }): SupplierConsolidationUseCases {
   return {
+    async deliveries(actor, period) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      if (!PERIOD_KEY.test(period)) return err({ kind: "invalid" });
+      try {
+        return ok(await deps.store.deliveryOrders(period));
+      } catch {
+        return err({ kind: "unavailable" });
+      }
+    },
     async consolidate(actor, period) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;

@@ -184,6 +184,9 @@ describe("admin enrollment service", () => {
     await expect(
       service.markMaterialsRequestedBulk(undefined, ["order-1"]),
     ).resolves.toEqual([{ orderId: "order-1", result: denied }]);
+    await expect(
+      service.markMaterialsReceivedBulk(undefined, ["order-1"]),
+    ).resolves.toEqual([{ orderId: "order-1", result: denied }]);
   });
 
   it("captures one Clock instant for date validation, period boundary, and audit", async () => {
@@ -497,6 +500,75 @@ describe("admin enrollment service", () => {
         to: "materials_requested",
       },
     });
+  });
+
+  it("marks requested orders as received in bulk, isolating refusals and staying idempotent", async () => {
+    const { service, orders } = await fixture();
+    const requested = await Promise.all(
+      [1, 2].map(async (index) => {
+        const order = await createOrder(orders, index, {
+          lines: [materialsLine],
+          materialsTotal: pesos(1),
+          total: pesos(58001),
+        });
+        await service.confirmPayment(admin, {
+          orderId: order.id,
+          amount: "58001",
+          paidOn: payment.paidOn,
+        });
+        await service.markMaterialsRequested(admin, order.id);
+        return order;
+      }),
+    );
+    const cancelled = await createOrder(orders, 3, {
+      lines: [materialsLine],
+      materialsTotal: pesos(1),
+      total: pesos(58001),
+    });
+    await service.cancel(admin, {
+      orderId: cancelled.id,
+      reason: "changed plans",
+    });
+    const ids = [...requested.map((order) => order.id), cancelled.id];
+
+    const first = await service.markMaterialsReceivedBulk(admin, ids);
+    expect(first.map(({ orderId }) => orderId)).toEqual(ids);
+    expect(first.map(({ result }) => result)).toEqual([
+      { ok: true, value: undefined },
+      { ok: true, value: undefined },
+      {
+        ok: false,
+        error: {
+          kind: "illegal-transition",
+          from: "cancelled",
+          to: "materials_received",
+        },
+      },
+    ]);
+    const firstOrder = requested[0];
+    if (!firstOrder) throw new Error("fixture orders");
+    expect((await orders.auditTrail(firstOrder.id)).at(-1)).toMatchObject({
+      actor: admin.email,
+      from: "materials_requested",
+      to: "materials_received",
+    });
+
+    const again = await service.markMaterialsReceivedBulk(admin, [
+      firstOrder.id,
+    ]);
+    expect(again).toEqual([
+      {
+        orderId: firstOrder.id,
+        result: {
+          ok: false,
+          error: {
+            kind: "illegal-transition",
+            from: "materials_received",
+            to: "materials_received",
+          },
+        },
+      },
+    ]);
   });
 
   it("allows exactly three of eight distinct orders when capacity is 8 and five seats are confirmed", async () => {
@@ -824,6 +896,7 @@ describe("admin enrollment service", () => {
       cancel: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       consolidationLines: () => Promise.reject(new Error("read failed")),
+      deliveryOrders: () => Promise.reject(new Error("read failed")),
       markMaterials: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       list: () => Promise.reject(new Error("read failed")),

@@ -32,6 +32,7 @@ export type AdminListItem = Pick<
   | "total"
 > & {
   readonly studentName: string;
+  readonly phoneDigits: string;
   readonly requestedOn: string;
 };
 export type AdminEnrollmentDetail = StoredOrder & {
@@ -51,6 +52,22 @@ export interface ConsolidationLine {
   readonly variantLabel: string;
   readonly quantity: number;
   readonly unitPrice: Money;
+}
+
+/** One order whose materials were requested from the supplier or already handed to the student. */
+export interface DeliveryOrder {
+  readonly id: string;
+  readonly number: string;
+  readonly status: "materials_requested" | "materials_received";
+  readonly studentName: string;
+  readonly phoneDigits: string;
+  readonly workshopName: string;
+  readonly turnoLabel: string;
+  readonly lines: readonly {
+    readonly materialName: string;
+    readonly variantLabel: string;
+    readonly quantity: number;
+  }[];
 }
 
 /** Transaction boundary for all admin mutations; E4/E5 map it to one Drizzle transaction. */
@@ -92,6 +109,11 @@ export interface AdminEnrollmentStore {
     readonly lines: readonly ConsolidationLine[];
     readonly pendingOrders: number;
   }>;
+  /**
+   * Orders of `period` that are requested or received and carry at least
+   * one material line, one entry per order, sorted by student name then number.
+   */
+  deliveryOrders(period: string): Promise<readonly DeliveryOrder[]>;
 }
 
 export type AdminEnrollmentPeriodLookup = {

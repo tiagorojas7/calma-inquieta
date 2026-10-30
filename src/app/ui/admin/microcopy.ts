@@ -57,6 +57,8 @@ export const adminMicrocopy = {
       reasonHint: "Entre 3 y 300 caracteres.",
       cancelSubmit: "Cancelar inscripción",
       detailAndContact: "Ver detalle y contacto",
+      whatsapp: "WhatsApp",
+      whatsappWith: (name: string) => `WhatsApp con ${name}`,
       detailAndContactOf: (number: string) =>
         `Ver detalle y contacto del pedido ${number}`,
     },
@@ -108,15 +110,15 @@ export const adminMicrocopy = {
     },
     consolidationLink: "Materiales a pedir",
     consolidation: {
-      title: (month: string) => `Materiales a pedir: ${month}`,
-      workflowLabel: "Pasos del pedido",
+      title: (month: string) => `Materiales: ${month}`,
+      sectionsLabel: "Secciones de materiales",
+      sections: { pedir: "Para pedir", entregar: "Para entregar" },
       quantity: (count: number) => `Cantidad: ${String(count)}`,
       consequence: (count: number) =>
         count === 1
-          ? "Marca 1 pedido cobrado como solicitado al proveedor. Después lo marcás como recibido cuando llegue."
-          : `Marca ${String(count)} pedidos cobrados como solicitados al proveedor. Después los marcás como recibidos cuando lleguen.`,
-      afterRequested:
-        "Siguiente: cuando lleguen los materiales, marcá cada pedido como recibido.",
+          ? "Marca 1 pedido cobrado como pedido al proveedor."
+          : `Marca ${String(count)} pedidos cobrados como pedidos al proveedor.`,
+      goDeliver: "Ir a Para entregar",
       month: "Mes",
       apply: "Ver mes",
       pending: (count: number) =>
@@ -127,14 +129,36 @@ export const adminMicrocopy = {
         count === 1
           ? "Se marcó 1 pedido como solicitado."
           : `Se marcaron ${String(count)} pedidos como solicitados.`,
+      received: (count: number) =>
+        count === 1
+          ? "1 pedido marcado como recibido."
+          : `${String(count)} pedidos marcados como recibidos.`,
       columns: { material: "Material", quantity: "Cantidad", total: "Total" },
       supplierTotal: "Total del proveedor",
       grandTotal: "Total general",
-      summaryLabel: (supplier: string) => `Resumen para ${supplier}`,
-      copy: "Copiar resumen",
-      copied: "Resumen copiado.",
-      markRequested: "Marcar como solicitado",
+      summaryLabel: (supplier: string) => `Pedido para ${supplier}`,
+      copy: "Copiar pedido por WhatsApp",
+      copied: "Pedido copiado.",
+      markRequested: "Ya lo pedí",
       empty: "No hay materiales para pedir este mes",
+      deliver: {
+        label: "Pedidos para entregar",
+        empty: "No hay materiales para entregar este mes",
+        received: "Recibido",
+        receivedOf: (name: string) =>
+          `Marcar como recibido el pedido de ${name}`,
+        markAll: "Marcar todo recibido",
+        markAllConsequence: (count: number) =>
+          count === 1
+            ? "Marca 1 pedido como recibido."
+            : `Marca ${String(count)} pedidos como recibidos.`,
+        delivered: (count: number) => `Ya entregados (${String(count)})`,
+        deliveredLabel: "Pedidos ya entregados",
+        whatsapp: "WhatsApp",
+        whatsappWith: (name: string) => `WhatsApp con ${name}`,
+        requestedStatus: "Pedido",
+        receivedStatus: "Recibido",
+      },
     },
     detail: {
       title: (number: string) => `Pedido ${number}`,

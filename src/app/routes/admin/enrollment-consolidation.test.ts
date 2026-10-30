@@ -4,6 +4,7 @@ import {
   createUnavailableAdminEnrollmentService,
   createUnavailableSupplierConsolidationService,
   type AdminEnrollmentUseCases,
+  type DeliveryOrder,
   type SupplierConsolidation,
   type SupplierConsolidationUseCases,
 } from "~/modules/enrollments";
@@ -48,18 +49,46 @@ const consolidation: SupplierConsolidation = {
 };
 
 type Consolidate = SupplierConsolidationUseCases["consolidate"];
+type Deliveries = SupplierConsolidationUseCases["deliveries"];
 type Bulk = AdminEnrollmentUseCases["markMaterialsRequestedBulk"];
 
-function services(overrides: { consolidate?: Consolidate; bulk?: Bulk }) {
+const deliveryOrder = (overrides: Partial<DeliveryOrder>): DeliveryOrder => ({
+  id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+  number: "CI-2026-0001",
+  status: "materials_requested",
+  studentName: "Ana Pérez",
+  phoneDigits: "5493515550001",
+  workshopName: "Cerámica",
+  turnoLabel: "Lunes 18:00",
+  lines: [
+    { materialName: "Arcilla", variantLabel: "Grande", quantity: 2 },
+    { materialName: "Esmalte", variantLabel: "Azul", quantity: 1 },
+  ],
+  ...overrides,
+});
+
+function services(overrides: {
+  consolidate?: Consolidate;
+  deliveries?: Deliveries;
+  bulk?: Bulk;
+  received?: Bulk;
+}) {
   return {
     consolidation: withOverrides(
       createUnavailableSupplierConsolidationService(),
-      overrides.consolidate ? { consolidate: overrides.consolidate } : {},
+      {
+        ...(overrides.consolidate
+          ? { consolidate: overrides.consolidate }
+          : {}),
+        deliveries: overrides.deliveries ?? (() => Promise.resolve(ok([]))),
+      },
     ),
-    enrollments: withOverrides(
-      createUnavailableAdminEnrollmentService(),
-      overrides.bulk ? { markMaterialsRequestedBulk: overrides.bulk } : {},
-    ),
+    enrollments: withOverrides(createUnavailableAdminEnrollmentService(), {
+      ...(overrides.bulk ? { markMaterialsRequestedBulk: overrides.bulk } : {}),
+      ...(overrides.received
+        ? { markMaterialsReceivedBulk: overrides.received }
+        : {}),
+    }),
   };
 }
 
@@ -67,11 +96,15 @@ function load(
   consolidate: Consolidate,
   path = "/admin/inscripciones/materiales?mes=2026-11",
   admin = true,
+  deliveries?: Deliveries,
 ) {
   return loader({
     request: getRequest(path),
     params: {},
-    context: adminContext(services({ consolidate }), { admin }),
+    context: adminContext(
+      services({ consolidate, ...(deliveries ? { deliveries } : {}) }),
+      { admin },
+    ),
   } as never);
 }
 
@@ -79,6 +112,7 @@ function submit(
   bulk: Bulk,
   fields: [string, string][],
   options: { admin?: boolean; headers?: Record<string, string> } = {},
+  received?: Bulk,
 ) {
   const request = postRequest(
     "/admin/inscripciones/materiales",
@@ -94,7 +128,7 @@ function submit(
     }),
     params: {},
     context: adminContext(
-      services({ bulk }),
+      services({ bulk, ...(received ? { received } : {}) }),
       options.admin === undefined ? {} : { admin: options.admin },
     ),
   } as never);
@@ -140,13 +174,111 @@ describe("admin supplier consolidation loader", () => {
     );
   });
 
-  it("shows how many orders were just marked as requested", async () => {
+  it("shows how many orders were just marked, only for known codes", async () => {
+    const consolidate = vi
+      .fn<Consolidate>()
+      .mockResolvedValue(ok(consolidation));
+    const path = "/admin/inscripciones/materiales?mes=2026-11";
+    const noticeOf = async (query: string) =>
+      (await load(consolidate, path + query)).notice;
+
+    expect(await noticeOf("&ok=requested&n=2")).toEqual({
+      kind: "requested",
+      count: 2,
+    });
+    expect(await noticeOf("&ok=received&n=3")).toEqual({
+      kind: "received",
+      count: 3,
+    });
+    expect(await noticeOf("&ok=hacked&n=3")).toBeNull();
+    expect(await noticeOf("&ok=received&n=-1")).toBeNull();
+    expect(await noticeOf("&ok=received&n=abc")).toBeNull();
+  });
+
+  it("opens Para pedir by default and Para entregar on request", async () => {
+    const consolidate = vi
+      .fn<Consolidate>()
+      .mockResolvedValue(ok(consolidation));
+    const path = "/admin/inscripciones/materiales?mes=2026-11";
+    const sectionOf = async (query: string) =>
+      (await load(consolidate, path + query)).section;
+
+    expect(await sectionOf("")).toBe("pedir");
+    expect(await sectionOf("&seccion=entregar")).toBe("entregar");
+    expect(await sectionOf("&seccion=otra")).toBe("pedir");
+  });
+
+  it("projects each student order with her own lines and WhatsApp link", async () => {
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(
+      ok([
+        deliveryOrder({}),
+        deliveryOrder({
+          id: "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c",
+          studentName: "Bea Gómez",
+          phoneDigits: "",
+          lines: [
+            { materialName: "Pincel", variantLabel: "Fino", quantity: 3 },
+          ],
+        }),
+        deliveryOrder({
+          id: "2d0b7e30-6f5c-4b8d-9c90-3e4f5a6b7c8d",
+          status: "materials_received",
+          studentName: "Cata Díaz",
+        }),
+      ]),
+    );
     const result = await load(
       vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
-      "/admin/inscripciones/materiales?mes=2026-11&solicitados=2",
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar",
+      true,
+      deliveries,
     );
 
-    expect(result.requestedCount).toBe(2);
+    expect(deliveries).toHaveBeenCalledWith(expect.anything(), "2026-11");
+    expect(result.toDeliver).toEqual([
+      {
+        id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+        studentName: "Ana Pérez",
+        detail: "Cerámica · Lunes 18:00",
+        lines: [
+          { label: "Arcilla Grande", quantity: 2 },
+          { label: "Esmalte Azul", quantity: 1 },
+        ],
+        whatsappHref: expect.stringContaining(
+          "https://wa.me/5493515550001",
+        ) as string,
+      },
+      {
+        id: "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c",
+        studentName: "Bea Gómez",
+        detail: "Cerámica · Lunes 18:00",
+        lines: [{ label: "Pincel Fino", quantity: 3 }],
+        whatsappHref: undefined,
+      },
+    ]);
+    expect(result.delivered.map((card) => card.studentName)).toEqual([
+      "Cata Díaz",
+    ]);
+    expect(result.counts).toEqual({ pedir: 2, entregar: 2 });
+  });
+
+  it.each([
+    ["denied", 403],
+    ["unavailable", 503],
+    ["invalid", 400],
+  ] as const)("fails closed when deliveries are %s", async (kind, status) => {
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(err({ kind }));
+
+    expect(
+      await thrownStatus(() =>
+        load(
+          vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+          undefined,
+          true,
+          deliveries,
+        ),
+      ),
+    ).toBe(status);
   });
 
   it("returns no data to a request that is not an admin", async () => {
@@ -189,7 +321,7 @@ describe("admin supplier consolidation action", () => {
       "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c",
     ]);
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/inscripciones/materiales?mes=2026-11&solicitados=2",
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=pedir&ok=requested&n=2",
     );
   });
 
@@ -284,6 +416,100 @@ describe("admin supplier consolidation action", () => {
       await thrownStatus(() => submit(bulk, fields, { admin: false })),
     ).toBe(403);
     expect(bulk).not.toHaveBeenCalled();
+  });
+
+  describe("mark-received", () => {
+    const a = "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b";
+    const b = "1c9a6d2f-5e4b-4a7c-8b8f-2d3e4f5a6b7c";
+
+    it("marks the chosen orders as received and goes back to Para entregar", async () => {
+      const received = vi.fn<Bulk>((_, ids) => Promise.resolve(allOk(ids)));
+      const requested = vi.fn<Bulk>();
+      const result = await submit(
+        requested,
+        [
+          ["intent", "mark-received"],
+          ["mes", "2026-11"],
+          ["seccion", "entregar"],
+          ["orderId", a],
+          ["orderId", b],
+          ["orderId", a],
+        ],
+        {},
+        received,
+      );
+
+      expect(received).toHaveBeenCalledWith(expect.anything(), [a, b]);
+      expect(requested).not.toHaveBeenCalled();
+      expect((result as Response).headers.get("Location")).toBe(
+        "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar&ok=received&n=2",
+      );
+    });
+
+    it("reports the orders that could not move and keeps the rest", async () => {
+      const received = vi.fn<Bulk>(() =>
+        Promise.resolve([
+          { orderId: a, result: ok(undefined) },
+          {
+            orderId: b,
+            result: err({
+              kind: "illegal-transition" as const,
+              from: "materials_received" as const,
+              to: "materials_received" as const,
+            }),
+          },
+        ]),
+      );
+      const result = await submit(
+        vi.fn<Bulk>(),
+        [
+          ["intent", "mark-received"],
+          ["mes", "2026-11"],
+          ["orderId", a],
+          ["orderId", b],
+        ],
+        {},
+        received,
+      );
+
+      expect(result).toMatchObject({
+        init: { status: 409 },
+        data: {
+          formError:
+            "Se marcaron 1 de 2 pedidos. Esa acción no está disponible para el estado actual del pedido.",
+        },
+      });
+    });
+
+    it("asks for at least one order and refuses non-admins", async () => {
+      const received = vi.fn<Bulk>();
+
+      expect(
+        await submit(
+          vi.fn<Bulk>(),
+          [
+            ["intent", "mark-received"],
+            ["mes", "2026-11"],
+          ],
+          {},
+          received,
+        ),
+      ).toMatchObject({ init: { status: 422 } });
+      expect(
+        await thrownStatus(() =>
+          submit(
+            vi.fn<Bulk>(),
+            [
+              ["intent", "mark-received"],
+              ["orderId", a],
+            ],
+            { admin: false },
+            received,
+          ),
+        ),
+      ).toBe(403);
+      expect(received).not.toHaveBeenCalled();
+    });
   });
 
   it("answers 400 to an unknown intent", async () => {

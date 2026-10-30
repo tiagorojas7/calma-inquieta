@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { parseColorTokens } from "./ui/tokens/contrast";
@@ -19,7 +20,13 @@ vi.mock("react-router", async (importOriginal) => ({
 }));
 
 const render = (error: unknown) =>
-  renderToStaticMarkup(createElement(ErrorBoundary, { error } as never));
+  renderToStaticMarkup(
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(ErrorBoundary, { error } as never),
+    ),
+  );
 
 describe("root error boundary", () => {
   it("renders a not-found page for a 404 response", () => {

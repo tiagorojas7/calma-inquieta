@@ -42,11 +42,11 @@ export default function AdminLayout() {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const status = adminErrorStatus(error);
   const data = useRouteLoaderData<typeof loader>("routes/admin/layout");
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   if (status === 403) return <AdminDeniedPage email={null} />;
   return (
     <AdminShell email={data?.email ?? null} pathname={pathname}>
-      <AdminErrorState status={status} />
+      <AdminErrorState status={status} retryHref={`${pathname}${search}`} />
     </AdminShell>
   );
 }

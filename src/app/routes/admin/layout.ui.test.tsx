@@ -59,6 +59,15 @@ describe("admin layout screens", () => {
     expect(container.textContent).not.toContain("secret stack detail");
   });
 
+  it("offers a native retry link to the failed screen", async () => {
+    renderAdmin(() => {
+      throw new Error("boom");
+    });
+    expect(
+      await screen.findByRole("link", { name: "Reintentar" }),
+    ).toHaveAttribute("href", "/admin");
+  });
+
   it("shows the construction state for a 503 from a section", async () => {
     renderAdmin(() => {
       throw data(null, { status: 503 });

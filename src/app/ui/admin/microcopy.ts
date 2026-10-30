@@ -82,6 +82,14 @@ export const adminMicrocopy = {
     consolidationLink: "Materiales a pedir",
     consolidation: {
       title: (month: string) => `Materiales a pedir: ${month}`,
+      workflowLabel: "Pasos del pedido",
+      quantity: (count: number) => `Cantidad: ${String(count)}`,
+      consequence: (count: number) =>
+        count === 1
+          ? "Marca 1 pedido cobrado como solicitado al proveedor. Después lo marcás como recibido cuando llegue."
+          : `Marca ${String(count)} pedidos cobrados como solicitados al proveedor. Después los marcás como recibidos cuando lleguen.`,
+      afterRequested:
+        "Siguiente: cuando lleguen los materiales, marcá cada pedido como recibido.",
       month: "Mes",
       apply: "Ver mes",
       pending: (count: number) =>
@@ -505,6 +513,12 @@ export const adminMicrocopy = {
   denied: {
     title: "No tenés acceso al panel",
     signedInAs: (email: string) => `Iniciaste sesión como ${email}.`,
+    signOut: "Cerrar sesión y usar otra cuenta",
+    requestAccess: "Pedir acceso por WhatsApp",
+    whatsappMessage: (email: string | null) =>
+      email === null
+        ? "Hola, necesito acceso al panel de Calma Inquieta."
+        : `Hola, necesito acceso al panel de Calma Inquieta con la cuenta ${email}.`,
     help: "Si creés que es un error, pedile acceso a quien administra el panel.",
     backToSite: "Ir al sitio",
   },
@@ -1344,5 +1358,8 @@ export const adminMicrocopy = {
       message: "Todavía no está disponible. Volvé más tarde.",
     },
     backToPanel: "Volver al panel",
+    retry: "Reintentar",
+    support:
+      "Si sigue pasando, avisale a quien administra el panel y contale qué estabas haciendo.",
   },
 } as const;

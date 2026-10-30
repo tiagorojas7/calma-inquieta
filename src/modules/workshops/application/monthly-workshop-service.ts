@@ -11,7 +11,13 @@ import {
   type TransitionRefused,
 } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
-import type { MediaLookup } from "~/modules/media";
+import {
+  validateGallery,
+  type ImageUse,
+  type ImageUseDraft,
+  type MediaAsset,
+  type MediaLookup,
+} from "~/modules/media";
 import type { TeacherLookup } from "~/modules/teachers";
 import {
   assignmentPercentage,
@@ -65,6 +71,8 @@ export interface MonthlyWorkshopServiceDeps {
   readonly clock: Clock;
   readonly newId?: () => string;
 }
+/** The `workshop_image.alt` column check. */
+const MAX_ALT = 200;
 const live: readonly WorkshopStatus[] = ["draft", "published", "paused"];
 const visible: readonly WorkshopStatus[] = ["published", "paused"];
 const duplicate: FieldIssue<"slug"> = { field: "slug", code: "duplicate" };
@@ -82,7 +90,8 @@ const submission = (text: string): PercentageSubmission => {
 export function createMonthlyWorkshopsService(
   deps: MonthlyWorkshopServiceDeps,
 ): MonthlyWorkshopUseCases {
-  const { repository, teachers, turnos, turnoUsage, periods, clock } = deps;
+  const { repository, teachers, media, turnos, turnoUsage, periods, clock } =
+    deps;
   const newId = deps.newId ?? (() => crypto.randomUUID());
   const stamp = (actor: AdminActor) => ({
     updatedBy: actor.email,
@@ -94,6 +103,14 @@ export function createMonthlyWorkshopsService(
     const teacher = stored.teacherId
       ? (await teachers.findByIds([stored.teacherId])).get(stored.teacherId)
       : undefined;
+    const assets = stored.images.length
+      ? await media.findAssets(stored.images.map((image) => image.assetId))
+      : new Map<string, MediaAsset>();
+    const images: ImageUse[] = stored.images.map((image) => ({
+      assetId: image.assetId,
+      alt: image.alt,
+      asset: assets.get(image.assetId) ?? null,
+    }));
     return {
       id: stored.id,
       slug: stored.slug,
@@ -112,7 +129,7 @@ export function createMonthlyWorkshopsService(
             percentage: stored.percentage,
           }
         : null,
-      images: [],
+      images,
       status: stored.status,
       turnos: await Promise.all(
         (await turnos.listForWorkshop(stored.id)).map(async (turno) => ({
@@ -138,6 +155,7 @@ export function createMonthlyWorkshopsService(
         core: MonthlyCore;
         teacherId: string | null;
         percentage: Percentage | null;
+        images: readonly ImageUseDraft[];
       },
       Invalid<MonthlyWorkshopField>
     >
@@ -167,13 +185,31 @@ export function createMonthlyWorkshopsService(
       }
     } else if (draft.percentage.trim())
       issues.push({ field: "teacherId", code: "required" });
+    const trimmed = draft.images.map((image) => ({
+      assetId: image.assetId.trim(),
+      alt: image.alt.trim(),
+    }));
+    const gallery = trimmed.some((image) => image.alt.length > MAX_ALT)
+      ? err([{ field: "images", code: "too-long" } as const])
+      : validateGallery(
+          trimmed,
+          trimmed.length
+            ? await media.findAssets(trimmed.map((image) => image.assetId))
+            : new Map(),
+        );
+    if (!gallery.ok) issues.push(...gallery.error);
     if (core.ok) {
       const holder = await repository.findBySlug(slug);
       if (holder && holder.id !== current?.id) issues.push(duplicate);
     }
     return !core.ok || issues.length
       ? err({ kind: "invalid", issues })
-      : ok({ core: core.value, teacherId: teacherId || null, percentage });
+      : ok({
+          core: core.value,
+          teacherId: teacherId || null,
+          percentage,
+          images: gallery.ok ? gallery.value : [],
+        });
   }
   const stored = (
     base: { id: string; status: WorkshopStatus },
@@ -181,11 +217,13 @@ export function createMonthlyWorkshopsService(
       core: MonthlyCore;
       teacherId: string | null;
       percentage: Percentage | null;
+      images: readonly ImageUseDraft[];
     },
     actor: AdminActor,
   ): StoredMonthlyWorkshop => ({
     ...base,
     ...resolved.core,
+    images: resolved.images,
     teacherId: resolved.teacherId,
     percentage: resolved.percentage,
     audit: stamp(actor),
@@ -319,7 +357,6 @@ export function createMonthlyWorkshopsService(
     async create(actor, draft) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;
-      if (draft.images.length > 0) return err({ kind: "unavailable" });
       const resolved = await fields(draft, null);
       if (!resolved.ok) return resolved;
       const value = stored(
@@ -335,7 +372,6 @@ export function createMonthlyWorkshopsService(
     async update(actor, id, draft) {
       const loaded = await load(actor, id);
       if (!loaded.ok) return loaded;
-      if (draft.images.length > 0) return err({ kind: "unavailable" });
       const resolved = await fields(draft, loaded.value.value);
       if (!resolved.ok) return resolved;
       if (

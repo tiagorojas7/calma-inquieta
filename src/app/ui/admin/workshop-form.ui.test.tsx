@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { WorkshopForm, WorkshopStatePanel } from "./workshop-form";
+import { QuickWorkshopForm } from "./workshop-quick-form";
 
 const values = {
   name: "",
@@ -13,6 +14,7 @@ const values = {
   defaultFee: "",
   teacherId: "",
   percentage: "",
+  images: [],
 };
 
 function stub(element: React.ReactElement) {
@@ -140,5 +142,80 @@ describe("WorkshopStatePanel", () => {
     ).toHaveValue("restore");
     expect(screen.getByText("Falló.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Archivar" })).toBeNull();
+  });
+});
+
+describe("taller photos", () => {
+  const photos = (container: HTMLElement) => ({
+    inputs: container.querySelectorAll("input[type=file]"),
+    visible: container.querySelectorAll(
+      "fieldset input[type=file]:not(details input)",
+    ),
+    hidden: container.querySelectorAll("details input[type=file]"),
+  });
+
+  it("offers four photo slots on the edit form, two visible and two under details", async () => {
+    const { container } = stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+    await screen.findByText("Fotos");
+    const { inputs, hidden } = photos(container);
+    expect(inputs).toHaveLength(4);
+    expect(hidden).toHaveLength(2);
+    expect(screen.getByText("Agregar más fotos")).toBeVisible();
+  });
+
+  it("keeps a stored photo with its alt text so saving does not drop it", async () => {
+    const { container } = stub(
+      <WorkshopForm
+        values={{
+          ...values,
+          images: [{ assetId: "a1", src: "/media/a1.jpg", alt: "Mesa" }],
+        }}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+    await screen.findByText("Fotos");
+    expect(container.querySelector("input[name=galleryAssetId]")).toHaveValue(
+      "a1",
+    );
+    expect(container.querySelector("input[name=galleryAlt]")).toHaveValue(
+      "Mesa",
+    );
+  });
+
+  it("offers the same four slots on the one-page form", async () => {
+    const { container } = stub(
+      <QuickWorkshopForm
+        values={{
+          name: "",
+          description: "",
+          teacherId: "",
+          defaultFee: "",
+          percentage: "",
+          images: [],
+          rows: [],
+          materialIds: [],
+        }}
+        errors={{}}
+        turnoErrors={{}}
+        teachers={[]}
+        materials={[]}
+        cancelHref="/admin/talleres"
+      />,
+    );
+    await screen.findByText("Fotos");
+    const { inputs, hidden } = photos(container);
+    expect(inputs).toHaveLength(4);
+    expect(hidden).toHaveLength(2);
   });
 });

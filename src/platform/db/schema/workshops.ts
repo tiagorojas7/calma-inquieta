@@ -307,3 +307,31 @@ export const intensiveImage = pgTable(
     ),
   ],
 );
+
+export const workshopImage = pgTable(
+  "workshop_image",
+  {
+    workshopId: uuid("workshop_id")
+      .notNull()
+      .references(() => monthlyWorkshop.id, { onDelete: "cascade" }),
+    mediaAssetId: uuid("media_asset_id")
+      .notNull()
+      .references(() => mediaAsset.id, { onDelete: "restrict" }),
+    alt: text("alt").notNull(),
+    position: smallint("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "workshop_image_pkey",
+      columns: [table.workshopId, table.position],
+    }),
+    check(
+      "workshop_image_position_check",
+      sql`${table.position} BETWEEN 0 AND 5`,
+    ),
+    check(
+      "workshop_image_alt_check",
+      sql`btrim(${table.alt}) <> '' AND length(${table.alt}) <= 200`,
+    ),
+  ],
+);

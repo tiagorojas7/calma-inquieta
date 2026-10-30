@@ -4,6 +4,9 @@ import type {
   MonthlyWorkshopRepository,
   StoredMonthlyWorkshop,
 } from "~/modules/workshops/application/monthly-workshop-repository";
+/** Media assets the gallery fixtures refer to; real databases must seed them. */
+export const WORKSHOP_ASSET_1 = "00000000-0000-4000-8000-0000000000a1";
+export const WORKSHOP_ASSET_2 = "00000000-0000-4000-8000-0000000000a2";
 const parsedFee = Money.fromCentavos(123400);
 if (!parsedFee.ok) throw new Error("fixture");
 const fee = parsedFee.value;
@@ -19,6 +22,7 @@ const workshop = (
   defaultFee: fee,
   teacherId: "00000000-0000-4000-8000-000000000099",
   percentage: null,
+  images: [],
   status: "draft",
   audit: {
     updatedBy: "admin@example.com",
@@ -55,12 +59,35 @@ export function runMonthlyWorkshopRepositoryContract(
       await repo.insert(workshop());
       await expect(repo.insert(workshop({ slug: "other" }))).rejects.toThrow();
     });
-    it("does not expose deferred gallery data", async () => {
+    it("round-trips the gallery in position order", async () => {
       const repo = await create();
-      const value = workshop();
+      const images = [
+        { assetId: WORKSHOP_ASSET_2, alt: "Segunda" },
+        { assetId: WORKSHOP_ASSET_1, alt: "Primera" },
+      ];
+      const value = workshop({ images });
       await repo.insert(value);
 
-      expect(await repo.findById(value.id)).not.toHaveProperty("images");
+      expect((await repo.findById(value.id))?.images).toEqual(images);
+      expect((await repo.findBySlug(value.slug))?.images).toEqual(images);
+      expect((await repo.list(["draft"]))[0]?.images).toEqual(images);
+    });
+
+    it("replaces the whole gallery on update, including with none", async () => {
+      const repo = await create();
+      const value = workshop({
+        images: [{ assetId: WORKSHOP_ASSET_1, alt: "Primera" }],
+      });
+      await repo.insert(value);
+      const replaced = {
+        ...value,
+        images: [{ assetId: WORKSHOP_ASSET_2, alt: "Otra" }],
+      };
+      expect((await repo.update(replaced)).ok).toBe(true);
+      expect((await repo.findById(value.id))?.images).toEqual(replaced.images);
+
+      expect((await repo.update({ ...value, images: [] })).ok).toBe(true);
+      expect((await repo.findById(value.id))?.images).toEqual([]);
     });
 
     it("returns not-found when updating a missing workshop", async () => {

@@ -20,6 +20,7 @@ const VALUES = {
   defaultFee: "12000",
   teacherId: "t2",
   percentage: "35,5",
+  images: [] as { assetId: string; src: string; alt: string }[],
 };
 
 const DETAIL_EXTRA = {
@@ -165,6 +166,7 @@ describe("workshop admin screens", () => {
                 teacherId: VALUES.teacherId,
                 defaultFee: "12,5",
                 percentage: VALUES.percentage,
+                images: [],
                 rows: EMPTY_ROWS.map((row, index) =>
                   index === 0
                     ? {
@@ -263,6 +265,7 @@ describe("workshop admin screens", () => {
                 teacherId: "t2",
                 defaultFee: "",
                 percentage: "",
+                images: [],
                 rows: EMPTY_ROWS,
                 materialIds: [],
               },

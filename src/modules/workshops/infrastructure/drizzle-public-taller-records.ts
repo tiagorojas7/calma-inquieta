@@ -3,6 +3,7 @@ import { Money } from "~/modules/_shared";
 import {
   monthlyWorkshop,
   periodTurno,
+  workshopImage,
   workshopPeriod,
   workshopTurno,
 } from "~/platform/db/schema/workshops";
@@ -69,10 +70,8 @@ function group<T, K>(rows: readonly T[], keyOf: (row: T) => K): Map<K, T[]> {
  * catalog size: workshops, active turnos, open periods from the month, and the
  * `period_turno` capacities (the last three only when there are rows to join).
  *
- * The change-3 schema has no `workshop_image` or `period_project_image` table
- * yet (admin images are not persisted: B5 and B6b), so no gallery can exist in
- * the database and both galleries are empty here. When those tables land, the
- * two missing statements are added in this file.
+ * The taller gallery is read with them (`workshop_image`). Period project images
+ * have no table yet (B6b), so those galleries stay empty.
  */
 async function select(
   db: Db,
@@ -87,7 +86,7 @@ async function select(
   if (workshops.length === 0) return [];
   const ids = workshops.map((row) => row.id);
 
-  const [turnoRows, periodRows] = await Promise.all([
+  const [turnoRows, periodRows, imageRows] = await Promise.all([
     db
       .select({
         id: workshopTurno.id,
@@ -123,6 +122,15 @@ async function select(
         ),
       )
       .orderBy(asc(workshopPeriod.period)),
+    db
+      .select({
+        workshopId: workshopImage.workshopId,
+        assetId: workshopImage.mediaAssetId,
+        alt: workshopImage.alt,
+      })
+      .from(workshopImage)
+      .where(inArray(workshopImage.workshopId, ids))
+      .orderBy(asc(workshopImage.workshopId), asc(workshopImage.position)),
   ]);
 
   const capacityRows =
@@ -144,6 +152,7 @@ async function select(
 
   const turnosOf = group(turnoRows, (row) => row.workshopId);
   const periodsOf = group(periodRows, (row) => row.workshopId);
+  const imagesOf = group(imageRows, (row) => row.workshopId);
   const capacitiesOf = group(capacityRows, (row) => row.periodId);
 
   return workshops.map((row) => ({
@@ -154,7 +163,10 @@ async function select(
     technique: row.technique,
     teacherId: row.teacherId,
     status: toVisibleStatus(row.status),
-    images: [],
+    images: (imagesOf.get(row.id) ?? []).map(({ assetId, alt }) => ({
+      assetId,
+      alt,
+    })),
     activeTurnos: (turnosOf.get(row.id) ?? []).map((turno) => ({
       id: turno.id,
       label: turno.label,

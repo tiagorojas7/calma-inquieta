@@ -4,6 +4,7 @@ import type {
   Weekday,
 } from "~/modules/workshops";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { parseGallery, type GalleryFormImage } from "./gallery-form-data";
 import { weekdayName } from "./turno-form-data";
 
 const copy = adminMicrocopy.workshops.quick;
@@ -31,6 +32,7 @@ export interface QuickValues {
   readonly teacherId: string;
   readonly defaultFee: string;
   readonly percentage: string;
+  readonly images: readonly GalleryFormImage[];
   readonly rows: readonly QuickTurnoRow[];
   readonly materialIds: readonly string[];
 }
@@ -145,6 +147,7 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     teacherId: text(form, "teacherId"),
     defaultFee: text(form, "defaultFee"),
     percentage: text(form, "percentage"),
+    images: parseGallery(form),
     rows,
     materialIds,
   };
@@ -159,7 +162,7 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
       defaultFee: values.defaultFee,
       teacherId: values.teacherId,
       percentage: values.percentage,
-      images: [],
+      images: values.images,
       confirmSlugChange: false,
     },
     turnos,

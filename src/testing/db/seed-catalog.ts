@@ -5,6 +5,7 @@ import {
   intensiveWorkshop,
   monthlyWorkshop,
   periodTurno,
+  workshopImage,
   workshopPeriod,
   workshopTurno,
 } from "~/platform/db/schema/workshops";
@@ -35,6 +36,15 @@ async function seedTalleres(db: Db, seed: CatalogSeed): Promise<void> {
       updatedAt: when,
     })),
   );
+  const gallery = seed.talleres.flatMap((row) =>
+    row.images.map((image, position) => ({
+      workshopId: row.id,
+      mediaAssetId: image.assetId,
+      alt: image.alt,
+      position,
+    })),
+  );
+  if (gallery.length > 0) await db.insert(workshopImage).values(gallery);
   const turnos = seed.talleres.flatMap((row) =>
     row.turnos.map((turno) => ({
       id: turno.id,
@@ -86,8 +96,8 @@ async function seedTalleres(db: Db, seed: CatalogSeed): Promise<void> {
 
 /**
  * Inserts a `CatalogSeed` into the change-3 tables, parents before children.
- * Workshop and project images are not inserted: the schema has no table for
- * them yet (B5 and B6b), so the Drizzle taller records return empty galleries.
+ * Taller images go to `workshop_image`; period project images are not
+ * inserted because they have no table yet (B6b), so those galleries stay empty.
  * A period whose teacher snapshot points at a teacher the seed does not hold
  * gets a placeholder teacher row, because the foreign key requires one.
  */

@@ -9,6 +9,7 @@ import {
   TextAreaField,
   TextField,
 } from "./form-fields";
+import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge, type AdminStatus } from "./status-badge";
 
@@ -20,7 +21,15 @@ export type WorkshopFormField =
   | "technique"
   | "defaultFee"
   | "teacherId"
-  | "percentage";
+  | "percentage"
+  | "images";
+
+/** Photo slots on the taller forms; the service accepts a few more. */
+export const WORKSHOP_PHOTO_SLOTS = 4;
+
+export type WorkshopFormValues = Readonly<
+  Record<Exclude<WorkshopFormField, "images">, string>
+> & { readonly images: readonly GalleryFieldImage[] };
 
 export interface WorkshopTeacherOption {
   readonly id: string;
@@ -45,7 +54,7 @@ export function WorkshopForm({
   published,
   cancelHref,
 }: {
-  values: Readonly<Record<WorkshopFormField, string>>;
+  values: WorkshopFormValues;
   errors: Readonly<Partial<Record<WorkshopFormField, string>>>;
   formError?: string | undefined;
   teachers: readonly WorkshopTeacherOption[];
@@ -126,6 +135,15 @@ export function WorkshopForm({
         inputMode="decimal"
         defaultValue={values.percentage}
         error={errors.percentage}
+      />
+      <GalleryFields
+        images={values.images}
+        slots={WORKSHOP_PHOTO_SLOTS}
+        title={copy.form.photosTitle}
+        hint={copy.form.photosHint}
+        label={copy.form.photo}
+        moreLabel={copy.form.morePhotos}
+        error={errors.images}
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.form.save}</Button>

@@ -117,7 +117,7 @@ describe("admin intensive create", () => {
       },
     );
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/intensivos",
+      "/admin/intensivos?ok=created",
     );
   });
 

@@ -114,7 +114,7 @@ describe("admin intensive requests action", () => {
     )) as Response;
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(PATH);
+    expect(response.headers.get("Location")).toBe(`${PATH}?ok=confirmed`);
     expect(repository.requests.get(ids[0] ?? "")).toMatchObject({
       status: "confirmed",
       paidOn: "2026-10-27",

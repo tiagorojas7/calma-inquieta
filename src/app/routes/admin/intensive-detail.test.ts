@@ -268,7 +268,7 @@ describe("admin intensive detail", () => {
       },
     );
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/intensivos",
+      "/admin/intensivos?ok=saved",
     );
     const invalid = await submit({
       update: vi.fn(() =>
@@ -329,6 +329,13 @@ describe("admin intensive detail", () => {
 
   it("calls every lifecycle service with actor and id, then redirects correctly", async () => {
     const changed = { ok: true as const, value: intensive };
+    const codes = {
+      publish: "published",
+      pause: "paused",
+      cancel: "cancelled",
+      archive: "archived",
+      restore: "restored",
+    } as const;
     for (const intent of [
       "publish",
       "pause",
@@ -343,7 +350,7 @@ describe("admin intensive detail", () => {
         "i1",
       );
       expect((response as Response).headers.get("Location")).toBe(
-        "/admin/intensivos/i1",
+        `/admin/intensivos/i1?ok=${codes[intent]}`,
       );
     }
     const remove = vi.fn(() =>
@@ -358,7 +365,7 @@ describe("admin intensive detail", () => {
       "i1",
     );
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/intensivos",
+      "/admin/intensivos?ok=deleted",
     );
   });
 
@@ -416,7 +423,7 @@ describe("admin intensive detail", () => {
       { eventDate: "2026-12-12", startsAt: "09:00", endsAt: "12:00" },
     );
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/intensivos/i1",
+      "/admin/intensivos/i1?ok=rescheduled",
     );
     await expect(
       submitIntent(

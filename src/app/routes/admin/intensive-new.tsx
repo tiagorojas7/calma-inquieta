@@ -1,11 +1,12 @@
 import { redirect, useActionData, useLoaderData } from "react-router";
+import { withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
   invalidIntensiveResponse,
   parseIntensiveDraft,
 } from "~/app/admin/intensive-form-data";
-import { Heading } from "~/app/ui/atoms/heading";
+import { AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { requireAdmin } from "./require-admin";
@@ -58,7 +59,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const created = await context
     .get(servicesContext)
     .intensives.create(actor, draft);
-  if (created.ok) return redirect(LIST);
+  if (created.ok) return redirect(withFeedback(LIST, "created"));
   if (created.error.kind === "invalid")
     return invalidIntensiveResponse(draft, created.error.issues);
   throw failureResponse(created.error);
@@ -69,7 +70,15 @@ export default function AdminIntensiveNew() {
   const rejected = useActionData<typeof action>();
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{adminMicrocopy.intensives.newTitle}</Heading>
+      <AdminPageHeader
+        title={adminMicrocopy.intensives.newTitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: adminMicrocopy.intensives.title, href: LIST },
+          { label: adminMicrocopy.intensives.newTitle },
+        ]}
+        back={{ href: LIST, label: adminMicrocopy.intensives.back }}
+      />
       <IntensiveForm
         values={rejected?.values ?? EMPTY}
         errors={rejected?.errors ?? {}}

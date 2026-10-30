@@ -98,6 +98,16 @@ describe("StatisticsScreen", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows breadcrumbs back to the panel", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+  });
+
   it("uses the shared page header without changing its query form", () => {
     render(<StatisticsScreen {...props} />);
 

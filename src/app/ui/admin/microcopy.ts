@@ -237,6 +237,10 @@ export const adminMicrocopy = {
       statusHint:
         "Sin elegir, la cuota pendiente va a quienes tienen la inscripción por confirmar y el resto a quienes no cancelaron.",
     },
+    steps: {
+      message: "1. Qué querés avisar",
+      audience: "2. A quiénes (opcional)",
+    },
     submit: "Preparar mensajes",
     preview: "Vista previa",
     count: (students: number, withoutPhone: number) =>
@@ -373,6 +377,18 @@ export const adminMicrocopy = {
     intro: "Mirá cómo viene el mes y elegí qué querés administrar.",
     summaryTitle: (month: string) => `Resumen de ${month}`,
     areasTitle: "Secciones",
+    areaHints: {
+      "/admin/talleres": "Publicá talleres, turnos y abrí las inscripciones.",
+      "/admin/intensivos": "Encuentros únicos con fecha y reservas.",
+      "/admin/profesores": "Quiénes dan las clases y sus liquidaciones.",
+      "/admin/inscripciones": "Solicitudes, cobros y materiales a pedir.",
+      "/admin/alumnas": "Datos, pedidos y observaciones de cada alumna.",
+      "/admin/asistencia": "Planilla de cada clase y recuperaciones.",
+      "/admin/materiales": "Catálogo de materiales y proveedores.",
+      "/admin/eventos": "Consultas para eventos privados.",
+      "/admin/estadisticas": "Ocupación e ingresos mes a mes.",
+      "/admin/recordatorios": "Mensajes de WhatsApp listos para enviar.",
+    } as Record<string, string>,
     cards: {
       occupancy: {
         label: "Ocupación",

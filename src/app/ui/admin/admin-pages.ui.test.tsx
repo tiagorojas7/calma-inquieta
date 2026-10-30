@@ -108,6 +108,28 @@ describe("AdminLanding", () => {
     ).toBeVisible();
   });
 
+  it("puts the alerts before the month summary", () => {
+    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    const alerts = screen.getByRole("heading", { name: "Alertas pendientes" });
+    const figures = screen.getByRole("heading", {
+      name: "Resumen de octubre 2026",
+    });
+    expect(
+      alerts.compareDocumentPosition(figures) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("says what each area is for", () => {
+    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    expect(
+      screen.getByText("Publicá talleres, turnos y abrí las inscripciones."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Mensajes de WhatsApp listos para enviar."),
+    ).toBeVisible();
+  });
+
   it("lists the areas, Estadísticas included", () => {
     render(<AdminLanding email="agus@example.com" summary={summary} />);
     const areas = screen.getByRole("heading", { name: "Secciones" })

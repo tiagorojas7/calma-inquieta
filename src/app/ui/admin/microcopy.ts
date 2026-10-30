@@ -1035,6 +1035,35 @@ export const adminMicrocopy = {
         },
       },
     },
+    quick: {
+      publish: "Publicar",
+      saveDraft: "Guardar borrador",
+      advanced: "Opciones avanzadas",
+      advancedHint:
+        "No hace falta tocar nada acá: ya vienen con valores de uso común.",
+      defaultPolicy: "La seña asegura el lugar en el intensivo.",
+      derivedNote:
+        "El enlace se arma solo con el nombre. El resumen sale de la descripción.",
+      percentageHint: "Solo si el profesor es de terceros.",
+      minSeatsHint: "Por defecto 1.",
+      policyHint: "Si lo dejás vacío se usa el texto estándar de la seña.",
+      missingTitle: (missing: string) =>
+        `El intensivo quedó como borrador porque falta: ${missing}.`,
+      notPublished:
+        "El intensivo quedó como borrador porque no se pudo publicar. Revisá los datos y probá de nuevo.",
+    },
+    statusLine: {
+      draft: "Borrador. Todavía no se ve en el sitio.",
+      published: "Publicado. Recibe solicitudes.",
+      paused: "Pausado. No recibe solicitudes nuevas.",
+      cancelled: "Cancelado. No recibe solicitudes.",
+      archived: "Archivado. No se ve en el sitio.",
+    },
+    otherActions: {
+      title: "Otras acciones",
+      dangerTitle: "Cancelar, archivar o eliminar",
+      rescheduleTitle: "Cambiar fecha y horario",
+    },
     form: {
       name: "Nombre",
       slug: "Enlace",

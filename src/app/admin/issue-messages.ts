@@ -128,6 +128,18 @@ export function intensivePublishRulesMessage(
     .join(", ")}.`;
 }
 
+/** Banner for an intensivo saved as a draft whose publication was refused. */
+export function intensiveMissingMessage(
+  rules: readonly IntensivePublishRule[],
+): string {
+  const copy = adminMicrocopy.intensives.quick;
+  return rules.length === 0
+    ? copy.notPublished
+    : copy.missingTitle(
+        rules.map((rule) => INTENSIVE_RULE_MESSAGES[rule]).join(", "),
+      );
+}
+
 export function intensiveDeleteRuleMessage(): string {
   return "Solo se puede eliminar un borrador.";
 }

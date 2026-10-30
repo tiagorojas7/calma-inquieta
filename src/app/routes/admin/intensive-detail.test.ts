@@ -268,7 +268,7 @@ describe("admin intensive detail", () => {
       },
     );
     expect((response as Response).headers.get("Location")).toBe(
-      "/admin/intensivos?ok=saved",
+      "/admin/intensivos/i1?ok=saved",
     );
     const invalid = await submit({
       update: vi.fn(() =>

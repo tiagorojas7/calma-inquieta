@@ -1,9 +1,9 @@
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
 import { SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { ResponsiveList } from "./responsive-list";
 
 export interface StudentRow {
   readonly email: string;
@@ -33,6 +33,40 @@ const copy = adminMicrocopy.students;
 
 const linkClasses =
   "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+const cols = copy.columns;
+
+const columns = [
+  {
+    key: "name",
+    header: cols.name,
+    cell: (row: StudentRow) => (
+      <a
+        href={`/admin/alumnas/${encodeURIComponent(row.email)}`}
+        className={linkClasses}
+      >
+        {row.name}
+      </a>
+    ),
+  },
+  { key: "email", header: cols.email, cell: (row: StudentRow) => row.email },
+  { key: "phone", header: cols.phone, cell: (row: StudentRow) => row.phone },
+  {
+    key: "workshops",
+    header: cols.workshops,
+    cell: (row: StudentRow) => row.workshops,
+  },
+  {
+    key: "orders",
+    header: cols.orders,
+    cell: (row: StudentRow) => String(row.orders),
+  },
+  {
+    key: "lastRequest",
+    header: cols.lastRequest,
+    cell: (row: StudentRow) => row.lastRequest,
+  },
+] as const;
 
 function pageHref(filter: StudentsFilter, page: number): string {
   const params = new URLSearchParams();
@@ -114,8 +148,9 @@ export function StudentsList({
         </form>
       </details>
       <Text tone="muted">{copy.count(rows.length)}</Text>
-      <AdminCardList
+      <ResponsiveList
         label={copy.title}
+        columns={columns}
         rows={rows}
         rowKey={(row) => row.email}
         card={(row) => (

@@ -193,7 +193,7 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
       await screen.findByRole("heading", { name: "Página no encontrada" });
       expect(screen.getAllByRole("banner").length).toBeGreaterThan(0);
       expect(container.querySelector("main")?.textContent).toBe(
-        "Página no encontradaLa página que buscás no existe.InicioContacto",
+        "Página no encontradaLa página que buscás no existe.Volver al inicioVer talleresVer intensivosContacto",
       );
     },
   );

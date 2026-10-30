@@ -136,6 +136,7 @@ describe("admin enrollment detail loader", () => {
       fee: "$ 48.000",
       materialsTotal: "$ 10.000",
       total: "$ 58.000",
+      totalPesos: "58000",
       lines: [
         {
           label: "Arcilla 1 kg",

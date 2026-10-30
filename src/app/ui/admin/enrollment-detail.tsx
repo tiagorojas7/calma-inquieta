@@ -24,6 +24,7 @@ export interface EnrollmentDetailOrder {
   readonly fee: string;
   readonly materialsTotal: string;
   readonly total: string;
+  readonly totalPesos: string;
   readonly lines: readonly {
     label: string;
     supplier: string;
@@ -84,10 +85,12 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 function ConfirmPaymentForm({
   total,
+  totalPesos,
   today,
   form,
 }: {
   total: string;
+  totalPesos: string;
   today: string;
   form: EnrollmentDetailProps["form"];
 }) {
@@ -111,7 +114,7 @@ function ConfirmPaymentForm({
         name="amount"
         inputMode="numeric"
         required
-        defaultValue={form?.values?.amount ?? ""}
+        defaultValue={form?.values?.amount ?? totalPesos}
         error={form?.errors?.amount}
       />
       <TextField
@@ -294,6 +297,7 @@ export function EnrollmentDetail({
         {order.actions.confirm ? (
           <ConfirmPaymentForm
             total={order.total}
+            totalPesos={order.totalPesos}
             today={order.today}
             form={form}
           />

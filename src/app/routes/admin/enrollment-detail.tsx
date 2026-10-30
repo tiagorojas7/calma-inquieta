@@ -64,6 +64,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     fee: formatPesos(order.fee),
     materialsTotal: formatPesos(order.materialsTotal),
     total: formatPesos(order.total),
+    totalPesos: String(order.total.toCentavos() / 100),
     lines: order.lines.map((line) => ({
       label: `${line.materialName} ${line.variantLabel}`,
       supplier: line.supplierName,

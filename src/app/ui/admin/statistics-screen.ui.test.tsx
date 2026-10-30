@@ -41,47 +41,33 @@ describe("StatisticsScreen", () => {
       screen.getByRole("heading", { level: 1, name: "Estadísticas" }),
     ).toBeVisible();
     expect(screen.getByText("Datos de octubre 2026.")).toBeVisible();
-    const occupancy = screen.getByRole("table", { name: "Ocupación" });
+    expect(screen.queryByRole("table")).toBeNull();
+    const occupancy = screen.getByRole("list", { name: "Ocupación" });
+    const cards = within(occupancy).getAllByRole("listitem");
+    expect(cards).toHaveLength(2);
+    const first = within(cards[0] as HTMLElement);
+    expect(first.getByText("Cerámica")).toBeVisible();
     expect(
-      within(occupancy)
-        .getAllByRole("columnheader")
-        .map((cell) => cell.textContent),
-    ).toEqual([
-      "Taller",
-      "Turno",
-      "Cupos",
-      "Inscriptas",
-      "Libres",
-      "Ocupación",
-    ]);
-    expect(
-      within(occupancy).getByRole("row", { name: /Total/ }),
-    ).toHaveTextContent("50 %");
-    expect(screen.getByRole("table", { name: "Conversión" })).toBeVisible();
-    expect(screen.getByRole("table", { name: "Alumnas" })).toBeVisible();
-    expect(screen.getByRole("table", { name: "Materiales" })).toBeVisible();
+      ["Turno", "Cupos", "Inscriptas", "Libres", "Ocupación"].map(
+        (label) => first.getByText(label).textContent,
+      ),
+    ).toEqual(["Turno", "Cupos", "Inscriptas", "Libres", "Ocupación"]);
+    expect(cards[1]).toHaveTextContent("Total");
+    expect(cards[1]).toHaveTextContent("50 %");
+    expect(screen.getByRole("list", { name: "Conversión" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "Alumnas" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "Materiales" })).toBeVisible();
     await expectNoAxeViolations(container);
   });
 
   it("shows the teachers table with the settlement column and the note about own teachers", () => {
     render(<StatisticsScreen {...props} />);
 
-    const table = screen.getByRole("table", { name: "Profesores" });
-    expect(
-      within(table)
-        .getAllByRole("columnheader")
-        .map((cell) => cell.textContent),
-    ).toEqual([
-      "Profesor",
-      "Modalidad",
-      "Porcentaje",
-      "Alumnas vinculadas",
-      "Ingresos asociados",
-      "Importe estimado a liquidar",
-    ]);
-    expect(
-      within(table).getByRole("row", { name: /Ana Gómez/ }),
-    ).toHaveTextContent("$ 9.000");
+    const list = screen.getByRole("list", { name: "Profesores" });
+    const card = within(list).getByRole("listitem");
+    expect(card).toHaveTextContent("Ana Gómez");
+    expect(within(card).getByText("Importe estimado a liquidar")).toBeVisible();
+    expect(card).toHaveTextContent("$ 9.000");
     expect(
       screen.getByText(/modalidad propia no tienen porcentaje/),
     ).toBeVisible();
@@ -91,7 +77,7 @@ describe("StatisticsScreen", () => {
     render(<StatisticsScreen {...props} />);
 
     expect(
-      screen.queryByRole("table", { name: "Ingresos registrados" }),
+      screen.queryByRole("list", { name: "Ingresos registrados" }),
     ).toBeNull();
     expect(
       screen.getAllByText("Todavía no hay datos para este mes").length,

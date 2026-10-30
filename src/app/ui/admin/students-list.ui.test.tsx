@@ -21,7 +21,7 @@ const props: StudentsListProps = {
 };
 
 describe("StudentsList", () => {
-  it("shows breadcrumbs, a result count and no table on small screens", () => {
+  it("shows breadcrumbs and a result count", () => {
     render(<StudentsList {...props} />);
 
     const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
@@ -30,7 +30,6 @@ describe("StudentsList", () => {
       "/admin",
     );
     expect(screen.getByText("1 alumna")).toBeVisible();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("keeps the filters closed until one is active", () => {
@@ -70,6 +69,39 @@ describe("StudentsList", () => {
     ])
       expect(within(row).getByText(cell)).toBeVisible();
     await expectNoAxeViolations(container);
+  });
+
+  it("also lists the students as a table from lg, hidden below it", () => {
+    render(<StudentsList {...props} />);
+
+    const list = screen.getByRole("list", { name: "Alumnas" });
+    const table = screen.getByRole("table", { name: "Alumnas" });
+    expect(list.closest(".lg\\:hidden")).not.toBeNull();
+    expect(table.closest(".hidden.lg\\:block")).not.toBeNull();
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual([
+      "Alumna",
+      "Email",
+      "Teléfono",
+      "Talleres",
+      "Pedidos",
+      "Última solicitud",
+    ]);
+    const row = within(table).getAllByRole("row")[1] as HTMLElement;
+    expect(
+      within(row).getByRole("link", { name: "Ana Pérez" }),
+    ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");
+    for (const cell of [
+      "ana@example.com",
+      "5493515550000",
+      "Cerámica, Acuarela",
+      "2",
+      "31/10/2026",
+    ])
+      expect(within(row).getByText(cell)).toBeInTheDocument();
   });
 
   it("offers a GET search form with the activity filters and keeps the values", () => {

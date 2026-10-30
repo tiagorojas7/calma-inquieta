@@ -41,7 +41,6 @@ describe("EnrollmentsList", () => {
         screen.getByRole("navigation", { name: "Migas de pan" }),
       ).getByRole("link", { name: "Panel" }),
     ).toHaveAttribute("href", "/admin");
-    expect(screen.queryByRole("table")).toBeNull();
     const card = within(
       screen.getByRole("list", { name: "Inscripciones" }),
     ).getByRole("listitem");
@@ -60,6 +59,43 @@ describe("EnrollmentsList", () => {
       }),
     ).toHaveAttribute("href", "/admin/inscripciones/o1");
     await expectNoAxeViolations(container);
+  });
+
+  it("also lists the orders as a table from lg, hidden below it", () => {
+    render(<EnrollmentsList {...props} />);
+
+    const list = screen.getByRole("list", { name: "Inscripciones" });
+    const table = screen.getByRole("table", { name: "Inscripciones" });
+    expect(list.closest(".lg\\:hidden")).not.toBeNull();
+    expect(table.closest(".hidden.lg\\:block")).not.toBeNull();
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual([
+      "Pedido",
+      "Alumno",
+      "Taller",
+      "Mes",
+      "Turno",
+      "Estado",
+      "Total",
+      "Solicitado",
+    ]);
+    const row = within(table).getAllByRole("row")[1] as HTMLElement;
+    expect(
+      within(row).getByRole("link", { name: "CI-2026-0007" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1");
+    for (const text of [
+      "Ana Pérez",
+      "Cerámica",
+      "noviembre 2026",
+      "Lunes",
+      "Pendiente de confirmación",
+      "$ 58.000",
+      "31/10/2026",
+    ])
+      expect(within(row).getByText(text)).toBeInTheDocument();
   });
 
   it("keeps the filters behind a toggle and shows the active ones as chips", () => {

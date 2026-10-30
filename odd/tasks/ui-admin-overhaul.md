@@ -34,6 +34,7 @@ Make every `/admin` screen clear, guided, comfortable, and mobile-first. The cri
 - [x] T6 — Apply the system to Panel general, statistics, students, private events, and reminders. **Done (PRs #173, #174):** students, private events, reminders, Panel general, statistics breadcrumbs. Next: T7.
 - [x] T7 — Apply the system to attendance index, sessions, sheet, and make-ups. **Done (PR #175):** breadcrumbs and back links on all four screens, turno/session/make-up cards, thumb-sized present/absent choices with a sticky save bar, `?ok=` banners. Next: T8.
 - [x] T8 — Run cross-screen responsive, keyboard, axe, and repository verification; resolve regressions and document remaining owner decisions. **Done (PR #176):** automated verification and the owner-decision list below; live responsive/keyboard pass is an owner decision.
+- [x] T9 — Show a real table from `lg` on Inscripciones, Alumnas and the six Estadísticas reports (`ResponsiveList` over `AdminCardList` + `DataTable`); every other list stays cards. **Done (PR #180).**
 
 ## Audit method and evidence
 
@@ -328,4 +329,14 @@ These are implementation forecasts, not commitments to exact line counts. Fetch/
 3. **Variants stay fully visible.** The material form shows every variant row (the first needs a price to save). Collapsing extra rows would hide fields the server validates; decide if you want it.
 4. **Teacher settlement panel (A-54).** Unchanged; it still sits inside the dense teacher detail.
 5. **Icons.** The licensed set has no check or warning glyph, so states stay text (Listo/Pendiente).
-6. **Tables are gone.** All admin lists, including statistics, are cards at every width. Say so if you want tables back on desktop.
+6. **Tables on desktop (resolved, T9).** Cards at every width except Inscripciones, Alumnas and Estadísticas, which show a table from `lg`. See the Log.
+
+## Log
+
+### 2026-10-29 — Desktop tables (owner decision, verbatim)
+
+Me: "En celular: tarjetas siempre. En computadora: tablas solo en las listas largas y con muchos datos (Inscripciones, Alumnas, Estadísticas)... Las listas cortas (docentes, proveedores, materiales, intensivos, turnos, meses) quedan en tarjetas también en compu."
+
+Owner: "perfecto, vamos asi entonces".
+
+Implementation (T9, PR #180): `ResponsiveList` renders the `AdminCardList` in a `lg:hidden` wrapper and the `DataTable` in a `hidden lg:block` wrapper, so display-none removes the hidden copy from the accessibility tree. Tables keep a caption/aria-label, `th scope="col"` and a link in the first column. Tests assert both structures, their breakpoint classes and the column headers (jsdom ignores the CSS).

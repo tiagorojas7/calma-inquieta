@@ -41,7 +41,6 @@ describe("StatisticsScreen", () => {
       screen.getByRole("heading", { level: 1, name: "Estadísticas" }),
     ).toBeVisible();
     expect(screen.getByText("Datos de octubre 2026.")).toBeVisible();
-    expect(screen.queryByRole("table")).toBeNull();
     const occupancy = screen.getByRole("list", { name: "Ocupación" });
     const cards = within(occupancy).getAllByRole("listitem");
     expect(cards).toHaveLength(2);
@@ -58,6 +57,54 @@ describe("StatisticsScreen", () => {
     expect(screen.getByRole("list", { name: "Alumnas" })).toBeVisible();
     expect(screen.getByRole("list", { name: "Materiales" })).toBeVisible();
     await expectNoAxeViolations(container);
+  });
+
+  it("also shows each report as a table from lg, hidden below it", () => {
+    render(<StatisticsScreen {...props} />);
+
+    for (const name of [
+      "Ocupación",
+      "Conversión",
+      "Alumnas",
+      "Profesores",
+      "Materiales",
+    ]) {
+      expect(
+        screen.getByRole("list", { name }).closest(".lg\\:hidden"),
+      ).not.toBeNull();
+      expect(
+        screen.getByRole("table", { name }).closest(".hidden.lg\\:block"),
+      ).not.toBeNull();
+    }
+    const occupancy = screen.getByRole("table", { name: "Ocupación" });
+    expect(
+      within(occupancy)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual([
+      "Taller",
+      "Turno",
+      "Cupos",
+      "Inscriptas",
+      "Libres",
+      "Ocupación",
+    ]);
+    for (const header of within(occupancy).getAllByRole("columnheader"))
+      expect(header).toHaveAttribute("scope", "col");
+    const rows = within(occupancy).getAllByRole("row");
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toHaveTextContent("Cerámica");
+    expect(rows[2]).toHaveTextContent("Total");
+    expect(
+      within(screen.getByRole("table", { name: "Profesores" }))
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toContain("Importe estimado a liquidar");
+    expect(
+      within(screen.getByRole("table", { name: "Alumnas" })).getAllByRole(
+        "cell",
+      ),
+    ).toHaveLength(3);
   });
 
   it("shows the teachers table with the settlement column and the note about own teachers", () => {

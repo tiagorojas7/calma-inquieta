@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
 import { TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { ResponsiveList } from "./responsive-list";
 
 /** One table row already formatted as text, in the order of its columns. */
 export interface StatisticsRow {
@@ -59,9 +59,18 @@ function StatsTable({
   titled?: boolean;
 }) {
   const first = titled ? 1 : 0;
+  const columns = headers.map((header, index) => ({
+    key: header,
+    header,
+    cell: (row: StatisticsRow) => {
+      const value = row.cells[index] ?? "";
+      return row.total === true ? <strong>{value}</strong> : value;
+    },
+  }));
   return (
-    <AdminCardList
+    <ResponsiveList
       label={title}
+      columns={columns}
       rows={rows}
       rowKey={(row) => row.key}
       card={(row) => (
@@ -94,7 +103,7 @@ function StatsTable({
 }
 
 /**
- * Per-month statistics as mobile cards: occupancy, conversion, income,
+ * Per-month statistics as cards below lg and tables from lg: occupancy, conversion, income,
  * students and materials. The month filter is a GET form and every link a
  * plain anchor, because the Worker gate refuses `.data` requests.
  */

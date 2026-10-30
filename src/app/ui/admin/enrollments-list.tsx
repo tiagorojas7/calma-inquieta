@@ -1,10 +1,10 @@
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
 import { SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
+import { ResponsiveList } from "./responsive-list";
 
 export interface EnrollmentRow {
   readonly id: string;
@@ -46,6 +46,45 @@ const STATUS_OPTIONS = [
 
 const linkClasses =
   "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+const cols = copy.columns;
+
+const columns = [
+  {
+    key: "number",
+    header: cols.number,
+    cell: (row: EnrollmentRow) => (
+      <a href={`/admin/inscripciones/${row.id}`} className={linkClasses}>
+        {row.number}
+      </a>
+    ),
+  },
+  {
+    key: "student",
+    header: cols.student,
+    cell: (row: EnrollmentRow) => row.studentName,
+  },
+  {
+    key: "workshop",
+    header: cols.workshop,
+    cell: (row: EnrollmentRow) => row.workshopName,
+  },
+  { key: "month", header: cols.month, cell: (row: EnrollmentRow) => row.month },
+  { key: "turno", header: cols.turno, cell: (row: EnrollmentRow) => row.turno },
+  {
+    key: "status",
+    header: cols.status,
+    cell: (row: EnrollmentRow) => (
+      <OrderStatusBadge status={row.status} label={row.statusLabel} />
+    ),
+  },
+  { key: "total", header: cols.total, cell: (row: EnrollmentRow) => row.total },
+  {
+    key: "requestedOn",
+    header: cols.requestedOn,
+    cell: (row: EnrollmentRow) => row.requestedOn,
+  },
+] as const;
 
 const chipClasses =
   "inline-block rounded-pill bg-sand-200 px-3 py-1 text-sm text-ink-900";
@@ -166,8 +205,9 @@ export function EnrollmentsList({
         </a>
       </div>
       <Text tone="muted">{copy.resultCount(rows.length)}</Text>
-      <AdminCardList
+      <ResponsiveList
         label={copy.title}
+        columns={columns}
         rows={rows}
         rowKey={(row) => row.id}
         card={(row) => (

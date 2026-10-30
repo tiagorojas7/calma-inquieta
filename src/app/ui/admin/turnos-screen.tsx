@@ -3,7 +3,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminCardList } from "./admin-sections";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -55,6 +55,69 @@ function RowSubmit({
   );
 }
 
+function TurnoCard({ row, turnosHref }: { row: TurnoRow; turnosHref: string }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-lg font-semibold text-ink-900">{row.label}</p>
+        <span className="text-sm text-ink-700">
+          {row.active ? adminMicrocopy.status.active : copy.retired}
+        </span>
+      </div>
+      <dl className="grid grid-cols-3 gap-2 text-sm text-ink-700">
+        <div>
+          <dt className="font-semibold">{copy.columns.day}</dt>
+          <dd>{row.day}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">{copy.columns.range}</dt>
+          <dd>{row.range}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">{copy.columns.capacity}</dt>
+          <dd>{String(row.capacity)}</dd>
+        </div>
+      </dl>
+      <div className="flex flex-wrap items-center gap-3">
+        <a
+          href={`${turnosHref}?editar=${row.id}`}
+          aria-label={copy.rowName(copy.edit, row.label)}
+          className={linkClasses}
+        >
+          {copy.edit}
+        </a>
+        {row.active ? (
+          <ConfirmedSubmit
+            intent="retire"
+            label={copy.retire}
+            buttonName={copy.rowName(copy.retire, row.label)}
+            fields={{ turnoId: row.id }}
+            title="¿Retirar el turno?"
+            message="Dejará de estar disponible para los meses nuevos."
+          />
+        ) : (
+          <RowSubmit
+            intent="reactivate"
+            turnoId={row.id}
+            label={copy.reactivate}
+            name={copy.rowName(copy.reactivate, row.label)}
+          />
+        )}
+        {!row.usedByPeriods && (
+          <ConfirmedSubmit
+            intent="delete"
+            label={copy.delete}
+            buttonName={copy.rowName(copy.delete, row.label)}
+            tone="destructive"
+            fields={{ turnoId: row.id }}
+            {...copy.confirmDelete}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
 /**
  * Turnos of one workshop: the list, with the actions that apply to each
  * row, and the add or edit form. Everything is a plain anchor or a native
@@ -86,63 +149,6 @@ export function TurnosScreen({
   feedback?: keyof typeof copy.feedback | null;
   nextMonth?: string;
 }) {
-  const columns: readonly DataTableColumn<TurnoRow>[] = [
-    { key: "label", header: copy.columns.label, cell: (row) => row.label },
-    { key: "day", header: copy.columns.day, cell: (row) => row.day },
-    { key: "range", header: copy.columns.range, cell: (row) => row.range },
-    {
-      key: "capacity",
-      header: copy.columns.capacity,
-      cell: (row) => String(row.capacity),
-    },
-    {
-      key: "state",
-      header: copy.columns.state,
-      cell: (row) => (row.active ? adminMicrocopy.status.active : copy.retired),
-    },
-    {
-      key: "actions",
-      header: copy.columns.actions,
-      cell: (row) => (
-        <div className="flex flex-wrap items-center gap-3">
-          <a
-            href={`${turnosHref}?editar=${row.id}`}
-            aria-label={copy.rowName(copy.edit, row.label)}
-            className={linkClasses}
-          >
-            {copy.edit}
-          </a>
-          {row.active ? (
-            <ConfirmedSubmit
-              intent="retire"
-              label={copy.retire}
-              buttonName={copy.rowName(copy.retire, row.label)}
-              fields={{ turnoId: row.id }}
-              title="¿Retirar el turno?"
-              message="Dejará de estar disponible para los meses nuevos."
-            />
-          ) : (
-            <RowSubmit
-              intent="reactivate"
-              turnoId={row.id}
-              label={copy.reactivate}
-              name={copy.rowName(copy.reactivate, row.label)}
-            />
-          )}
-          {!row.usedByPeriods && (
-            <ConfirmedSubmit
-              intent="delete"
-              label={copy.delete}
-              buttonName={copy.rowName(copy.delete, row.label)}
-              tone="destructive"
-              fields={{ turnoId: row.id }}
-              {...copy.confirmDelete}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
   const editing = form.turnoId !== "";
   const f = copy.form;
   return (
@@ -170,11 +176,11 @@ export function TurnosScreen({
         </AdminFeedback>
       ) : null}
       <FormError message={listError} />
-      <DataTable
-        caption={copy.listLabel}
-        columns={columns}
+      <AdminCardList
+        label={copy.listLabel}
         rows={turnos}
         rowKey={(row) => row.id}
+        card={(row) => <TurnoCard row={row} turnosHref={turnosHref} />}
         empty={{
           ...copy.empty,
           action: { href: workshopHref, label: copy.back },

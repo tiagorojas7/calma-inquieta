@@ -1,7 +1,7 @@
 import { Button } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminCardList } from "./admin-sections";
 import { FormError, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -38,24 +38,6 @@ export function WorkshopPeriodsList({
     formError?: string | undefined;
   };
 }) {
-  const columns: readonly DataTableColumn<WorkshopPeriodRow>[] = [
-    {
-      key: "period",
-      header: copy.columns.month,
-      cell: (row) => <a href={row.href}>{row.period}</a>,
-    },
-    {
-      key: "status",
-      header: copy.columns.status,
-      cell: (row) => copy.statuses[row.status],
-    },
-    { key: "fee", header: copy.columns.fee, cell: (row) => row.fee },
-    {
-      key: "capacity",
-      header: copy.columns.capacity,
-      cell: (row) => String(row.totalCapacity),
-    },
-  ];
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -86,11 +68,35 @@ export function WorkshopPeriodsList({
           <Button type="submit">{copy.form.submit(submitMonth)}</Button>
         </form>
       </section>
-      <DataTable
-        caption={copy.listLabel}
-        columns={columns}
+      <AdminCardList
+        label={copy.listLabel}
         rows={rows}
         rowKey={(row) => row.id}
+        card={(row) => (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <a
+                href={row.href}
+                className="inline-flex min-h-11 items-center text-lg font-semibold text-clay-800 underline underline-offset-4"
+              >
+                {row.period}
+              </a>
+              <span className="text-sm text-ink-700">
+                {copy.statuses[row.status]}
+              </span>
+            </div>
+            <dl className="grid grid-cols-2 gap-2 text-sm text-ink-700">
+              <div>
+                <dt className="font-semibold">{copy.columns.fee}</dt>
+                <dd>{row.fee}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">{copy.columns.capacity}</dt>
+                <dd>{String(row.totalCapacity)}</dd>
+              </div>
+            </dl>
+          </>
+        )}
         empty={{
           ...copy.empty,
           action: { href: workshopHref, label: copy.back },

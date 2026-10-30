@@ -11,6 +11,7 @@ import {
   tallerToActivityCard,
 } from "~/app/catalog/mappers";
 import { BotanicalSprig } from "~/app/ui/atoms/botanical-sprig";
+import { Eyebrow } from "~/app/ui/atoms/eyebrow";
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
@@ -145,36 +146,37 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           whatsappHref={data.whatsappHref}
         />
         {data.catalogFailed ? null : (
-          <div className="mt-12 grid gap-x-12 lg:mt-16 lg:grid-cols-3">
-            <Reveal className="lg:col-span-2">
-              <ActivityShowcase
-                title={data.monthlyHeading}
-                items={data.monthly}
-                emptyMessage={data.monthlyMessage}
-                emptyAction={{
-                  href: data.whatsappHref ?? data.instagramHref,
-                  label: data.whatsappHref
-                    ? "Escribinos por WhatsApp"
-                    : "Seguinos en Instagram",
-                }}
-              />
-            </Reveal>
-            <Reveal
-              index={1}
-              className="lg:border-l lg:border-tan-400 lg:pl-12"
-            >
-              <UpcomingList
-                title={data.intensivosHeading}
-                items={data.intensivos}
-                emptyAction={{
-                  href: data.instagramHref,
-                  label: "Seguinos en Instagram",
-                }}
-              />
-            </Reveal>
-          </div>
+          <Reveal className="mt-12 lg:mt-16">
+            <ActivityShowcase
+              title={data.monthlyHeading}
+              items={data.monthly}
+              emptyMessage={data.monthlyMessage}
+              emptyAction={{
+                href: data.whatsappHref ?? data.instagramHref,
+                label: data.whatsappHref
+                  ? "Escribinos por WhatsApp"
+                  : "Seguinos en Instagram",
+              }}
+            />
+          </Reveal>
         )}
       </Section>
+      {/* The intensivos get their own band so they never read as part of the monthly talleres. */}
+      {data.catalogFailed ? null : (
+        <Section bleed tone="white" spacing="md">
+          <Reveal className="flex flex-col gap-4">
+            <Eyebrow>Encuentros de un día</Eyebrow>
+            <UpcomingList
+              title={data.intensivosHeading}
+              items={data.intensivos}
+              emptyAction={{
+                href: data.instagramHref,
+                label: "Seguinos en Instagram",
+              }}
+            />
+          </Reveal>
+        </Section>
+      )}
       <AboutTeaser
         heading={data.teaser.heading}
         body={data.teaser.body}

@@ -33,6 +33,13 @@ describe("ActivityCard extensions", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("crops the photo to a short landscape frame on phones", () => {
+    renderCard();
+    const photo = screen.getByRole("img");
+    expect(photo).toHaveClass("aspect-3/2", "object-cover");
+    expect(photo.style.aspectRatio).toBe("");
+  });
+
   it("stays unchanged without schedule and badge", async () => {
     const { container } = renderCard();
     const scope = within(container);

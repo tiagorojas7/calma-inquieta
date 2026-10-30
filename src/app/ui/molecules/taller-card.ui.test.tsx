@@ -17,6 +17,13 @@ const renderCard = (props: Parameters<typeof TallerCard>[0]) =>
   );
 
 describe("TallerCard", () => {
+  it("crops the photo to a short landscape frame on phones", () => {
+    renderCard(tallerCardFixture);
+    const photo = screen.getByRole("img");
+    expect(photo).toHaveClass("aspect-3/2", "object-cover");
+    expect(photo.style.aspectRatio).toBe("");
+  });
+
   it("shows name, teacher, summary, both turnos, the fee and the seats indicator", async () => {
     const { container } = renderCard(tallerCardFixture);
     expect(

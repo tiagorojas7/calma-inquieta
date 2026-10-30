@@ -1,6 +1,7 @@
-import { Heading } from "../atoms/heading";
+import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -46,38 +47,8 @@ const STATUS_OPTIONS = [
 const linkClasses =
   "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
-const columns: readonly DataTableColumn<EnrollmentRow>[] = [
-  {
-    key: "number",
-    header: copy.columns.number,
-    cell: (row) => (
-      <a href={`/admin/inscripciones/${row.id}`} className={linkClasses}>
-        {row.number}
-      </a>
-    ),
-  },
-  { key: "student", header: copy.columns.student, cell: (r) => r.studentName },
-  {
-    key: "workshop",
-    header: copy.columns.workshop,
-    cell: (r) => r.workshopName,
-  },
-  { key: "month", header: copy.columns.month, cell: (r) => r.month },
-  { key: "turno", header: copy.columns.turno, cell: (r) => r.turno },
-  {
-    key: "status",
-    header: copy.columns.status,
-    cell: (row) => (
-      <OrderStatusBadge status={row.status} label={row.statusLabel} />
-    ),
-  },
-  { key: "total", header: copy.columns.total, cell: (r) => r.total },
-  {
-    key: "requestedOn",
-    header: copy.columns.requestedOn,
-    cell: (r) => r.requestedOn,
-  },
-];
+const chipClasses =
+  "inline-block rounded-pill bg-sand-200 px-3 py-1 text-sm text-ink-900";
 
 function pageHref(filter: EnrollmentsFilter, page: number): string {
   const params = new URLSearchParams({ estado: filter.estado });
@@ -98,71 +69,146 @@ export function EnrollmentsList({
   workshops,
   hasNext,
 }: EnrollmentsListProps) {
+  const chips = [
+    copy.chips.status(
+      STATUS_OPTIONS.find((option) => option.value === filter.estado)?.label ??
+        filter.estado,
+    ),
+    ...(filter.mes ? [copy.chips.month(filter.mes)] : []),
+    ...(filter.taller
+      ? [
+          copy.chips.workshop(
+            workshops.find((w) => w.id === filter.taller)?.name ??
+              filter.taller,
+          ),
+        ]
+      : []),
+    ...(filter.q ? [copy.chips.search(filter.q)] : []),
+  ];
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={1}>{copy.title}</Heading>
-        <AdminButtonLink
-          variant="outline"
-          href="/admin/inscripciones/materiales"
-        >
-          {copy.consolidationLink}
-        </AdminButtonLink>
-      </div>
-      <form
-        role="search"
-        method="get"
-        action="/admin/inscripciones"
-        aria-label={copy.filterLabel}
-        className="grid gap-3 md:grid-cols-2"
-      >
-        <SelectField
-          label={copy.filters.status}
-          name="estado"
-          defaultValue={filter.estado}
-          options={STATUS_OPTIONS}
-        />
-        <TextField
-          label={copy.filters.month}
-          name="mes"
-          type="month"
-          defaultValue={filter.mes}
-        />
-        <SelectField
-          label={copy.filters.workshop}
-          name="taller"
-          defaultValue={filter.taller}
-          options={[
-            { value: "", label: copy.filters.anyWorkshop },
-            ...workshops.map((w) => ({ value: w.id, label: w.name })),
-          ]}
-        />
-        <TextField
-          label={copy.filters.search}
-          hint={copy.filters.searchHint}
-          name="q"
-          defaultValue={filter.q}
-        />
-        <div>
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+      <AdminPageHeader
+        title={copy.title}
+        breadcrumbs={[
+          { label: copy.panel, href: "/admin" },
+          { label: copy.title },
+        ]}
+        actions={
+          <AdminButtonLink
+            variant="outline"
+            href="/admin/inscripciones/materiales"
           >
-            {copy.filters.apply}
-          </button>
-        </div>
-      </form>
-      <DataTable
-        caption={copy.title}
-        columns={columns}
+            {copy.consolidationLink}
+          </AdminButtonLink>
+        }
+      />
+      <details className="rounded-md bg-surface p-4 shadow-card">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-900">
+          {copy.filterToggle}
+        </summary>
+        <form
+          role="search"
+          method="get"
+          action="/admin/inscripciones"
+          aria-label={copy.filterLabel}
+          className="mt-3 grid gap-3 md:grid-cols-2"
+        >
+          <SelectField
+            label={copy.filters.status}
+            name="estado"
+            defaultValue={filter.estado}
+            options={STATUS_OPTIONS}
+          />
+          <TextField
+            label={copy.filters.month}
+            name="mes"
+            type="month"
+            defaultValue={filter.mes}
+          />
+          <SelectField
+            label={copy.filters.workshop}
+            name="taller"
+            defaultValue={filter.taller}
+            options={[
+              { value: "", label: copy.filters.anyWorkshop },
+              ...workshops.map((w) => ({ value: w.id, label: w.name })),
+            ]}
+          />
+          <TextField
+            label={copy.filters.search}
+            hint={copy.filters.searchHint}
+            name="q"
+            defaultValue={filter.q}
+          />
+          <div>
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+            >
+              {copy.filters.apply}
+            </button>
+          </div>
+        </form>
+      </details>
+      <div className="flex flex-wrap items-center gap-2">
+        <ul
+          aria-label={copy.activeFiltersLabel}
+          className="flex flex-wrap gap-2"
+        >
+          {chips.map((chip) => (
+            <li key={chip} className={chipClasses}>
+              {chip}
+            </li>
+          ))}
+        </ul>
+        <a href="/admin/inscripciones" className={linkClasses}>
+          {copy.clearFilters}
+        </a>
+      </div>
+      <Text tone="muted">{copy.resultCount(rows.length)}</Text>
+      <AdminCardList
+        label={copy.title}
         rows={rows}
         rowKey={(row) => row.id}
+        card={(row) => (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-ink-900">{row.number}</span>
+              <OrderStatusBadge status={row.status} label={row.statusLabel} />
+            </div>
+            <p className="text-ink-900">{row.studentName}</p>
+            <Text tone="muted">
+              {`${row.workshopName} · ${row.month} · ${row.turno}`}
+            </Text>
+            <p className="font-semibold text-ink-900">{row.total}</p>
+            <Text tone="muted">{copy.requestedOn(row.requestedOn)}</Text>
+            <div>
+              <a
+                href={`/admin/inscripciones/${row.id}`}
+                aria-label={copy.viewDetailOf(row.number)}
+                className={linkClasses}
+              >
+                {copy.viewDetail}
+              </a>
+            </div>
+          </>
+        )}
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
           action: { href: "/admin/inscripciones", label: copy.empty.action },
         }}
       />
+      <details className="rounded-md bg-surface p-4 shadow-card">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-900">
+          {copy.statusGuide.title}
+        </summary>
+        <ul className="mt-2 flex flex-col gap-1 text-ink-700">
+          {copy.statusGuide.items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </details>
       {filter.page > 1 || hasNext ? (
         <nav
           aria-label={copy.pagination.label}

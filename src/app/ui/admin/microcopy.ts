@@ -22,7 +22,34 @@ export const adminMicrocopy = {
   },
   enrollments: {
     title: "Inscripciones",
+    panel: "Panel",
     filterLabel: "Filtrar inscripciones",
+    filterToggle: "Filtros",
+    clearFilters: "Quitar filtros",
+    activeFiltersLabel: "Filtros activos",
+    chips: {
+      status: (label: string) => `Estado: ${label}`,
+      month: (value: string) => `Mes: ${value}`,
+      workshop: (name: string) => `Taller: ${name}`,
+      search: (value: string) => `Búsqueda: ${value}`,
+    },
+    resultCount: (count: number) =>
+      count === 1
+        ? "1 inscripción en esta página"
+        : `${String(count)} inscripciones en esta página`,
+    requestedOn: (date: string) => `Solicitado el ${date}`,
+    viewDetail: "Ver detalle",
+    viewDetailOf: (number: string) => `Ver detalle del pedido ${number}`,
+    statusGuide: {
+      title: "Qué hacer en cada estado",
+      items: [
+        "Pendiente de confirmación: confirmá el cobro cuando recibas el pago.",
+        "Cobrado: pedí los materiales al proveedor.",
+        "Solicitado al proveedor: marcá como recibido cuando lleguen.",
+        "Recibido: no queda nada por hacer.",
+        "Cancelado: el pedido ya no admite cambios.",
+      ],
+    },
     filters: {
       status: "Estado",
       month: "Mes",
@@ -77,6 +104,33 @@ export const adminMicrocopy = {
     detail: {
       title: (number: string) => `Pedido ${number}`,
       back: "Volver a inscripciones",
+      summary: "Resumen",
+      moreData: "Más datos del pedido",
+      dangerTitle: "Zona de riesgo",
+      nextStepTitle: "Próximo paso",
+      progressLabel: "Avance del pedido",
+      steps: {
+        confirm: "Confirmar cobro",
+        request: "Solicitar materiales",
+        receive: "Recibir materiales",
+      },
+      stepState: { done: "hecho", current: "ahora", todo: "después" },
+      next: {
+        pending_confirmation:
+          "Siguiente paso: confirmar el cobro cuando recibas el pago.",
+        paid: "Siguiente paso: pedir los materiales al proveedor.",
+        paidNoMaterials: "No hay materiales para pedir. El pedido está al día.",
+        materials_requested:
+          "Siguiente paso: marcar como recibido cuando lleguen los materiales.",
+        materials_received: "Pedido completo. No queda nada por hacer.",
+        cancelled: "Este pedido está cancelado y ya no admite cambios.",
+      },
+      feedback: {
+        confirmed: "Cobro confirmado",
+        cancelled: "Pedido cancelado",
+        "materials-requested": "Materiales marcados como solicitados",
+        "materials-received": "Materiales marcados como recibidos",
+      },
       student: "Alumno",
       name: "Nombre",
       email: "Email",

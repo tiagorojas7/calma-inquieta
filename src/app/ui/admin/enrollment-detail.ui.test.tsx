@@ -55,12 +55,19 @@ const base: EnrollmentDetailProps = {
 };
 
 describe("EnrollmentDetail", () => {
-  it("shows the stored fields, the seat state and the audit trail", async () => {
+  it("shows the summary, the contact data and the collapsed history", async () => {
     const { container } = render(<EnrollmentDetail {...base} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: /CI-2026-0007/ }),
     ).toBeVisible();
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(
+      within(crumbs).getByRole("link", { name: "Inscripciones" }),
+    ).toHaveAttribute("href", "/admin/inscripciones");
+    expect(
+      screen.getByRole("link", { name: "Volver a inscripciones" }),
+    ).toHaveAttribute("href", "/admin/inscripciones");
     for (const text of [
       "Ana Pérez",
       "ana@example.com",
@@ -74,9 +81,91 @@ describe("EnrollmentDetail", () => {
       "3 de 8 lugares confirmados",
     ])
       expect(screen.getAllByText(text).length).toBeGreaterThan(0);
-    const audit = screen.getByRole("table", { name: "Historial" });
-    expect(within(audit).getByText("public")).toBeVisible();
+    expect(screen.queryByRole("table")).toBeNull();
+    const history = screen.getByText("Historial").closest("details");
+    expect(history).not.toHaveAttribute("open");
+    expect(
+      within(history as HTMLElement).getByText("public"),
+    ).toBeInTheDocument();
     await expectNoAxeViolations(container);
+  });
+
+  it("shows the progress and the one next step for each status", () => {
+    const { rerender } = render(<EnrollmentDetail {...base} />);
+    const steps = () => screen.getByRole("list", { name: "Avance del pedido" });
+    expect(
+      within(steps())
+        .getByText(/Confirmar cobro/)
+        .closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.getByText(/Siguiente paso: confirmar el cobro/),
+    ).toBeVisible();
+
+    rerender(
+      <EnrollmentDetail
+        order={{
+          ...base.order,
+          status: "materials_requested",
+          statusLabel: "Solicitado al proveedor",
+          actions: {
+            confirm: false,
+            cancel: false,
+            materialsRequested: false,
+            materialsReceived: true,
+          },
+        }}
+      />,
+    );
+    expect(
+      within(steps())
+        .getByText(/Recibir materiales/)
+        .closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.getByText(/Siguiente paso: marcar como recibido/),
+    ).toBeVisible();
+
+    rerender(
+      <EnrollmentDetail
+        order={{
+          ...base.order,
+          status: "cancelled",
+          statusLabel: "Cancelado",
+          actions: {
+            confirm: false,
+            cancel: false,
+            materialsRequested: false,
+            materialsReceived: false,
+          },
+        }}
+      />,
+    );
+    expect(
+      screen.queryByRole("list", { name: "Avance del pedido" }),
+    ).toBeNull();
+    expect(screen.getByText(/Este pedido está cancelado/)).toBeVisible();
+  });
+
+  it("shows the success banner for a feedback code", () => {
+    render(<EnrollmentDetail {...base} feedback="confirmed" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Cobro confirmado");
+  });
+
+  it("keeps cancelling in a separate danger zone", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    const zone = screen.getByRole("region", { name: "Zona de riesgo" });
+    expect(
+      within(zone).getByRole("button", { name: "Cancelar pedido" }),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole("form", { name: "Confirmar cobro" })).queryByRole(
+        "button",
+        { name: "Cancelar pedido" },
+      ),
+    ).toBeNull();
   });
 
   it("confirms with the order total prefilled and disables the submit while pending", () => {

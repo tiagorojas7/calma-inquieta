@@ -30,27 +30,77 @@ const props: EnrollmentsListProps = {
 };
 
 describe("EnrollmentsList", () => {
-  it("lists the orders with a link to each detail", async () => {
+  it("lists each order as a card with a link to its detail", async () => {
     const { container } = render(<EnrollmentsList {...props} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Inscripciones" }),
     ).toBeVisible();
-    const row = screen.getByRole("row", { name: /CI-2026-0007/ });
     expect(
-      within(row).getByRole("link", { name: "CI-2026-0007" }),
-    ).toHaveAttribute("href", "/admin/inscripciones/o1");
-    for (const cell of [
+      within(
+        screen.getByRole("navigation", { name: "Migas de pan" }),
+      ).getByRole("link", { name: "Panel" }),
+    ).toHaveAttribute("href", "/admin");
+    expect(screen.queryByRole("table")).toBeNull();
+    const card = within(
+      screen.getByRole("list", { name: "Inscripciones" }),
+    ).getByRole("listitem");
+    for (const text of [
+      "CI-2026-0007",
       "Ana Pérez",
-      "Cerámica",
-      "noviembre 2026",
-      "Lunes",
+      "Cerámica · noviembre 2026 · Lunes",
       "$ 58.000",
-      "31/10/2026",
+      "Solicitado el 31/10/2026",
       "Pendiente de confirmación",
     ])
-      expect(within(row).getByText(cell)).toBeVisible();
+      expect(within(card).getByText(text)).toBeVisible();
+    expect(
+      within(card).getByRole("link", {
+        name: "Ver detalle del pedido CI-2026-0007",
+      }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1");
     await expectNoAxeViolations(container);
+  });
+
+  it("keeps the filters behind a toggle and shows the active ones as chips", () => {
+    render(
+      <EnrollmentsList
+        {...props}
+        filter={{ ...props.filter, mes: "2026-11", taller: "w1", q: "ana" }}
+      />,
+    );
+
+    const chips = screen.getByRole("list", { name: "Filtros activos" });
+    expect(
+      within(chips)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "Estado: Pendiente de confirmación",
+      "Mes: 2026-11",
+      "Taller: Cerámica",
+      "Búsqueda: ana",
+    ]);
+    expect(
+      screen.getByRole("link", { name: "Quitar filtros" }),
+    ).toHaveAttribute("href", "/admin/inscripciones");
+    const toggle = screen.getByText("Filtros");
+    expect(toggle.tagName).toBe("SUMMARY");
+    expect(toggle.closest("details")).toContainElement(
+      screen.getByRole("search", { hidden: true }),
+    );
+  });
+
+  it("explains what each status needs next and counts the results", () => {
+    render(<EnrollmentsList {...props} />);
+
+    expect(screen.getByText("1 inscripción en esta página")).toBeVisible();
+    const guide = screen
+      .getByText("Qué hacer en cada estado")
+      .closest("details") as HTMLElement;
+    expect(
+      within(guide).getByText(/Pendiente de confirmación:.*confirmá el cobro/),
+    ).toBeInTheDocument();
   });
 
   it("offers a GET filter form that keeps the current values", () => {
@@ -61,7 +111,7 @@ describe("EnrollmentsList", () => {
       />,
     );
 
-    const form = screen.getByRole("search");
+    const form = screen.getByRole("search", { hidden: true });
     expect(form).toHaveAttribute("method", "get");
     expect(within(form).getByLabelText("Buscar")).toHaveValue("ana@");
     expect(within(form).getByLabelText("Mes")).toHaveValue("2026-11");

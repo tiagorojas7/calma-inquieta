@@ -1,6 +1,7 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import {
   enrollmentFieldErrors,
@@ -26,6 +27,12 @@ export function meta() {
 }
 
 const CORDOBA_OFFSET_MS = 10_800_000;
+const FEEDBACK = [
+  "confirmed",
+  "cancelled",
+  "materials-requested",
+  "materials-received",
+] as const;
 
 function lineTotal(unit: Money, quantity: number): string {
   return formatPesos(unit.multiply(quantity));
@@ -41,6 +48,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const order = found.value;
   const paid = order.paidAt !== undefined && order.paidAmount !== undefined;
   return {
+    feedback: feedbackCode(request, FEEDBACK),
     id: order.id,
     number: order.number,
     status: order.status,
@@ -99,7 +107,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === null) throw data(null, { status: 400 });
   const enrollments = context.get(servicesContext).enrollments;
   const orderId = params.id;
-  const back = redirect(`/admin/inscripciones/${orderId}`);
+  const back = (code: (typeof FEEDBACK)[number]) =>
+    redirect(withFeedback(`/admin/inscripciones/${orderId}`, code));
 
   if (intent.kind === "confirm" || intent.kind === "cancel") {
     const values =
@@ -126,23 +135,34 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       throw enrollmentFailureResponse(result.error);
     }
     const message = enrollmentRefusalMessage({ kind: result.value.kind });
-    return message === null ? back : refusalResponse(message, values);
+    return message === null
+      ? back(intent.kind === "confirm" ? "confirmed" : "cancelled")
+      : refusalResponse(message, values);
   }
 
   const result =
     intent.kind === "materials-requested"
       ? await enrollments.markMaterialsRequested(actor, orderId)
       : await enrollments.markMaterialsReceived(actor, orderId);
-  if (result.ok) return back;
+  if (result.ok)
+    return back(
+      intent.kind === "materials-requested"
+        ? "materials-requested"
+        : "materials-received",
+    );
   const message = enrollmentRefusalMessage(result.error);
   if (message !== null) return refusalResponse(message, {});
   throw enrollmentFailureResponse(result.error);
 }
 
 export default function AdminEnrollmentDetail() {
-  const order = useLoaderData<typeof loader>();
+  const { feedback, ...order } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   return (
-    <EnrollmentDetail order={order} {...(result ? { form: result } : {})} />
+    <EnrollmentDetail
+      order={order}
+      feedback={feedback}
+      {...(result ? { form: result } : {})}
+    />
   );
 }

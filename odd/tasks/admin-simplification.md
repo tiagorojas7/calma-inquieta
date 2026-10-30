@@ -21,13 +21,14 @@ S6. Charging from the list. Owner: "para cobrar, es un quilombo barbaro", "Lo mi
 S7. Materials in one screen. Owner: "En la parte de materiales, siento que es muy tedioso todo", "no me deja poner la opcion de materiales recibidos y que materia lcorresponde a cada alumna, solo me dice el resumen". Approved point 4: one "Materiales" screen with "Para pedir" (by supplier, "Copiar pedido por WhatsApp", "Ya lo pedí") and "Para entregar" (each student with her own materials, "Recibido" per student order and "Marcar todo recibido"); in the main nav.
 
 S8. Inicio and statistics that replace Excel. Owner: "las estadisiticas tiene que ser claras, por que esto viene a remplazar los excel que tenian, asi que necesito una buenas estructura de todo, lo que espero es algo bien organziado, facil de usar". Approved point 5: Inicio shows "Hoy tenés que…" lines, each with its button (pending charges, materials to ask, month to open). Statistics: month selector, big summary figures (cobrado, ocupación, a pagar a profesoras, alumnas que repiten) and a well-structured per-taller/intensivo table like a spreadsheet. Assumption (not requested verbatim): a "Descargar planilla" CSV export of that month's tables, because it replaces Excel.
+Earnings (L6): the owner must see how much the studio earns. The figure is "Ganancia del estudio" = cobrado (fees, deposits and materials actually charged) − a pagar a profesoras (third-party teacher settlements) − costo de materiales (what is paid to suppliers). It is shown per month as a big figure and per taller/intensivo as a column, each next to its parts. Every number has a plain label and no footnotes. Assumption: if the supplier cost of a material is not stored, use the material price paid by students as both income and cost, and say so in one short line.
 
 S9. Material photo in the public selector. Owner: "a la hora de que el cliente eliga el material para el taller mensual, tiene que tener la posiblidad de ver la imagen del materia lque va a pedir, que va a ser la misma imagen que se cargue desde el panel". The public enrollment materials step (`enrollment-materials-page.tsx`) shows each material's image uploaded in the admin material form (`image_asset_id`/`image_alt`), with its alt text, and the variant color swatch when set; a neutral placeholder when the material has no image. Today the selector shows no image at all.
 
 ## Tasks
 
 - [x] U1 — S1, S2: admin visual system and short nav. Route: delegated (sequential, RAM). Commit: see PR feat/admin-simple-visual
-- [ ] U2 — S3: taller one-screen create + publish + open month, "Abrir <mes>" one click. Route: delegated. Commit: —
+- [x] U2 — S3: taller one-screen create + publish + open month, "Abrir <mes>" one click. Route: delegated. Commit: see PR feat/admin-simple-taller (base feat/admin-simple-visual)
 - [ ] U3 — S4: taller photos (migration). Risk: item 1. Route: delegated + independent verifier. Commit: —
 - [ ] U4 — S5: intensivo one screen. Route: delegated. Commit: —
 - [ ] U5 — S6: charging from the list. Route: delegated. Commit: —
@@ -46,5 +47,9 @@ L2 (owner, verbatim): "perfecto, construila rapido si ntanta vuelta cuando la ap
 L3 (owner approval, verbatim): "perfecto, haz los cambios, que sea todo mas intuitivo, facil de usar, las estadisiticas tiene que ser claras, por que esto viene a remplazar los excel que tenian, asi que necesito una buenas estructura de todo, lo que espero es algo bien organziado, facil de usar"
 
 L5 (owner, verbatim): "perfecto, esper oque la ui este mucho mas ordenada e intutiva de utilizar, por que actualmente no se entiende bien, y otra cosa, a la hora de que el cliente eliga el material para el taller mensual, tiene que tener la posiblidad de ver la imagen del materia lque va a pedir, que va a ser la misma imagen que se cargue desde el panel,"
+
+L6 (owner, verbatim): "tema estadisticas, tiee que saber cuanto estan ganando tambien, a es ome refiero, tiene que tener todo muy bien plasmado, con numeros claros y sin quilombo. supongo que ya anotaste todo"
+
+L7 (owner, verbatim, public site, fixed in PR #182): "en la ui del usuario, proximos intesivos esta muy pegado a los talleres mensuales y no se logra diferenciar, arreglalo ahora" / "amdeas las imaganes de los talles n otiene que ser tan grande en movil, ya que perjudica a la vista"
 
 L4 (mapping evidence): taller from zero to enrollable is about 10 clicks over 5 page loads (workshop, turno, publish, open month, publish month); `parseWorkshopDraft` hardcodes `images: []` and no workshop image table exists; payment confirm only on order detail with amount not prefilled; order lines have no status and "received" is per order only (`markMaterialsReceived`), no bulk; intensivo create/edit redirect to the list.

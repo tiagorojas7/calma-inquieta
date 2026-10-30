@@ -18,10 +18,17 @@ export interface EnrollmentMaterialsPageProps {
   materials: readonly {
     materialId: string;
     name: string;
+    image?: {
+      src: string;
+      alt: string;
+      width: number;
+      height: number;
+    } | null;
     variants: readonly {
       variantId: string;
       label: string;
       unitPrice: string;
+      swatch?: string | null;
     }[];
   }[];
   lines: readonly {
@@ -105,7 +112,29 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
         <div className="flex flex-col gap-6">
           {props.materials.map((material) => (
             <fieldset className="flex flex-col gap-3" key={material.materialId}>
-              <legend className="font-serif text-xl">{material.name}</legend>
+              <legend className="sr-only">{material.name}</legend>
+              <div className="flex items-center gap-4">
+                {material.image ? (
+                  <img
+                    src={material.image.src}
+                    alt={material.image.alt}
+                    width={material.image.width}
+                    height={material.image.height}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-4/3 w-24 shrink-0 rounded-md border border-sand-300 object-cover"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    data-material-placeholder
+                    className="aspect-4/3 w-24 shrink-0 rounded-md border border-sand-300 bg-sand-200"
+                  />
+                )}
+                <p aria-hidden="true" className="font-serif text-xl">
+                  {material.name}
+                </p>
+              </div>
               {material.variants.map((variant) => {
                 const quantity = quantities[variant.variantId] ?? MIN_QUANTITY;
                 const label = `${material.name} ${variant.label}`;
@@ -119,7 +148,17 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                     key={variant.variantId}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Text>{`${variant.label} · ${variant.unitPrice}`}</Text>
+                      <span className="inline-flex items-center gap-2">
+                        {variant.swatch ? (
+                          <span
+                            aria-hidden="true"
+                            data-swatch
+                            className="size-5 shrink-0 rounded-full border border-sand-300"
+                            style={{ backgroundColor: variant.swatch }}
+                          />
+                        ) : null}
+                        <Text>{`${variant.label} · ${variant.unitPrice}`}</Text>
+                      </span>
                       {already ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-sand-200 px-3 py-1 text-sm font-semibold text-clay-800">
                           <span aria-hidden="true">✓</span>

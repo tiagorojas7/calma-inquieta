@@ -56,9 +56,11 @@ export async function loader({ context, params, request }: RouteArgs) {
       materials: result.value.materials.map((material) => ({
         materialId: material.materialId,
         name: material.name,
+        image: material.image,
         variants: material.variants.map((variant) => ({
           variantId: variant.variantId,
           label: variant.label,
+          swatch: variant.swatch,
           unitPrice: formatPesos(variant.unitPrice.toCentavos()),
           unitPriceCentavos: variant.unitPrice.toCentavos(),
         })),

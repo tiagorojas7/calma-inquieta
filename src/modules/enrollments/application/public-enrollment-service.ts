@@ -46,6 +46,7 @@ import type {
 } from "./offer-lookup";
 import type {
   OfferedMaterial,
+  OfferedMaterialImage,
   OfferedMaterialsLookup,
 } from "./offered-materials";
 import type { RandomBytes } from "./random-bytes";
@@ -96,10 +97,12 @@ export interface PublicOffer {
   readonly materials: readonly {
     readonly materialId: string;
     readonly name: string;
+    readonly image: OfferedMaterialImage | null;
     readonly variants: readonly {
       readonly variantId: string;
       readonly label: string;
       readonly unitPrice: Money;
+      readonly swatch: string | null;
     }[];
   }[];
 }
@@ -292,12 +295,22 @@ export function createPublicEnrollmentService(
           .map((m) => ({
             materialId: m.materialId,
             name: m.name,
+            image:
+              m.image === undefined || m.image === null
+                ? null
+                : {
+                    src: m.image.src,
+                    alt: m.image.alt,
+                    width: m.image.width,
+                    height: m.image.height,
+                  },
             variants: m.variants
               .filter((v) => v.available)
               .map((v) => ({
                 variantId: v.variantId,
                 label: v.label,
                 unitPrice: v.unitPrice,
+                swatch: v.swatch ?? null,
               })),
           })),
       });

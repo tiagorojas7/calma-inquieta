@@ -5,6 +5,14 @@ export interface OfferedVariant {
   readonly label: string;
   readonly unitPrice: Money;
   readonly available: boolean;
+  readonly swatch?: string | null;
+}
+
+export interface OfferedMaterialImage {
+  readonly src: string;
+  readonly alt: string;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface OfferedMaterial {
@@ -13,6 +21,7 @@ export interface OfferedMaterial {
   readonly active: boolean;
   readonly supplierId: string;
   readonly supplierName: string;
+  readonly image?: OfferedMaterialImage | null;
   readonly variants: readonly OfferedVariant[];
 }
 

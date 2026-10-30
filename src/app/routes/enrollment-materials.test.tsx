@@ -20,8 +20,19 @@ const offer = {
     {
       materialId: "arcilla",
       name: "Arcilla",
+      image: {
+        src: "/media/arcilla.webp",
+        alt: "Arcilla blanca",
+        width: 800,
+        height: 600,
+      },
       variants: [
-        { variantId: "grande", label: "Grande", unitPrice: pesos(12_500) },
+        {
+          variantId: "grande",
+          label: "Grande",
+          unitPrice: pesos(12_500),
+          swatch: "#aabbcc",
+        },
       ],
     },
   ],
@@ -63,9 +74,16 @@ describe("enrollment materials loader", () => {
         materials: [
           {
             materialId: "arcilla",
+            image: {
+              src: "/media/arcilla.webp",
+              alt: "Arcilla blanca",
+              width: 800,
+              height: 600,
+            },
             variants: [
               {
                 variantId: "grande",
+                swatch: "#aabbcc",
                 unitPrice: "$ 12.500",
                 unitPriceCentavos: 1_250_000,
               },

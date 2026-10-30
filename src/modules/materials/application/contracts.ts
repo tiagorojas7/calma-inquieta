@@ -94,11 +94,19 @@ export interface OfferedMaterialSnapshot {
   readonly available: boolean;
   readonly supplierId: string;
   readonly supplierName: string;
+  /** Public asset projection; null when unset or the asset no longer exists. */
+  readonly image: {
+    readonly src: string;
+    readonly alt: string;
+    readonly width: number;
+    readonly height: number;
+  } | null;
   readonly variants: readonly {
     readonly variantId: string;
     readonly label: string;
     readonly unitPrice: import("~/modules/_shared").Money;
     readonly available: boolean;
+    readonly swatch: string | null;
   }[];
 }
 /** Actorless current-sale read for enrollment composition. */

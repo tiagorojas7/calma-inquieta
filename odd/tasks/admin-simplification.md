@@ -34,7 +34,7 @@ S9. Material photo in the public selector. Owner: "a la hora de que el cliente e
 - [x] U5 — S6: charging from the list (tabs Por cobrar / Pagadas / Canceladas with counts, one-click "Marcar pagado" with amount and today prefilled, "Otro monto" and "Cancelar" on the card, redirect back to the same list URL with a banner naming the student, detail confirm form prefilled to the total). Risk: none. Route: delegated. Commit: see PR feat/admin-simple-cobrar (base feat/admin-simple-intensivo)
 - [ ] U6 — S7: materials screen with per-student delivery. Route: delegated. Commit: —
 - [ ] U7 — S8: Inicio "Hoy tenés que…" and Excel-replacing statistics. Route: delegated. Commit: —
-- [ ] U8 — S9: material photo in the public materials selector. Route: delegated. Commit: —
+- [x] U8 — S9: public materials selector shows each material photo (uploaded in the admin form) with its alt, a fixed 4:3 lazy thumbnail, the variant colour swatch when set, and an aria-hidden placeholder when there is no photo. The image is resolved to its public asset in `createOfferedMaterialSnapshotsLookup` through `media.findAssets` and carried through `OfferedMaterial`/`PublicOffer`; no asset id is exposed, no migration. The order summary thumbnail was skipped (not cheap: lines carry no image). Risk: none. Route: delegated. Commit: see PR feat/public-material-photos (base main)
 
 Route evidence: one bounded writer per unit because each unit is several minutes of work and the parent context is past the long-session backstop; units run one after another because the machine has 7.8 GB RAM.
 

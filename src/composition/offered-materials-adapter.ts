@@ -32,6 +32,7 @@ export function createOfferedMaterialsAdapter(
           active: material.active && material.available,
           supplierId: material.supplierId,
           supplierName: material.supplierName,
+          image: material.image,
           variants: material.variants,
         };
       });

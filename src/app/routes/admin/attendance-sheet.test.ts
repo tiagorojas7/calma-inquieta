@@ -57,7 +57,7 @@ describe("admin attendance sheet route", () => {
       ["Bea Gómez", true, null],
       ["Caro Díaz", false, null],
     ]);
-    expect(result.saved).toBe(false);
+    expect(result.feedback).toBeNull();
   });
 
   it("answers 404 for ids, dates and turnos that do not exist", async () => {
@@ -88,13 +88,13 @@ describe("admin attendance sheet route", () => {
     })) as Response;
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(`${path()}?guardado=1`);
+    expect(response.headers.get("Location")).toBe(`${path()}?ok=saved`);
     expect(repository.marks.map((m) => [m.email, m.status])).toEqual([
       ["ana@example.com", "present"],
       ["bea@example.com", "absent"],
     ]);
-    const after = await load(DATE, `${path()}?guardado=1`);
-    expect(after.saved).toBe(true);
+    const after = await load(DATE, `${path()}?ok=saved`);
+    expect(after.feedback).toBe("saved");
     expect(after.rows.map((row) => row.status)).toEqual([
       "present",
       "absent",
@@ -171,7 +171,9 @@ describe("admin attendance sheet make-up classes", () => {
     const response = (await save(makeUp())) as Response;
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(path());
+    expect(response.headers.get("Location")).toBe(
+      `${path()}?ok=makeup-scheduled`,
+    );
     expect([...repository.makeUps.values()]).toMatchObject([
       {
         email: "ana@example.com",

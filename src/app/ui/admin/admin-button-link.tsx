@@ -16,9 +16,14 @@ export function AdminButtonLink({
   href,
   variant = "primary",
   children,
-}: PropsWithChildren<{ href: string; variant?: keyof typeof classes }>) {
+  ariaLabel,
+}: PropsWithChildren<{
+  href: string;
+  variant?: keyof typeof classes;
+  ariaLabel?: string;
+}>) {
   return (
-    <a href={href} className={classes[variant]}>
+    <a href={href} className={classes[variant]} aria-label={ariaLabel}>
       {children}
     </a>
   );

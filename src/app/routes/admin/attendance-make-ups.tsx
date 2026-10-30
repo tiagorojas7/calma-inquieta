@@ -1,5 +1,6 @@
 import { data, redirect, useLoaderData } from "react-router";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { failureResponse } from "~/app/admin/failure-response";
 import { makeUpsView } from "~/app/attendance/admin-view";
 import { servicesContext } from "~/app/context";
@@ -19,7 +20,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     .get(servicesContext)
     .attendance.listMakeUps(actor, "all");
   if (!listed.ok) throw failureResponse(listed.error);
-  return makeUpsView(listed.value);
+  return {
+    ...makeUpsView(listed.value),
+    feedback: feedbackCode(request, ["completed"]),
+  };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -33,9 +37,10 @@ export async function action({ request, context }: Route.ActionArgs) {
     .get(servicesContext)
     .attendance.completeMakeUp(actor, id);
   if (!done.ok) throw failureResponse(done.error);
-  return redirect(PATH);
+  return redirect(withFeedback(PATH, "completed"));
 }
 
 export default function AdminAttendanceMakeUps() {
-  return <MakeUpsList {...useLoaderData<typeof loader>()} />;
+  const { feedback, ...lists } = useLoaderData<typeof loader>();
+  return <MakeUpsList {...lists} completed={feedback === "completed"} />;
 }

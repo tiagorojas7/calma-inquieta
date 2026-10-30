@@ -37,14 +37,32 @@ describe("AttendanceIndex", () => {
     expect(form).toHaveAttribute("action", "/admin/asistencia");
     expect(within(form).getByLabelText("Mes")).toHaveValue("2026-10");
     expect(within(form).getByLabelText("Taller")).toHaveValue("w1");
-    expect(screen.getByRole("link", { name: "Cerámica" })).toHaveAttribute(
-      "href",
-      "/admin/asistencia/p/t",
-    );
     expect(
       screen.getByRole("link", { name: "Ver recuperaciones" }),
     ).toHaveAttribute("href", "/admin/asistencia/recuperaciones");
     await expectNoAxeViolations(container);
+  });
+
+  it("has breadcrumbs and shows each turno as a card with its details", () => {
+    render(<AttendanceIndex {...index} />);
+
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+    const card = within(
+      screen.getByRole("list", { name: "Asistencia" }),
+    ).getByRole("listitem");
+    expect(within(card).getByText("Lunes tarde")).toBeVisible();
+    expect(within(card).getByText("Lunes 18:00 a 20:00 h")).toBeVisible();
+    expect(within(card).getByText("4")).toBeVisible();
+    expect(
+      within(card).getByRole("link", {
+        name: "Ver clases de Cerámica, Lunes tarde",
+      }),
+    ).toHaveAttribute("href", "/admin/asistencia/p/t");
+    expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("says there are no turnos for the filter", () => {
@@ -77,15 +95,23 @@ describe("AttendanceSessions", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Cerámica, Lunes tarde" }),
     ).toBeVisible();
-    const row = screen.getByRole("row", { name: /Lunes 05\/10\/2026/ });
+    const card = within(
+      screen.getByRole("list", { name: "Clases del turno" }),
+    ).getByRole("listitem");
     expect(
-      within(row).getByRole("link", { name: "Lunes 05/10/2026" }),
+      within(card).getByRole("link", {
+        name: "Registrar asistencia: Lunes 05/10/2026",
+      }),
     ).toHaveAttribute("href", "/admin/asistencia/p/t/2026-10-05");
+    expect(within(card).getByText("Registradas")).toBeVisible();
+    expect(within(card).getByText("Presentes")).toBeVisible();
+    expect(within(card).getByText("Ausentes")).toBeVisible();
     expect(
-      within(row)
-        .getAllByRole("cell")
-        .map((c) => c.textContent),
-    ).toEqual(["Lunes 05/10/2026", "2", "1", "1"]);
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Volver a asistencia" }),
+    ).toHaveAttribute("href", "/admin/asistencia");
     await expectNoAxeViolations(container);
   });
 });
@@ -140,6 +166,30 @@ describe("AttendanceSheet", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("shows one thumb-sized card per student, breadcrumbs and a sticky save bar", () => {
+    render(<AttendanceSheet {...sheet} />);
+
+    expect(
+      screen.getByRole("list", { name: "Alumnas de la clase" }),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByRole("list", { name: "Alumnas de la clase" }),
+      ).getAllByRole("listitem"),
+    ).toHaveLength(2);
+    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
+    expect(
+      within(crumbs).getByRole("link", { name: "Clases" }),
+    ).toHaveAttribute("href", "/admin/asistencia/p/t");
+    expect(
+      screen.getByRole("button", { name: "Guardar asistencia" }).closest("div"),
+    ).toHaveClass("sticky");
+    expect(screen.getByLabelText("Presente").closest("label")).toHaveClass(
+      "min-h-14",
+    );
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
   it("shows the fee state and withholds marks until the fee is paid", () => {
     render(<AttendanceSheet {...sheet} />);
 
@@ -163,6 +213,12 @@ describe("AttendanceSheet", () => {
     expect(screen.getByRole("status")).toHaveClass("bg-sand-200");
     rerender(<AttendanceSheet {...sheet} feedback={{ error: "No pudimos" }} />);
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos");
+    rerender(
+      <AttendanceSheet {...sheet} feedback={{ makeUpScheduled: true }} />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Recuperación programada.",
+    );
   });
 
   it("has no save button when nobody has paid yet", () => {

@@ -91,7 +91,8 @@ export function TallerDetailPage({
           <Image
             {...image}
             aboveTheFold
-            className="w-full rounded-md object-cover"
+            intrinsicRatio={false}
+            className="aspect-3/2 h-auto w-full rounded-md object-cover lg:aspect-4/3"
           />
           <p className="max-w-prose whitespace-pre-line text-ink-700">
             {description}

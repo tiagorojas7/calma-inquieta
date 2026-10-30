@@ -527,8 +527,23 @@ describe("Inicio bands and motifs", () => {
       band.getAttribute("data-tone"),
     );
 
-    expect(tones).toEqual(["canvas", "canvas", "sand", "clay"]);
-    expect(container.querySelectorAll("[data-bleed='true']")).toHaveLength(4);
+    expect(tones).toEqual(["canvas", "canvas", "white", "sand", "clay"]);
+    expect(container.querySelectorAll("[data-bleed='true']")).toHaveLength(5);
+  });
+
+  it("gives the intensivos their own band, apart from the monthly talleres", async () => {
+    await renderInicio({});
+    const bandOf = (name: string) =>
+      screen
+        .getByRole("heading", { name })
+        .closest("section[data-bleed='true']");
+
+    const monthlyBand = bandOf("Talleres mensuales");
+    const intensivosBand = bandOf("Próximos intensivos");
+
+    expect(intensivosBand).not.toBe(monthlyBand);
+    expect(intensivosBand).toHaveAttribute("data-tone", "white");
+    expect(intensivosBand).toHaveTextContent("Encuentros de un día");
   });
 
   it("keeps the booking lead but drops the activity sections when the catalog read fails", async () => {

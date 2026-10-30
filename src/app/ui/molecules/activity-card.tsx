@@ -30,7 +30,11 @@ export function ActivityCard({
   return (
     <article className="card-hover flex h-full flex-col items-start gap-3 rounded-md bg-surface p-4 shadow-raised">
       <div className="card-hover-frame w-full rounded-sm">
-        <Image {...image} className="block w-full object-cover" />
+        <Image
+          {...image}
+          intrinsicRatio={false}
+          className="block aspect-3/2 h-auto w-full object-cover md:aspect-4/3"
+        />
       </div>
       {badge ? <Pill tone="notice">{badge}</Pill> : null}
       <Heading level={3}>{title}</Heading>

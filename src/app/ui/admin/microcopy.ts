@@ -1284,6 +1284,13 @@ export const adminMicrocopy = {
       sessions: "Clases",
     },
     openSessions: "Ver clases",
+    openSessionsFor: (turno: string) => `Ver clases de ${turno}`,
+    classesCrumb: "Clases",
+    cardLabels: {
+      turno: "Turno",
+      schedule: "Día y horario",
+      sessions: "Clases",
+    },
     makeUpsLink: "Ver recuperaciones",
     empty: {
       title: "No hay turnos para este filtro",
@@ -1300,6 +1307,7 @@ export const adminMicrocopy = {
         absent: "Ausentes",
       },
       open: "Registrar asistencia",
+      openFor: (date: string) => `Registrar asistencia: ${date}`,
       empty: {
         title: "Este mes no tiene clases",
         message: "El turno no tiene fechas dentro del mes.",
@@ -1323,6 +1331,7 @@ export const adminMicrocopy = {
         "Las alumnas con la cuota pendiente se pueden marcar cuando confirmes el pago.",
       save: "Guardar asistencia",
       saved: "Asistencia guardada.",
+      makeUpScheduled: "Recuperación programada.",
       invalid:
         "No pudimos guardar la asistencia. Revisá los datos e intentá de nuevo.",
       empty: {
@@ -1364,6 +1373,7 @@ export const adminMicrocopy = {
         action: "Acción",
       },
       markDone: "Marcar como realizada",
+      completed: "Recuperación marcada como realizada.",
       markDoneFor: (name: string) => `Marcar como realizada la de ${name}`,
       doneBy: (by: string, at: string) => `Realizada el ${at} (${by})`,
       empty: {

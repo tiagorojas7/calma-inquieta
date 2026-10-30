@@ -20,7 +20,7 @@ describe("MakeUpsList", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Recuperaciones" }),
     ).toBeVisible();
-    const pending = screen.getByRole("region", { name: "Pendientes" });
+    const pending = screen.getByRole("list", { name: "Pendientes" });
     expect(
       within(pending).getByRole("link", { name: "Ana Pérez" }),
     ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");
@@ -36,6 +36,31 @@ describe("MakeUpsList", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("shows make-ups as cards with breadcrumbs and a full-width action", () => {
+    render(<MakeUpsList pending={[row()]} done={[]} />);
+
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Migas de pan" }),
+      ).getByRole("link", { name: "Asistencia" }),
+    ).toHaveAttribute("href", "/admin/asistencia");
+    const card = within(
+      screen.getByRole("list", { name: "Pendientes" }),
+    ).getByRole("listitem");
+    expect(within(card).getByText("Clase que faltó")).toBeVisible();
+    expect(
+      within(card).getByText("Cerámica, Lunes tarde · Lunes 05/10/2026"),
+    ).toBeVisible();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("confirms a completed make-up", () => {
+    render(<MakeUpsList pending={[]} done={[]} completed />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Recuperación marcada como realizada.",
+    );
+  });
+
   it("lists done make-ups with who completed them and no action", () => {
     render(
       <MakeUpsList
@@ -44,7 +69,7 @@ describe("MakeUpsList", () => {
       />,
     );
 
-    const done = screen.getByRole("region", { name: "Realizadas" });
+    const done = screen.getByRole("list", { name: "Realizadas" });
     expect(
       within(done).getByText("Realizada el 15/10/2026 12:00 (owner)"),
     ).toBeVisible();

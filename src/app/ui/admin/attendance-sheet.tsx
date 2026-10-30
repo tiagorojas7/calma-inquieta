@@ -1,8 +1,7 @@
 import { Button } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
-import { AdminButtonLink } from "./admin-button-link";
-import { AdminFeedback } from "./admin-page";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -44,13 +43,15 @@ export interface AttendanceSheetProps {
   readonly feedback?:
     | {
         readonly saved?: boolean | undefined;
+        readonly makeUpScheduled?: boolean | undefined;
         readonly error?: string | undefined;
         readonly makeUp?: MakeUpFeedback | undefined;
       }
     | undefined;
 }
 
-const radioClasses = "inline-flex min-h-11 items-center gap-2 pr-4";
+const radioClasses =
+  "flex min-h-14 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-clay-600 px-4 text-lg text-clay-800 has-[:checked]:bg-clay-600 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-clay-800";
 
 function FeeBadge({ paid }: { paid: boolean }) {
   return paid ? (
@@ -66,7 +67,7 @@ function FeeBadge({ paid }: { paid: boolean }) {
 function MarkChoice({ row }: { row: AttendanceSheetRow }) {
   if (!row.feePaid) return <span>{copy.sheet.pendingNote}</span>;
   return (
-    <fieldset className="flex flex-wrap">
+    <fieldset className="flex gap-3">
       <legend className="sr-only">{row.name}</legend>
       <label className={radioClasses}>
         <input
@@ -89,29 +90,6 @@ function MarkChoice({ row }: { row: AttendanceSheetRow }) {
     </fieldset>
   );
 }
-
-const columns: readonly DataTableColumn<AttendanceSheetRow>[] = [
-  {
-    key: "student",
-    header: copy.sheet.columns.student,
-    cell: (row) => (
-      <>
-        {row.name}
-        <span className="block text-sm text-ink-600">{row.orderNumber}</span>
-      </>
-    ),
-  },
-  {
-    key: "fee",
-    header: copy.sheet.columns.fee,
-    cell: (row) => <FeeBadge paid={row.feePaid} />,
-  },
-  {
-    key: "attendance",
-    header: copy.sheet.columns.attendance,
-    cell: (row) => <MarkChoice row={row} />,
-  },
-];
 
 function MakeUpForm({
   row,
@@ -176,15 +154,22 @@ export function AttendanceSheet({
   const absent = rows.filter((row) => row.status === "absent");
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{heading}</Heading>
-      <Text>{subtitle}</Text>
-      <div>
-        <AdminButtonLink variant="outline" href={backHref}>
-          {copy.sheet.back}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={heading}
+        description={subtitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: "/admin/asistencia" },
+          { label: copy.classesCrumb, href: backHref },
+          { label: heading },
+        ]}
+        back={{ href: backHref, label: copy.sheet.back }}
+      />
       {feedback?.saved ? (
         <AdminFeedback tone="success" title={copy.sheet.saved} />
+      ) : null}
+      {feedback?.makeUpScheduled ? (
+        <AdminFeedback tone="success" title={copy.sheet.makeUpScheduled} />
       ) : null}
       <form
         method="post"
@@ -193,11 +178,24 @@ export function AttendanceSheet({
       >
         <input type="hidden" name="intent" value="save" />
         <FormError message={feedback?.error} />
-        <DataTable
-          caption={copy.sheet.caption}
-          columns={columns}
+        <AdminCardList
+          label={copy.sheet.caption}
           rows={rows}
           rowKey={(row) => row.email}
+          card={(row) => (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-lg font-semibold text-ink-900">
+                  {row.name}
+                  <span className="block text-sm font-normal text-ink-600">
+                    {row.orderNumber}
+                  </span>
+                </p>
+                <FeeBadge paid={row.feePaid} />
+              </div>
+              <MarkChoice row={row} />
+            </>
+          )}
           empty={{
             title: copy.sheet.empty.title,
             message: copy.sheet.empty.message,
@@ -205,7 +203,7 @@ export function AttendanceSheet({
           }}
         />
         {rows.some((row) => row.feePaid) ? (
-          <div>
+          <div className="sticky bottom-0 -mx-4 bg-surface p-3 shadow-card">
             <Button type="submit">{copy.sheet.save}</Button>
           </div>
         ) : null}

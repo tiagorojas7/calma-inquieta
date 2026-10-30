@@ -1,14 +1,11 @@
 import { Button } from "../atoms/button";
-import { Heading, Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminPageHeader } from "./admin-page";
+import { AdminCardList } from "./admin-sections";
 import { SelectField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.attendance;
-
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 export interface AttendanceTurnoRow {
   readonly key: string;
@@ -26,29 +23,6 @@ export interface AttendanceIndexProps {
   readonly rows: readonly AttendanceTurnoRow[];
 }
 
-const turnoColumns: readonly DataTableColumn<AttendanceTurnoRow>[] = [
-  {
-    key: "workshop",
-    header: copy.columns.workshop,
-    cell: (row) => (
-      <a href={row.href} className={linkClasses}>
-        {row.workshop}
-      </a>
-    ),
-  },
-  { key: "turno", header: copy.columns.turno, cell: (row) => row.turno },
-  {
-    key: "schedule",
-    header: copy.columns.schedule,
-    cell: (row) => row.schedule,
-  },
-  {
-    key: "sessions",
-    header: copy.columns.sessions,
-    cell: (row) => String(row.sessions),
-  },
-];
-
 /**
  * Month, workshop and turno chooser. The filter is a plain GET form and every
  * link a plain anchor: the Worker gate refuses the `.data` requests a client
@@ -62,15 +36,21 @@ export function AttendanceIndex({
 }: AttendanceIndexProps) {
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{copy.title}</Heading>
-      <div>
-        <AdminButtonLink
-          variant="outline"
-          href="/admin/asistencia/recuperaciones"
-        >
-          {copy.makeUpsLink}
-        </AdminButtonLink>
-      </div>
+      <AdminPageHeader
+        title={copy.title}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title },
+        ]}
+        actions={
+          <AdminButtonLink
+            variant="outline"
+            href="/admin/asistencia/recuperaciones"
+          >
+            {copy.makeUpsLink}
+          </AdminButtonLink>
+        }
+      />
       <form
         role="search"
         method="get"
@@ -97,11 +77,39 @@ export function AttendanceIndex({
           <Button type="submit">{copy.filters.apply}</Button>
         </div>
       </form>
-      <DataTable
-        caption={copy.title}
-        columns={turnoColumns}
+      <AdminCardList
+        label={copy.title}
         rows={rows}
         rowKey={(row) => row.key}
+        card={(row) => (
+          <>
+            <p className="font-semibold text-ink-900">{row.workshop}</p>
+            <dl className="grid gap-1 text-sm text-ink-700">
+              <div className="flex flex-wrap gap-x-2">
+                <dt className="font-semibold">{copy.cardLabels.turno}</dt>
+                <dd>{row.turno}</dd>
+              </div>
+              <div className="flex flex-wrap gap-x-2">
+                <dt className="font-semibold">{copy.cardLabels.schedule}</dt>
+                <dd>{row.schedule}</dd>
+              </div>
+              <div className="flex flex-wrap gap-x-2">
+                <dt className="font-semibold">{copy.cardLabels.sessions}</dt>
+                <dd>{String(row.sessions)}</dd>
+              </div>
+            </dl>
+            <div>
+              <AdminButtonLink
+                href={row.href}
+                ariaLabel={copy.openSessionsFor(
+                  `${row.workshop}, ${row.turno}`,
+                )}
+              >
+                {copy.openSessions}
+              </AdminButtonLink>
+            </div>
+          </>
+        )}
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
@@ -127,33 +135,6 @@ export interface AttendanceSessionsProps {
   readonly rows: readonly AttendanceSessionRow[];
 }
 
-const sessionColumns: readonly DataTableColumn<AttendanceSessionRow>[] = [
-  {
-    key: "date",
-    header: copy.sessions.columns.date,
-    cell: (row) => (
-      <a href={row.href} className={linkClasses}>
-        {row.date}
-      </a>
-    ),
-  },
-  {
-    key: "marked",
-    header: copy.sessions.columns.marked,
-    cell: (row) => row.marked,
-  },
-  {
-    key: "present",
-    header: copy.sessions.columns.present,
-    cell: (row) => row.present,
-  },
-  {
-    key: "absent",
-    header: copy.sessions.columns.absent,
-    cell: (row) => row.absent,
-  },
-];
-
 /** The generated class dates of one turno and month. */
 export function AttendanceSessions({
   heading,
@@ -162,18 +143,53 @@ export function AttendanceSessions({
 }: AttendanceSessionsProps) {
   return (
     <section className="flex flex-col gap-4">
-      <Heading level={1}>{heading}</Heading>
-      <Text>{subtitle}</Text>
-      <div>
-        <AdminButtonLink variant="outline" href="/admin/asistencia">
-          {copy.sessions.back}
-        </AdminButtonLink>
-      </div>
-      <DataTable
-        caption={copy.sessions.caption}
-        columns={sessionColumns}
+      <AdminPageHeader
+        title={heading}
+        description={subtitle}
+        breadcrumbs={[
+          { label: "Panel", href: "/admin" },
+          { label: copy.title, href: "/admin/asistencia" },
+          { label: heading },
+        ]}
+        back={{ href: "/admin/asistencia", label: copy.sessions.back }}
+      />
+      <AdminCardList
+        label={copy.sessions.caption}
         rows={rows}
         rowKey={(row) => row.key}
+        card={(row) => (
+          <>
+            <p className="font-semibold text-ink-900">{row.date}</p>
+            <dl className="grid grid-cols-3 gap-2 text-sm text-ink-700">
+              <div>
+                <dt className="font-semibold">
+                  {copy.sessions.columns.marked}
+                </dt>
+                <dd>{row.marked}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">
+                  {copy.sessions.columns.present}
+                </dt>
+                <dd>{row.present}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">
+                  {copy.sessions.columns.absent}
+                </dt>
+                <dd>{row.absent}</dd>
+              </div>
+            </dl>
+            <div>
+              <AdminButtonLink
+                href={row.href}
+                ariaLabel={copy.sessions.openFor(row.date)}
+              >
+                {copy.sessions.open}
+              </AdminButtonLink>
+            </div>
+          </>
+        )}
         empty={{
           title: copy.sessions.empty.title,
           message: copy.sessions.empty.message,

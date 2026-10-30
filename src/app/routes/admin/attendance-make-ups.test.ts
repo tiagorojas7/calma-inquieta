@@ -83,8 +83,9 @@ describe("admin attendance make-ups route", () => {
     const response = await post({ intent: "complete", id });
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(PATH);
+    expect(response.headers.get("Location")).toBe(`${PATH}?ok=completed`);
     const result = await load();
+    expect(result.feedback).toBeNull();
     expect(result.pending).toHaveLength(1);
     expect(result.done.map((row) => row.student)).toEqual(["Ana Pérez"]);
     expect(result.done[0]?.doneNote).toBe(

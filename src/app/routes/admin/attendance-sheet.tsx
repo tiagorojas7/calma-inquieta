@@ -1,5 +1,6 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
   parseStatusEntries,
@@ -51,7 +52,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   return {
     ...sheetView(found.value),
     makeUpTurnos: turnoOptions(turnos.value),
-    saved: new URL(request.url).searchParams.get("guardado") === "1",
+    feedback: feedbackCode(request, ["saved", "makeup-scheduled"]),
   };
 }
 
@@ -89,7 +90,10 @@ async function scheduleMakeUp(
     });
   if (planned.ok)
     return redirect(
-      `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
+      withFeedback(
+        `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
+        "makeup-scheduled",
+      ),
     );
   const error = planned.error;
   if (error.kind === "make-up-exists")
@@ -122,7 +126,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
   if (saved.ok)
     return redirect(
-      `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}?guardado=1`,
+      withFeedback(
+        `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
+        "saved",
+      ),
     );
   if (saved.error.kind === "invalid")
     return data({ error: copy.sheet.invalid }, { status: 422 });
@@ -136,7 +143,8 @@ export default function AdminAttendanceSheet() {
     <AttendanceSheet
       {...sheet}
       feedback={{
-        saved: sheet.saved,
+        saved: sheet.feedback === "saved",
+        makeUpScheduled: sheet.feedback === "makeup-scheduled",
         error: rejected && "error" in rejected ? rejected.error : undefined,
         makeUp: rejected && "makeUp" in rejected ? rejected.makeUp : undefined,
       }}

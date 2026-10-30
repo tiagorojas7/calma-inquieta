@@ -129,56 +129,69 @@ export function MaterialForm({
     <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <TextField
-        label={copy.name}
-        name="name"
-        defaultValue={values.name}
-        error={errors.name}
-        autoComplete="off"
-      />
-      <TextAreaField
-        label={copy.description}
-        name="description"
-        defaultValue={values.description}
-        error={errors.description}
-      />
-      <TextField
-        label={copy.category}
-        name="category"
-        defaultValue={values.category}
-        error={errors.category}
-      />
-      <SelectField
-        label={copy.supplier}
-        name="supplierId"
-        options={supplierOptions}
-        defaultValue={values.supplierId}
-        error={errors.supplierId}
-      />
-      <CheckboxField
-        label={copy.available}
-        name="available"
-        defaultChecked={values.available}
-      />
-      <ImageField
-        name="image"
-        label={copy.image}
-        upload={upload}
-        current={currentImage}
-      />
-      {values.image && !currentImage && (
-        <>
-          <input
-            type="hidden"
-            name="imageAssetId"
-            value={values.image.assetId}
-          />
-          <input type="hidden" name="imageAlt" value={values.image.alt} />
-        </>
-      )}
-      {errors.image && <p role="alert">{errors.image}</p>}
-      <fieldset className="flex flex-col gap-4">
-        <legend className="font-semibold text-ink-900">{copy.variant}</legend>
+      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+        <legend className="px-2 font-semibold text-ink-900">
+          {copy.sectionBasics}
+        </legend>
+        <TextField
+          label={copy.name}
+          name="name"
+          defaultValue={values.name}
+          error={errors.name}
+          autoComplete="off"
+        />
+        <TextAreaField
+          label={copy.description}
+          name="description"
+          defaultValue={values.description}
+          error={errors.description}
+        />
+        <TextField
+          label={copy.category}
+          name="category"
+          defaultValue={values.category}
+          error={errors.category}
+        />
+        <SelectField
+          label={copy.supplier}
+          name="supplierId"
+          options={supplierOptions}
+          defaultValue={values.supplierId}
+          error={errors.supplierId}
+        />
+        <CheckboxField
+          label={copy.available}
+          name="available"
+          defaultChecked={values.available}
+        />
+      </fieldset>
+      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+        <legend className="px-2 font-semibold text-ink-900">
+          {copy.sectionImage}
+        </legend>
+        <ImageField
+          name="image"
+          label={copy.image}
+          upload={upload}
+          current={currentImage}
+        />
+        {values.image && !currentImage && (
+          <>
+            <input
+              type="hidden"
+              name="imageAssetId"
+              value={values.image.assetId}
+            />
+            <input type="hidden" name="imageAlt" value={values.image.alt} />
+          </>
+        )}
+        {errors.image && <p role="alert">{errors.image}</p>}
+      </fieldset>
+      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+        <legend className="px-2 font-semibold text-ink-900">
+          {copy.variants}
+        </legend>
+        <p className="text-sm text-ink-700">{copy.variantsHint}</p>
         {errors.variants?.form && <p role="alert">{errors.variants.form}</p>}
         {variants.map((variant, index) => {
           const rowErrors = errors.variants?.rows?.[index];

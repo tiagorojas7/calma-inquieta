@@ -1095,6 +1095,11 @@ export const adminMicrocopy = {
     supplierPlaceholder: "Elegí un proveedor",
     available: "Disponible",
     image: "Imagen",
+    sectionBasics: "Datos del material",
+    sectionImage: "Foto del material",
+    variants: "Variantes",
+    variantsHint:
+      "Empezás con una variante. Agregá más solo si el material viene en distintas opciones.",
     variant: "Variante",
     price: "Precio (en pesos)",
     priceHint: "Solo números, por ejemplo 12500 o 12.500.",

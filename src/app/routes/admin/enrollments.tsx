@@ -16,6 +16,7 @@ import {
   type EnrollmentTab,
 } from "~/app/admin/enrollment-tabs";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { whatsappHref } from "~/app/admin/whatsapp-href";
 import {
   dateLabel,
   monthLabel,
@@ -117,6 +118,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       id: order.id,
       number: order.number,
       studentName: order.studentName,
+      whatsappHref: whatsappHref(order.phoneDigits),
       workshopName: order.workshopName,
       month: monthLabel(order.period),
       turno: order.turnoLabel,

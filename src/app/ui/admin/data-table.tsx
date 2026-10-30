@@ -4,6 +4,8 @@ import { AdminEmptyState } from "./empty-state";
 export interface DataTableColumn<Row> {
   readonly key: string;
   readonly header: string;
+  /** Numbers read better flush right, like a spreadsheet. */
+  readonly align?: "right";
   readonly cell: (row: Row) => ReactNode;
 }
 
@@ -45,7 +47,7 @@ export function DataTable<Row>({
               <th
                 key={column.key}
                 scope="col"
-                className="px-4 py-3 font-semibold"
+                className={`px-4 py-3 font-semibold ${column.align === "right" ? "text-right" : ""}`}
               >
                 {column.header}
               </th>
@@ -56,7 +58,10 @@ export function DataTable<Row>({
           {rows.map((row) => (
             <tr key={rowKey(row)} className="border-t border-sand-200">
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-3">
+                <td
+                  key={column.key}
+                  className={`px-4 py-3 ${column.align === "right" ? "text-right tabular-nums" : ""}`}
+                >
                   {column.cell(row)}
                 </td>
               ))}

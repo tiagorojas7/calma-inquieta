@@ -24,6 +24,7 @@ const item = {
   id: "o1",
   number: "CI-2026-0007",
   studentName: "Ana Pérez",
+  phoneDigits: "5493515550001",
   workshopName: "Cerámica",
   period: "2026-11",
   turnoLabel: "Lunes",
@@ -96,6 +97,9 @@ describe("admin enrollments list route", () => {
         id: "o1",
         number: "CI-2026-0007",
         studentName: "Ana Pérez",
+        whatsappHref: expect.stringContaining(
+          "https://wa.me/5493515550001",
+        ) as string,
         workshopName: "Cerámica",
         month: "noviembre 2026",
         turno: "Lunes",

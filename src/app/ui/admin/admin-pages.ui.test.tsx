@@ -51,123 +51,96 @@ describe("AdminDeniedPage", () => {
 const summary: AdminPanelSummary = {
   period: "2026-10",
   monthLabel: "octubre 2026",
-  nextMonthLabel: "noviembre 2026",
-  occupancy: { percent: 40, confirmed: 4, capacity: 10, free: 6 },
-  pending: { total: 5, older: 2 },
-  confirmedThisMonth: 3,
-  income: { total: "$ 28.000", fee: "$ 25.000", materials: "$ 3.000" },
-  materialsToOrder: { orders: 3, units: 6 },
-  alerts: {
-    withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
+  tasks: [
+    {
+      key: "charge",
+      text: "3 inscripciones por cobrar",
+      action: "Cobrar",
+      hint: "Ver inscripciones por cobrar",
+      href: "/admin/inscripciones?estado=pending_confirmation",
+    },
+    {
+      key: "order",
+      text: "Pedir materiales a Arcilla SA",
+      action: "Ver pedido",
+      hint: "Ver el pedido de materiales",
+      href: "/admin/inscripciones/materiales",
+    },
+  ],
+  figures: {
+    collected: "$ 96.000",
+    profit: "$ 63.000",
+    teachers: "$ 27.000",
+    occupancy: "39 %",
+    occupancyDetail: "9 de 23 lugares",
   },
 };
 
 describe("AdminLanding", () => {
-  it("greets by email and shows the month summary, alerts and every area", async () => {
+  it("greets by email and lists what is due today in order, each with one button", async () => {
     const { container } = render(
       <AdminLanding email="agus@example.com" summary={summary} />,
     );
     expect(screen.getByText("Hola, agus@example.com")).toBeInTheDocument();
+    const today = screen
+      .getByRole("heading", { name: "Hoy tenés que…" })
+      .closest("section") as HTMLElement;
+    const items = within(today).getAllByRole("listitem");
+    expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "3 inscripciones por cobrar",
+      "Pedir materiales a Arcilla SA",
+    ]);
+    for (const item of items)
+      expect(within(item).getAllByRole("link")).toHaveLength(1);
     expect(
-      screen.getByRole("heading", { name: "Resumen de octubre 2026" }),
-    ).toBeVisible();
-    for (const text of [
-      "40 %",
-      "4 inscriptas de 10 cupos, 6 libres.",
-      "2 esperan hace más de 48 horas.",
-      "$ 28.000",
-      "6 unidades en 3 pedidos.",
-    ])
-      expect(screen.getByText(text)).toBeVisible();
-    expect(screen.queryByRole("table")).toBeNull();
+      within(items[0] as HTMLElement).getByRole("link", { name: /Cobrar/ }),
+    ).toHaveAttribute(
+      "href",
+      "/admin/inscripciones?estado=pending_confirmation",
+    );
+    expect(
+      within(items[1] as HTMLElement).getByRole("link", { name: /Ver pedido/ }),
+    ).toHaveAttribute("href", "/admin/inscripciones/materiales");
     await expectNoAxeViolations(container);
   });
 
-  it("links each card and alert to the screen where it is handled", () => {
+  it("shows the four figures of the month and a link to the statistics", () => {
     render(<AdminLanding email="agus@example.com" summary={summary} />);
-    const href = (name: RegExp) =>
-      screen.getByRole("link", { name }).getAttribute("href");
-    expect(href(/Ver ocupación/)).toBe("/admin/estadisticas?mes=2026-10");
-    expect(href(/Revisar solicitudes: Solicitudes pendientes/)).toBe(
-      "/admin/inscripciones?estado=pending_confirmation",
-    );
-    expect(href(/Ver confirmadas/)).toBe(
-      "/admin/inscripciones?estado=paid&mes=2026-10",
-    );
-    expect(href(/Ver ingresos/)).toBe("/admin/estadisticas?mes=2026-10");
-    expect(href(/Armar el pedido a proveedores/)).toBe(
-      "/admin/inscripciones/materiales",
-    );
-    expect(href(/Abrir inscripción de Acuarela/)).toBe(
-      "/admin/talleres/w2/periodos",
-    );
     expect(
-      screen.getByText(
-        "Acuarela no tiene inscripción abierta para noviembre 2026.",
-      ),
+      screen.getByRole("heading", { name: "Tu mes: octubre 2026" }),
     ).toBeVisible();
+    for (const text of [
+      "Cobrado",
+      "$ 96.000",
+      "Ganancia del estudio",
+      "$ 63.000",
+      "Ocupación",
+      "39 %",
+      "9 de 23 lugares",
+      "A pagar a profesoras",
+      "$ 27.000",
+    ])
+      expect(screen.getByText(text)).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Ver estadísticas" }),
+    ).toHaveAttribute("href", "/admin/estadisticas?mes=2026-10");
   });
 
-  it("puts the alerts before the month summary", () => {
+  it("no longer repeats the navigation as a grid of sections", () => {
     render(<AdminLanding email="agus@example.com" summary={summary} />);
-    const alerts = screen.getByRole("heading", { name: "Alertas pendientes" });
-    const figures = screen.getByRole("heading", {
-      name: "Resumen de octubre 2026",
-    });
-    expect(
-      alerts.compareDocumentPosition(figures) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Secciones" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Talleres" })).toBeNull();
   });
 
-  it("says what each area is for", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
-    expect(
-      screen.getByText("Publicá talleres, turnos y abrí las inscripciones."),
-    ).toBeVisible();
-    expect(
-      screen.getByText("Mensajes de WhatsApp listos para enviar."),
-    ).toBeVisible();
-  });
-
-  it("lists the areas, Estadísticas included", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
-    const areas = screen.getByRole("heading", { name: "Secciones" })
-      .parentElement as HTMLElement;
-    expect(
-      within(areas)
-        .getAllByRole("link")
-        .map((link) => link.textContent),
-    ).toEqual([
-      "Inscripciones",
-      "Talleres",
-      "Intensivos",
-      "Materiales",
-      "Asistencia",
-      "Profesoras",
-      "Proveedores",
-      "Alumnas",
-      "Eventos privados",
-      "Recordatorios",
-      "Estadísticas",
-      "Catálogo de materiales",
-    ]);
-  });
-
-  it("says there are no alerts when nothing needs attention", () => {
+  it("says everything is up to date when nothing is due", () => {
     render(
       <AdminLanding
         email="agus@example.com"
-        summary={{
-          ...summary,
-          pending: { total: 0, older: 0 },
-          materialsToOrder: { orders: 0, units: 0 },
-          alerts: { withoutOpenPeriod: [] },
-        }}
+        summary={{ ...summary, tasks: [] }}
       />,
     );
     expect(
-      screen.getByText("No hay alertas pendientes. Está todo al día."),
+      screen.getByText("Todo al día. No hay nada pendiente para hoy."),
     ).toBeVisible();
   });
 });

@@ -1,9 +1,6 @@
 import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
-import {
-  toStatisticsScreen,
-  toTeacherSettlementRows,
-} from "~/app/admin/insights-view";
+import { toStatisticsScreen } from "~/app/admin/insights-view";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { StatisticsScreen } from "~/app/ui/admin/statistics-screen";
 import { isPeriod } from "~/modules/insights";
@@ -20,17 +17,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // A malformed month falls back to the current one, never to an error.
   const { insights } = context.get(servicesContext);
   const query = isPeriod(month) ? { period: month } : {};
-  const found = await insights.statistics(actor, query);
+  const found = await insights.earnings(actor, query);
   if (!found.ok) throw enrollmentFailureResponse(found.error);
-  // Same period as the statistics, whichever fallback they used.
-  const settled = await insights.settlements(actor, {
-    period: found.value.period,
-  });
-  if (!settled.ok) throw enrollmentFailureResponse(settled.error);
-  return {
-    ...toStatisticsScreen(found.value),
-    teachers: toTeacherSettlementRows(settled.value),
-  };
+  return toStatisticsScreen(found.value);
 }
 
 export default function AdminStatistics() {

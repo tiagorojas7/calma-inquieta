@@ -12,6 +12,8 @@ export interface EnrollmentRow {
   readonly id: string;
   readonly number: string;
   readonly studentName: string;
+  /** wa.me link to the student, when her phone can be dialed. */
+  readonly whatsappHref?: string | undefined;
   readonly workshopName: string;
   readonly month: string;
   readonly turno: string;
@@ -191,7 +193,7 @@ function PayableCard({
         {`${row.workshopName} · ${row.month} · ${row.turno}`}
       </Text>
       <p className="text-xl font-semibold text-ink-900">{row.total}</p>
-      <div>
+      <div className="flex flex-wrap items-center gap-x-4">
         <a
           href={`/admin/inscripciones/${row.id}`}
           aria-label={card.detailAndContactOf(row.number)}
@@ -199,6 +201,15 @@ function PayableCard({
         >
           {card.detailAndContact}
         </a>
+        {row.whatsappHref ? (
+          <a
+            href={row.whatsappHref}
+            aria-label={card.whatsappWith(row.studentName)}
+            className={linkClasses}
+          >
+            {card.whatsapp}
+          </a>
+        ) : null}
       </div>
       {error ? <AdminFeedback tone="error" title={error} /> : null}
       <form method="post" action="/admin/inscripciones">

@@ -56,3 +56,13 @@ export function settlementCentavos(
     (feeCentavos * percentageBp + BASIS_POINTS / 2) / BASIS_POINTS,
   );
 }
+
+/** The month before a valid period, rolling back over the year. */
+export function previousPeriod(period: string): string {
+  const match = PERIOD_KEY.exec(period);
+  const year = Number(match?.[1]);
+  const month = Number(match?.[2]);
+  return month === 1
+    ? `${String(year - 1)}-12`
+    : `${String(year)}-${String(month - 1).padStart(2, "0")}`;
+}

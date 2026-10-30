@@ -53,6 +53,7 @@ export default [
     route("eventos", "routes/admin/private-events.tsx"),
     route("eventos/:id", "routes/admin/private-event-detail.tsx"),
     route("estadisticas", "routes/admin/statistics.tsx"),
+    route("estadisticas/planilla", "routes/admin/statistics-download.ts"),
     route("recordatorios", "routes/admin/reminders.tsx"),
   ]),
   route("imagenes/:file", "routes/media-file.ts"),

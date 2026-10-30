@@ -126,6 +126,22 @@ describe("EnrollmentsList Por cobrar", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("links the student's WhatsApp on the card only when a link exists", () => {
+    const { rerender } = render(
+      <EnrollmentsList
+        {...props}
+        rows={[{ ...pending, whatsappHref: "https://wa.me/5493515550001" }]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "WhatsApp con Ana Pérez" }),
+    ).toHaveAttribute("href", "https://wa.me/5493515550001");
+
+    rerender(<EnrollmentsList {...props} />);
+    expect(screen.queryByRole("link", { name: /WhatsApp/ })).toBeNull();
+  });
+
   it("marks paid with one native post: amount and date already filled", () => {
     render(<EnrollmentsList {...props} />);
 

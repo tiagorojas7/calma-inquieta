@@ -1,5 +1,7 @@
 import { err, ok, type Clock } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
+import type { IntensiveRequestInsightsReader } from "~/modules/intensive-requests";
+import type { TeacherLookup } from "~/modules/teachers";
 import {
   ORDER_STATUSES,
   type EnrollmentInsightsReader,
@@ -9,6 +11,7 @@ import {
 } from "~/modules/enrollments";
 import {
   cordobaDateOf,
+  type IntensiveInsightsReader,
   type PeriodTeacherRow,
   type WorkshopInsightsReader,
 } from "~/modules/workshops";
@@ -22,8 +25,11 @@ import {
   settlementCentavos,
 } from "../domain/insights-core";
 import type {
+  ActivityEarnings,
   ConversionRow,
   ConversionTotals,
+  EarningsTotals,
+  EarningsView,
   IncomeStatRow,
   IncomeTotals,
   InsightsService,
@@ -33,7 +39,9 @@ import type {
   PanelView,
   SettlementsView,
   StatisticsView,
+  SupplierMaterials,
   TeacherSettlementRow,
+  TeacherToSettle,
 } from "./insights";
 
 type MaybeActor = AdminActor | null | undefined;
@@ -51,6 +59,9 @@ export type InsightsUseCases = {
 export interface InsightsServiceDeps {
   readonly orders: EnrollmentInsightsReader;
   readonly workshops: WorkshopInsightsReader;
+  readonly intensives: IntensiveInsightsReader;
+  readonly intensiveRequests: IntensiveRequestInsightsReader;
+  readonly teachers: TeacherLookup;
   readonly clock: Clock;
 }
 
@@ -61,6 +72,11 @@ const CONFIRMED: readonly OrderStatus[] = [
   "materials_received",
 ];
 const STATUS_ORDER = new Map(ORDER_STATUSES.map((s, index) => [s, index]));
+
+/** An activity with the teacher id the teachers table groups by. */
+interface ActivityRow extends ActivityEarnings {
+  readonly teacherId: string | null;
+}
 
 const byName = <T extends { readonly workshopName: string }>(a: T, b: T) =>
   a.workshopName.localeCompare(b.workshopName, "es");
@@ -175,7 +191,8 @@ function settlementRows(
 export function createInsightsService(
   deps: InsightsServiceDeps,
 ): InsightsUseCases {
-  const { orders, workshops, clock } = deps;
+  const { orders, workshops, intensives, intensiveRequests, teachers, clock } =
+    deps;
 
   const currentPeriod = () => cordobaDateOf(clock.now()).slice(0, 7);
 
@@ -212,6 +229,217 @@ export function createInsightsService(
     };
   }
 
+  async function earningsOf(period: string): Promise<EarningsView> {
+    const [
+      occupancy,
+      registered,
+      snapshots,
+      registrations,
+      held,
+      participation,
+      materials,
+    ] = await Promise.all([
+      occupancyOf(period),
+      orders.income({ period }),
+      workshops.periodTeachers(period),
+      orders.periodRegistrations(period),
+      intensives.intensives(period),
+      orders.participation(period),
+      orders.materials({ period }),
+    ]);
+    const paid = await intensiveRequests.registrations(
+      held.map((row) => row.intensiveId),
+    );
+    const teacherIds = [
+      ...new Set(
+        held.flatMap((row) => (row.teacherId === null ? [] : [row.teacherId])),
+      ),
+    ];
+    const known = await teachers.findByIds(teacherIds);
+
+    const feeOfPeriod = new Map(
+      registrations.map((row) => [row.periodId, row.feeCentavos]),
+    );
+    const workshopNames = new Map<string, string>();
+    for (const row of occupancy)
+      workshopNames.set(row.workshopId, row.workshopName);
+    for (const row of registered)
+      if (!workshopNames.has(row.workshopId))
+        workshopNames.set(row.workshopId, row.workshopName);
+
+    const monthly = [...workshopNames.entries()].map(
+      ([workshopId, name]): ActivityRow => {
+        const seats = occupancy.filter((row) => row.workshopId === workshopId);
+        const income = registered.filter(
+          (row) => row.workshopId === workshopId,
+        );
+        const fee = income.reduce((sum, row) => sum + row.feeCentavos, 0);
+        const materialsCentavos = income.reduce(
+          (sum, row) => sum + row.materialsCentavos,
+          0,
+        );
+        const own = snapshots.filter((row) => row.workshopId === workshopId);
+        const teacher = own[0];
+        // Each period rounds on its own: its share is what gets settled.
+        const pay = own.reduce(
+          (sum, row) =>
+            row.percentageBp === null
+              ? sum
+              : sum +
+                settlementCentavos(
+                  feeOfPeriod.get(row.periodId) ?? 0,
+                  row.percentageBp,
+                ),
+          0,
+        );
+        const collected = fee + materialsCentavos;
+        return {
+          kind: "taller",
+          id: workshopId,
+          name,
+          enrolled: seats.reduce((sum, row) => sum + row.confirmed, 0),
+          capacity: seats.reduce((sum, row) => sum + row.capacity, 0),
+          collected: pesos(collected),
+          teacherId: teacher?.teacherId ?? null,
+          teacherName: teacher?.teacherName ?? null,
+          teacherModality: teacher?.modality ?? null,
+          teacherPay: pesos(pay),
+          // No supplier cost is stored: the price paid by students is the cost.
+          materialsCost: pesos(materialsCentavos),
+          profit: pesos(collected - pay - materialsCentavos),
+        };
+      },
+    );
+    const intensive = held.map((row): ActivityRow => {
+      const registration = paid.find(
+        (item) => item.intensiveId === row.intensiveId,
+      );
+      const collected = registration?.paidCentavos ?? 0;
+      const teacher =
+        row.teacherId === null ? undefined : known.get(row.teacherId);
+      const pay =
+        row.percentageBp === null
+          ? 0
+          : settlementCentavos(collected, row.percentageBp);
+      return {
+        kind: "intensivo",
+        id: row.intensiveId,
+        name: row.name,
+        enrolled: registration?.confirmedSeats ?? 0,
+        capacity: row.capacity,
+        collected: pesos(collected),
+        teacherId: row.teacherId,
+        teacherName: teacher?.name ?? null,
+        teacherModality: teacher?.modality ?? null,
+        teacherPay: pesos(pay),
+        materialsCost: pesos(0),
+        profit: pesos(collected - pay),
+      };
+    });
+    const byActivityName = (a: ActivityRow, b: ActivityRow) =>
+      a.name.localeCompare(b.name, "es");
+    const rows = [
+      ...monthly.sort(byActivityName),
+      ...intensive.sort(byActivityName),
+    ];
+
+    const total = (pick: (row: ActivityRow) => number) =>
+      rows.reduce((sum, row) => sum + pick(row), 0);
+    const enrolled = total((row) => row.enrolled);
+    const places = total((row) => row.capacity);
+    const totals: EarningsTotals = {
+      enrolled,
+      capacity: places,
+      occupancyPercent: percentOf(enrolled, places),
+      collected: pesos(total((row) => row.collected.toCentavos())),
+      teacherPay: pesos(total((row) => row.teacherPay.toCentavos())),
+      materialsCost: pesos(total((row) => row.materialsCost.toCentavos())),
+      profit: pesos(total((row) => row.profit.toCentavos())),
+    };
+
+    const perTeacher = new Map<string, ActivityRow[]>();
+    for (const row of rows)
+      if (row.teacherId !== null && row.teacherName !== null)
+        perTeacher.set(row.teacherId, [
+          ...(perTeacher.get(row.teacherId) ?? []),
+          row,
+        ]);
+    const teacherRows = [...perTeacher.entries()]
+      .map(([teacherId, activities]): TeacherToSettle => {
+        const first = activities[0];
+        const modality = first?.teacherModality ?? "own";
+        return {
+          teacherId,
+          teacherName: first?.teacherName ?? "",
+          modality,
+          activities: activities.map((row) => row.name),
+          toSettle:
+            modality === "own"
+              ? null
+              : pesos(
+                  activities.reduce(
+                    (sum, row) => sum + row.teacherPay.toCentavos(),
+                    0,
+                  ),
+                ),
+        };
+      })
+      .sort((a, b) => a.teacherName.localeCompare(b.teacherName, "es"));
+
+    const perSupplier = new Map<
+      string,
+      { name: string; orders: number; units: number; amount: number }
+    >();
+    for (const row of materials) {
+      if (!CONFIRMED.includes(row.status)) continue;
+      const entry = perSupplier.get(row.supplierId) ?? {
+        name: row.supplierName,
+        orders: 0,
+        units: 0,
+        amount: 0,
+      };
+      entry.orders += row.orders;
+      entry.units += row.units;
+      entry.amount += row.amountCentavos;
+      perSupplier.set(row.supplierId, entry);
+    }
+    const suppliers = [...perSupplier.entries()]
+      .map(([supplierId, entry]): SupplierMaterials => ({
+        supplierId,
+        supplierName: entry.name,
+        orders: entry.orders,
+        units: entry.units,
+        charged: pesos(entry.amount),
+        cost: pesos(entry.amount),
+      }))
+      .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "es"));
+
+    return {
+      period,
+      activities: rows.map((row) => ({
+        kind: row.kind,
+        id: row.id,
+        name: row.name,
+        enrolled: row.enrolled,
+        capacity: row.capacity,
+        collected: row.collected,
+        teacherName: row.teacherName,
+        teacherModality: row.teacherModality,
+        teacherPay: row.teacherPay,
+        materialsCost: row.materialsCost,
+        profit: row.profit,
+      })),
+      totals,
+      students: {
+        ...participation,
+        percent: percentOf(participation.recurring, participation.students),
+      },
+      teachers: teacherRows,
+      suppliers,
+      materialsAtCost: true,
+    };
+  }
+
   return {
     async panel(actor) {
       const authorized = requireAdminActor(actor);
@@ -220,16 +448,27 @@ export function createInsightsService(
       const period = currentPeriod();
       const next = nextPeriod(period);
       const { from, to } = periodBounds(period);
-      const [occupancy, pending, registered, materials, published] =
-        await Promise.all([
-          occupancyOf(period),
-          orders.pendingSummary(
-            new Date(now.getTime() - PENDING_ALERT_HOURS * HOUR_MS),
-          ),
-          orders.income({ paidFrom: from, paidTo: to }),
-          orders.materials({}),
-          workshops.publishedWorkshops(next),
-        ]);
+      const [
+        occupancy,
+        pending,
+        registered,
+        materials,
+        published,
+        statuses,
+        month,
+        pendingIntensive,
+      ] = await Promise.all([
+        occupancyOf(period),
+        orders.pendingSummary(
+          new Date(now.getTime() - PENDING_ALERT_HOURS * HOUR_MS),
+        ),
+        orders.income({ paidFrom: from, paidTo: to }),
+        orders.materials({}),
+        workshops.publishedWorkshops(next),
+        orders.ordersByStatus({}),
+        earningsOf(period),
+        intensiveRequests.pendingRequests(),
+      ]);
       const notRequested = toBeOrdered(materials);
       const income = incomeTotals(registered);
       const view: PanelView = {
@@ -240,6 +479,20 @@ export function createInsightsService(
         confirmedThisMonth: income.orders,
         income,
         materialsToOrder: notRequested,
+        month: month.totals,
+        today: {
+          suppliersToOrder: [
+            ...new Set(
+              materials
+                .filter((row) => row.status === "paid")
+                .map((row) => row.supplierName),
+            ),
+          ].sort((a, b) => a.localeCompare(b, "es")),
+          ordersToDeliver: statuses
+            .filter((row) => row.status === "materials_requested")
+            .reduce((sum, row) => sum + row.orders, 0),
+          pendingIntensiveRequests: pendingIntensive,
+        },
         alerts: {
           pendingOverdue: pending.older,
           withoutOpenPeriod: published
@@ -327,6 +580,14 @@ export function createInsightsService(
       return ok(view);
     },
 
+    async earnings(actor, query) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const period = query.period ?? currentPeriod();
+      if (!isPeriod(period)) return invalidPeriod();
+      return ok(await earningsOf(period));
+    },
+
     async settlements(actor, query) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -363,5 +624,10 @@ export function createUnavailableInsightsService(): InsightsUseCases {
       authorized.ok ? err({ kind: "unavailable" as const }) : authorized,
     );
   };
-  return { panel: fail, statistics: fail, settlements: fail };
+  return {
+    panel: fail,
+    statistics: fail,
+    earnings: fail,
+    settlements: fail,
+  };
 }

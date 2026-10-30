@@ -8,7 +8,8 @@ import { insightsFixture } from "~/testing/admin/insights-kit";
 import { loader } from "./statistics";
 
 function run(path: string, admin = true) {
-  const { orders, workshops, service } = insightsFixture();
+  const { orders, workshops, teachers, service } = insightsFixture();
+  teachers.add("t1", "Ana Gomez", "third_party");
   workshops.capacityRows = [
     {
       workshopId: "w1",
@@ -22,6 +23,16 @@ function run(path: string, admin = true) {
     },
   ];
   orders.seats = [{ periodId: "p1", turnoId: "t1", confirmedSeats: 1 }];
+  orders.incomeRows = [
+    {
+      workshopId: "w1",
+      workshopName: "Ceramica",
+      period: "2026-09",
+      orders: 1,
+      feeCentavos: 40_000_00,
+      materialsCentavos: 0,
+    },
+  ];
   workshops.teacherRows = [
     {
       period: "2026-09",
@@ -51,39 +62,40 @@ function run(path: string, admin = true) {
 }
 
 describe("admin statistics route", () => {
-  it("shows the month from the query string", async () => {
+  it("shows the month from the query string with the main table row", async () => {
     const result = await run("/admin/estadisticas?mes=2026-09");
 
     expect(result.period).toBe("2026-09");
     expect(result.periodLabel).toBe("septiembre 2026");
-    expect(result.occupancy[0]?.cells).toEqual([
+    expect(result.activities[0]?.cells).toEqual([
       "Ceramica",
-      "Martes",
-      "4",
       "1",
-      "3",
-      "25 %",
+      "4",
+      "$ 40.000",
+      "Ana Gomez · de terceros",
+      "$ 10.000",
+      "$ 0",
+      "$ 30.000",
     ]);
   });
 
-  it("adds the teachers' settlement estimate for the same month", async () => {
+  it("keeps the totals row equal to the summary figures", async () => {
     const result = await run("/admin/estadisticas?mes=2026-09");
 
-    expect(result.teachers[0]?.cells).toEqual([
-      "Ana Gomez",
-      "De terceros",
-      "25 %",
-      "1",
-      "$ 40.000",
-      "$ 10.000",
-    ]);
+    const totals = result.activities.at(-1)?.cells ?? [];
+    const figure = (key: string) =>
+      result.figures.find((item) => item.key === key)?.value;
+    expect(totals[3]).toBe(figure("collected"));
+    expect(totals[5]).toBe(figure("teachers"));
+    expect(totals[6]).toBe(figure("materials"));
+    expect(totals[7]).toBe(figure("profit"));
   });
 
   it("falls back to the current month for a malformed one instead of failing", async () => {
     const result = await run("/admin/estadisticas?mes=nope");
 
     expect(result.period).toBe("2026-10");
-    expect(result.occupancy).toEqual([]);
+    expect(result.activities).toEqual([]);
   });
 
   it("refuses a request without an admin", async () => {

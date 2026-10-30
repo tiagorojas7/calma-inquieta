@@ -78,6 +78,8 @@ import {
 } from "~/modules/reminders";
 import { createDrizzleEnrollmentInsightsReader } from "~/modules/enrollments/infrastructure/drizzle-insights-reader";
 import { createDrizzleWorkshopInsightsReader } from "~/modules/workshops/infrastructure/drizzle-insights-reader";
+import { createDrizzleIntensiveInsightsReader } from "~/modules/workshops/infrastructure/drizzle-intensive-insights-reader";
+import { createDrizzleIntensiveRequestInsightsReader } from "~/modules/intensive-requests/infrastructure/drizzle-intensive-request-insights-reader";
 import {
   createInsightsService,
   type InsightsUseCases,
@@ -424,6 +426,10 @@ export function createRequestServices(
     insights: createInsightsService({
       orders: createDrizzleEnrollmentInsightsReader(openSession),
       workshops: createDrizzleWorkshopInsightsReader(openSession),
+      intensives: createDrizzleIntensiveInsightsReader(openSession),
+      intensiveRequests:
+        createDrizzleIntensiveRequestInsightsReader(openSession),
+      teachers,
       clock: systemClock,
     }),
     privateEvents: withPrivateEventEmails(

@@ -58,6 +58,8 @@ export {
 } from "./application/attendance-schedule";
 export type {
   InsightsPeriodStatus,
+  IntensiveActivityRow,
+  IntensiveInsightsReader,
   PeriodCapacityRow,
   PeriodTeacherRow,
   PublishedWorkshopRow,

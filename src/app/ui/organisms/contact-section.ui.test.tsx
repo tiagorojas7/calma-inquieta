@@ -85,7 +85,7 @@ describe("ContactSection", () => {
     ).toBeTruthy();
   });
 
-  it("leads to booking: Ver talleres is the primary action, before the directions", () => {
+  it("lists Ver talleres before the directions", () => {
     setup();
     const talleres = screen.getByRole("link", { name: "Ver talleres" });
     expect(talleres).toHaveAttribute("href", "/talleres");

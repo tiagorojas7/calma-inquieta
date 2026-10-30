@@ -79,45 +79,112 @@ describe("admin intensive create", () => {
     );
   });
 
-  it("creates with every parsed field and redirects to the list", async () => {
+  function post(fields: Record<string, string | string[]>) {
+    return new Request("https://panel.example.test/admin/intensivos/nuevo", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Origin: "https://panel.example.test",
+      },
+      body: formFields(fields as typeof FIELDS),
+    });
+  }
+  const created = (id = "i1") =>
+    Promise.resolve({ ok: true as const, value: { id } });
+
+  it("creates with a derived slug and defaults, publishes, and redirects to the detail", async () => {
     const create = vi.fn(() =>
-      Promise.resolve({ ok: true as const, value: {} }),
+      created(),
     ) as unknown as IntensivesService["create"];
+    const publish = vi.fn(() =>
+      created(),
+    ) as unknown as IntensivesService["publish"];
     const result = await action({
-      request: new Request(
-        "https://panel.example.test/admin/intensivos/nuevo",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Origin: "https://panel.example.test",
-          },
-          body: formFields(),
-        },
-      ),
+      request: post({
+        ...FIELDS,
+        intent: "publish",
+        summary: "",
+        minSeats: "",
+        policyText: "",
+      }),
       params: {},
       context: context(
         withOverrides(createUnavailableService<IntensivesService>(), {
           create,
+          publish,
         }),
         createUnavailableService<TeachersService>(),
       ),
     } as never);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@x.test" }),
-      {
-        ...FIELDS,
-        galleryAssetId: undefined,
-        galleryAlt: undefined,
+      expect.objectContaining({
+        name: "Cerámica de sábado",
+        slug: "ceramica-de-sabado",
+        summary: "Un detalle",
+        minSeats: "1",
+        policyText: "La seña asegura el lugar en el intensivo.",
         materialsIncluded: true,
         images: [
           { assetId: "img-1", alt: "Una taza" },
           { assetId: "img-2", alt: "Una mesa" },
         ],
-      },
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
     );
     expect((result as Response).headers.get("Location")).toBe(
-      "/admin/intensivos?ok=created",
+      "/admin/intensivos/i1?ok=published",
+    );
+  });
+
+  it("saves a draft without publishing and redirects to the detail", async () => {
+    const create = vi.fn(() =>
+      created("i9"),
+    ) as unknown as IntensivesService["create"];
+    const publish = vi.fn();
+    const result = await action({
+      request: post({ ...FIELDS, intent: "draft" }),
+      params: {},
+      context: context(
+        withOverrides(createUnavailableService<IntensivesService>(), {
+          create,
+          publish,
+        }),
+        createUnavailableService<TeachersService>(),
+      ),
+    } as never);
+    expect(publish).not.toHaveBeenCalled();
+    expect((result as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i9?ok=created",
+    );
+  });
+
+  it("redirects to the detail with what is missing when publishing is refused", async () => {
+    const publish = vi.fn(() =>
+      Promise.resolve({
+        ok: false as const,
+        error: {
+          kind: "rules-unmet" as const,
+          rules: ["teacher", "future-start"],
+        },
+      }),
+    ) as unknown as IntensivesService["publish"];
+    const result = await action({
+      request: post({ ...FIELDS, intent: "publish" }),
+      params: {},
+      context: context(
+        withOverrides(createUnavailableService<IntensivesService>(), {
+          create: (() => created()) as unknown as IntensivesService["create"],
+          publish,
+        }),
+        createUnavailableService<TeachersService>(),
+      ),
+    } as never);
+    expect((result as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1?falta=teacher,future-start",
     );
   });
 

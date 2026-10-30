@@ -30,7 +30,7 @@ S9. Material photo in the public selector. Owner: "a la hora de que el cliente e
 - [x] U1 — S1, S2: admin visual system and short nav. Route: delegated (sequential, RAM). Commit: see PR feat/admin-simple-visual
 - [x] U2 — S3: taller one-screen create + publish + open month, "Abrir <mes>" one click. Route: delegated. Commit: see PR feat/admin-simple-taller (base feat/admin-simple-visual)
 - [x] U3 — S4: taller photos (migration 0016 workshop_image). Risk: item 1. Route: delegated + independent verifier. Commit: see PR feat/admin-simple-taller-photos (base feat/admin-simple-taller). Period project images stay deferred; openMonth copies none and no longer refuses.
-- [ ] U4 — S5: intensivo one screen. Route: delegated. Commit: —
+- [x] U4 — S5: intensivo one screen (Publicar / Guardar borrador, advanced options, detail with one primary action, save and create redirect to the detail, refused publish names what is missing via `?falta=`). Risk: none. Route: delegated. Commit: see PR feat/admin-simple-intensivo (base feat/admin-simple-taller-photos)
 - [ ] U5 — S6: charging from the list. Route: delegated. Commit: —
 - [ ] U6 — S7: materials screen with per-student delivery. Route: delegated. Commit: —
 - [ ] U7 — S8: Inicio "Hoy tenés que…" and Excel-replacing statistics. Route: delegated. Commit: —

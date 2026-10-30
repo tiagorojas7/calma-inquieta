@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -62,7 +63,7 @@ describe("intensive admin screens", () => {
     await expectNoAxeViolations(container);
   }, 30_000);
 
-  it("renders every draft field, six ImageField inputs, and no lifecycle controls", async () => {
+  it("renders the main fields, six ImageField inputs, closed advanced options and no lifecycle controls", async () => {
     const Stub = createRoutesStub([
       {
         id: "intensive-new",
@@ -90,30 +91,41 @@ describe("intensive admin screens", () => {
     expect(screen.getByLabelText("Fecha")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Incluye materiales")).not.toBeChecked();
     expect(screen.getAllByLabelText("Imagen")).toHaveLength(6);
-    for (const name of [
-      "Datos principales",
-      "Fecha y horario",
-      "Profesor y precio",
-      "Cupos y condiciones",
-      "Imágenes",
+    const advanced = screen
+      .getByText("Opciones avanzadas")
+      .closest("details") as HTMLDetailsElement;
+    expect(advanced.open).toBe(false);
+    for (const label of [
+      "Cupos mínimos",
+      "Política de cancelación y ausencias",
+      "Porcentaje acordado",
+      "Incluye materiales",
     ])
-      expect(screen.getByRole("group", { name })).toBeInTheDocument();
+      expect(within(advanced).getByLabelText(label)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Enlace")).toBeNull();
+    expect(screen.queryByLabelText("Resumen")).toBeNull();
     const more = screen
       .getByText("Agregar más imágenes")
       .closest("details") as HTMLDetailsElement;
     expect(more.open).toBe(false);
     expect(within(more).getAllByLabelText("Imagen")).toHaveLength(4);
     expect(
-      within(screen.getByRole("group", { name: "Imágenes" })).getAllByLabelText(
-        "Imagen",
-      ),
+      within(
+        screen.getByRole("region", { name: "Imágenes" }),
+      ).getAllByLabelText("Imagen"),
     ).toHaveLength(6);
     expect(container.querySelector("form")).toHaveAttribute("method", "post");
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
       "href",
       "/admin/intensivos",
     );
-    expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Publicar" })).toHaveAttribute(
+      "value",
+      "publish",
+    );
+    expect(
+      screen.getByRole("button", { name: "Guardar borrador" }),
+    ).toHaveAttribute("value", "draft");
     expect(screen.queryByRole("button", { name: "Archivar" })).toBeNull();
     await expectNoAxeViolations(container);
   }, 30_000);
@@ -283,6 +295,7 @@ describe("intensive detail lifecycle controls", () => {
     );
     expect(await screen.findByText("Publicado")).toBeVisible();
     const edit = screen.getByLabelText("Nombre").closest("form");
+    await userEvent.click(screen.getByText("Otras acciones"));
     expect(edit?.querySelector("input[name=intent]")).toHaveValue("save");
     expect(edit?.querySelector("button[name=intent]")).toBeNull();
     expect(
@@ -292,6 +305,35 @@ describe("intensive detail lifecycle controls", () => {
       screen.getByRole("button", { name: "Reprogramar" }).closest("form"),
     ).not.toBe(edit);
     await expectNoAxeViolations(container);
+  });
+
+  it("shows what is missing after a refused publish and keeps one primary action", async () => {
+    const Stub = createRoutesStub([
+      {
+        id: "detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => ({
+          id: "i1",
+          status: "draft",
+          missing: ["teacher", "future-start"],
+          feedback: "created",
+          values,
+          teachers: [],
+          audit: { updatedBy: "a", updatedAt: "hoy" },
+        }),
+      },
+    ]);
+    render(<Stub initialEntries={["/admin/intensivos/i1"]} />);
+    expect(
+      await screen.findByText(
+        "El intensivo quedó como borrador porque falta: un profesor asignado, una fecha futura.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Intensivo creado")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Publicar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeVisible();
   });
 
   it("preserves edit-gallery errors separately from a rejected reschedule", async () => {
@@ -334,7 +376,7 @@ describe("intensive detail lifecycle controls", () => {
         }}
       />,
     );
-    expect((await screen.findAllByLabelText("Fecha"))[0]).toHaveValue("");
+    expect((await screen.findAllByLabelText("Fecha")).at(-1)).toHaveValue("");
     expect(screen.getByLabelText("Nombre")).toHaveValue("Cerámica de sábado");
     expect(screen.getByText("Completá este campo.")).toBeVisible();
   });

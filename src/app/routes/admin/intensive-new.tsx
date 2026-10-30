@@ -1,11 +1,13 @@
 import { redirect, useActionData, useLoaderData } from "react-router";
 import { withFeedback } from "~/app/admin/feedback-code";
+import { withIntensiveMissing } from "~/app/admin/intensive-failure";
+import {
+  parseQuickIntensive,
+  publishQuickIntensive,
+} from "~/app/admin/intensive-quick";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
-import {
-  invalidIntensiveResponse,
-  parseIntensiveDraft,
-} from "~/app/admin/intensive-form-data";
+import { invalidIntensiveResponse } from "~/app/admin/intensive-form-data";
 import { AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
@@ -55,14 +57,26 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
-  const draft = parseIntensiveDraft(await request.formData());
-  const created = await context
-    .get(servicesContext)
-    .intensives.create(actor, draft);
-  if (created.ok) return redirect(withFeedback(LIST, "created"));
-  if (created.error.kind === "invalid")
-    return invalidIntensiveResponse(draft, created.error.issues);
-  throw failureResponse(created.error);
+  const input = parseQuickIntensive(await request.formData());
+  const outcome = await publishQuickIntensive(
+    context.get(servicesContext).intensives,
+    actor,
+    input,
+  );
+  switch (outcome.kind) {
+    case "invalid":
+      return invalidIntensiveResponse(input.values, outcome.issues);
+    case "saved":
+      return redirect(withFeedback(`${LIST}/${outcome.id}`, "created"));
+    case "published":
+      return redirect(withFeedback(`${LIST}/${outcome.id}`, "published"));
+    case "partial":
+      return redirect(
+        withIntensiveMissing(`${LIST}/${outcome.id}`, outcome.rules),
+      );
+    case "failed":
+      throw failureResponse(outcome.failure);
+  }
 }
 
 export default function AdminIntensiveNew() {
@@ -85,6 +99,7 @@ export default function AdminIntensiveNew() {
         formError={rejected?.formError}
         teachers={teachers}
         cancelHref={LIST}
+        mode="new"
       />
     </section>
   );

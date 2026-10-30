@@ -2,9 +2,11 @@ import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
+import { intensiveMissing } from "~/app/admin/intensive-failure";
 import {
   fieldErrors,
   intensiveDeleteRuleMessage,
+  intensiveMissingMessage,
   INTENSIVE_FIELD_MESSAGES,
   intensivePublishRulesMessage,
   transitionRefusedMessage,
@@ -25,7 +27,11 @@ import { Heading } from "~/app/ui/atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
-import { IntensiveStatePanel } from "~/app/ui/admin/intensive-state-panel";
+import {
+  intensiveHasPrimaryAction,
+  IntensiveOtherActions,
+  IntensiveStatePanel,
+} from "~/app/ui/admin/intensive-state-panel";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/intensive-detail";
@@ -40,6 +46,8 @@ function rescheduleErrors(
 }
 
 const FEEDBACK = [
+  "created",
+  "saved",
   "published",
   "paused",
   "cancelled",
@@ -106,6 +114,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     id: intensive.id,
     status: intensive.status,
     feedback: feedbackCode(request, FEEDBACK),
+    missing: intensiveMissing(request),
     values: formValues(intensive),
     teachers: listed.value
       .filter((teacher) => teacher.active || teacher.id === assigned)
@@ -131,7 +140,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "save") {
     const draft = parseIntensiveDraft(form);
     const saved = await intensives.update(actor, params.id, draft);
-    if (saved.ok) return redirect(withFeedback(LIST, "saved"));
+    if (saved.ok)
+      return redirect(withFeedback(`${LIST}/${params.id}`, "saved"));
     if (saved.error.kind === "invalid")
       return invalidIntensiveResponse(draft, saved.error.issues);
     if (saved.error.kind === "rules-unmet")
@@ -230,13 +240,14 @@ export default function AdminIntensiveDetail() {
           </AdminButtonLink>
         }
       />
+      {intensive.missing ? (
+        <AdminFeedback
+          tone="error"
+          title={intensiveMissingMessage(intensive.missing)}
+        />
+      ) : null}
       {saved ? <AdminFeedback tone="success" title={saved.title} /> : null}
-      <IntensiveStatePanel
-        status={intensive.status}
-        schedule={intensive.values}
-        error={stateError}
-        reschedule={reschedule}
-      />
+      <IntensiveStatePanel status={intensive.status} error={stateError} />
       <IntensiveForm
         key={intensive.id}
         values={formRejected?.values ?? intensive.values}
@@ -244,6 +255,14 @@ export default function AdminIntensiveDetail() {
         formError={formRejected?.formError}
         teachers={intensive.teachers}
         cancelHref={LIST}
+        saveVariant={
+          intensiveHasPrimaryAction(intensive.status) ? "secondary" : "primary"
+        }
+      />
+      <IntensiveOtherActions
+        status={intensive.status}
+        schedule={intensive.values}
+        reschedule={reschedule}
       />
       <section
         aria-labelledby="intensive-audit-title"

@@ -105,13 +105,14 @@ describe("turnos admin screen", () => {
 
   it("lists each turno with its day, time range, capacity and state, with only the actions that apply", async () => {
     const { container } = render(stub());
-    const table = await screen.findByRole("table", {
+    const list = await screen.findByRole("list", {
       name: "Turnos del taller",
     });
-    const rows = within(table).getAllByRole("row");
-    const morningRow = required(rows[1], "morning row");
-    const afternoonRow = required(rows[2], "afternoon row");
-    const nightRow = required(rows[3], "night row");
+    const rows = within(list).getAllByRole("listitem");
+    expect(screen.queryByRole("table")).toBeNull();
+    const morningRow = required(rows[0], "morning row");
+    const afternoonRow = required(rows[1], "afternoon row");
+    const nightRow = required(rows[2], "night row");
     expect(within(morningRow).getByText("Martes")).toBeVisible();
     expect(within(morningRow).getByText("10:00 a 12:00")).toBeVisible();
     expect(within(morningRow).getByText("8")).toBeVisible();

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -63,6 +63,22 @@ describe("MaterialForm", () => {
     expect(form).toHaveAttribute("novalidate");
     expect(fireEvent.submit(form as HTMLFormElement)).toBe(true);
     await expectNoAxeViolations(container);
+  });
+
+  it("groups the fields into named sections", () => {
+    renderForm();
+    for (const name of ["Datos del material", "Foto del material", "Variantes"])
+      expect(screen.getByRole("group", { name })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Empezás con una variante. Agregá más solo si el material viene en distintas opciones.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Datos del material" }),
+      ).getByLabelText("Nombre"),
+    ).toBeVisible();
   });
 
   it("submits no swatch until the color checkbox turns the native picker on", async () => {

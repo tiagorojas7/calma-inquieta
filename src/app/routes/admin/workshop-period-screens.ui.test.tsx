@@ -59,11 +59,12 @@ function stub({
 }
 
 describe("workshop periods admin screen", () => {
-  it("lists periods in a contained table with accessible scrolling", async () => {
+  it("lists periods as mobile cards with status, fee and seats", async () => {
     const { container } = render(stub());
-    const table = await screen.findByRole("table", {
+    const table = await screen.findByRole("list", {
       name: "Períodos del taller",
     });
+    expect(screen.queryByRole("table")).toBeNull();
     const periodLink = within(table).getByRole("link", { name: "2026-10" });
     expect(periodLink).toBeVisible();
     const seen = { prevented: false };
@@ -78,9 +79,6 @@ describe("workshop periods admin screen", () => {
     expect(within(table).getByText("Abierto")).toBeVisible();
     expect(within(table).getByText("40000")).toBeVisible();
     expect(within(table).getByText("14")).toBeVisible();
-    expect(
-      screen.getByRole("region", { name: "Períodos del taller" }),
-    ).toHaveClass("overflow-x-auto");
     expect(
       screen.getByRole("link", { name: "Volver al taller" }),
     ).toHaveAttribute("href", "/admin/talleres/w1");

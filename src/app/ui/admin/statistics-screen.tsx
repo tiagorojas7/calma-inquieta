@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { DataTable, type DataTableColumn } from "./data-table";
+import { AdminCardList } from "./admin-sections";
 import { TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -25,21 +25,6 @@ export interface StatisticsScreenProps {
 }
 
 const copy = adminMicrocopy.statistics;
-
-function columnsOf(
-  headers: readonly string[],
-): readonly DataTableColumn<StatisticsRow>[] {
-  return headers.map((header, index) => ({
-    key: header,
-    header,
-    cell: (row) =>
-      row.total === true ? (
-        <strong>{row.cells[index]}</strong>
-      ) : (
-        (row.cells[index] ?? "")
-      ),
-  }));
-}
 
 function Block({
   title,
@@ -65,17 +50,40 @@ function StatsTable({
   title,
   headers,
   rows,
+  titled = true,
 }: {
   title: string;
   headers: readonly string[];
   rows: readonly StatisticsRow[];
+  /** Whether the first cell names the card (a workshop, a teacher...). */
+  titled?: boolean;
 }) {
+  const first = titled ? 1 : 0;
   return (
-    <DataTable
-      caption={title}
-      columns={columnsOf(headers)}
+    <AdminCardList
+      label={title}
       rows={rows}
       rowKey={(row) => row.key}
+      card={(row) => (
+        <>
+          {titled ? (
+            <p className="text-lg font-semibold text-ink-900">{row.cells[0]}</p>
+          ) : null}
+          <dl
+            className={`grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-ink-700 ${row.total === true ? "font-semibold" : ""}`}
+          >
+            {headers.slice(first).map((header, index) => {
+              const value = row.cells[index + first] ?? "";
+              return value === "" ? null : (
+                <div key={header}>
+                  <dt className="font-semibold">{header}</dt>
+                  <dd>{value}</dd>
+                </div>
+              );
+            })}
+          </dl>
+        </>
+      )}
       empty={{
         title: copy.empty.title,
         message: copy.empty.message,
@@ -86,7 +94,7 @@ function StatsTable({
 }
 
 /**
- * Per-month statistics as plain tables: occupancy, conversion, income,
+ * Per-month statistics as mobile cards: occupancy, conversion, income,
  * students and materials. The month filter is a GET form and every link a
  * plain anchor, because the Worker gate refuses `.data` requests.
  */
@@ -148,6 +156,7 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
           title={students.title}
           headers={Object.values(students.columns)}
           rows={[{ key: "students", cells: props.students }]}
+          titled={false}
         />
         <Text tone="muted">{students.note}</Text>
       </Block>

@@ -20,7 +20,7 @@ S6. Student selector (M2). Students see only the materials chosen for their tall
 
 ## Tasks
 
-- [ ] M1 — S1-S5: admin import, consultar precio, percentage raise, quick photo, period selection by category. Route: delegated (parallel with P1/A1, disjoint surfaces). Risk: item 1 if the variant price column becomes nullable (migration). Commit: —
+- [x] M1 — S1-S5: admin import, consultar precio, percentage raise, quick photo, period selection by category. Route: delegated (parallel with P1/A1, disjoint surfaces). Risk: item 1 (migration 0017 drops NOT NULL on material_variant.price_centavos). Commits: migration and S2 in PR 1 (branch feat/materials-catalog); S1, S3, S4, S5 in PR 2 (branch feat/materials-catalog-tools, chained on PR 1). Gaps: S4 is a one-click "Subir foto" screen per row rather than an inline upload; the public offer leaves no-price variants out until M2 shows them with a WhatsApp link.
 - [ ] M2 — S6: public materials selector. Route: delegated, after P1 merges. Commit: —
 
 ## Log

@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Money } from "~/modules/_shared";
 import type { PublicIntensivo } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
+import {
+  buildIntensiveOffer,
+  createInMemoryIntensiveRequests,
+} from "~/testing/fakes/intensive-request-builders";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
 import {
   buildPublicImage,
@@ -144,6 +148,38 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
       name: /Consultá por WhatsApp/u,
     });
     expect(link.getAttribute("href")).toMatch(/^https:\/\/wa\.me\//u);
+  });
+
+  it("shows Reservar mi lugar plus one discreet doubts link, and no WhatsApp action, when seats can be requested", async () => {
+    const services = createTestServices({
+      publicCatalog: createFakePublicCatalog({ intensivos: [full] }),
+      intensiveRequests: createInMemoryIntensiveRequests({
+        offer: buildIntensiveOffer({ slug: full.slug }),
+      }).service,
+    });
+    const Stub = createRoutesStub([
+      {
+        path: "intensivos/:slug",
+        Component: IntensivoRoute,
+        loader: () =>
+          loader({
+            ...createLoaderArgs(services, `/intensivos/${full.slug}`),
+            params: { slug: full.slug },
+          } as never),
+      },
+    ]);
+    const { container } = render(
+      <Stub initialEntries={[`/intensivos/${full.slug}`]} />,
+    );
+    await screen.findByRole("heading", { level: 1 }, { timeout: 10_000 });
+
+    expect(
+      screen.getByRole("link", { name: "Reservar mi lugar" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Consultá/u })).toBeNull();
+    const body = container.querySelectorAll('a[href^="https://wa.me/"]');
+    expect(body).toHaveLength(1);
+    expect(body[0]?.textContent).toBe("¿Dudas? Escribinos");
   });
 
   it("shows the paused notice and no inquiry action when paused", async () => {

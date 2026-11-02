@@ -71,12 +71,13 @@ describe("taller loader", () => {
     expect(url.searchParams.get("text") ?? "").toContain("Taller Demo");
   });
 
-  it("builds one link per turno naming the taller, the weekday and the time", async () => {
+  it("builds one link per turno naming the taller, the weekday and the time when enrollment is not possible", async () => {
     const result = await loader(
       args(
         servicesWith([
           {
             name: "Taller Demo",
+            offering: null,
             turnos: [
               buildPublicTurno({
                 weekday: 1,

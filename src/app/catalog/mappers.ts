@@ -173,6 +173,7 @@ export function intensivoToDetail(
   reservation?: { href: string; label: string },
 ) {
   const seats = intensivoSeats(intensivo, content);
+  const reserving = intensivo.status !== "paused" && reservation !== undefined;
   const action: DetailAction =
     intensivo.status === "paused"
       ? {
@@ -241,6 +242,10 @@ export function intensivoToDetail(
       ...image,
     })),
     action,
+    // The reservation is the one primary action; WhatsApp becomes a quiet link.
+    ...(reserving
+      ? { doubts: { href: link.href, label: microcopy.doubtsLabel } }
+      : {}),
   };
 }
 
@@ -308,6 +313,7 @@ export function tallerToDetail(
     seatsIndicator(display).kind === "limited"
       ? content.shared.seatsLimited
       : undefined;
+  let enrolling = false;
   let action: DetailAction = {
     kind: "inquiry",
     href: links.main.href,
@@ -325,6 +331,7 @@ export function tallerToDetail(
       href: `/talleres/${taller.slug}/inscripcion?period=${taller.offering.period}`,
       label: ENROLLMENT_LABEL,
     };
+    enrolling = true;
   }
   return {
     breadcrumb: {
@@ -351,7 +358,9 @@ export function tallerToDetail(
       : {}),
     turnosHeading: content.talleres.turnosHeading,
     turnos: taller.turnos.map((turno, index) => {
-      const inquiry = display === "paused" ? undefined : links.turnos[index];
+      // When people can enroll there is one primary action: no per-turno WhatsApp.
+      const inquiry =
+        display === "paused" || enrolling ? undefined : links.turnos[index];
       return {
         key: turnoKey(turno, index),
         weekday: weekdayName(turno.weekday),
@@ -375,6 +384,9 @@ export function tallerToDetail(
       ? { notice: content.talleres.noOffering }
       : {}),
     action,
+    ...(enrolling
+      ? { doubts: { href: links.main.href, label: microcopy.doubtsLabel } }
+      : {}),
     ...(taller.project
       ? {
           project: {

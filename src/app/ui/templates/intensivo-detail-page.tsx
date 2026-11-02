@@ -38,6 +38,8 @@ export interface IntensivoDetailProps {
   materialsBadge?: string;
   conditions: { label: string; policyText: string; minSeats: string };
   gallery: (DetailImage & { id: string })[];
+  /** A discreet text link for questions, only beside a reservation action. */
+  doubts?: { href: string; label: string };
   action:
     | { kind: "inquiry"; href: string; label: string }
     | { kind: "reserve"; href: string; label: string }
@@ -65,6 +67,7 @@ export function IntensivoDetailPage({
   materialsBadge,
   conditions,
   gallery,
+  doubts,
   action,
 }: IntensivoDetailProps) {
   return (
@@ -90,6 +93,14 @@ export function IntensivoDetailPage({
           ) : (
             <ButtonLink href={action.href}>{action.label}</ButtonLink>
           )}
+          {doubts && action.kind !== "paused" ? (
+            <a
+              href={doubts.href}
+              className="min-h-11 text-center text-clay-800 underline underline-offset-4"
+            >
+              {doubts.label}
+            </a>
+          ) : null}
         </BookingSummary>
         <div className="flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-1">
           <Image

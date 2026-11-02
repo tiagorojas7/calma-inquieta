@@ -185,8 +185,8 @@ describe("tallerToDetail", () => {
     expect(detail.action).toEqual({ kind: "inquiry", ...link });
   });
 
-  it("derives the class length per turno and links each turno to its message", () => {
-    const detail = detailOf();
+  it("derives the class length per turno and links each turno to its message when enrollment is not possible", () => {
+    const detail = detailOf({ offering: null });
     expect(
       detail.turnos.map((turno) => [
         turno.weekday,
@@ -196,15 +196,27 @@ describe("tallerToDetail", () => {
         turno.inquiry,
       ]),
     ).toEqual([
-      ["Lunes", "10:00 a 12:00 h", "2 horas", "Cupo limitado", turnoLink(0)],
-      [
-        "Miércoles",
-        "18:00 a 20:30 h",
-        "2 h 30 min",
-        "Cupo limitado",
-        turnoLink(1),
-      ],
+      ["Lunes", "10:00 a 12:00 h", "2 horas", undefined, turnoLink(0)],
+      ["Miércoles", "18:00 a 20:30 h", "2 h 30 min", undefined, turnoLink(1)],
     ]);
+    expect(detail.doubts).toBeUndefined();
+  });
+
+  it("offers ONE enrollment action, no per-turno WhatsApp links and one discreet doubts link when enrollment is possible", () => {
+    const detail = detailOf();
+    expect(detail.action.kind).toBe("enrollment");
+    expect(detail.turnos.map((turno) => turno.inquiry)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(detail.turnos.map((turno) => turno.weekday)).toEqual([
+      "Lunes",
+      "Miércoles",
+    ]);
+    expect(detail.doubts).toEqual({
+      href: link.href,
+      label: "¿Dudas? Escribinos",
+    });
   });
 
   it("gives a unique key to turnos that share weekday and start time", () => {
@@ -251,6 +263,7 @@ describe("tallerToDetail", () => {
     );
     expect(detail.action.kind).toBe("inquiry");
     expect(detail.turnos[0]?.inquiry).toEqual(turnoLink(0));
+    expect(detail.doubts).toBeUndefined();
   });
 
   it("maps the project section only when a project exists", () => {

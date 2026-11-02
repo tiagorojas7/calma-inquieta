@@ -7,21 +7,27 @@ type Variant = "primary" | "secondary" | "tertiary" | "outline" | "text-arrow";
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 const lift =
-  "relative inline-flex min-h-11 items-center justify-center rounded-md px-6 py-3 font-sans transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 ease-calm motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-reduce:transition-none";
+  "relative inline-flex min-h-11 items-center justify-center rounded-pill px-7 py-3 font-sans font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 ease-calm motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-reduce:transition-none";
 const disabled =
   "disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:shadow-none aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:translate-y-0 aria-disabled:hover:shadow-none";
 
-const secondary = `${lift} border border-clay-600 text-clay-800 hover:bg-sand-200 active:border-clay-800 active:bg-sand-300 ${focus} ${disabled}`;
+const secondary = `${lift} border-2 border-clay-600 text-clay-800 hover:bg-clay-600 hover:text-white active:border-clay-800 active:bg-clay-800 active:text-white ${focus} ${disabled}`;
 const tertiary =
   "link-underline link-underline-rest relative inline-flex min-h-11 items-center gap-2 text-clay-800 transition-[color,background-size,transform,opacity] duration-200 ease-calm hover:text-clay-800 active:text-clay-800 motion-safe:hover:translate-x-0.5 motion-safe:active:translate-x-0 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-x-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:translate-x-0";
 const variantClasses: Record<Variant, string> = {
-  primary: `${lift} bg-clay-600 text-white hover:bg-clay-700 hover:shadow-card active:bg-clay-800 ${focus} ${disabled}`,
+  primary: `${lift} bg-clay-600 text-white shadow-button hover:bg-clay-700 hover:shadow-lift active:bg-clay-800 ${focus} ${disabled}`,
   secondary,
   tertiary,
   // Compatibility aliases for existing public call sites.
   outline: secondary,
   "text-arrow": tertiary,
 };
+
+const ARROW_VARIANTS: ReadonlySet<Variant> = new Set([
+  "primary",
+  "secondary",
+  "outline",
+]);
 
 type ButtonProps = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement>
@@ -34,7 +40,13 @@ function LoadingLabel({
   loading,
   children,
 }: PropsWithChildren<{ loading: boolean }>) {
-  return <span className={loading ? "opacity-0" : undefined}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-2 ${loading ? "opacity-0" : ""}`.trim()}
+    >
+      {children}
+    </span>
+  );
 }
 
 function LoadingIndicator() {
@@ -113,7 +125,7 @@ export function ButtonLink({
     ...props,
     "aria-busy": loading || undefined,
     "aria-disabled": unavailable || undefined,
-    className: `${variantClasses[variant]} ${className}`,
+    className: `${variantClasses[variant]} ${ARROW_VARIANTS.has(variant) ? "btn-arrow" : ""} ${className}`,
     onClick: preventUnavailableActivation,
   };
   return external ? (

@@ -570,6 +570,12 @@ describe("layout stylesheet", () => {
     );
   });
 
+  it("hides the footer booking panel when the page already closes with a call-to-action band", () => {
+    expect(css).toMatch(
+      /:has\(\.closing-band\)\s+\.site-footer-cta\s*\{[^}]*display:\s*none/,
+    );
+  });
+
   it("app.css clips the horizontal overshoot of full-bleed bands", () => {
     expect(readStyles("app.css")).toMatch(/html\s*\{[^}]*overflow-x:\s*clip/);
   });
@@ -793,5 +799,43 @@ describe("T7 home stylesheet", () => {
   it("the paper note has a tape strip and a light sheet from the tokens", () => {
     expect(rule(".paper-note::before")?.body).toMatch(/content:/);
     expect(rule(".paper-note-sheet")?.body).toMatch(/var\(--color-sand-/);
+  });
+});
+
+describe("identity stylesheet", () => {
+  const css = readStyles("identity.css");
+
+  it("is imported by the global entry", () => {
+    expect(readStyles("app.css")).toContain('@import "./identity.css"');
+  });
+
+  it("holds no colour literal: it reads the brand tokens only", () => {
+    expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(css).not.toMatch(/\brgb\(/);
+  });
+
+  it("moves things only inside prefers-reduced-motion: no-preference", () => {
+    const moving = cssBlocks(css).filter(
+      (block) =>
+        !block.prelude.startsWith("@") &&
+        /transition|transform/.test(block.body),
+    );
+
+    expect(moving.length).toBeGreaterThan(0);
+    for (const block of moving) {
+      expect(
+        block.ancestors.some((a) =>
+          /@media\s*\(prefers-reduced-motion:\s*no-preference\)/.test(a),
+        ),
+        `${block.prelude} moves outside no-preference`,
+      ).toBe(true);
+    }
+  });
+
+  it("declares the chocolate band tokens", () => {
+    const tokens = readStyles("tokens.css");
+    for (const name of ["cocoa-900", "apricot-300", "blush-100"]) {
+      expect(tokens).toContain(`--color-${name}:`);
+    }
   });
 });

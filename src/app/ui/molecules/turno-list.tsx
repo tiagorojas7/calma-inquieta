@@ -17,9 +17,11 @@ export function TurnoList({
       {items.map((item) => (
         <li
           key={item.key}
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 text-ink-700"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-sm bg-canvas px-3 py-2.5 text-ink-700"
         >
-          <span className="font-semibold text-ink-900">{item.weekday}</span>
+          <span className="font-display text-lg font-semibold text-ink-900">
+            {item.weekday}
+          </span>
           <span>{item.timeRange}</span>
           {item.duration ? <span>{item.duration}</span> : null}
           {item.seats ? <Pill>{item.seats}</Pill> : null}

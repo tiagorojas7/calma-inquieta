@@ -527,7 +527,7 @@ describe("Inicio bands and motifs", () => {
       band.getAttribute("data-tone"),
     );
 
-    expect(tones).toEqual(["canvas", "canvas", "white", "sand", "clay"]);
+    expect(tones).toEqual(["canvas", "canvas", "white", "sand", "cocoa"]);
     expect(container.querySelectorAll("[data-bleed='true']")).toHaveLength(5);
   });
 
@@ -551,7 +551,7 @@ describe("Inicio bands and motifs", () => {
 
     expect(
       bands(container).map((band) => band.getAttribute("data-tone")),
-    ).toEqual(["canvas", "canvas", "sand", "clay"]);
+    ).toEqual(["canvas", "canvas", "sand", "cocoa"]);
     expect(
       screen.getByRole("heading", { name: "Tu lugar para crear" }),
     ).toBeInTheDocument();

@@ -21,6 +21,7 @@ import {
 } from "~/app/ui/organisms/hero-section";
 import { HomeCatalogLead } from "~/app/ui/organisms/home-catalog-lead";
 import { Reveal } from "~/app/ui/organisms/reveal";
+import { microcopy } from "~/app/ui/microcopy";
 import { Section } from "~/app/ui/organisms/section";
 import { TestimonialsSection } from "~/app/ui/organisms/testimonials-section";
 import { TrustRow } from "~/app/ui/organisms/trust-row";
@@ -189,10 +190,18 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         items={data.testimonials}
       />
       <ContactBand
+        eyebrow={microcopy.closingBandEyebrow}
         heading={data.contactBand.heading}
         body={data.contactBand.body}
-        whatsappHref={data.whatsappHref ?? "#"}
-        instagramHref={data.instagramHref}
+        primary={{
+          href: data.whatsappHref ?? "#",
+          label: "Escribinos por WhatsApp",
+        }}
+        secondary={
+          data.instagramHref
+            ? [{ href: data.instagramHref, label: "Instagram" }]
+            : []
+        }
         image={data.contactBand.image}
       />
       <JsonLdScript json={data.jsonLd} />

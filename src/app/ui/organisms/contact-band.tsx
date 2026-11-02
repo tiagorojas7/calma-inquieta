@@ -1,10 +1,11 @@
 import { BotanicalSprig } from "../atoms/botanical-sprig";
+import { ButtonLink } from "../atoms/button";
 import { Butterfly } from "../atoms/butterfly";
+import { Eyebrow } from "../atoms/eyebrow";
 import { Frame } from "../atoms/frame";
 import { Heading } from "../atoms/heading";
 import { Image } from "../atoms/image";
 import { Text } from "../atoms/text";
-import { microcopy } from "../microcopy";
 import { Reveal } from "./reveal";
 import { Section } from "./section";
 
@@ -16,36 +17,54 @@ type BandPhoto = {
   srcSet?: string;
 };
 
+type BandAction = { href: string; label: string };
+
 const PHOTO_SIZES = "(min-width: 64rem) 20rem, 64vw";
 
 const lightFocus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas";
 
 /**
- * Closing band on deep clay (S7, S11): the big butterfly rests at one corner
- * and a sprig climbs from the foot. A lazy 4:5 photo in a white frame sits
- * beside the call to action (hands finishing a piece at the workshop table),
- * so the band invites booking instead of reading flat. Both calls to action
- * are restyled for the dark ground (light fill with clay text, light link)
- * because the shared buttons are tuned for light backgrounds.
+ * Shared closing call to action (Inicio and Quiénes somos). A chocolate band
+ * with a warm terracotta glow, a hairline stitched frame, the big butterfly
+ * resting at one corner and a sprig climbing from the foot. The heading is
+ * set at display size, the primary action is a cream pill with a drawn arrow
+ * and the secondary actions are cream text links. An optional 4:5 photo sits
+ * in a white frame beside the invitation. All pairs are AA on cocoa-900
+ * (canvas 13.7, sand-200 10.5, apricot-300 8.2).
  */
 export function ContactBand({
+  eyebrow,
   heading,
   body,
-  whatsappHref,
-  instagramHref,
+  primary,
+  secondary = [],
   image,
 }: {
+  /** Short decorative signpost above the heading. */
+  eyebrow?: string;
   heading: string;
   body: string;
-  whatsappHref: string;
-  instagramHref?: string;
+  primary: BandAction;
+  secondary?: readonly BandAction[];
   image?: BandPhoto | undefined;
 }) {
-  const external = /^https?:/.test(whatsappHref);
   return (
-    <Section bleed tone="clay" spacing="lg" className="overflow-x-clip">
-      <Butterfly size="xl" className="right-2 top-6 lg:right-120 lg:top-14" />
+    <Section
+      bleed
+      tone="cocoa"
+      spacing="lg"
+      grain
+      className="closing-band band-glow band-frame overflow-x-clip"
+    >
+      <Butterfly
+        size="xl"
+        className={
+          image
+            ? "right-2 top-6 lg:right-120 lg:top-14"
+            : "right-2 top-6 lg:right-24 lg:top-1/2 lg:-translate-y-1/2"
+        }
+      />
       <BotanicalSprig
         size="lg"
         variant="olive"
@@ -55,31 +74,29 @@ export function ContactBand({
       <div
         className={`grid items-center gap-12 ${image ? "lg:grid-cols-2 lg:gap-x-16" : ""}`}
       >
-        <Reveal className="flex max-w-prose flex-col items-start gap-4 max-lg:mt-28">
-          <Heading level={2}>{heading}</Heading>
-          <Text>{body}</Text>
-          <div className="flex flex-wrap items-center gap-4">
-            <a
-              href={whatsappHref}
-              {...(external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-              className={`inline-block min-h-11 rounded-md bg-canvas px-6 py-3 font-sans text-clay-800 transition-[background-color,box-shadow,transform] duration-200 ease-calm hover:bg-sand-100 hover:shadow-card motion-safe:hover:-translate-y-0.5 ${lightFocus}`}
+        <Reveal className="flex max-w-prose flex-col items-start gap-5 max-lg:mt-28">
+          {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
+          <Heading level={2} size="display">
+            {heading}
+          </Heading>
+          <Text className="text-lead text-sand-200!">{body}</Text>
+          <div className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <ButtonLink
+              href={primary.href}
+              className={`bg-canvas! text-cocoa-900! hover:bg-sand-200! ${lightFocus}`}
             >
-              Escribinos por WhatsApp
-              {external && (
-                <span className="sr-only">{microcopy.opensInNewTab}</span>
-              )}
-            </a>
-            {instagramHref ? (
-              <a
-                href={instagramHref}
-                rel="noopener noreferrer"
-                className={`link-underline link-underline-rest min-h-11 content-center text-canvas ${lightFocus}`}
+              {primary.label}
+            </ButtonLink>
+            {secondary.map((action) => (
+              <ButtonLink
+                key={action.href}
+                href={action.href}
+                variant="tertiary"
+                className={`text-canvas! ${lightFocus}`}
               >
-                Instagram
-              </a>
-            ) : null}
+                {action.label}
+              </ButtonLink>
+            ))}
           </div>
         </Reveal>
         {image ? (

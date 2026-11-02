@@ -99,6 +99,12 @@
   }
 }
 
+/* A page that already closes with its own call-to-action band (Inicio,
+   Quiénes somos) does not repeat the footer booking panel right after it. */
+body:has(.closing-band) .site-footer-cta {
+  display: none;
+}
+
 /* Footer: brand block, contact column and page navigation. */
 .site-footer-grid {
   display: grid;

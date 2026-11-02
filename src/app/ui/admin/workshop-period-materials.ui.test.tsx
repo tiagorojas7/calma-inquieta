@@ -69,6 +69,20 @@ describe("PeriodMaterialsPicker", () => {
     expect(checked(container)).toEqual(["m3"]);
   });
 
+  it("selects and clears every material with the global button, respecting the search", () => {
+    const { container } = renderPicker(["m4"]);
+    fireEvent.click(screen.getByRole("button", { name: "Elegir todos" }));
+    expect(checked(container)).toEqual(["m1", "m2", "m3", "m4"]);
+    fireEvent.click(screen.getByRole("button", { name: "Quitar todos" }));
+    expect(checked(container)).toEqual([]);
+
+    fireEvent.change(screen.getByLabelText("Buscar material"), {
+      target: { value: "canasto" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Elegir todos" }));
+    expect(checked(container)).toEqual(["m1", "m2"]);
+  });
+
   it("filters by name without accents and leaves hidden choices in the form", () => {
     const { container } = renderPicker(["m3"]);
     fireEvent.change(screen.getByLabelText("Buscar material"), {

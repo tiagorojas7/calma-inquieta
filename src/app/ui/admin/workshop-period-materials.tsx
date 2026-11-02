@@ -50,10 +50,12 @@ export function PeriodMaterialsPicker({
   options,
   selectedIds,
   error,
+  legend = copy.materials,
 }: {
   options: readonly PeriodMaterialOption[];
   selectedIds: readonly string[];
   error?: string | undefined;
+  legend?: string;
 }) {
   const searchId = useId();
   const errorId = `${searchId}-error`;
@@ -68,6 +70,9 @@ export function PeriodMaterialsPicker({
     fold(option.category).includes(needle);
   const groups = groupByCategory(options);
   const anyVisible = options.some(visible);
+  const visibleIds = options.filter(visible).map((option) => option.id);
+  const everythingSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   function toggle(ids: readonly string[], checked: boolean) {
     setSelected((current) => {
@@ -82,7 +87,7 @@ export function PeriodMaterialsPicker({
 
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="font-semibold text-ink-900">{copy.materials}</legend>
+      <legend className="font-semibold text-ink-900">{legend}</legend>
       <div className="flex flex-col gap-1">
         <label htmlFor={searchId} className="font-semibold text-ink-900">
           {pickerCopy.search}
@@ -100,6 +105,19 @@ export function PeriodMaterialsPicker({
           }}
           className="min-h-11 w-full rounded-sm border border-clay-600 bg-surface px-3 py-2 text-base text-ink-900"
         />
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              toggle(visibleIds, !everythingSelected);
+            }}
+          >
+            {everythingSelected
+              ? pickerCopy.selectNothing
+              : pickerCopy.selectEverything}
+          </Button>
+        </div>
       </div>
       {!anyVisible && <p role="status">{pickerCopy.noMatches}</p>}
       {groups.map(({ category, items }) => {

@@ -62,7 +62,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!materials.ok) throw failureResponse(materials.error);
   return {
     teachers: teachers.value,
-    materials: materials.value.map(({ id, name }) => ({ id, name })),
+    materials: materials.value.map(({ id, name, category }) => ({
+      id,
+      name,
+      category,
+    })),
   };
 }
 

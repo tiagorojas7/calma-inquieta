@@ -83,7 +83,7 @@ const location = (response: unknown) =>
 describe("admin workshop create loader", () => {
   it("offers active teachers with their modality and the selectable materials", async () => {
     const fixture = workshopFlowFixture([
-      buildMaterial({ id: "m1", name: "Arcilla" }),
+      buildMaterial({ id: "m1", name: "Arcilla", category: "Arcillas" }),
     ]);
     await seedTeacher(fixture, { name: "Beto Ruiz", modality: "third_party" });
     const archived = await seedTeacher(fixture, {
@@ -99,7 +99,9 @@ describe("admin workshop create loader", () => {
     expect(result.teachers).toEqual([
       { id: "t1", name: "Beto Ruiz", modality: "third_party" },
     ]);
-    expect(result.materials).toEqual([{ id: "m1", name: "Arcilla" }]);
+    expect(result.materials).toEqual([
+      { id: "m1", name: "Arcilla", category: "Arcillas" },
+    ]);
   });
 
   it("is denied for a non-admin", async () => {

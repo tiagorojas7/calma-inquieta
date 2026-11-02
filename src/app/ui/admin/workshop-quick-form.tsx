@@ -8,6 +8,7 @@ import {
   TextAreaField,
   TextField,
 } from "./form-fields";
+import { PeriodMaterialsPicker } from "./workshop-period-materials";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -44,6 +45,7 @@ export interface QuickFormTeacher {
 export interface QuickFormMaterial {
   readonly id: string;
   readonly name: string;
+  readonly category: string;
 }
 
 const WEEKDAYS = [
@@ -248,33 +250,28 @@ export function QuickWorkshopForm({
           </details>
         ) : null}
       </section>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="font-display text-xl text-ink-900">
-          {quick.sectionMaterials}
-        </legend>
-        {materials.length === 0 ? (
+      {materials.length === 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-xl text-ink-900">
+            {quick.sectionMaterials}
+          </h2>
           <Text tone="muted">{quick.noMaterials}</Text>
-        ) : (
-          <>
-            <Text tone="muted">{quick.materialsHint}</Text>
-            {materials.map((material) => (
-              <label
-                key={material.id}
-                className="flex min-h-11 items-center gap-2"
-              >
-                <input
-                  type="checkbox"
-                  name="materialIds"
-                  value={material.id}
-                  defaultChecked={values.materialIds.includes(material.id)}
-                  className="size-5"
-                />
-                <span>{material.name}</span>
-              </label>
-            ))}
-          </>
-        )}
-      </fieldset>
+        </section>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <Text tone="muted">{quick.materialsHint}</Text>
+          <PeriodMaterialsPicker
+            legend={quick.sectionMaterials}
+            selectedIds={values.materialIds}
+            options={materials.map((material) => ({
+              ...material,
+              active: true,
+              available: true,
+              historical: false,
+            }))}
+          />
+        </div>
+      )}
       <Text tone="muted">{quick.derivedNote}</Text>
       <div className="flex flex-wrap gap-3">
         <AdminButton type="submit" name="intent" value="publish">

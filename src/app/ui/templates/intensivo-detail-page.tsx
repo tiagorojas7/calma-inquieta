@@ -88,7 +88,12 @@ export function IntensivoDetailPage({
           {action.kind === "paused" ? (
             <PausedNotice text={action.text} link={action.link} />
           ) : (
-            <ButtonLink href={action.href}>{action.label}</ButtonLink>
+            <ButtonLink
+              href={action.href}
+              variant={action.kind === "reserve" ? "success" : "primary"}
+            >
+              {action.label}
+            </ButtonLink>
           )}
         </BookingSummary>
         <div className="flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-1">
@@ -117,7 +122,11 @@ export function IntensivoDetailPage({
         </div>
       </div>
       {action.kind !== "paused" ? (
-        <StickyAction href={action.href} label={action.label} />
+        <StickyAction
+          href={action.href}
+          label={action.label}
+          variant={action.kind === "reserve" ? "success" : "primary"}
+        />
       ) : null}
     </article>
   );

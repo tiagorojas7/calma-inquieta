@@ -225,14 +225,17 @@ describe("EnrollmentsList Por cobrar", () => {
     expect(danger).toHaveAttribute("data-variant", "danger");
   });
 
-  it("has one primary button per card: Marcar pagado", () => {
+  it("has one green Marcar pagado and one primary button per card", () => {
     render(<EnrollmentsList {...props} />);
 
     const primary = screen
       .getAllByRole("button")
       .filter((button) => button.getAttribute("data-variant") === "primary")
       .map((button) => button.textContent);
-    expect(primary).toEqual(["Marcar pagado", "Registrar este pago"]);
+    expect(primary).toEqual(["Registrar este pago"]);
+    expect(
+      screen.getByRole("button", { name: "Marcar pagado" }),
+    ).toHaveAttribute("data-variant", "success");
   });
 
   it("shows an empty state when nothing is pending", () => {

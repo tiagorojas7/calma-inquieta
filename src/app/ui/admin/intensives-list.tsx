@@ -36,7 +36,7 @@ export function IntensivesList({
           { label: copy.title },
         ]}
         actions={
-          <AdminButtonLink href="/admin/intensivos/nuevo">
+          <AdminButtonLink href="/admin/intensivos/nuevo" variant="success">
             {copy.newAction}
           </AdminButtonLink>
         }
@@ -80,7 +80,11 @@ export function IntensivesList({
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
-          action: { href: "/admin/intensivos/nuevo", label: copy.newAction },
+          action: {
+            href: "/admin/intensivos/nuevo",
+            label: copy.newAction,
+            variant: "success",
+          },
         }}
       />
     </section>

@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
 
-export type AdminButtonVariant = "primary" | "secondary" | "outline" | "danger";
+export type AdminButtonVariant =
+  "primary" | "secondary" | "outline" | "danger" | "success";
 
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
@@ -10,13 +11,16 @@ const disabled =
   "disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 
 /**
- * One strong primary per screen (filled), secondary buttons outlined, red only
- * for delete and cancel. `outline` is kept as an alias of `secondary`.
+ * Colors by action kind, the same on every screen: brand primary for the main
+ * next step ("Guardar"), green for create, add and positive commits ("Agregar",
+ * "Publicar"), red for delete, cancel and archive, outlined for secondary and
+ * navigation. `outline` is kept as an alias of `secondary`.
  */
 export const adminButtonClasses = {
   primary: `${base} bg-clay-800 text-white shadow-card hover:bg-ink-900 ${focus} ${disabled}`,
   secondary: `${base} border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100 ${focus} ${disabled}`,
-  danger: `${base} border-2 border-admin-danger bg-surface text-admin-danger hover:bg-admin-danger-soft ${focus} ${disabled}`,
+  danger: `${base} bg-admin-danger text-white shadow-card hover:bg-admin-danger-hover ${focus} ${disabled}`,
+  success: `${base} bg-admin-success text-white shadow-card hover:bg-admin-success-hover ${focus} ${disabled}`,
 } as const;
 
 export function normalizeAdminVariant(

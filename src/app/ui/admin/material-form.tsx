@@ -296,7 +296,7 @@ export function MaterialForm({
                 {variants.length > 1 && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="danger"
                     onClick={() => {
                       setVariants((current) =>
                         current.filter((_, rowIndex) => rowIndex !== index),
@@ -312,7 +312,7 @@ export function MaterialForm({
         })}
         <Button
           type="button"
-          variant="outline"
+          variant="success"
           onClick={() => {
             setVariants((current) => [
               ...current,

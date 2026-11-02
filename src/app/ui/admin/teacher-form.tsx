@@ -118,7 +118,9 @@ export function TeacherStatePanel({
       <FormError message={error} />
       <form method="post">
         <input type="hidden" name="intent" value="reactivate" />
-        <Button type="submit">{state.reactivate}</Button>
+        <Button type="submit" variant="success">
+          {state.reactivate}
+        </Button>
       </form>
     </section>
   );
@@ -132,6 +134,7 @@ export function TeacherArchiveZone({ error }: { error: string | undefined }) {
       <FormError message={error} />
       <ConfirmedSubmit
         intent="archive"
+        variant="danger"
         label={state.archive}
         title={state.archiveTitle}
         message={state.archiveMessage}

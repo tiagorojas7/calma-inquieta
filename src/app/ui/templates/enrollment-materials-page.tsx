@@ -237,7 +237,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                   />
                   <button
                     type="button"
-                    className="inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+                    className="inline-flex min-h-11 items-center text-berry-600 underline underline-offset-4 hover:text-berry-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
                     onClick={() => {
                       props.onRemove(line.variantId);
                     }}

@@ -304,7 +304,12 @@ export function IntensiveForm({
       <div className="flex flex-wrap gap-3">
         {mode === "new" ? (
           <>
-            <Button type="submit" name="intent" value="publish">
+            <Button
+              type="submit"
+              name="intent"
+              value="publish"
+              variant="success"
+            >
               {copy.quick.publish}
             </Button>
             <Button

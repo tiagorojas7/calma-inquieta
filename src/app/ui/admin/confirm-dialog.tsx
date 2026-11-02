@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { AdminButton as Button } from "./admin-button";
+import { AdminButton as Button, type AdminButtonVariant } from "./admin-button";
 import { Heading, Text } from "../atoms/heading";
 import { adminMicrocopy } from "./microcopy";
 
@@ -15,6 +15,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   tone = "default",
+  confirmVariant,
   onConfirm,
   onCancel,
 }: {
@@ -23,6 +24,8 @@ export function ConfirmDialog({
   message: string;
   confirmLabel: string;
   tone?: "default" | "destructive";
+  /** Color of the confirm button; red for a destructive tone by default. */
+  confirmVariant?: AdminButtonVariant | undefined;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -60,7 +63,13 @@ export function ConfirmDialog({
         <Button data-cancel type="button" variant="outline" onClick={onCancel}>
           {adminMicrocopy.confirm.cancel}
         </Button>
-        <Button type="button" onClick={onConfirm}>
+        <Button
+          type="button"
+          variant={
+            confirmVariant ?? (tone === "destructive" ? "danger" : "primary")
+          }
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </Button>
       </div>

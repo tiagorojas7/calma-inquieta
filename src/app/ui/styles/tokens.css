@@ -27,6 +27,10 @@
   --color-white: #ffffff; /* on-primary text */
   --color-cocoa-900: #35241b; /* chocolate: the deep closing band and its ground */
   --color-apricot-300: #efb48f; /* light terracotta: accent text on cocoa only */
+  --color-moss-600: #46633a; /* success: create, add, confirm buttons (white label) */
+  --color-moss-700: #365530; /* success hover/pressed */
+  --color-berry-600: #a32020; /* destructive: remove buttons (white label) */
+  --color-berry-700: #7f1818; /* destructive hover/pressed */
   --color-blush-100: #f7e6da; /* warm terracotta tint: highlight fills and quote panels */
 
   /* Type scale (§3.3). Body stays at or above 1rem at every viewport. */

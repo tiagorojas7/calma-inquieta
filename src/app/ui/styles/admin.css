@@ -8,7 +8,10 @@
   /* Page and card separation. */
   --color-admin-page: #eceef1; /* light grey page background */
   --color-admin-line: #c9ced6; /* card border on the grey page */
-  --color-admin-danger: #a32020; /* delete and cancel only */
+  --color-admin-danger: #a32020; /* delete and cancel only: filled red button */
+  --color-admin-danger-hover: #7f1818;
+  --color-admin-success: #1f6b3a; /* create, add, positive commit: filled green button */
+  --color-admin-success-hover: #14532d;
   --color-admin-danger-soft: #fdeceb;
 
   /* Fixed status colors: fg on bg, all above 4.5:1. */

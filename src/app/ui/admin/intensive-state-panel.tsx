@@ -26,7 +26,7 @@ function PlainSubmit({
 }: {
   intent: string;
   label: string;
-  variant?: "primary" | "outline";
+  variant?: "success" | "outline";
 }) {
   return (
     <form method="post">
@@ -63,13 +63,13 @@ export function IntensiveStatePanel({
           <PlainSubmit
             intent="publish"
             label={copy.publish}
-            variant="primary"
+            variant="success"
           />
         </div>
       )}
       {status === "paused" && (
         <div>
-          <PlainSubmit intent="publish" label={copy.resume} variant="primary" />
+          <PlainSubmit intent="publish" label={copy.resume} variant="success" />
         </div>
       )}
       {status === "archived" && (
@@ -77,7 +77,7 @@ export function IntensiveStatePanel({
           <PlainSubmit
             intent="restore"
             label={copy.restore}
-            variant="primary"
+            variant="success"
           />
         </div>
       )}
@@ -196,6 +196,7 @@ export function IntensiveOtherActions({
               {canCancel && (
                 <ConfirmedSubmit
                   intent="cancel"
+                  variant="danger"
                   label={copy.cancel}
                   {...copy.confirm.cancel}
                 />
@@ -203,6 +204,7 @@ export function IntensiveOtherActions({
               {canArchive && (
                 <ConfirmedSubmit
                   intent="archive"
+                  variant="danger"
                   label={copy.archive}
                   {...copy.confirm.archive}
                 />

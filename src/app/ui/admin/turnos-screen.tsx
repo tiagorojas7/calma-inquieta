@@ -48,7 +48,7 @@ function RowSubmit({
     <form method="post">
       <input type="hidden" name="intent" value={intent} />
       <input type="hidden" name="turnoId" value={turnoId} />
-      <Button type="submit" variant="outline" aria-label={name}>
+      <Button type="submit" variant="success" aria-label={name}>
         {label}
       </Button>
     </form>

@@ -71,3 +71,20 @@ describe("ImageField", () => {
     expect(screen.getByLabelText("Texto alternativo")).toHaveValue("Sala");
   });
 });
+
+describe("ImageField picker button", () => {
+  it("shows a green Elegir imagen button over a visually hidden input", () => {
+    renderField(() => Promise.resolve({ ok: true, image: stored }));
+    const input = screen.getByLabelText("Foto");
+    expect(input).toHaveClass("opacity-0");
+    expect(input.parentElement).toHaveClass("bg-admin-success", "text-white");
+    expect(input.parentElement).toHaveTextContent("Elegir imagen");
+    expect(screen.getByText("Ninguna imagen elegida")).toBeInTheDocument();
+  });
+
+  it("shows the chosen file name", async () => {
+    renderField(() => Promise.resolve({ ok: true, image: stored }));
+    await userEvent.upload(screen.getByLabelText("Foto"), photo);
+    expect(await screen.findByText("foto.jpg")).toBeInTheDocument();
+  });
+});

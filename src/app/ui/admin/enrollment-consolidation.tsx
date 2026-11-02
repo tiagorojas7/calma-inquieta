@@ -137,7 +137,9 @@ function SupplierSection({
           <p className="mb-3 text-ink-700">
             {copy.consequence(supplier.orderIds.length)}
           </p>
-          <Button type="submit">{copy.markRequested}</Button>
+          <Button type="submit" variant="success">
+            {copy.markRequested}
+          </Button>
         </form>
       ) : null}
     </section>
@@ -248,7 +250,7 @@ function DeliveryCard({
           <input type="hidden" name="orderId" value={card.id} />
           <Button
             type="submit"
-            variant="outline"
+            variant="success"
             aria-label={deliver.receivedOf(card.studentName)}
             className="w-full sm:w-auto"
           >
@@ -289,7 +291,9 @@ function ToDeliverSection({
             <p className="text-ink-700">
               {deliver.markAllConsequence(toDeliver.length)}
             </p>
-            <Button type="submit">{deliver.markAll}</Button>
+            <Button type="submit" variant="success">
+              {deliver.markAll}
+            </Button>
           </form>
           <ul
             aria-label={deliver.label}

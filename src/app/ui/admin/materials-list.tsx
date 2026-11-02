@@ -79,7 +79,7 @@ export function MaterialsList({
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <AdminButtonLink href={`${BASE}/nuevo`}>
+            <AdminButtonLink href={`${BASE}/nuevo`} variant="success">
               {copy.newAction}
             </AdminButtonLink>
             <AdminButtonLink href={`${BASE}/proveedores`} variant="outline">
@@ -191,7 +191,11 @@ export function MaterialsList({
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
-          action: { href: `${BASE}/nuevo`, label: copy.newAction },
+          action: {
+            href: `${BASE}/nuevo`,
+            label: copy.newAction,
+            variant: "success",
+          },
         }}
       />
     </section>

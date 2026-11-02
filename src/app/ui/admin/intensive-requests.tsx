@@ -113,7 +113,9 @@ function ConfirmForm({
         error={shown?.errors.note}
       />
       <div>
-        <Button type="submit">{f.submit}</Button>
+        <Button type="submit" variant="success">
+          {f.submit}
+        </Button>
       </div>
     </form>
   );
@@ -148,7 +150,7 @@ function CancelForm({
         error={shown?.errors.reason}
       />
       <div>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="danger">
           {f.submit}
         </Button>
       </div>

@@ -46,6 +46,33 @@ describe("admin status palette", () => {
   });
 });
 
+describe("admin button colors", () => {
+  it.each([
+    "admin-danger",
+    "admin-danger-hover",
+    "admin-success",
+    "admin-success-hover",
+  ])(
+    "keeps white text on %s at AA, and the fill visible on page and cards",
+    (token) => {
+      expect(contrastRatio("#ffffff", get(token))).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(get(token), get("admin-page")),
+      ).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(get(token), "#ffffff")).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it("pins the exact ratios of the green and red fills against white", () => {
+    const ratio = (token: string) =>
+      Math.round(contrastRatio("#ffffff", get(token)) * 100) / 100;
+    expect(ratio("admin-success")).toBe(6.52);
+    expect(ratio("admin-success-hover")).toBe(9.11);
+    expect(ratio("admin-danger")).toBe(7.54);
+    expect(ratio("admin-danger-hover")).toBe(10.26);
+  });
+});
+
 /** CIE Lab distance (ΔE76): how far apart two colors look. */
 function lab(hex: string) {
   const channel = (offset: number) => {

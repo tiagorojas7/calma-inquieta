@@ -2,7 +2,14 @@ import { Link } from "react-router";
 import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
 import { microcopy } from "../microcopy";
 
-type Variant = "primary" | "secondary" | "tertiary" | "outline" | "text-arrow";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "outline"
+  | "text-arrow"
+  | "success"
+  | "danger";
 
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
@@ -16,6 +23,8 @@ const tertiary =
   "link-underline link-underline-rest relative inline-flex min-h-11 items-center gap-2 text-clay-800 transition-[color,background-size,transform,opacity] duration-200 ease-calm hover:text-clay-800 active:text-clay-800 motion-safe:hover:translate-x-0.5 motion-safe:active:translate-x-0 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-x-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:translate-x-0";
 const variantClasses: Record<Variant, string> = {
   primary: `${lift} bg-clay-600 text-white shadow-button hover:bg-clay-700 hover:shadow-lift active:bg-clay-800 ${focus} ${disabled}`,
+  success: `${lift} bg-moss-600 text-white shadow-button hover:bg-moss-700 hover:shadow-lift active:bg-moss-700 ${focus} ${disabled}`,
+  danger: `${lift} bg-berry-600 text-white shadow-button hover:bg-berry-700 hover:shadow-lift active:bg-berry-700 ${focus} ${disabled}`,
   secondary,
   tertiary,
   // Compatibility aliases for existing public call sites.
@@ -27,6 +36,7 @@ const ARROW_VARIANTS: ReadonlySet<Variant> = new Set([
   "primary",
   "secondary",
   "outline",
+  "success",
 ]);
 
 type ButtonProps = PropsWithChildren<

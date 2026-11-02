@@ -9,7 +9,11 @@ export function AdminEmptyState({
 }: {
   title: string;
   message: string;
-  action: { href: string; label: string };
+  action: {
+    href: string;
+    label: string;
+    variant?: "success" | "primary" | "secondary";
+  };
 }) {
   return (
     <section className="flex flex-col items-start gap-3 rounded-md bg-surface p-6 shadow-card">
@@ -17,7 +21,12 @@ export function AdminEmptyState({
         {title}
       </Heading>
       <Text>{message}</Text>
-      <AdminButtonLink href={action.href}>{action.label}</AdminButtonLink>
+      <AdminButtonLink
+        href={action.href}
+        variant={action.variant ?? "secondary"}
+      >
+        {action.label}
+      </AdminButtonLink>
     </section>
   );
 }

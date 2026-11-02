@@ -232,6 +232,7 @@ export function MaterialDetail({
               active ? copy.lifecycle.deactivate : copy.lifecycle.reactivate
             }
             tone={active ? "destructive" : "default"}
+            variant={active ? "danger" : "success"}
             title={
               active
                 ? copy.lifecycle.confirmDeactivate.title

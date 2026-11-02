@@ -28,6 +28,27 @@ describe("AdminButton", () => {
     );
   });
 
+  it("fills danger red and success green with white labels", () => {
+    render(
+      <>
+        <AdminButton variant="danger">Eliminar</AdminButton>
+        <AdminButton variant="success">Agregar</AdminButton>
+      </>,
+    );
+    expect(screen.getByRole("button", { name: "Eliminar" })).toHaveClass(
+      "bg-admin-danger",
+      "text-white",
+      "hover:bg-admin-danger-hover",
+    );
+    const add = screen.getByRole("button", { name: "Agregar" });
+    expect(add).toHaveAttribute("data-variant", "success");
+    expect(add).toHaveClass(
+      "bg-admin-success",
+      "text-white",
+      "hover:bg-admin-success-hover",
+    );
+  });
+
   it("disables itself and flags busy while loading", () => {
     render(<AdminButton loading>Guardar</AdminButton>);
     const button = screen.getByRole("button", { name: /Guardar/ });
@@ -54,6 +75,7 @@ describe("AdminButtonLink variants", () => {
     ["outline", "secondary"],
     ["secondary", "secondary"],
     ["danger", "danger"],
+    ["success", "success"],
   ] as const)("marks %s as %s", (variant, expected) => {
     render(
       <AdminButtonLink href="/admin/x" variant={variant}>

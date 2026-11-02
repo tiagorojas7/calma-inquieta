@@ -79,6 +79,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const period = await getPeriod(actor, context, params.id, params.period);
   const historicalOptions = period.materials.map((material) => ({
     ...material,
+    category: "",
     historical: true,
   }));
   let materialOptions = historicalOptions;
@@ -94,6 +95,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       ...selectable.value.map((material) => ({
         id: material.id,
         name: material.name,
+        category: material.category,
         active: material.active,
         available: material.available,
         historical: false,

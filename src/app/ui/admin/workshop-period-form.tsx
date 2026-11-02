@@ -6,6 +6,10 @@ import {
   TextField,
 } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import {
+  PeriodMaterialsPicker,
+  type PeriodMaterialOption,
+} from "./workshop-period-materials";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 type Values = {
@@ -21,13 +25,6 @@ type Values = {
   readonly snapshotPercentage: string;
   readonly materialIds: readonly string[];
 };
-type MaterialOption = {
-  readonly id: string;
-  readonly name: string;
-  readonly active: boolean;
-  readonly available: boolean;
-  readonly historical: boolean;
-};
 
 export function WorkshopPeriodForm({
   values,
@@ -36,7 +33,7 @@ export function WorkshopPeriodForm({
   formError,
 }: {
   values: Values;
-  materialOptions: readonly MaterialOption[];
+  materialOptions: readonly PeriodMaterialOption[];
   errors: Readonly<Partial<Record<keyof Values, string>>>;
   formError?: string | undefined;
 }) {
@@ -56,34 +53,11 @@ export function WorkshopPeriodForm({
         name="materialsRequired"
         defaultChecked={values.materialsRequired}
       />
-      <fieldset className="flex flex-col gap-2">
-        <legend className="font-semibold text-ink-900">{copy.materials}</legend>
-        {materialOptions.map((material) => (
-          <label key={material.id} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="materialIds"
-              value={material.id}
-              defaultChecked={values.materialIds.includes(material.id)}
-              aria-describedby={
-                errors.materialIds ? "period-material-ids-error" : undefined
-              }
-              aria-invalid={errors.materialIds ? true : undefined}
-              className="size-5"
-            />
-            <span>{copy.materialOption(material)}</span>
-          </label>
-        ))}
-        {errors.materialIds && (
-          <p
-            id="period-material-ids-error"
-            role="alert"
-            className="text-sm text-terracotta-700"
-          >
-            {errors.materialIds}
-          </p>
-        )}
-      </fieldset>
+      <PeriodMaterialsPicker
+        options={materialOptions}
+        selectedIds={values.materialIds}
+        error={errors.materialIds}
+      />
       <TextField
         label={copy.projectTitle}
         name="projectTitle"

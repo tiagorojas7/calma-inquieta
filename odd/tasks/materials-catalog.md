@@ -25,7 +25,7 @@ S6. Student selector (M2). Students see only the materials chosen for their tall
 
 ## Log
 
-L1 (2026-11-02, owner, verbatim): "Ademas mira, te muestro un ejemplo de lpdf que se envia a las alumnas antes de empezar un nuevo taller mensual, es sobre los materiales a pedir, parea que lo tengas en cuenta y en base  LO QUE YA TENENMOS EN EL PANEL, SE AGREGUEN FUNCIONES PARA facilitar la agregacion de estos materiales tanrto para el dueño en su panel como a los clientes a la hora de elegir, las imagenes a la hora de elegir se deben pdoer abrir y visualziar en formato mas grande, ya que actualmente se ven chiquitas."
+L1 (2026-11-02, owner, verbatim): "Ademas mira, te muestro un ejemplo de lpdf que se envia a las alumnas antes de empezar un nuevo taller mensual, es sobre los materiales a pedir, parea que lo tengas en cuenta y en base LO QUE YA TENENMOS EN EL PANEL, SE AGREGUEN FUNCIONES PARA facilitar la agregacion de estos materiales tanrto para el dueño en su panel como a los clientes a la hora de elegir, las imagenes a la hora de elegir se deben pdoer abrir y visualziar en formato mas grande, ya que actualmente se ven chiquitas."
 
 L2 (owner): "no tiene que ser extactamente igual, pero te muestro el pdf de com ose manejan a la hora de elgir materiales, que me sujieres?" Then approved the suggestion "Sí, sin el catálogo público (Recommended)": students see only the products chosen for their taller grouped by category, large photo full screen, measures as buttons in plain language, live total, consultar precio via WhatsApp; owners import from a spreadsheet, raise prices by % or re-import, photo straight from the list, choose month products by category.
 

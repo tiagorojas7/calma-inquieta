@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Heading, Text } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { useAdminArea, AreaChip } from "./admin-area";
-import { ADMIN_AREAS } from "./admin-areas";
 import { adminButtonClasses } from "./admin-button";
 
 export interface AdminBreadcrumb {
@@ -36,8 +35,8 @@ export function AdminBackButton({
 
 /**
  * Page header: the back button first, then the title. Inside an area (the
- * shell provides it) the header is a tinted band with the area's icon, so each
- * screen says where you are at a glance.
+ * shell provides it) the title carries the area's colored icon chip, so each
+ * screen says where you are at a glance; the header itself stays unfilled.
  */
 export function AdminPageHeader({
   title,
@@ -53,12 +52,8 @@ export function AdminPageHeader({
   actions?: ReactNode | undefined;
 }) {
   const area = useAdminArea();
-  const band = area ? ADMIN_AREAS[area].band : "";
   return (
-    <header
-      data-area={area}
-      className={`flex flex-col gap-3 ${area ? `rounded-lg p-4 sm:p-5 ${band}` : ""}`}
-    >
+    <header data-area={area} className="flex flex-col gap-3">
       {back ? <AdminBackButton href={back.href} label={back.label} /> : null}
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <nav aria-label="Migas de pan">
@@ -89,7 +84,7 @@ export function AdminPageHeader({
         </nav>
       ) : null}
       <div className="flex items-center gap-3">
-        {area ? <AreaChip area={area} size={28} onBand /> : null}
+        {area ? <AreaChip area={area} size={28} /> : null}
         <Heading level={1}>{title}</Heading>
       </div>
       {description ? (

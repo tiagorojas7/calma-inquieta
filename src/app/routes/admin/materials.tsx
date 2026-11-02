@@ -8,6 +8,7 @@ import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/materials";
 
 const FEEDBACK = ["created", "saved"] as const;
+const CATALOG_FEEDBACK = ["photo", "imported", "raised"] as const;
 
 export function meta() {
   return [{ title: "Materiales | Panel | Calma Inquieta" }];
@@ -30,6 +31,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     feedback: feedbackCode(request, FEEDBACK),
     category: query.category,
     supplierId: query.supplierId,
+    withoutImage: query.withoutImage,
+    catalogFeedback: feedbackCode(request, CATALOG_FEEDBACK),
     categories: [...categories.value],
     suppliers: suppliers.value.map((supplier) => ({
       value: supplier.id,
@@ -40,6 +43,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       name: material.name,
       category: material.category,
       supplierName: material.supplierName,
+      hasImage: material.hasImage,
       variantCount: material.variantCount,
       active: material.active,
       available: material.available,

@@ -63,6 +63,7 @@ describe("admin materials list loader", () => {
         "available",
         "active",
         "category",
+        "hasImage",
         "id",
         "name",
         "supplierName",
@@ -104,6 +105,27 @@ describe("admin materials list loader", () => {
     const malformed = await call(env, "?proveedor=nope");
     expect(malformed.supplierId).toBe("");
     expect(malformed.rows).toHaveLength(2);
+  });
+
+  it("flags photoless materials and filters them with sinfoto=1", async () => {
+    const env = await seeded();
+    const all = await call(env);
+    expect(all.withoutImage).toBe(false);
+    expect(all.rows.some((row) => row.hasImage)).toBe(false);
+
+    const withoutPhoto = await call(env, "?sinfoto=1");
+    expect(withoutPhoto.withoutImage).toBe(true);
+    expect(withoutPhoto.rows).toHaveLength(2);
+
+    const first = all.rows[0];
+    if (!first) throw new Error("expected a row");
+    await env.materials.setImage(actor, first.id, {
+      assetId: "asset-1",
+      alt: "Foto",
+    });
+    const after = await call(env, "?sinfoto=1");
+    expect(after.rows.map((row) => row.id)).not.toContain(first.id);
+    expect(after.rows).toHaveLength(1);
   });
 
   it("offers the categories and suppliers to filter by", async () => {

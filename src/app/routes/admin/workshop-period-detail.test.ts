@@ -50,6 +50,7 @@ const selectable = {
   id: "m2",
   name: "Esmalte",
   category: "Esmaltes",
+  hasImage: false,
   supplierName: "Proveedor",
   variantCount: 1,
   active: true,

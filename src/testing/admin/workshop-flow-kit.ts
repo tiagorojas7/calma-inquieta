@@ -52,6 +52,7 @@ export function workshopFlowFixture(catalog: readonly Material[] = []) {
               id: material.id,
               name: material.name,
               category: material.category,
+              hasImage: material.image !== null,
               supplierName: material.supplier.name,
               variantCount: material.variants.length,
               active: material.active,

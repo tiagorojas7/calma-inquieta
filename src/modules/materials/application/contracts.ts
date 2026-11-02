@@ -7,6 +7,7 @@ import type {
   Result,
 } from "~/modules/_shared";
 import type { ImageUse } from "~/modules/media";
+import type { CatalogFileError, CatalogRowCode } from "../domain/catalog-csv";
 import type { MaterialDraft, MaterialField } from "../domain/material-core";
 import type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
@@ -77,6 +78,7 @@ export interface Material {
 export interface MaterialSummary {
   readonly id: string;
   readonly name: string;
+  readonly hasImage: boolean;
   readonly category: string;
   readonly supplierName: string;
   readonly variantCount: number;
@@ -85,6 +87,59 @@ export interface MaterialSummary {
 }
 export type MaterialError =
   Invalid<MaterialField> | { readonly kind: "variant-in-use" };
+export type CatalogImportIssueCode = CatalogRowCode | "other-supplier";
+export interface CatalogImportIssue {
+  readonly line: number;
+  readonly code: CatalogImportIssueCode;
+}
+export interface CatalogImportItem {
+  readonly line: number;
+  readonly product: string;
+  readonly measure: string;
+  readonly kind: "new-material" | "new-variant" | "price-change" | "unchanged";
+  /** Whole pesos; null means "consultar precio" or no previous variant. */
+  readonly from: number | null;
+  readonly to: number | null;
+}
+export interface CatalogImportPlan {
+  readonly supplierName: string;
+  readonly rowCount: number;
+  readonly newMaterials: number;
+  readonly newVariants: number;
+  readonly priceChanges: number;
+  readonly unchanged: number;
+  readonly errors: readonly CatalogImportIssue[];
+  readonly items: readonly CatalogImportItem[];
+}
+export type CatalogImportError =
+  | NotFound
+  | Invalid<"supplierId">
+  | { readonly kind: "file"; readonly reason: CatalogFileError }
+  | { readonly kind: "has-errors" };
+export interface PriceRaiseScope {
+  readonly supplierId?: string;
+  readonly category?: string;
+}
+export interface PriceRaisePlan {
+  readonly percent: number;
+  readonly materialCount: number;
+  readonly variantCount: number;
+  readonly skippedWithoutPrice: number;
+  /** Sum of the affected variant prices, in whole pesos. */
+  readonly beforeTotal: number;
+  readonly afterTotal: number;
+  readonly changes: readonly {
+    readonly materialId: string;
+    readonly name: string;
+    readonly variants: readonly {
+      readonly label: string;
+      readonly from: number;
+      readonly to: number;
+    }[];
+  }[];
+}
+export type PriceRaiseError =
+  { readonly kind: "invalid-percent" } | { readonly kind: "no-scope" };
 export interface MaterialLookup {
   findByIds(ids: readonly string[]): Promise<ReadonlyMap<string, Material>>;
 }
@@ -124,6 +179,7 @@ export interface MaterialsService {
       readonly state: "active" | "inactive" | "all";
       readonly category?: string;
       readonly supplierId?: string;
+      readonly withoutImage?: boolean;
     },
   ): Promise<Result<readonly MaterialSummary[], AdminFailure>>;
   listSelectable(
@@ -153,4 +209,29 @@ export interface MaterialsService {
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;
+  setImage(
+    a: AdminActor,
+    id: string,
+    image: { readonly assetId: string; readonly alt: string },
+  ): Promise<Result<Material, AdminFailure | NotFound | Invalid<"image">>>;
+  previewCatalogImport(
+    a: AdminActor,
+    supplierId: string,
+    csv: string,
+  ): Promise<Result<CatalogImportPlan, AdminFailure | CatalogImportError>>;
+  importCatalog(
+    a: AdminActor,
+    supplierId: string,
+    csv: string,
+  ): Promise<Result<CatalogImportPlan, AdminFailure | CatalogImportError>>;
+  previewPriceRaise(
+    a: AdminActor,
+    scope: PriceRaiseScope,
+    percent: number,
+  ): Promise<Result<PriceRaisePlan, AdminFailure | PriceRaiseError>>;
+  raisePrices(
+    a: AdminActor,
+    scope: PriceRaiseScope,
+    percent: number,
+  ): Promise<Result<PriceRaisePlan, AdminFailure | PriceRaiseError>>;
 }

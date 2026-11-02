@@ -25,14 +25,17 @@ export function parseMaterialListQuery(params: URLSearchParams) {
     .slice(0, MAX_CATEGORY_LENGTH);
   const supplier = params.get("proveedor") ?? "";
   const supplierId = isUuid(supplier) ? supplier : "";
+  const withoutImage = params.get("sinfoto") === "1";
   return {
     filter,
     category,
     supplierId,
+    withoutImage,
     service: {
       state: STATE[filter],
       ...(category ? { category } : {}),
       ...(supplierId ? { supplierId } : {}),
+      ...(withoutImage ? { withoutImage } : {}),
     },
   };
 }

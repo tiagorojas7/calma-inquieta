@@ -108,6 +108,40 @@ describe("selectOffering", () => {
   it("gives null for no periods", () => {
     expect(pick([], "2026-10")).toBeNull();
   });
+
+  describe("with the active turnos", () => {
+    const period = (name: string, ...turnoIds: string[]) => ({
+      period: name,
+      capacities: turnoIds.map((turnoId) => ({ turnoId, capacity: 8 })),
+    });
+
+    it("skips an open month whose capacities hold no active turno", () => {
+      const november = period("2026-11", "old");
+      const december = period("2026-12", "new");
+      const picked = selectOffering(
+        [november, december],
+        "2026-11",
+        new Set(["new"]),
+      );
+      expect(picked?.period).toBe("2026-12");
+      expect(picked?.capacities.map((c) => c.turnoId)).toEqual(["new"]);
+    });
+
+    it("keeps the current month when one of its turnos is active", () => {
+      const picked = selectOffering(
+        [period("2026-11", "old", "new"), period("2026-12", "new")],
+        "2026-11",
+        new Set(["new"]),
+      );
+      expect(picked?.period).toBe("2026-11");
+    });
+
+    it("offers nothing when no open month holds an active turno", () => {
+      expect(
+        selectOffering([period("2026-11", "old")], "2026-11", new Set()),
+      ).toBeNull();
+    });
+  });
 });
 
 describe("compareTurnos", () => {

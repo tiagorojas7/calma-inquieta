@@ -336,15 +336,27 @@ export function runPublicTalleresContract(
   const slugsOf = (items: readonly { readonly slug: string }[]) =>
     items.map((item) => item.slug);
 
+  // An open month is only offered while it holds an active turno (S3 of the
+  // 2026-11-02 owner fixes), so the month fixtures carry one shared turno.
+  const base = seedTurno({ label: "Turno base" });
+  const monthOf = (
+    overrides: Partial<ReturnType<typeof seedPeriod>> = {},
+  ): ReturnType<typeof seedPeriod> =>
+    seedPeriod({
+      capacities: [{ turnoId: base.id, capacity: 10 }],
+      ...overrides,
+    });
   const periodsOf = (...months: string[]) =>
-    months.map((period) => seedPeriod({ period }));
+    months.map((period) => monthOf({ period }));
 
   async function offeringAt(
     periods: ReturnType<typeof seedPeriod>[],
     now: Date = NOW,
   ) {
     const { reader } = await open(
-      buildSeed({ talleres: [seedTaller({ slug: "t", periods })] }),
+      buildSeed({
+        talleres: [seedTaller({ slug: "t", turnos: [base], periods })],
+      }),
       now,
     );
     return (await reader.findBySlug("t"))?.offering?.period ?? null;
@@ -415,14 +427,14 @@ export function runPublicTalleresContract(
     it("picks the next open month when the current one is not open", async () => {
       expect(
         await offeringAt([
-          seedPeriod({ period: "2026-10", status: "draft" }),
-          seedPeriod({ period: "2026-11" }),
+          monthOf({ period: "2026-10", status: "draft" }),
+          monthOf({ period: "2026-11" }),
         ]),
       ).toBe("2026-11");
       expect(
         await offeringAt([
-          seedPeriod({ period: "2026-10", status: "closed" }),
-          seedPeriod({ period: "2026-11" }),
+          monthOf({ period: "2026-10", status: "closed" }),
+          monthOf({ period: "2026-11" }),
         ]),
       ).toBe("2026-11");
     });
@@ -430,7 +442,7 @@ export function runPublicTalleresContract(
     it("picks the earliest later open month", async () => {
       expect(
         await offeringAt([
-          seedPeriod({ period: "2026-10", status: "draft" }),
+          monthOf({ period: "2026-10", status: "draft" }),
           ...periodsOf("2026-12", "2026-11"),
         ]),
       ).toBe("2026-11");
@@ -439,7 +451,7 @@ export function runPublicTalleresContract(
     it("gives no offering when no current or later month is open, and ignores a past month", async () => {
       expect(
         await offeringAt([
-          seedPeriod({ period: "2026-10", status: "draft" }),
+          monthOf({ period: "2026-10", status: "draft" }),
           seedPeriod({ period: "2026-11", status: "closed" }),
         ]),
       ).toBeNull();
@@ -467,7 +479,8 @@ export function runPublicTalleresContract(
           talleres: [
             seedTaller({
               slug: "t",
-              periods: [seedPeriod({ period: "2026-10" })],
+              turnos: [base],
+              periods: [monthOf({ period: "2026-10" })],
             }),
           ],
         }),
@@ -626,22 +639,25 @@ export function runPublicTalleresContract(
           talleres: [
             seedTaller({
               slug: "con-proyecto",
+              turnos: [base],
               periods: [
-                seedPeriod({
+                monthOf({
                   period: "2026-10",
                   projectTitle: "Taza",
                   projectDescription: "Una taza con asa.",
                 }),
-                seedPeriod({ period: "2026-11", projectTitle: "Plato" }),
+                monthOf({ period: "2026-11", projectTitle: "Plato" }),
               ],
             }),
             seedTaller({
               slug: "solo-titulo",
-              periods: [seedPeriod({ projectTitle: "Solo título" })],
+              turnos: [base],
+              periods: [monthOf({ projectTitle: "Solo título" })],
             }),
             seedTaller({
               slug: "sin-proyecto",
-              periods: [seedPeriod({ period: "2026-10" })],
+              turnos: [base],
+              periods: [monthOf({ period: "2026-10" })],
             }),
           ],
         }),

@@ -127,6 +127,8 @@ export const materialCatalogCopy = {
     search: "Buscar material",
     searchApply: "Buscar",
     searchClear: "Ver todos",
+    selectEverything: "Elegir todos",
+    selectNothing: "Quitar todos",
     selectAll: (category: string) => `Elegir todos: ${category}`,
     selectNone: (category: string) => `Quitar todos: ${category}`,
     categoryGroup: (category: string) => `Categoría ${category}`,

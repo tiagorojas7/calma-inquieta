@@ -13,7 +13,7 @@ import type {
   PriceRaisePlan,
   PriceRaiseScope,
 } from "./contracts";
-import type { MaterialRepository } from "./material-repository";
+import type { MaterialRepository, MaterialWrite } from "./material-repository";
 import type { SupplierRepository } from "./supplier-repository";
 
 export const MAX_RAISE_PERCENT = 200;
@@ -35,14 +35,9 @@ const toMoney = (pesos: number): Money => {
 const pesosOf = (money: Money | null): number | null =>
   money === null ? null : money.toCentavos() / 100;
 
-interface Write {
-  readonly mode: "insert" | "update";
-  readonly material: Material;
-}
-
 interface ImportPlanned {
   readonly plan: CatalogImportPlan;
-  readonly writes: readonly Write[];
+  readonly writes: readonly MaterialWrite[];
 }
 
 interface RaisePlanned {
@@ -86,16 +81,22 @@ export function createCatalogTools(deps: CatalogToolsDeps) {
 
     const errors: CatalogImportIssue[] = [...parsed.errors];
     const items: CatalogImportItem[] = [];
-    const writes: Write[] = [];
+    const writes: MaterialWrite[] = [];
     let newMaterials = 0;
     let newVariants = 0;
     let priceChanges = 0;
     let unchanged = 0;
 
+    const known = await repository.findActiveByNames(
+      [...groups.values()].flatMap((rows) =>
+        rows[0] ? [rows[0].product] : [],
+      ),
+    );
+
     for (const rows of groups.values()) {
       const first = rows[0];
       if (!first) continue;
-      const existing = await repository.findActiveByName(first.product);
+      const existing = known.get(materialNameKey(first.product)) ?? null;
       if (existing && existing.supplier.id !== supplier.id) {
         for (const row of rows)
           errors.push({ line: row.line, code: "other-supplier" });
@@ -293,10 +294,8 @@ export function createCatalogTools(deps: CatalogToolsDeps) {
       if (!planned.ok) return planned;
       if (planned.value.plan.errors.length > 0)
         return err({ kind: "has-errors" });
-      for (const write of planned.value.writes) {
-        if (write.mode === "insert") await repository.insert(write.material);
-        else await repository.update(write.material);
-      }
+      if (planned.value.writes.length > 0)
+        await repository.saveAll(planned.value.writes);
       return ok(planned.value.plan);
     },
 
@@ -316,8 +315,12 @@ export function createCatalogTools(deps: CatalogToolsDeps) {
     ): Promise<Result<PriceRaisePlan, PriceRaiseError>> {
       const raised = await planRaise(actor, scope, percent);
       if (!raised.ok) return raised;
-      for (const material of raised.value.updates)
-        await repository.update(material);
+      await repository.saveAll(
+        raised.value.updates.map((material) => ({
+          mode: "update" as const,
+          material,
+        })),
+      );
       return ok(raised.value.plan);
     },
   };

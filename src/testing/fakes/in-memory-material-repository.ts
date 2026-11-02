@@ -6,6 +6,7 @@ import {
   type Material,
   type MaterialFilter,
   type MaterialRepository,
+  type MaterialWrite,
 } from "~/modules/materials";
 
 function cloneMaterial(material: Material): Material {
@@ -110,6 +111,40 @@ export class InMemoryMaterialRepository implements MaterialRepository {
       (material) => material.active && materialNameKey(material.name) === key,
     );
     return Promise.resolve(stored ? cloneMaterial(stored) : null);
+  }
+
+  findActiveByNames(
+    names: readonly string[],
+  ): Promise<ReadonlyMap<string, Material>> {
+    const keys = new Set(names.map(materialNameKey));
+    const found = new Map<string, Material>();
+    for (const material of this.materials.values()) {
+      const key = materialNameKey(material.name);
+      if (material.active && keys.has(key))
+        found.set(key, cloneMaterial(material));
+    }
+    return Promise.resolve(found);
+  }
+
+  saveAll(writes: readonly MaterialWrite[]): Promise<void> {
+    const snapshot = new Map(this.materials);
+    try {
+      for (const write of writes) {
+        const exists = this.materials.has(write.material.id);
+        if (write.mode === "insert" && exists)
+          throw new Error("material already exists");
+        if (write.mode === "update" && !exists)
+          throw new Error("material not found");
+        this.write(write.material);
+      }
+      return Promise.resolve();
+    } catch (error) {
+      this.materials.clear();
+      for (const [id, value] of snapshot) this.materials.set(id, value);
+      return Promise.reject(
+        error instanceof Error ? error : new Error("material save failed"),
+      );
+    }
   }
 
   async findByIds(

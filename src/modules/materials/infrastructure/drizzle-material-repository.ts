@@ -16,6 +16,7 @@ import {
   MaterialVariantLabelConflictError,
   type MaterialFilter,
   type MaterialRepository,
+  type MaterialWrite,
   type VariantUsageLookup,
 } from "../application/material-repository";
 import { materialNameKey, variantLabelKey } from "../domain/material-core";
@@ -192,6 +193,49 @@ async function loadMaterials(
   );
 }
 
+const INSERT_CHUNK = 500;
+
+/** Runs a whole batch on one transaction: grouped inserts, then updates. */
+async function saveBatch(
+  tx: Pick<Db, "insert" | "update" | "delete">,
+  writes: readonly MaterialWrite[],
+): Promise<void> {
+  const inserts = writes.filter((write) => write.mode === "insert");
+  const updates = writes.filter((write) => write.mode === "update");
+  for (let start = 0; start < inserts.length; start += INSERT_CHUNK) {
+    const chunk = inserts.slice(start, start + INSERT_CHUNK);
+    await tx.insert(material).values(
+      chunk.map((write) => ({
+        id: write.material.id,
+        ...rootValues(write.material),
+      })),
+    );
+  }
+  for (const write of updates) {
+    const rows = await tx
+      .update(material)
+      .set(rootValues(write.material))
+      .where(eq(material.id, write.material.id))
+      .returning({ id: material.id });
+    if (rows.length === 0) throw new Error("material not found");
+  }
+  const updatedIds = updates.map((write) => write.material.id);
+  for (let start = 0; start < updatedIds.length; start += INSERT_CHUNK)
+    await tx
+      .delete(materialVariant)
+      .where(
+        inArray(
+          materialVariant.materialId,
+          updatedIds.slice(start, start + INSERT_CHUNK),
+        ),
+      );
+  const variants = writes.flatMap((write) => variantValues(write.material));
+  for (let start = 0; start < variants.length; start += INSERT_CHUNK)
+    await tx
+      .insert(materialVariant)
+      .values(variants.slice(start, start + INSERT_CHUNK));
+}
+
 /** Short-lived sessions and transactional root+variant replacement. */
 export function createDrizzleMaterialRepository(
   openSession: DbSessionFactory,
@@ -265,6 +309,33 @@ export function createDrizzleMaterialRepository(
         );
         return values[0] ?? null;
       }),
+
+    findActiveByNames: (names) =>
+      withSession(async (db) => {
+        const keys = [...new Set(names.map(materialNameKey))];
+        if (keys.length === 0) return new Map();
+        const values = await loadMaterials(
+          db,
+          and(eq(material.active, true), inArray(material.nameKey, keys)),
+          variantUsage,
+        );
+        return new Map(
+          values.map((value) => [materialNameKey(value.name), value]),
+        );
+      }),
+
+    saveAll: (writes) =>
+      writes.length === 0
+        ? Promise.resolve()
+        : withSession(async (db) => {
+            try {
+              await db.transaction(async (tx) => {
+                await saveBatch(tx, writes);
+              });
+            } catch (error) {
+              mapMaterialConflict(error);
+            }
+          }),
 
     findByIds: (ids) =>
       withSession(async (db) => {

@@ -90,7 +90,7 @@ export function AdminShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const copy = adminMicrocopy.shell;
   return (
-    <div className="admin-root min-h-screen bg-admin-page">
+    <div className="admin-root flex min-h-screen flex-col bg-admin-page">
       <AdminNoIndex />
       <SkipLink />
       <header className="border-b border-admin-line bg-surface">
@@ -148,7 +148,7 @@ export function AdminShell({
           </nav>
         ) : null}
       </header>
-      <div className="lg:flex">
+      <div className="flex-1 lg:flex">
         <nav
           aria-label={copy.sections}
           className="hidden w-64 shrink-0 border-r border-admin-line bg-surface p-4 lg:block"

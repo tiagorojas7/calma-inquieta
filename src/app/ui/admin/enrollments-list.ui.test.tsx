@@ -247,6 +247,11 @@ describe("EnrollmentsList Por cobrar", () => {
 
     expect(screen.getByText("No hay inscripciones por cobrar")).toBeVisible();
     expect(screen.queryByRole("table")).toBeNull();
+    // Nothing to charge: the way out is the paid list, not the same tab again.
+    expect(screen.queryByRole("link", { name: "Ver por cobrar" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Ver pagadas" }).getAttribute("href"),
+    ).toContain("estado=paid");
   });
 });
 

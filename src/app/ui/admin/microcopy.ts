@@ -107,6 +107,7 @@ export const adminMicrocopy = {
         message: "Probá con otro mes, taller o búsqueda.",
       },
       action: "Ver por cobrar",
+      actionWhenNothingToCharge: "Ver pagadas",
     },
     consolidationLink: "Materiales a pedir",
     consolidation: {

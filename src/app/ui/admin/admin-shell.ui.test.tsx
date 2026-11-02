@@ -144,6 +144,19 @@ describe("AdminShell", () => {
       "bg-admin-page",
     );
   });
+
+  it("stretches the sidebar to the bottom of the screen on short pages", () => {
+    const { container } = render(
+      <AdminShell email={null} pathname="/admin">
+        <h1>Inicio</h1>
+      </AdminShell>,
+    );
+    const root = container.firstElementChild;
+    const body = screen.getByRole("main").parentElement;
+
+    expect(root).toHaveClass("flex", "flex-col");
+    expect(body).toHaveClass("lg:flex", "flex-1");
+  });
 });
 
 describe("AdminShell wayfinding", () => {

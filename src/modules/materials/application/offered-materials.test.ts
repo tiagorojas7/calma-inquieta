@@ -58,6 +58,7 @@ describe("offered material snapshots lookup", () => {
           {
             materialId: "material-1",
             name: "Clay",
+            category: material.category,
             active: true,
             available: false,
             supplierId: "supplier-1",

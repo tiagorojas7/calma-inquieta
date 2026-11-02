@@ -108,6 +108,25 @@ export function addDraftLine(
 }
 
 /**
+ * Chooses one measure of a product: the product's other lines are dropped and
+ * the chosen measure is added with the given quantity.
+ */
+export function selectDraftVariant(
+  draft: EnrollmentDraft,
+  materialId: string,
+  variantId: string,
+  quantity: number,
+): Result<EnrollmentDraft, CartError> {
+  return addDraftLine(
+    {
+      ...draft,
+      lines: draft.lines.filter((line) => line.materialId !== materialId),
+    },
+    { materialId, variantId, quantity },
+  );
+}
+
+/**
  * Sets the quantity of an existing line (no merging): below the minimum the
  * line is removed, above the maximum it is clamped. Unknown variants and
  * non-integer quantities leave the draft as it is.

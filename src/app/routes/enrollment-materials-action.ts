@@ -49,6 +49,47 @@ function parseStudent(value: unknown): EnrollmentStudentDraft | null {
   };
 }
 
+const VARIANT_FIELD = "variant-";
+const QUANTITY_FIELD = "quantity-";
+
+/**
+ * The native fields of the selector: one radio `variant-<materialId>` and one
+ * number `quantity-<materialId>` per product. They only add a line for a
+ * material the draft `lines` do not already cover, so a hydrated page (whose
+ * fields mirror the draft) never counts a product twice. Prices are never
+ * read from the form: the use case refuses what cannot be ordered.
+ */
+function nativePicks(
+  form: FormData,
+  covered: ReadonlySet<string>,
+): unknown[] | null {
+  const picks: unknown[] = [];
+  for (const [key, value] of form.entries()) {
+    if (!key.startsWith(VARIANT_FIELD) || typeof value !== "string") continue;
+    const materialId = key.slice(VARIANT_FIELD.length);
+    if (covered.has(materialId) || value === "") continue;
+    const raw = form.get(QUANTITY_FIELD + materialId);
+    const quantity = raw === null ? 1 : Number(raw);
+    if (typeof raw === "string" && raw.trim() === "") return null;
+    if (!Number.isFinite(quantity)) return null;
+    picks.push({ materialId, variantId: value, quantity });
+  }
+  return picks;
+}
+
+function withNativePicks(form: FormData, parsed: unknown): unknown {
+  if (!Array.isArray(parsed)) return parsed;
+  const covered = new Set<string>();
+  for (const entry of parsed as unknown[]) {
+    if (typeof entry === "object" && entry !== null) {
+      const { materialId } = entry as { materialId?: unknown };
+      if (typeof materialId === "string") covered.add(materialId);
+    }
+  }
+  const picks = nativePicks(form, covered);
+  return picks === null ? null : [...(parsed as unknown[]), ...picks];
+}
+
 function parseLines(value: unknown) {
   if (!Array.isArray(value)) return null;
   const lines = value.map((entry) => {
@@ -102,7 +143,7 @@ function actionMessage(error: RequestEnrollmentError): string {
 export async function action({ context, params, request }: ActionArgs) {
   const form = await request.formData();
   const student = parseStudent(parseJson(form.get("student")));
-  const cart = parseLines(parseJson(form.get("lines")));
+  const cart = parseLines(withNativePicks(form, parseJson(form.get("lines"))));
   if (
     student === null ||
     student.period !== requestedPeriod(request) ||

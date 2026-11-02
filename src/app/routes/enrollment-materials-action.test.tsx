@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { err, ok } from "~/modules/_shared";
+import { createPublicEnrollmentService } from "~/modules/enrollments";
+import {
+  materialFixture,
+  offerFixture,
+} from "~/testing/fakes/enrollments-builders";
+import { InMemoryOfferLookup } from "~/testing/fakes/enrollments-offer-lookup";
+import { InMemoryOfferedMaterials } from "~/testing/fakes/enrollments-offered-materials";
+import { InMemoryOrderRepository } from "~/testing/fakes/enrollments-order-repository";
+import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
+import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import { action } from "./enrollment-materials-action";
@@ -145,5 +155,129 @@ describe("enrollment materials action", () => {
       init: { status: 422 },
       data: { formError: message },
     });
+  });
+
+  it("builds a line from the native radio and quantity fields when the draft has none for that material", async () => {
+    const requestEnrollment = vi
+      .fn()
+      .mockResolvedValue(ok({ publicId: "public-1" }));
+    await action({
+      ...args(servicesWith(requestEnrollment)),
+      request: post(student, [], {
+        "variant-arcilla": "grande",
+        "quantity-arcilla": "3",
+      }),
+    });
+    expect(requestEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [{ materialId: "arcilla", variantId: "grande", quantity: 3 }],
+      }),
+    );
+  });
+
+  it("does not count a material twice when the draft already holds a line for it", async () => {
+    const requestEnrollment = vi
+      .fn()
+      .mockResolvedValue(ok({ publicId: "public-1" }));
+    await action({
+      ...args(servicesWith(requestEnrollment)),
+      request: post(
+        student,
+        [{ materialId: "arcilla", variantId: "grande", quantity: 2 }],
+        { "variant-arcilla": "grande", "quantity-arcilla": "2" },
+      ),
+    });
+    expect(requestEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [{ materialId: "arcilla", variantId: "grande", quantity: 2 }],
+      }),
+    );
+  });
+
+  it("rejects a malformed native quantity before calling the use case", async () => {
+    const requestEnrollment = vi.fn();
+    const result = await action({
+      ...args(servicesWith(requestEnrollment)),
+      request: post(student, [], {
+        "variant-arcilla": "grande",
+        "quantity-arcilla": "abc",
+      }),
+    });
+    expect(result).toMatchObject({ init: { status: 422 } });
+    expect(requestEnrollment).not.toHaveBeenCalled();
+  });
+});
+
+describe("enrollment materials action, consultar precio measures", () => {
+  function realServices() {
+    const orders = new InMemoryOrderRepository();
+    const service = createPublicEnrollmentService({
+      offers: new InMemoryOfferLookup([offerFixture()]),
+      materials: new InMemoryOfferedMaterials({
+        "p-1": [
+          materialFixture({
+            variants: materialFixture().variants.map((v) =>
+              v.variantId === "v-2" ? { ...v, unitPrice: null } : v,
+            ),
+          }),
+        ],
+      }),
+      seats: new InMemorySeatLedger(),
+      orders,
+      clock: fixedClock(new Date("2026-10-20T15:00:00Z")),
+      random: { bytes: (length) => new Uint8Array(length).fill(7) },
+      policyVersion: "2026-10",
+    });
+    return {
+      services: createTestServices({ publicEnrollments: service }),
+      orders,
+    };
+  }
+  const realStudent = {
+    ...student,
+    phone: "351 555-1234",
+    turnoId: "t-1",
+    period: "2026-10",
+  };
+  const submit = (
+    services: ReturnType<typeof createTestServices>,
+    lines: unknown,
+    extra: Record<string, string> = {},
+  ) =>
+    action({
+      ...createLoaderArgs(services),
+      params: { slug: "ceramica-inicial" },
+      request: post(realStudent, lines, extra, "2026-10"),
+    });
+
+  it("refuses a measure without a price sent in the cart lines", async () => {
+    const { services, orders } = realServices();
+    const result = await submit(services, [
+      { materialId: "m-1", variantId: "v-2", quantity: 1 },
+    ]);
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: { formError: "Uno de los materiales ya no está disponible." },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("refuses a measure without a price sent through the native radio field", async () => {
+    const { services, orders } = realServices();
+    const result = await submit(services, [], {
+      "variant-m-1": "v-2",
+      "quantity-m-1": "1",
+    });
+    expect(result).toMatchObject({ init: { status: 422 } });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("still accepts the priced measure of the same material", async () => {
+    const { services, orders } = realServices();
+    const result = await submit(services, [
+      { materialId: "m-1", variantId: "v-1", quantity: 1 },
+    ]);
+    expect(result).toBeInstanceOf(Response);
+    expect(orders.size()).toBe(1);
   });
 });

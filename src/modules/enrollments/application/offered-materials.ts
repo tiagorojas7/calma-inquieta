@@ -19,6 +19,8 @@ export interface OfferedMaterialImage {
 export interface OfferedMaterial {
   readonly materialId: string;
   readonly name: string;
+  /** Product category used to group the public selector; empty when unknown. */
+  readonly category?: string;
   readonly active: boolean;
   readonly supplierId: string;
   readonly supplierName: string;

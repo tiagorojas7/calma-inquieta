@@ -5,6 +5,7 @@ import {
   loadEnrollmentDraft,
   removeDraftLine,
   saveEnrollmentDraft,
+  selectDraftVariant,
   selectEnrollmentDraft,
   setDraftLineQuantity,
   type EnrollmentDraft,
@@ -130,5 +131,29 @@ describe("line quantity edits", () => {
     expect(next.lines).toEqual([]);
     expect(next.student).toBe(draft.student);
     expect(removeDraftLine(draft, "otra").lines).toEqual(draft.lines);
+  });
+});
+
+describe("choosing one measure per product", () => {
+  it("replaces the product's other measures with the chosen one", () => {
+    const two: EnrollmentDraft = {
+      ...draft,
+      lines: [
+        { materialId: "arcilla", variantId: "grande", quantity: 2 },
+        { materialId: "arcilla", variantId: "chica", quantity: 1 },
+        { materialId: "pintura", variantId: "roja", quantity: 4 },
+      ],
+    };
+    const next = selectDraftVariant(two, "arcilla", "chica", 3);
+    if (!next.ok) throw new Error("expected ok");
+    expect(next.value.lines).toEqual([
+      { materialId: "pintura", variantId: "roja", quantity: 4 },
+      { materialId: "arcilla", variantId: "chica", quantity: 3 },
+    ]);
+  });
+
+  it("refuses an invalid quantity and keeps the draft", () => {
+    const next = selectDraftVariant(draft, "arcilla", "chica", 21);
+    expect(next.ok).toBe(false);
   });
 });

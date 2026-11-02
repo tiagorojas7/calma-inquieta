@@ -146,6 +146,7 @@ export interface MaterialLookup {
 export interface OfferedMaterialSnapshot {
   readonly materialId: string;
   readonly name: string;
+  readonly category: string;
   readonly active: boolean;
   readonly available: boolean;
   readonly supplierId: string;

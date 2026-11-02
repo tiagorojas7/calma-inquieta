@@ -12,7 +12,7 @@ export function CatalogListingPage({
     <section className="flex flex-col gap-8 py-section">
       <header className="flex max-w-3xl flex-col gap-4">
         <Heading level={1}>{heading}</Heading>
-        <Text>{intro}</Text>
+        <Text className="text-lead">{intro}</Text>
       </header>
       {children}
     </section>

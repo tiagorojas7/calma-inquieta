@@ -25,6 +25,9 @@
   --color-olive-800: #42483c; /* text on sage */
   --color-tan-400: #a1876d; /* restricted: decorative rules and ornaments only */
   --color-white: #ffffff; /* on-primary text */
+  --color-cocoa-900: #35241b; /* chocolate: the deep closing band and its ground */
+  --color-apricot-300: #efb48f; /* light terracotta: accent text on cocoa only */
+  --color-blush-100: #f7e6da; /* warm terracotta tint: highlight fills and quote panels */
 
   /* Type scale (§3.3). Body stays at or above 1rem at every viewport. */
   --text-display: clamp(
@@ -34,14 +37,19 @@
   ); /* h1: 44 px at 360, 80 px at 1440 */
   --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.015em;
-  --text-h2: clamp(2rem, 1.4rem + 2vw, 3rem);
-  --text-h2--line-height: 1.1;
+  --text-h2: clamp(2.25rem, 1.5rem + 2.4vw, 3.5rem);
+  --text-h2--line-height: 1.06;
+  --text-h2--letter-spacing: -0.012em;
   --text-h3: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
   --text-h3--line-height: 1.2;
   /* Handwritten accent (Caveat 600): notes and highlighted phrases, never below 24 px. */
   --text-script: clamp(1.5rem, 1.3rem + 0.8vw, 2rem);
   --text-script--line-height: 1.15;
-  --text-lead: 1.125rem;
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.6;
+  /* Pull quote: display italic, between h3 and h2. */
+  --text-quote: clamp(1.625rem, 1.3rem + 1.3vw, 2.5rem);
+  --text-quote--line-height: 1.2;
   --text-base: 1rem;
   --text-sm: 0.875rem; /* meta labels only */
   --text-eyebrow: 0.75rem; /* uppercase, .18em tracking, weight 600 */
@@ -65,6 +73,10 @@
   --shadow-raised:
     0 1px 2px rgb(31 27 24 / 0.04), 0 6px 20px rgb(31 27 24 / 0.06);
   --shadow-floating: 0 6px 24px rgb(31 27 24 / 0.08);
+  /* Buttons: a top highlight and a warm two-layer drop give the fill body. */
+  --shadow-button:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 2px 4px rgb(110 79 59 / 0.22),
+    0 10px 22px rgb(110 79 59 / 0.2);
   /* Legacy utility aliases preserve existing component treatment. */
   --shadow-card: var(--shadow-raised);
   --shadow-lift:

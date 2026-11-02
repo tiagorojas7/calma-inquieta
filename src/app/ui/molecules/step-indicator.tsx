@@ -26,7 +26,7 @@ export function StepIndicator({
             >
               <span
                 aria-hidden="true"
-                className={`grid size-6 place-items-center rounded-full border text-xs ${active ? "border-clay-600 bg-clay-600 text-white" : "border-clay-600 text-clay-800"}`}
+                className={`grid size-8 place-items-center rounded-full border-2 text-sm font-semibold ${active ? "border-clay-600 bg-clay-600 text-white shadow-button" : "border-clay-600 text-clay-800"}`}
               >
                 {at + 1}
               </span>

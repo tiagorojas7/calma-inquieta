@@ -53,7 +53,7 @@ export type PrivateEventPageProps = {
 );
 
 const cardClasses =
-  "flex flex-col gap-4 rounded-md bg-surface p-5 shadow-raised sm:p-8";
+  "card-accent flex flex-col gap-4 rounded-md bg-surface p-5 pt-8 shadow-raised sm:p-8 sm:pt-10";
 
 /** Public private-event request page; plain structural props, native form post. */
 export function PrivateEventPage(props: PrivateEventPageProps) {

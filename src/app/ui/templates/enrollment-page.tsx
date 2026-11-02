@@ -80,7 +80,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
       <header className="flex flex-col gap-2">
         <Heading level={1}>{offer.workshopName}</Heading>
         <Text>{offer.period}</Text>
-        <Text>{offer.fee}</Text>
+        <Text className="font-semibold text-ink-900">{offer.fee}</Text>
         {offer.materialsRequired ? (
           <Text tone="accent">Materiales requeridos</Text>
         ) : null}
@@ -100,7 +100,10 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             </p>
           ) : null}
           <ErrorSummary title="Revisá estos datos" errors={summary} />
-          <form className="flex flex-col gap-5" method="post">
+          <form
+            className="card-accent flex flex-col gap-5 rounded-md bg-surface p-5 pt-8 shadow-raised sm:p-8 sm:pt-10"
+            method="post"
+          >
             <input name="period" type="hidden" value={offer.period} />
             <label className="sr-only" htmlFor="honeypot">
               No completes este campo

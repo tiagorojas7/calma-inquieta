@@ -16,6 +16,7 @@ describe("Section tones", () => {
     ["canvas", ["bg-canvas", "text-ink-700"]],
     ["sand", ["bg-sand-100", "text-ink-700"]],
     ["clay", ["bg-clay-800", "text-canvas", "tone-clay"]],
+    ["cocoa", ["bg-cocoa-900", "text-canvas", "tone-cocoa"]],
     ["white", ["bg-surface", "text-ink-700"]],
   ] as const)("tone %s sets its band colours", (tone, classes) => {
     render(

@@ -10,6 +10,7 @@
 @import "./motifs.css";
 @import "./motion.css";
 @import "./layout.css";
+@import "./identity.css";
 @import "./admin.css";
 
 @layer base {

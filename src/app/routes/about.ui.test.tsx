@@ -125,7 +125,7 @@ describe("Quiénes somos route", () => {
       name: "¿Querés sumarte?",
     });
     const band = heading.closest("section") as HTMLElement;
-    expect(band).toHaveAttribute("data-tone", "clay");
+    expect(band).toHaveAttribute("data-tone", "cocoa");
     const links = [...band.querySelectorAll("a")];
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/talleres",
@@ -201,7 +201,7 @@ describe("Quiénes somos route", () => {
     const bands = [...container.querySelectorAll("main > section")].map(
       (band) => band.getAttribute("data-tone"),
     );
-    expect(bands).toEqual(["canvas", "sand", "canvas", "white", "clay"]);
+    expect(bands).toEqual(["canvas", "sand", "canvas", "white", "cocoa"]);
     for (const band of container.querySelectorAll("main > section")) {
       expect(band).toHaveAttribute("data-bleed", "true");
     }

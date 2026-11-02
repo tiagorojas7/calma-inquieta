@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
+import { Eyebrow } from "../atoms/eyebrow";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
@@ -192,18 +193,27 @@ export function AboutIntro({
         className={`grid items-center gap-12 ${main || loops.length > 0 ? "lg:grid-cols-2 lg:gap-16" : ""}`}
       >
         <div className="flex max-w-prose flex-col gap-5">
-          <Reveal>
+          <Reveal className="flex flex-col gap-4">
+            <Eyebrow>{microcopy.aboutEyebrow}</Eyebrow>
             <Heading level={1}>{heading}</Heading>
           </Reveal>
-          {lead ? <p className="text-lead text-ink-700">{lead}</p> : null}
+          {lead ? (
+            <p className="drop-cap text-lead font-medium text-ink-900">
+              {lead}
+            </p>
+          ) : null}
           {others.map((text) => (
             <Text key={text}>{text}</Text>
           ))}
-          <p className="border-l-2 border-tan-400 pl-4 font-display text-xl italic text-clay-800">
+          <p className="pull-quote mt-2 font-display text-quote italic text-ink-900">
             {valueProposition}
           </p>
           {pullQuote ? (
-            <blockquote className="mt-2">
+            <blockquote className="mt-1 flex items-center gap-4">
+              <span
+                aria-hidden="true"
+                className="h-0.5 w-10 shrink-0 rounded-pill bg-tan-400"
+              />
               <ScriptText as="p">{pullQuote}</ScriptText>
             </blockquote>
           ) : null}

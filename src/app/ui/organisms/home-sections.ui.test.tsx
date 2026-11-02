@@ -335,18 +335,26 @@ describe("home organisms", () => {
           <ContactBand
             heading="Hablemos"
             body="Estamos para acompañarte."
-            whatsappHref="https://wa.me/5493510000000"
-            instagramHref="https://www.instagram.com/calma.inquieta/"
+            primary={{
+              href: "https://wa.me/5493510000000",
+              label: "Escribinos por WhatsApp",
+            }}
+            secondary={[
+              {
+                href: "https://www.instagram.com/calma.inquieta/",
+                label: "Instagram",
+              },
+            ]}
           />
         </MemoryRouter>,
       );
 
-    it("is a full-bleed clay band with a big butterfly and a sprig", () => {
+    it("is a full-bleed cocoa band with a big butterfly and a sprig", () => {
       const { container } = renderBand();
       const band = container.querySelector("section");
 
       expect(band).toHaveAttribute("data-bleed", "true");
-      expect(band).toHaveAttribute("data-tone", "clay");
+      expect(band).toHaveAttribute("data-tone", "cocoa");
       expect(
         container.querySelector('[data-size="xl"].motif-flight'),
       ).not.toBeNull();
@@ -358,9 +366,9 @@ describe("home organisms", () => {
 
       expect(
         screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
-      ).toHaveClass("bg-canvas", "text-clay-800");
+      ).toHaveClass("bg-canvas!", "text-cocoa-900!");
       expect(screen.getByRole("link", { name: /Instagram/ })).toHaveClass(
-        "text-canvas",
+        "text-canvas!",
       );
       await expectNoAxeViolations(container);
     });
@@ -381,7 +389,10 @@ describe("home organisms", () => {
           <ContactBand
             heading="Hablemos"
             body="Estamos para acompañarte."
-            whatsappHref="https://wa.me/5493510000000"
+            primary={{
+              href: "https://wa.me/5493510000000",
+              label: "Escribinos por WhatsApp",
+            }}
             image={hands}
             {...props}
           />
@@ -418,7 +429,10 @@ describe("home organisms", () => {
         <ContactBand
           heading="Hablemos"
           body="Estamos para acompañarte."
-          whatsappHref="https://wa.me/5493510000000"
+          primary={{
+            href: "https://wa.me/5493510000000",
+            label: "Escribinos por WhatsApp",
+          }}
         />
       </MemoryRouter>,
     );

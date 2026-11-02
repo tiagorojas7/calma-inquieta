@@ -96,7 +96,6 @@ import {
   type IntensiveRequestUseCases,
 } from "~/modules/intensive-requests";
 import { createDrizzleIntensiveRequestRepository } from "~/modules/intensive-requests/infrastructure/drizzle-intensive-request-repository";
-import { EMPTY_MEDIA_LOOKUP } from "./empty-public-catalog";
 import { createDrizzleIntensiveRepository } from "~/modules/workshops/infrastructure/drizzle-intensive-repository";
 import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infrastructure/drizzle-monthly-workshop-repository";
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
@@ -353,7 +352,7 @@ export function createRequestServices(
     monthlyWorkshops: createMonthlyWorkshopsService({
       repository: workshopRepository,
       teachers,
-      media: EMPTY_MEDIA_LOOKUP, // the gallery is not persisted yet (C4-B5)
+      media,
       turnos: turnoRepository,
       turnoUsage: createPeriodTurnoUsageLookup(periodRepository),
       periods: createWorkshopPeriodLookup(periodRepository),
@@ -445,13 +444,13 @@ export function createRequestServices(
       talleres: createPublicTalleresReader({
         records: createDrizzlePublicTallerRecords(openSession),
         teachers,
-        media: EMPTY_MEDIA_LOOKUP, // the real lookup lands in C4-B5
+        media,
         clock: systemClock,
       }),
       intensivos: createPublicIntensivosReader({
         records: createDrizzlePublicIntensivoRecords(openSession),
         teachers,
-        media: EMPTY_MEDIA_LOOKUP, // the real lookup lands in C4-B5
+        media,
         clock: systemClock,
       }),
     },

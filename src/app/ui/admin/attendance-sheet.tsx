@@ -131,7 +131,7 @@ function MakeUpForm({
         error={shown?.errors.makeUpDate}
       />
       <div>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="success">
           {f.submit}
         </Button>
       </div>

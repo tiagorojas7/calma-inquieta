@@ -216,7 +216,11 @@ function PayableCard({
         <OrderFields intent="confirm" orderId={row.id} returnTo={returnTo} />
         <input type="hidden" name="amount" value={row.totalPesos} />
         <input type="hidden" name="paidOn" value={today} />
-        <AdminButton type="submit" className="w-full sm:w-auto">
+        <AdminButton
+          type="submit"
+          variant="success"
+          className="w-full sm:w-auto"
+        >
           {card.markPaid}
         </AdminButton>
       </form>

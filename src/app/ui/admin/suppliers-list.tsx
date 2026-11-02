@@ -51,7 +51,7 @@ export function SuppliersList({
         ]}
         back={{ href: "/admin/materiales", label: copy.back }}
         actions={
-          <AdminButtonLink href={`${BASE}/nuevo`}>
+          <AdminButtonLink href={`${BASE}/nuevo`} variant="success">
             {copy.newAction}
           </AdminButtonLink>
         }
@@ -93,7 +93,11 @@ export function SuppliersList({
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
-          action: { href: `${BASE}/nuevo`, label: copy.newAction },
+          action: {
+            href: `${BASE}/nuevo`,
+            label: copy.newAction,
+            variant: "success",
+          },
         }}
       />
     </section>

@@ -277,7 +277,12 @@ export function QuickWorkshopForm({
       </fieldset>
       <Text tone="muted">{quick.derivedNote}</Text>
       <div className="flex flex-wrap gap-3">
-        <AdminButton type="submit" name="intent" value="publish">
+        <AdminButton
+          type="submit"
+          name="intent"
+          value="publish"
+          variant="success"
+        >
           {quick.publish}
         </AdminButton>
         <AdminButton

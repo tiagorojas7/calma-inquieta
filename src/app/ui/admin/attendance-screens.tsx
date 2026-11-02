@@ -74,7 +74,9 @@ export function AttendanceIndex({
           ]}
         />
         <div>
-          <Button type="submit">{copy.filters.apply}</Button>
+          <Button type="submit" variant="secondary">
+            {copy.filters.apply}
+          </Button>
         </div>
       </form>
       <AdminCardList

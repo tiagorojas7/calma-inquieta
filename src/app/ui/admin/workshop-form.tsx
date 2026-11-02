@@ -159,7 +159,7 @@ function PlainSubmit({ intent, label }: { intent: string; label: string }) {
   return (
     <form method="post">
       <input type="hidden" name="intent" value={intent} />
-      <Button type="submit" variant="outline">
+      <Button type="submit" variant="success">
         {label}
       </Button>
     </form>
@@ -209,6 +209,7 @@ export function WorkshopStatePanel({
         {status !== "archived" && (
           <ConfirmedSubmit
             intent="archive"
+            variant="danger"
             label={state.archive}
             {...state.confirm.archive}
           />

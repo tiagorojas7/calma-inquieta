@@ -46,7 +46,11 @@ export function AdminCardList<Row>({
   empty: {
     title: string;
     message: string;
-    action: { href: string; label: string };
+    action: {
+      href: string;
+      label: string;
+      variant?: "success" | "primary" | "secondary";
+    };
   };
 }) {
   if (rows.length === 0) return <AdminEmptyState {...empty} />;

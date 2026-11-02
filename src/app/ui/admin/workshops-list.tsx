@@ -61,7 +61,7 @@ export function WorkshopsList({
           { label: copy.title },
         ]}
         actions={
-          <AdminButtonLink href="/admin/talleres/nuevo">
+          <AdminButtonLink href="/admin/talleres/nuevo" variant="success">
             {copy.newAction}
           </AdminButtonLink>
         }
@@ -92,7 +92,11 @@ export function WorkshopsList({
         <AdminEmptyState
           title={copy.empty.title}
           message={copy.empty.message}
-          action={{ href: "/admin/talleres/nuevo", label: copy.newAction }}
+          action={{
+            href: "/admin/talleres/nuevo",
+            label: copy.newAction,
+            variant: "success",
+          }}
         />
       ) : (
         <ul
@@ -123,7 +127,10 @@ export function WorkshopsList({
               </p>
               {row.enrollment.cta && row.enrollment.href ? (
                 <div>
-                  <AdminButtonLink href={row.enrollment.href}>
+                  <AdminButtonLink
+                    href={row.enrollment.href}
+                    variant="secondary"
+                  >
                     {row.enrollment.cta}
                   </AdminButtonLink>
                 </div>
@@ -137,7 +144,7 @@ export function WorkshopsList({
                     name="period"
                     value={row.openNext.period}
                   />
-                  <AdminButton type="submit">
+                  <AdminButton type="submit" variant="success">
                     {copy.openMonth(row.openNext.label)}
                   </AdminButton>
                 </form>

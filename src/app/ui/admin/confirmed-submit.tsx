@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { AdminButton as Button } from "./admin-button";
+import { AdminButton as Button, type AdminButtonVariant } from "./admin-button";
 import { ConfirmDialog } from "./confirm-dialog";
 
 /**
@@ -13,6 +13,7 @@ export function ConfirmedSubmit({
   title,
   message,
   tone = "default",
+  variant,
   fields,
   buttonName,
 }: {
@@ -21,6 +22,8 @@ export function ConfirmedSubmit({
   title: string;
   message: string;
   tone?: "default" | "destructive";
+  /** Button color; red for a destructive tone unless told otherwise. */
+  variant?: AdminButtonVariant | undefined;
   /** Extra hidden fields, such as the id of the row the action is about. */
   fields?: Readonly<Record<string, string>>;
   /** Accessible name of the opening button when the label alone is ambiguous. */
@@ -36,7 +39,7 @@ export function ConfirmedSubmit({
       ))}
       <Button
         type="button"
-        variant="outline"
+        variant={variant ?? (tone === "destructive" ? "danger" : "outline")}
         aria-label={buttonName}
         onClick={() => {
           setOpen(true);
@@ -50,6 +53,7 @@ export function ConfirmedSubmit({
         message={message}
         confirmLabel={label}
         tone={tone}
+        confirmVariant={variant}
         onCancel={() => {
           setOpen(false);
         }}

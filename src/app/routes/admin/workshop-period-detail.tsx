@@ -268,7 +268,9 @@ export default function AdminWorkshopPeriodDetail() {
             {screen.status === "draft" && (
               <form method="post">
                 <input type="hidden" name="intent" value="publish" />
-                <Button type="submit">{copy.publish}</Button>
+                <Button type="submit" variant="success">
+                  {copy.publish}
+                </Button>
               </form>
             )}
             {screen.status === "open" && (

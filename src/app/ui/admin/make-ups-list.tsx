@@ -49,7 +49,7 @@ function MakeUpCard({ row, pending }: { row: MakeUpRow; pending: boolean }) {
         <form method="post" aria-label={copy.markDoneFor(row.student)}>
           <input type="hidden" name="intent" value="complete" />
           <input type="hidden" name="id" value={row.id} />
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="success">
             {copy.markDone}
           </Button>
         </form>

@@ -64,6 +64,18 @@ describe("ConfirmDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("confirms a destructive action with the red button", () => {
+    setup({ tone: "destructive" });
+    expect(screen.getByRole("button", { name: "Archivar" })).toHaveAttribute(
+      "data-variant",
+      "danger",
+    );
+    expect(screen.getByRole("button", { name: "Cancelar" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
+  });
+
   it("puts focus on Cancelar for a destructive action", () => {
     setup({ tone: "destructive" });
     expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus();

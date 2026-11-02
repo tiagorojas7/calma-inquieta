@@ -65,7 +65,9 @@ export function WorkshopPeriodsList({
             autoComplete="off"
             inputMode="numeric"
           />
-          <Button type="submit">{copy.form.submit(submitMonth)}</Button>
+          <Button type="submit" variant="success">
+            {copy.form.submit(submitMonth)}
+          </Button>
         </form>
       </section>
       <AdminCardList

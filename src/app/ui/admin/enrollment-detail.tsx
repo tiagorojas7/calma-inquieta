@@ -132,7 +132,7 @@ function ConfirmPaymentForm({
         defaultValue={form?.values?.note ?? ""}
       />
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" variant="success" disabled={pending}>
           {copy.confirm.submit}
         </Button>
       </div>
@@ -163,7 +163,7 @@ function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
       <div>
         <Button
           type="button"
-          variant="outline"
+          variant="danger"
           onClick={() => {
             setOpen(true);
           }}

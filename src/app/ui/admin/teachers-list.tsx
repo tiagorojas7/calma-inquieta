@@ -47,7 +47,7 @@ export function TeachersList({
           { label: copy.title },
         ]}
         actions={
-          <AdminButtonLink href="/admin/profesores/nuevo">
+          <AdminButtonLink href="/admin/profesores/nuevo" variant="success">
             {copy.newAction}
           </AdminButtonLink>
         }
@@ -89,7 +89,11 @@ export function TeachersList({
         empty={{
           title: copy.empty.title,
           message: copy.empty.message,
-          action: { href: "/admin/profesores/nuevo", label: copy.newAction },
+          action: {
+            href: "/admin/profesores/nuevo",
+            label: copy.newAction,
+            variant: "success",
+          },
         }}
       />
     </section>

@@ -220,7 +220,7 @@ describe("workshop admin screens", () => {
     expect(form).toHaveAttribute("method", "post");
     expect(publish).toHaveAttribute("name", "intent");
     expect(publish).toHaveAttribute("value", "publish");
-    expect(publish).toHaveAttribute("data-variant", "primary");
+    expect(publish).toHaveAttribute("data-variant", "success");
     const draft = screen.getByRole("button", { name: "Guardar borrador" });
     expect(draft).toHaveAttribute("value", "draft");
     expect(draft).toHaveAttribute("data-variant", "secondary");

@@ -93,15 +93,20 @@ export interface PublicOffer {
   readonly fee: Money;
   readonly materialsRequired: boolean;
   readonly turnos: readonly Omit<OfferedTurno, "capacity">[];
-  /** Active materials with available variants only; no supplier data. */
+  /**
+   * Active materials with available variants only; no supplier data. A
+   * variant without a price is listed as `onRequest` and is never orderable.
+   */
   readonly materials: readonly {
     readonly materialId: string;
     readonly name: string;
+    readonly category: string;
     readonly image: OfferedMaterialImage | null;
     readonly variants: readonly {
       readonly variantId: string;
       readonly label: string;
-      readonly unitPrice: Money;
+      readonly unitPrice: Money | null;
+      readonly onRequest: boolean;
       readonly swatch: string | null;
     }[];
   }[];
@@ -258,6 +263,18 @@ function resolveLines(
   return ok(lines);
 }
 
+/**
+ * Whether the student can order anything at all. When every offered measure
+ * is "consultar precio" the required-materials rule cannot be met, so it must
+ * not block the enrollment.
+ */
+function hasOrderableVariant(offered: readonly OfferedMaterial[]): boolean {
+  return offered.some(
+    (m) =>
+      m.active && m.variants.some((v) => v.available && v.unitPrice !== null),
+  );
+}
+
 export function createPublicEnrollmentService(
   deps: PublicEnrollmentServiceDeps,
 ): PublicEnrollmentUseCases {
@@ -282,7 +299,8 @@ export function createPublicEnrollmentService(
         workshopName: workshop.name,
         period: period.period,
         fee: period.fee,
-        materialsRequired: period.materialsRequired,
+        materialsRequired:
+          period.materialsRequired && hasOrderableVariant(materials),
         turnos: turnos.map((t) => ({
           id: t.id,
           label: t.label,
@@ -295,6 +313,7 @@ export function createPublicEnrollmentService(
           .map((m) => ({
             materialId: m.materialId,
             name: m.name,
+            category: m.category ?? "",
             image:
               m.image === undefined || m.image === null
                 ? null
@@ -305,15 +324,12 @@ export function createPublicEnrollmentService(
                     height: m.image.height,
                   },
             variants: m.variants
-              .flatMap((v) =>
-                v.available && v.unitPrice !== null
-                  ? [{ ...v, unitPrice: v.unitPrice }]
-                  : [],
-              )
+              .filter((v) => v.available)
               .map((v) => ({
                 variantId: v.variantId,
                 label: v.label,
                 unitPrice: v.unitPrice,
+                onRequest: v.unitPrice === null,
                 swatch: v.swatch ?? null,
               })),
           })),
@@ -352,7 +368,8 @@ export function createPublicEnrollmentService(
 
       const priced = priceCart({
         fee: period.fee,
-        materialsRequired: period.materialsRequired,
+        materialsRequired:
+          period.materialsRequired && hasOrderableVariant(foundMaterials.value),
         lines: lines.value,
       });
       if (!priced.ok) return priced;

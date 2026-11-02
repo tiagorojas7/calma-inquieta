@@ -24,6 +24,7 @@ describe("offered materials adapter", () => {
                 {
                   materialId: "material-1",
                   name: "Clay",
+                  category: "Arcilla",
                   active: true,
                   available: true,
                   supplierId: "supplier-1",
@@ -50,6 +51,7 @@ describe("offered materials adapter", () => {
                 {
                   materialId: "material-2",
                   name: "Paint",
+                  category: "Esmalte",
                   active: true,
                   available: false,
                   supplierId: "supplier-2",
@@ -67,6 +69,7 @@ describe("offered materials adapter", () => {
       {
         materialId: "material-2",
         name: "Paint",
+        category: "Esmalte",
         active: false,
         supplierId: "supplier-2",
         supplierName: "Color",
@@ -76,6 +79,7 @@ describe("offered materials adapter", () => {
       {
         materialId: "material-1",
         name: "Clay",
+        category: "Arcilla",
         active: true,
         supplierId: "supplier-1",
         supplierName: "Casa",

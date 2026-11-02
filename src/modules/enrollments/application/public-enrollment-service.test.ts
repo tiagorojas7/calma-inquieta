@@ -422,6 +422,23 @@ describe("requestEnrollment materials", () => {
     ).toEqual({ ok: false, error: { kind: "materials-required" } });
   });
 
+  it("accepts an enrollment with no lines when required materials are all on request", async () => {
+    const result = await setup({
+      materials: new InMemoryOfferedMaterials({
+        "p-1": [
+          materialFixture({
+            variants: materialFixture().variants.map((v) => ({
+              ...v,
+              unitPrice: null,
+            })),
+          }),
+        ],
+      }),
+      offer: withPeriod({ materialsRequired: true }),
+    }).service.requestEnrollment(request());
+    expect(result.ok).toBe(true);
+  });
+
   it("refuses an invalid quantity naming the variant", async () => {
     const result = await setup().service.requestEnrollment(
       request({ lines: [line("v-1", 21)] }),
@@ -578,7 +595,7 @@ describe("getOffer", () => {
     expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
   });
 
-  it("leaves variants without a price out of the public offer", async () => {
+  it("lists variants without a price flagged as on request", async () => {
     const materials = new InMemoryOfferedMaterials({
       "p-1": [
         materialFixture({
@@ -590,9 +607,70 @@ describe("getOffer", () => {
     });
     const result = await setup({ materials }).service.getOffer(query);
     if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materials[0]?.variants.map((v) => v.variantId)).toEqual(
-      ["v-1"],
+    expect(
+      result.value.materials[0]?.variants.map((v) => [
+        v.variantId,
+        v.onRequest,
+        v.unitPrice === null,
+      ]),
+    ).toEqual([
+      ["v-1", false, false],
+      ["v-2", true, true],
+    ]);
+  });
+
+  it("carries the material category, empty when unknown", async () => {
+    const materials = new InMemoryOfferedMaterials({
+      "p-1": [
+        materialFixture({ category: "Arcilla" }),
+        materialFixture({ materialId: "m-2", name: "Pintura" }),
+      ],
+    });
+    const result = await setup({ materials }).service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.materials.map((m) => m.category)).toEqual([
+      "Arcilla",
+      "",
+    ]);
+  });
+
+  const allOnRequest = () =>
+    new InMemoryOfferedMaterials({
+      "p-1": [
+        materialFixture({
+          variants: materialFixture().variants.map((v) => ({
+            ...v,
+            unitPrice: null,
+          })),
+        }),
+      ],
+    });
+
+  it("keeps a material whose measures are all on request, with every measure flagged", async () => {
+    const result = await setup({ materials: allOnRequest() }).service.getOffer(
+      query,
     );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const [material] = result.value.materials;
+    expect(material?.variants.length).toBeGreaterThan(0);
+    expect(material?.variants.every((v) => v.onRequest)).toBe(true);
+  });
+
+  it("does not report materials as required when nothing in the offer can be ordered", async () => {
+    const result = await setup({
+      materials: allOnRequest(),
+      offer: withPeriod({ materialsRequired: true }),
+    }).service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.materialsRequired).toBe(false);
+  });
+
+  it("still reports materials as required when something can be ordered", async () => {
+    const result = await setup({
+      offer: withPeriod({ materialsRequired: true }),
+    }).service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.materialsRequired).toBe(true);
   });
 
   it("carries the material image and variant swatch, and null when unset", async () => {

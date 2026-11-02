@@ -29,6 +29,7 @@ export function createOfferedMaterialsAdapter(
         return {
           materialId: material.materialId,
           name: material.name,
+          category: material.category,
           active: material.active && material.available,
           supplierId: material.supplierId,
           supplierName: material.supplierName,

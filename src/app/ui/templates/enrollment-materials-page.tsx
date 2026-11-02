@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Text } from "../atoms/text";
 import { QuantityStepper } from "../molecules/quantity-stepper";
+import {
+  MAX_QUANTITY,
+  MIN_QUANTITY,
+  MaterialCard,
+  type MaterialCardVariant,
+} from "../organisms/material-card";
 import { StepIndicator } from "../molecules/step-indicator";
 
-const MIN_QUANTITY = 1;
-const MAX_QUANTITY = 20;
+const ALL = "__all__";
 const STEPS = ["Tus datos", "Materiales", "Pedido"];
 
 export interface EnrollmentMaterialsPageProps {
@@ -24,12 +29,9 @@ export interface EnrollmentMaterialsPageProps {
       width: number;
       height: number;
     } | null;
-    variants: readonly {
-      variantId: string;
-      label: string;
-      unitPrice: string;
-      swatch?: string | null;
-    }[];
+    /** Grouping and filter key; empty when the material has no category. */
+    category?: string;
+    variants: readonly MaterialCardVariant[];
   }[];
   lines: readonly {
     materialId: string;
@@ -43,15 +45,40 @@ export interface EnrollmentMaterialsPageProps {
   formError?: string | undefined;
   draftState?: "loading" | "missing" | "ready";
   recoveryHref?: string;
-  onAdd(materialId: string, variantId: string, quantity: number): void;
+  /** Chooses one measure of a product, replacing any other measure of it. */
+  onSelect(materialId: string, variantId: string, quantity: number): void;
   /** Replaces the quantity of a line already in the order. */
   onSetQuantity(variantId: string, quantity: number): void;
   onRemove(variantId: string): void;
 }
 
+function groupByCategory(materials: EnrollmentMaterialsPageProps["materials"]) {
+  const groups = new Map<
+    string,
+    {
+      category: string;
+      materials: EnrollmentMaterialsPageProps["materials"][number][];
+    }
+  >();
+  for (const material of materials) {
+    const category = material.category ?? "";
+    const group = groups.get(category) ?? { category, materials: [] };
+    group.materials.push(material);
+    groups.set(category, group);
+  }
+  return [...groups.values()];
+}
+
 /** Structural materials selector; the delivery route owns draft persistence and pricing. */
 export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [filter, setFilter] = useState(ALL);
+  // The category filter needs script; without it every product stays listed.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+  const groups = groupByCategory(props.materials);
   const emptyOptional = !props.materialsRequired && props.lines.length === 0;
   let materialsLabel = "Materiales opcionales";
   if (props.materialsRequired) materialsLabel = "Materiales requeridos";
@@ -85,9 +112,6 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
     );
   }
 
-  const inOrder = new Map(
-    props.lines.map((line) => [line.variantId, line.quantity]),
-  );
   return (
     <main className="flex flex-col gap-6 py-section">
       {props.recoveryHref ? (
@@ -110,99 +134,86 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
       <form className="grid gap-6 lg:grid-cols-[1fr_20rem]" method="post">
         <input name="student" type="hidden" value={props.studentJson ?? ""} />
         <div className="flex flex-col gap-6">
-          {props.materials.map((material) => (
-            <fieldset className="flex flex-col gap-3" key={material.materialId}>
-              <legend className="sr-only">{material.name}</legend>
-              <div className="flex items-center gap-4">
-                {material.image ? (
-                  <img
-                    src={material.image.src}
-                    alt={material.image.alt}
-                    width={material.image.width}
-                    height={material.image.height}
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-4/3 w-24 shrink-0 rounded-md border border-sand-300 object-cover"
-                  />
-                ) : (
-                  <div
-                    aria-hidden="true"
-                    data-material-placeholder
-                    className="aspect-4/3 w-24 shrink-0 rounded-md border border-sand-300 bg-sand-200"
-                  />
-                )}
-                <p aria-hidden="true" className="font-serif text-xl">
-                  {material.name}
-                </p>
-              </div>
-              {material.variants.map((variant) => {
-                const quantity = quantities[variant.variantId] ?? MIN_QUANTITY;
-                const label = `${material.name} ${variant.label}`;
-                const already = inOrder.get(variant.variantId);
-                return (
-                  <div
-                    role="group"
-                    aria-label={label}
-                    data-variant-card
-                    className={`flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card ${already ? "border-2 border-clay-600" : "border border-sand-300"}`}
-                    key={variant.variantId}
+          {groups.length > 1 && hydrated ? (
+            <div
+              role="group"
+              aria-label="Filtrar por categoría"
+              className="flex flex-wrap gap-2"
+            >
+              {[ALL, ...groups.map((group) => group.category)].map(
+                (category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    aria-pressed={filter === category}
+                    onClick={() => {
+                      setFilter(category);
+                    }}
+                    className={`inline-flex min-h-11 items-center rounded-pill border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${filter === category ? "border-clay-600 bg-clay-600 text-white" : "border-clay-600 text-clay-800 hover:bg-sand-200"}`}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-2">
-                        {variant.swatch ? (
-                          <span
-                            aria-hidden="true"
-                            data-swatch
-                            className="size-5 shrink-0 rounded-full border border-sand-300"
-                            style={{ backgroundColor: variant.swatch }}
-                          />
-                        ) : null}
-                        <Text>{`${variant.label} · ${variant.unitPrice}`}</Text>
-                      </span>
-                      {already ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sand-200 px-3 py-1 text-sm font-semibold text-clay-800">
-                          <span aria-hidden="true">✓</span>
-                          {`En tu pedido: ${String(already)}`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <QuantityStepper
-                        label={label}
-                        value={quantity}
-                        min={MIN_QUANTITY}
-                        max={MAX_QUANTITY}
-                        onChange={(next) => {
-                          setQuantities((current) => ({
-                            ...current,
-                            [variant.variantId]: Number.isFinite(next)
-                              ? Math.min(
-                                  MAX_QUANTITY,
-                                  Math.max(MIN_QUANTITY, next),
-                                )
-                              : MIN_QUANTITY,
-                          }));
-                        }}
-                      />
-                      <Button
-                        onClick={() => {
-                          props.onAdd(
+                    {category === ALL ? "Todas" : category}
+                  </button>
+                ),
+              )}
+            </div>
+          ) : null}
+          {groups
+            .filter((group) => filter === ALL || group.category === filter)
+            .map((group) => (
+              <section
+                key={group.category}
+                aria-label={group.category || "Materiales"}
+                className="flex flex-col gap-4"
+              >
+                {group.category ? (
+                  <Heading level={2}>{group.category}</Heading>
+                ) : null}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {group.materials.map((material) => {
+                    const selected = props.lines.find(
+                      (line) => line.materialId === material.materialId,
+                    );
+                    const picked =
+                      selected?.quantity ??
+                      quantities[material.materialId] ??
+                      MIN_QUANTITY;
+                    return (
+                      <MaterialCard
+                        key={material.materialId}
+                        materialId={material.materialId}
+                        name={material.name}
+                        image={material.image}
+                        variants={material.variants}
+                        selectedVariantId={selected?.variantId ?? null}
+                        quantity={picked}
+                        onSelect={(variantId) => {
+                          props.onSelect(
                             material.materialId,
-                            variant.variantId,
-                            quantity,
+                            variantId,
+                            picked,
                           );
                         }}
-                        type="button"
-                        variant="secondary"
-                      >
-                        {`Agregar ${label}`}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </fieldset>
-          ))}
+                        onQuantity={(next) => {
+                          const quantity = Number.isFinite(next)
+                            ? Math.min(
+                                MAX_QUANTITY,
+                                Math.max(MIN_QUANTITY, next),
+                              )
+                            : MIN_QUANTITY;
+                          if (selected)
+                            props.onSetQuantity(selected.variantId, quantity);
+                          else
+                            setQuantities((current) => ({
+                              ...current,
+                              [material.materialId]: quantity,
+                            }));
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
         </div>
 
         <aside

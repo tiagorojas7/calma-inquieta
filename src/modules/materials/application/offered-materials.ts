@@ -35,6 +35,7 @@ export function createOfferedMaterialSnapshotsLookup({
         snapshots.set(materialId, {
           materialId: material.id,
           name: material.name,
+          category: material.category,
           active: material.active,
           available: material.available,
           supplierId: material.supplier.id,

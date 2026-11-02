@@ -2,17 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { data, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import {
-  addDraftLine,
   removeDraftLine,
   setDraftLineQuantity,
   type EnrollmentDraft,
   loadEnrollmentDraft,
   saveEnrollmentDraft,
+  selectDraftVariant,
   selectEnrollmentDraft,
   type StoredEnrollmentDraft,
 } from "~/app/enrollment/enrollment-draft";
 import { EnrollmentMaterialsPage } from "~/app/ui/templates/enrollment-materials-page";
 import type { AppServices } from "~/composition/request-services";
+import { buildWhatsAppUrl } from "~/modules/site-content";
 import { action } from "./enrollment-materials-action";
 
 export { action };
@@ -39,12 +40,35 @@ function periodFrom(request: Request): string {
   }
 }
 
+function priceInquiry(
+  workshopName: string,
+  material: string,
+  measure: string,
+): string {
+  return `Hola, ¿cómo andás? Quiero consultar el precio de ${material} (${measure}) para el taller ${workshopName}.`;
+}
+
 export async function loader({ context, params, request }: RouteArgs) {
   const slug = params.slug ?? "";
-  const result = await context
-    .get(servicesContext)
-    .publicEnrollments.getOffer({ slug, period: periodFrom(request) });
+  const services = context.get(servicesContext);
+  const result = await services.publicEnrollments.getOffer({
+    slug,
+    period: periodFrom(request),
+  });
   if (!result.ok) throw data(null, { status: 404 });
+  const profile = result.value.materials.some((material) =>
+    material.variants.some((variant) => variant.onRequest),
+  )
+    ? await services.siteContent.getBusinessProfile()
+    : null;
+  const inquiryHref = (material: string, measure: string): string | null => {
+    if (profile === null) return null;
+    const url = buildWhatsAppUrl(
+      profile.whatsapp.display,
+      priceInquiry(result.value.workshopName, material, measure),
+    );
+    return url.ok ? url.value : null;
+  };
   return {
     slug,
     offer: {
@@ -56,13 +80,21 @@ export async function loader({ context, params, request }: RouteArgs) {
       materials: result.value.materials.map((material) => ({
         materialId: material.materialId,
         name: material.name,
+        category: material.category,
         image: material.image,
         variants: material.variants.map((variant) => ({
           variantId: variant.variantId,
           label: variant.label,
           swatch: variant.swatch,
-          unitPrice: formatPesos(variant.unitPrice.toCentavos()),
-          unitPriceCentavos: variant.unitPrice.toCentavos(),
+          onRequest: variant.onRequest,
+          whatsappHref: variant.onRequest
+            ? inquiryHref(material.name, variant.label)
+            : null,
+          unitPrice:
+            variant.unitPrice === null
+              ? null
+              : formatPesos(variant.unitPrice.toCentavos()),
+          unitPriceCentavos: variant.unitPrice?.toCentavos() ?? null,
         })),
       })),
     },
@@ -92,7 +124,7 @@ export default function EnrollmentMaterialsRoute() {
         const variant = material?.variants.find(
           (item) => item.variantId === line.variantId,
         );
-        return material && variant
+        return material && variant && variant.unitPriceCentavos !== null
           ? [
               {
                 ...line,
@@ -111,9 +143,9 @@ export default function EnrollmentMaterialsRoute() {
     loaded.offer.feeCentavos +
     lines.reduce((sum, line) => sum + line.centavos, 0);
 
-  function onAdd(materialId: string, variantId: string, quantity: number) {
+  function onSelect(materialId: string, variantId: string, quantity: number) {
     if (draft === null) return;
-    const next = addDraftLine(draft, { materialId, variantId, quantity });
+    const next = selectDraftVariant(draft, materialId, variantId, quantity);
     if (!next.ok) return;
     saveEnrollmentDraft(window.sessionStorage, loaded.slug, next.value);
     setStored({ slug: loaded.slug, draft: next.value });
@@ -147,7 +179,7 @@ export default function EnrollmentMaterialsRoute() {
       lines={lines}
       materials={loaded.offer.materials}
       materialsRequired={loaded.offer.materialsRequired}
-      onAdd={onAdd}
+      onSelect={onSelect}
       onRemove={onRemove}
       onSetQuantity={onSetQuantity}
       period={loaded.offer.period}

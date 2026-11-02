@@ -20,6 +20,7 @@ const offer = {
     {
       materialId: "arcilla",
       name: "Arcilla",
+      category: "Arcillas",
       image: {
         src: "/media/arcilla.webp",
         alt: "Arcilla blanca",
@@ -31,6 +32,7 @@ const offer = {
           variantId: "grande",
           label: "Grande",
           unitPrice: pesos(12_500),
+          onRequest: false,
           swatch: "#aabbcc",
         },
       ],
@@ -86,13 +88,50 @@ describe("enrollment materials loader", () => {
                 swatch: "#aabbcc",
                 unitPrice: "$ 12.500",
                 unitPriceCentavos: 1_250_000,
+                onRequest: false,
+                whatsappHref: null,
               },
             ],
+            category: "Arcillas",
           },
         ],
       },
     });
     expect(JSON.stringify(result)).not.toContain("supplier");
+  });
+
+  it("sends a measure without a price as a prefilled WhatsApp link and never as a price", async () => {
+    const onRequestOffer = {
+      ...offer,
+      materials: [
+        {
+          ...offer.materials[0],
+          variants: [
+            {
+              variantId: "especial",
+              label: "40 × 20 × 10 alto",
+              unitPrice: null,
+              onRequest: true,
+              swatch: null,
+            },
+          ],
+        },
+      ],
+    };
+    const result = await loader(
+      args(servicesWith(vi.fn().mockResolvedValue(ok(onRequestOffer)))),
+    );
+    const [variant] = result.offer.materials[0]?.variants ?? [];
+    expect(variant).toMatchObject({
+      onRequest: true,
+      unitPrice: null,
+      unitPriceCentavos: null,
+    });
+    const href = new URL(variant?.whatsappHref ?? "");
+    expect(href.hostname).toBe("wa.me");
+    const text = href.searchParams.get("text") ?? "";
+    expect(text).toContain("Arcilla");
+    expect(text).toContain("40 × 20 × 10 alto");
   });
 
   it("fails closed when the current offer is unavailable", async () => {

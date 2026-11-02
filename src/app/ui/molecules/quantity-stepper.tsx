@@ -8,6 +8,7 @@ const stepButton =
  */
 export function QuantityStepper({
   label,
+  name,
   value,
   min,
   max,
@@ -15,6 +16,8 @@ export function QuantityStepper({
 }: {
   /** Names the item in the accessible labels, e.g. "Arcilla Grande". */
   label: string;
+  /** Makes the number a real form field, so a plain form post carries it. */
+  name?: string;
   value: number;
   min: number;
   max: number;
@@ -39,6 +42,7 @@ export function QuantityStepper({
         inputMode="numeric"
         max={max}
         min={min}
+        name={name}
         onChange={(event) => {
           onChange(Number(event.target.value));
         }}

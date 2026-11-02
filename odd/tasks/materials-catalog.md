@@ -21,7 +21,7 @@ S6. Student selector (M2). Students see only the materials chosen for their tall
 ## Tasks
 
 - [x] M1 — S1-S5: admin import, consultar precio, percentage raise, quick photo, period selection by category. Route: delegated (parallel with P1/A1, disjoint surfaces). Risk: item 1 (migration 0017 drops NOT NULL on material_variant.price_centavos). Commits: migration and S2 in PR 1 (branch feat/materials-catalog); S1, S3, S4, S5 in PR 2 (branch feat/materials-catalog-tools, chained on PR 1). Gaps: S4 is a one-click "Subir foto" screen per row rather than an inline upload; the public offer leaves no-price variants out until M2 shows them with a WhatsApp link.
-- [ ] M2 — S6: public materials selector. Route: delegated, after P1 merges. Commit: —
+- [x] M2 — S6: public materials selector. Route: delegated. Risk: item 3 (the public offer variant gains `onRequest` and a nullable `unitPrice`, and the action accepts native `variant-<id>`/`quantity-<id>` fields; no-price measures stay refused by `resolveLines`). Commits: PR on branch feat/materials-selector (base feat/materials-catalog-tools). Gaps: no-JS cannot complete end to end because the student draft lives in sessionStorage (the radios and quantity are real fields and the action reads them); material photos have no responsive srcSet in the data, so the full-screen photo reuses the single src; category filter needs script; a required step does not block when nothing in the offer is orderable.
 
 ## Log
 

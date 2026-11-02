@@ -18,7 +18,7 @@ const baseProps = {
   fee: "$ 58.000",
   lines: [],
   materialsRequired: true,
-  onAdd: vi.fn(),
+  onSelect: vi.fn(),
   onRemove: vi.fn(),
   onSetQuantity: vi.fn(),
   period: "Noviembre 2026",
@@ -53,7 +53,8 @@ describe("EnrollmentMaterialsPage photos", () => {
         ]}
       />,
     );
-    const photo = screen.getByRole("img", { name: "Arcilla blanca" });
+    const photo = container.querySelector("img") as HTMLImageElement;
+    expect(photo).toHaveAttribute("alt", "Arcilla blanca");
     expect(photo).toHaveAttribute("src", "/media/arcilla.webp");
     expect(photo).toHaveAttribute("loading", "lazy");
     expect(photo).toHaveAttribute("width", "800");
@@ -95,7 +96,8 @@ describe("EnrollmentMaterialsPage photos", () => {
 
 describe("EnrollmentMaterialsPage", () => {
   it("shows offered variants, adds a selected quantity and keeps the total visible", () => {
-    const onAdd = vi.fn();
+    const onSelect = vi.fn();
+    const onSetQuantity = vi.fn();
     render(
       <EnrollmentMaterialsPage
         fee="$ 58.000"
@@ -110,9 +112,9 @@ describe("EnrollmentMaterialsPage", () => {
         ]}
         materials={materials}
         materialsRequired
-        onAdd={onAdd}
+        onSelect={onSelect}
         onRemove={vi.fn()}
-        onSetQuantity={vi.fn()}
+        onSetQuantity={onSetQuantity}
         period="Noviembre 2026"
         total="$ 83.000"
         workshopName="Cerámica inicial"
@@ -121,13 +123,12 @@ describe("EnrollmentMaterialsPage", () => {
 
     expect(screen.getByText("Materiales requeridos")).toBeVisible();
     expect(screen.getByText("Grande · $ 12.500")).toBeVisible();
-    fireEvent.change(screen.getByLabelText("Cantidad para Arcilla Grande"), {
-      target: { value: "2" },
+    fireEvent.change(screen.getByLabelText("Cantidad para Arcilla"), {
+      target: { value: "3" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Agregar Arcilla Grande" }),
-    );
-    expect(onAdd).toHaveBeenCalledWith("arcilla", "grande", 2);
+    expect(onSetQuantity).toHaveBeenCalledWith("grande", 3);
+    fireEvent.click(screen.getByRole("radio", { name: /Chica/ }));
+    expect(onSelect).toHaveBeenCalledWith("arcilla", "chica", 2);
 
     const total = screen.getByText("$ 83.000");
     expect(total.closest("aside")).toHaveClass("lg:sticky");
@@ -142,7 +143,7 @@ describe("EnrollmentMaterialsPage", () => {
           lines={[]}
           materials={materials}
           materialsRequired
-          onAdd={vi.fn()}
+          onSelect={vi.fn()}
           onRemove={vi.fn()}
           onSetQuantity={vi.fn()}
           period="Noviembre 2026"
@@ -169,7 +170,7 @@ describe("EnrollmentMaterialsPage", () => {
         lines={[]}
         materials={materials}
         materialsRequired={false}
-        onAdd={vi.fn()}
+        onSelect={vi.fn()}
         onRemove={vi.fn()}
         onSetQuantity={vi.fn()}
         period="Noviembre 2026"

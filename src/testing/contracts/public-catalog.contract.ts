@@ -341,9 +341,10 @@ export function runPublicTalleresContract(
   const base = seedTurno({ label: "Turno base" });
   const monthOf = (
     overrides: Partial<ReturnType<typeof seedPeriod>> = {},
+    turno: ReturnType<typeof seedTurno> = base,
   ): ReturnType<typeof seedPeriod> =>
     seedPeriod({
-      capacities: [{ turnoId: base.id, capacity: 10 }],
+      capacities: [{ turnoId: turno.id, capacity: 10 }],
       ...overrides,
     });
   const periodsOf = (...months: string[]) =>
@@ -634,6 +635,9 @@ export function runPublicTalleresContract(
     });
 
     it("exposes the project of the selected period only, and only when it has content (DA2)", async () => {
+      // One turno per taller: a turno id is a primary key in the database.
+      const soloTurno = seedTurno({ label: "Solo" });
+      const sinTurno = seedTurno({ label: "Sin" });
       const { reader } = await open(
         buildSeed({
           talleres: [
@@ -651,13 +655,13 @@ export function runPublicTalleresContract(
             }),
             seedTaller({
               slug: "solo-titulo",
-              turnos: [base],
-              periods: [monthOf({ projectTitle: "Solo título" })],
+              turnos: [soloTurno],
+              periods: [monthOf({ projectTitle: "Solo título" }, soloTurno)],
             }),
             seedTaller({
               slug: "sin-proyecto",
-              turnos: [base],
-              periods: [monthOf({ period: "2026-10" })],
+              turnos: [sinTurno],
+              periods: [monthOf({ period: "2026-10" }, sinTurno)],
             }),
           ],
         }),

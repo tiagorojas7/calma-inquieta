@@ -1,0 +1,190 @@
+Categoría;Producto;Medida;Precio
+Canastos;Canasto rectangular;40 × 20 × 10 alto;34600
+Canastos;Canasto rectangular;20 × 12 × 10 alto;32200
+Canastos;Canasto redondo;50 diám. × 40 alto;46200
+Canastos;Canasto redondo;40 diám. × 35 alto;40800
+Canastos;Canasto redondo;30 diám. × 25 alto;35300
+Canastos;Canasto redondo;25 diám. × 20 alto;30000
+Canastos;Palangana;30 × 15 alto;34800
+Canastos;Palangana;40 × 20 alto;39700
+Canastos;Palangana;50 × 25 alto;45000
+Bandejas;Bandeja rectangular;40 × 25;34800
+Bandejas;Bandeja rectangular;45 × 30;36200
+Bandejas;Bandeja rectangular;50 × 35;38200
+Bandejas;Bandeja rectangular;30 × 30;34755
+Bandejas;Bandeja nórdica;40 diám. ext. × 20 diám. int. × 10 alto;34400
+Bandejas;Bandeja nórdica;60 diám. ext. × 40 diám. int. × 10 alto;42800
+Bandejas;Bandeja con manija;30 diám. × 5 alto;30900
+Bandejas;Bandeja con manija;40 diám. × 5 alto;33600
+Bandejas;Bandeja con manija;50 diám. × 5 alto;36300
+Bandejas;Rick;40 largo × 20 ancho × 10 alto;36800
+Bandejas;Rick;60 largo × 20 ancho × 10 alto;40300
+Bandejas;Hojas;35 largo × 20 ancho × 5 alto;31100
+Bandejas;Hojas;45 largo × 20 ancho × 5 alto;32800
+Espejos;Espejo simple con chapita corta;40 × 20;16200
+Espejos;Espejo simple con chapita corta;40 × 30;16200
+Espejos;Espejo simple con chapita corta;50 × 20;18300
+Espejos;Espejo simple con chapita corta;50 × 30;18300
+Espejos;Espejo simple con chapita corta;60 × 30;20600
+Espejos;Espejo simple con chapita corta;60 × 20;20600
+Espejos;Espejo simple con chapita corta;60 × 40;20600
+Espejos;Espejo simple con chapita corta;70 × 40;22900
+Espejos;Espejo rectangular;60 × 50;25000
+Espejos;Espejo rectangular;100 × 60;39400
+Espejos;Espejo flor;50 con cruz planchuela;37800
+Espejos;Espejo flor;50 con aro interno;32600
+Espejos;Espejo flor;60 con cruz planchuela;44000
+Espejos;Espejo flor;60 con aro interno;36200
+Lámparas;Grifola ondulada;80 diám. × 40 alto;52500
+Lámparas;Campana bombé;1,10 diám. × 50 alto;78800
+Lámparas;Campana bombé;80 diám. × 40 alto;62600
+Lámparas;Campana bombé;50 diám. × 25 alto;46200
+Lámparas;Campana bombé;60 diám. × 30 alto;50600
+Lámparas;Campana bombé;40 diám. × 20 alto;37500
+Lámparas;Bombé cuadros;1,10 diám. × 55 alto;91000
+Lámparas;Bombé cuadros;80 diám. × 40 alto;70400
+Lámparas;Bombé cuadros;60 diám. × 30 alto;57000
+Lámparas;Bombé planchuela;80 diám. × 40 alto;84800
+Lámparas;Bombé planchuela;60 diám. × 30 alto;66500
+Lámparas;Bombé planchuela;50 diám. × 25 alto;56500
+Lámparas;Bombé cortada;60 diám. × 20 alto;48300
+Lámparas;Plato;40 diám. sup. × 30 diám. inf. × 10 alto;31000
+Lámparas;Bombé invertido;50 diám. × 25 alto;54600
+Lámparas;Bombé invertido;60 diám. × 30 alto;58400
+Lámparas;Bombé invertido;80 diám. × 40 alto;70400
+Lámparas;Bombé invertido;1,10 diám. × 50 alto;86600
+Lámparas;Plato chato;50 diám. inf. × 20 diám. sup. × 10 alto;32400
+Lámparas;Diamante extra;70 diám. medio × 60 diám. sup. e inf. × 30 alto;50400
+Lámparas;Diamante;50 × 50 (30 diám. sup., 50 medio, 40 inf.) × 50 alto;44700
+Lámparas;Diamante;40 × 40 (20 diám. sup., 40 medio, 30 inf.) × 40 alto;35300
+Lámparas;Diamante;30 × 30 (15 diám. sup., 30 medio) × 30 alto;32800
+Lámparas;Infinity;60 diám. × 20 alto;38200
+Lámparas;Infinity;50 diám. × 20 alto;36600
+Lámparas;Infinity;40 diám. × 20 alto;35300
+Lámparas;Capelinas;1,05 diám. × 20 alto;55100
+Lámparas;Capelinas;75 diám. × 20 alto;47500
+Lámparas;Capelinas;65 diám. × 15 alto;43200
+Lámparas;Margarette;M: 1,10 diám. total;56500
+Lámparas;Margarette;L: 1,50 diám. total;62800
+Lámparas;Margarette doble M;1,10 diám. total;81000
+Lámparas;Cascada;50 diám. × 30 alto;58400
+Lámparas;Ameba;50 diám.;32800
+Lámparas;Ameba;60 diám.;34600
+Lámparas;Ameba;80 diám.;38400
+Lámparas;Ameba;1,10 diám.;46200
+Lámparas;Ameba triple;1 m diám. × 15 alto;69300
+Lámparas;Royal;60 diám.;46500
+Lámparas;Royal;80 diám.;55000
+Lámparas;Royal;1,10 diám.;64400
+Lámparas;Cuadrada;40 × 20;42300
+Lámparas;Cuadrada;50 × 25;44500
+Lámparas;Cuadrada;60 × 30;48300
+Lámparas;Trompos;30 diám. × 20 alto;39100
+Lámparas;Trompos;40 diám. × 40 alto;40000
+Lámparas;Trompos;50 diám. × 40 alto;44700
+Lámparas;Trompos;60 diám. × 50 alto;54500
+Lámparas;Embudo;1 m diám. × 45 alto;70600
+Lámparas;Embudo;70 diám. × 25 alto;52400
+Lámparas;Embudo invertido;1 m diám. inf. × 45 alto;62600
+Lámparas;Embudo invertido;70 diám. × 25 alto;46400
+Lámparas;Carrusel;60 diám. × 20 alto del cilindro;46600
+Lámparas;Carrusel;80 diám. × 20 alto del cilindro;52300
+Lámparas;Cono XS;20 diám. inf. × 10 diám. sup. × 35 alto;34400
+Lámparas;Tubos para colgar o de pie;Mínimo 20 diám., largo a elección;
+Lámparas;Tambo;30 diám. medio, 10 diám. sup., 40 diám. inf. × 65 alto;43200
+Lámparas;Carretel;40 diám. sup., 30 diám. medio × 30 alto;40300
+Lámparas;Rick con base doble;1,20 largo × 30 alto × 40 ancho, 3 l;67000
+Lámparas;Rick con base doble;0,90 largo × 30 alto × 40 ancho, 3 l;65100
+Lámparas;Cáliz;40 diám. × 30 alto;36800
+Lámparas;Cáliz;50 diám. × 30 alto;38000
+Lámparas;Cáliz;60 diám. × 45 alto;44500
+Lámparas;Cáliz;80 diám. × 40 alto;54900
+Lámparas;Nido;60 diám. × 17 alto;64000
+Lámparas;Nido;80 diám. × 17 alto;78800
+Lámparas;Nido;XL 60 diám. × 30 alto;70400
+Lámparas;Nido;XL 80 diám. × 30 alto;82800
+Lámparas;Cilindro;60 diám. × 30 alto;46400
+Lámparas;Cilindro;50 diám. × 25 alto;39000
+Lámparas;Cilindro;40 diám. × 20 alto;34400
+Lámparas;Cilindro con base doble;60 diám. × 30 alto;52500
+Lámparas;Cilindro con base doble;50 diám. × 25 alto;43000
+Lámparas;Cilindro con base doble;40 diám. × 20 alto;38400
+Apliques de pared;Aplique de pared;30 alto × 15 de profundidad;28600
+Apliques de pared;Aplique cono;15 diám. sup. × 30 diám. inf. × 30 alto;28200
+Apliques de pared;Aplique cake;20 alto aprox. × 40 ancho total;33300
+Apliques de pared;Aplique periscopio;Diám. 40-20-30 × 45 alto aprox.;36600
+Apliques de pared;Aplique Franklin;8 de profundidad × 25 ancho total;23800
+Lámparas de pie;Lámpara cuádruple;1,60 alto, cilindro 50 diám. × 25 alto, 15 diám. superior;79400
+Lámparas de pie;Lámpara trípode;90 alto × 20 diám.;49000
+Lámparas de pie;Lámpara trípode;1,70 alto × 30 diám.;68000
+Lámparas de pie;Pie de cascada;Cilindro con base doble 50 diám. × 30 alto;75000
+Lámparas de pie;Alto de pie;90 alto × 25 diám. medio × 20 diám. inf., 15 diám. sup.;43000
+Lámparas de pie;Alto de pie;1,50 alto × 40 diám. medio × 30 diám. inf., 20 diám. sup.;58400
+Adornos;Tapiz;80 diám.;56900
+Adornos;Hojas de pie;90 alto;30400
+Adornos;Hojas de pie;1,10 alto;32400
+Adornos;Hojas de pie;1,30 alto;33600
+Adornos;Adorno de pared;80-60-40-25-10;58300
+Adornos;Adorno de pared;60-40-25-10;42600
+Adornos;Adorno de pared;40-30-20-10;34800
+Adornos;Cuenco de madera guayubira;17 diám. × 5 alto;45675
+Adornos;Cuenco cerámica;22 diám. × 12 alto;39375
+Veladores;Velador trípode;35 alto × 15 × 15;36800
+Veladores;Velador hongo;Lámpara 20 diám. sup., 30 diám. inf., 30 alto, pie 15 diám. sup., 20 diám. inf. × 30 alto;44800
+Veladores;Velador capullo;20 diám. × 25 alto;34800
+Veladores;Velador diamante;15 diám. inf. y sup. × 25 diám. medio × 25 alto;30900
+Veladores;Velador cono;30 diám. inf. × 20 diám. sup. × 35 alto;34200
+Veladores;Velador cono;40 diám. inf. × 20 diám. sup. × 35 alto;36400
+Veladores;Velador cilindro;20 diám. × 25 alto;30900
+Veladores;Velador alpino;25 ancho total × 40 alto;39700
+Mesas;Mesas nórdicas (par);Par: 55 alto × 60 diám. y 45 alto × 60 diám.;131200
+Mesas;Mesita o lámpara barril;70 diám. medio, 50 diám. sup. e inf., 55 alto;68900
+Banquetas;Banqueta Brescia;40 × 40 ancho, 1,10 alto, hierro del 12;110200
+Banquetas;Banqueta Verona;1 m alto total, 70 al asiento, 50 prof., 50 ancho;100800
+Banquetas;Banquitos U;40 largo × 40 ancho, hierro del 10 macizo;70800
+Banquetas;Banquitos U;80 largo × 40 ancho, hierro del 10 macizo;101400
+Materas;Matera cuadrada;25 × 25 × 15 alto;41400
+Materas;Matera cuadrada;20 × 20;39700
+Materas;Matera redonda;25 diám. × 40 alto;38600
+Tótems;Tótem redondo;25 diám. ext. × 15 diám. int. × 35 alto;19600
+Tótems;Tótem redondo;35 diám. ext. × 25 diám. int. × 45 alto;22000
+Tótems;Tótem hoja;50 alto × 20 ancho;26400
+Tótems;Tótem hoja;55 alto × 20 ancho;31900
+Cavas;Cava cuadrada;30 × 30, 9 botellas;54500
+Cavas;Cava chanchito;25 diám., 4 botellas;40300
+Portamacetas;Portamaceta o canasto trípode;30 alto × 30 diám.;39000
+Portamacetas;Portamaceta o canasto trípode;45 alto × 30 diám.;42800
+Portamacetas;Portamacetas de pie (los 3);80, 60 y 40 alto × 30 diám.;72200
+Portamacetas;Portamaceta canasto (c/u);28 diám.;34400
+Percheros;Perchero;60 largo;43000
+Percheros;Perchero;80 largo;45600
+Respaldos;Respaldo circular;1,90 diám. × 95 alto;117200
+Respaldos;Respaldo circular;1,70 × 85 alto;102700
+Respaldos;Respaldo circular;1,50 diám. × 75 alto;93600
+Respaldos;Respaldo rectangular;2,10 × 70 alto;
+Respaldos;Respaldo rectangular;1,90 × 70 alto;
+Respaldos;Respaldo rectangular;1,50 × 70 alto;
+Respaldos;Respaldo flor;1,50 diám.;92600
+Respaldos;Respaldo flor;1,70 diám.;101200
+Respaldos;Respaldo flor;1,90 diám.;116800
+Hamacas;Hamaca Tordera;1,25 largo × 80 ancho × 65 prof.;145500
+Hamacas;Hamaca Málaga;1 m largo × 80 ancho × 65 prof.;165400
+Hamacas;Soporte;60 ancho × 60 alto × 70 largo, caño estructural 30 × 30;66200
+Sillones;Sillón Málaga;1 cuerpo, 85 ancho × 40 prof. × 85 alto total, hierro del 12;161000
+Servilleteros;Servilletero cuadrado;18 × 18 × 6 aprox.;21000
+Servilleteros;Servilletero semicírculo;Única;17000
+Navidad;Arbolito chato;65 alto × 40 ancho;41000
+Navidad;Arbolito pirámide;40 alto;36000
+Navidad;Arbolito pirámide;60 alto;41600
+Navidad;Arbolito pirámide;90 alto;54600
+Navidad;Arbolito pirámide;1,20 alto;60900
+Navidad;Arbolito cono;40 alto;40300
+Navidad;Arbolito cono;60 alto;45400
+Navidad;Arbolito cono;90 alto;56700
+Navidad;Pirámide con estrella;75 alto;30000
+Navidad;Pirámide con estrella;95 alto;36000
+Navidad;Pirámide con estrella;120 alto;46000
+Navidad;Estrella tridimensional;25 cm;24000
+Navidad;Estrella;20 cm;21000
+Navidad;Estrella;25 cm;24000
+Navidad;Rosca;40 ext. × 30 int.;31000

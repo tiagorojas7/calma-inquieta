@@ -53,10 +53,7 @@ export function AdminPageHeader({
 }) {
   const area = useAdminArea();
   return (
-    <header
-      data-area={area}
-      className="flex flex-col gap-3"
-    >
+    <header data-area={area} className="flex flex-col gap-3">
       {back ? <AdminBackButton href={back.href} label={back.label} /> : null}
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <nav aria-label="Migas de pan">

@@ -273,3 +273,100 @@ describe("price raise", () => {
     });
   });
 });
+
+describe("bulk writes use batched repository calls", () => {
+  function counted(repository: InMemoryMaterialRepository) {
+    const calls = {
+      findActiveByName: 0,
+      findActiveByNames: 0,
+      saveAll: 0,
+      insert: 0,
+      update: 0,
+    };
+    for (const name of Object.keys(calls) as (keyof typeof calls)[]) {
+      const original = repository[name].bind(repository) as (
+        ...args: never[]
+      ) => unknown;
+      (repository as unknown as Record<string, unknown>)[name] = (
+        ...args: never[]
+      ) => {
+        calls[name] += 1;
+        return original(...args);
+      };
+    }
+    return calls;
+  }
+
+  it("imports the October catalog with one batched read and one write", async () => {
+    const { service, repository } = await setup();
+    const calls = counted(repository);
+    unwrap(await service.importCatalog(actor, supplier.id, OCTOBER_CSV));
+
+    expect(calls).toEqual({
+      findActiveByName: 0,
+      findActiveByNames: 1,
+      saveAll: 1,
+      insert: 0,
+      update: 0,
+    });
+    expect(repository.materials.size).toBe(95);
+  });
+
+  it("writes nothing on a re-import with no changes", async () => {
+    const { service, repository } = await setup();
+    unwrap(await service.importCatalog(actor, supplier.id, OCTOBER_CSV));
+    const calls = counted(repository);
+    unwrap(await service.importCatalog(actor, supplier.id, OCTOBER_CSV));
+
+    expect(calls.findActiveByNames).toBe(1);
+    expect(calls.saveAll).toBe(0);
+  });
+
+  it("leaves the catalog untouched when a write in the middle fails", async () => {
+    const { service, repository } = await setup();
+    unwrap(
+      await service.importCatalog(
+        actor,
+        supplier.id,
+        `${HEADER}\nTazas;Taza;Chica;1000\n`,
+      ),
+    );
+    const before = JSON.stringify([...repository.materials.values()]);
+    const original = repository.saveAll.bind(repository);
+    // Simulate a concurrent writer taking a name after the plan was read.
+    repository.saveAll = (writes) => {
+      const [first] = writes;
+      if (first) void repository.insert({ ...first.material, id: "rival" });
+      return original(writes);
+    };
+    await expect(
+      service.importCatalog(
+        actor,
+        supplier.id,
+        `${HEADER}\nTazas;Plato;Hondo;500\nTazas;Vaso;Alto;300\nTazas;Taza;Grande;2000\n`,
+      ),
+    ).rejects.toThrow();
+
+    const after = [...repository.materials.values()].filter(
+      (material) => material.id !== "rival",
+    );
+    expect(after.map((material) => material.name)).toEqual(["Taza"]);
+    expect(JSON.stringify(after)).toBe(before);
+  });
+
+  it("applies a price raise as one batched write", async () => {
+    const { service, repository } = await setup();
+    unwrap(
+      await service.importCatalog(
+        actor,
+        supplier.id,
+        `${HEADER}\nTazas;Taza;Chica;1000\nTazas;Plato;Hondo;500\n`,
+      ),
+    );
+    const calls = counted(repository);
+    unwrap(await service.raisePrices(actor, { supplierId: supplier.id }, 10));
+
+    expect(calls.saveAll).toBe(1);
+    expect(calls.update).toBe(0);
+  });
+});

@@ -3,6 +3,7 @@ import { Money } from "~/modules/_shared";
 import {
   MaterialNameConflictError,
   MaterialVariantLabelConflictError,
+  materialNameKey,
   type MaterialFilter,
   type MaterialRepository,
 } from "~/modules/materials";
@@ -277,6 +278,102 @@ export function runMaterialRepositoryContract(
         material.variants[0]?.price,
         null,
       ]);
+    });
+
+    it("finds many active names in one call, keyed by normalized name", async () => {
+      const { repository } = await create();
+      const amber = buildStoredMaterial({ name: "Ámbar" });
+      const beto = buildStoredMaterial({ id: MATERIAL_B, name: "Beto" });
+      await repository.insert(amber);
+      await repository.insert(beto);
+      await repository.insert(
+        buildStoredMaterial({
+          id: MATERIAL_C,
+          name: "Archived",
+          active: false,
+        }),
+      );
+
+      const found = await repository.findActiveByNames([
+        " ÁMBAR ",
+        "beto",
+        "Archived",
+        "Missing",
+      ]);
+      expect(found).toEqual(
+        new Map([
+          [materialNameKey("Ámbar"), amber],
+          [materialNameKey("Beto"), beto],
+        ]),
+      );
+      expect(await repository.findActiveByNames([])).toEqual(new Map());
+    });
+
+    it("applies inserts and updates together, and an empty batch is a no-op", async () => {
+      const { repository } = await create();
+      await repository.insert(buildStoredMaterial());
+      const changed = buildStoredMaterial({
+        description: "Changed",
+        variants: [buildStoredVariant({ label: "New", price: money(77) })],
+      });
+      const added = buildStoredMaterial({
+        id: MATERIAL_B,
+        name: "Beto",
+        variants: [
+          buildStoredVariant({
+            id: "00000000-0000-4000-8000-000000000202",
+            label: "Única",
+          }),
+        ],
+      });
+
+      await repository.saveAll([]);
+      await repository.saveAll([
+        { mode: "update", material: changed },
+        { mode: "insert", material: added },
+      ]);
+      expect(await repository.findById(MATERIAL_A)).toEqual(changed);
+      expect(await repository.findById(MATERIAL_B)).toEqual(added);
+    });
+
+    it("rolls back every write of a batch when a later one fails", async () => {
+      const { repository } = await create();
+      const original = buildStoredMaterial();
+      await repository.insert(original);
+      const ok = buildStoredMaterial({
+        id: MATERIAL_B,
+        name: "Beto",
+        variants: [
+          buildStoredVariant({
+            id: "00000000-0000-4000-8000-000000000202",
+            label: "Única",
+          }),
+        ],
+      });
+      const clash = buildStoredMaterial({
+        id: MATERIAL_C,
+        name: "ÁMBAR",
+        variants: [
+          buildStoredVariant({
+            id: "00000000-0000-4000-8000-000000000203",
+            label: "Única",
+          }),
+        ],
+      });
+
+      await expect(
+        repository.saveAll([
+          {
+            mode: "update",
+            material: buildStoredMaterial({ description: "Must roll back" }),
+          },
+          { mode: "insert", material: ok },
+          { mode: "insert", material: clash },
+        ]),
+      ).rejects.toBeInstanceOf(MaterialNameConflictError);
+      expect(await repository.findById(MATERIAL_A)).toEqual(original);
+      expect(await repository.findById(MATERIAL_B)).toBeNull();
+      expect(await repository.findById(MATERIAL_C)).toBeNull();
     });
 
     it("rolls back root and variants when a child constraint fails", async () => {

@@ -78,6 +78,7 @@ export function SuppliersList({
         label={copy.title}
         rows={rows}
         rowKey={(row) => row.id}
+        href={(row) => `${BASE}/${row.id}`}
         card={(row) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">

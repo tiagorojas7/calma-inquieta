@@ -1,4 +1,7 @@
 import { Heading, Text } from "../atoms/heading";
+import { Icon } from "../atoms/icon";
+import { AreaChip } from "./admin-area";
+import { ADMIN_NAV_MAIN } from "./admin-nav";
 import { AdminButtonLink } from "./admin-button-link";
 import { adminMicrocopy } from "./microcopy";
 
@@ -43,8 +46,10 @@ function Figure({
     <li
       className={`flex flex-col gap-1 rounded-md bg-surface p-5 shadow-card ${highlight ? "border-2 border-clay-800" : ""}`}
     >
-      <p className="text-base text-ink-600">{label}</p>
-      <p className="font-display text-h2 font-medium text-ink-900">{value}</p>
+      <p className="text-base font-semibold text-ink-700">{label}</p>
+      <p className="font-display text-h2 font-semibold tabular-nums text-ink-900">
+        {value}
+      </p>
       {detail ? <p className="text-base text-ink-700">{detail}</p> : null}
     </li>
   );
@@ -65,9 +70,12 @@ export function AdminLanding({
   const { figures } = summary;
   return (
     <section className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading level={1}>{copy.title}</Heading>
-        <Text tone="muted">{copy.greeting(email)}</Text>
+      <div className="flex items-center gap-3">
+        <AreaChip area="home" size={28} />
+        <div className="flex flex-col gap-1">
+          <Heading level={1}>{copy.title}</Heading>
+          <Text tone="muted">{copy.greeting(email)}</Text>
+        </div>
       </div>
       <section aria-labelledby="panel-today" className="flex flex-col gap-3">
         <Heading level={2} size="h3" id="panel-today">
@@ -89,6 +97,7 @@ export function AdminLanding({
                   href={task.href}
                   variant={index === 0 ? "primary" : "secondary"}
                   ariaLabel={`${task.action}: ${task.hint}`}
+                  next
                 >
                   {task.action}
                 </AdminButtonLink>
@@ -96,6 +105,35 @@ export function AdminLanding({
             ))}
           </ol>
         )}
+      </section>
+      <section aria-labelledby="panel-areas" className="flex flex-col gap-3">
+        <Heading level={2} size="h3" id="panel-areas">
+          {copy.areasTitle}
+        </Heading>
+        <nav aria-label={copy.areasLabel}>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {ADMIN_NAV_MAIN.filter((entry) => entry.area !== "home").map(
+              (entry) => (
+                <li key={entry.href}>
+                  <a
+                    href={entry.href}
+                    data-area={entry.area}
+                    className="flex min-h-16 items-center gap-4 rounded-md bg-surface p-3 text-lg font-bold text-ink-900 shadow-card hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+                  >
+                    <AreaChip area={entry.area} size={28} />
+                    <span className="flex-1">{entry.label}</span>
+                    <Icon
+                      name="chevron-right"
+                      size={24}
+                      aria-hidden="true"
+                      className="text-clay-800"
+                    />
+                  </a>
+                </li>
+              ),
+            )}
+          </ul>
+        </nav>
       </section>
       <section aria-labelledby="panel-month" className="flex flex-col gap-3">
         <Heading level={2} size="h3" id="panel-month">

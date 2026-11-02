@@ -313,10 +313,17 @@ export function EnrollmentsList({
   const empty = {
     title: copy.empty[tab].title,
     message: copy.empty[tab].message,
-    action: {
-      href: "/admin/inscripciones?estado=pending_confirmation",
-      label: copy.empty.action,
-    },
+    // On an empty Por cobrar tab the useful way out is the paid list.
+    action:
+      tab === "por-cobrar"
+        ? {
+            href: listHref(filter, "paid"),
+            label: copy.empty.actionWhenNothingToCharge,
+          }
+        : {
+            href: "/admin/inscripciones?estado=pending_confirmation",
+            label: copy.empty.action,
+          },
   };
   return (
     <section className="flex flex-col gap-4">

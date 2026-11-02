@@ -2,6 +2,7 @@ import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { ADMIN_TAP_CARD, AdminTapTarget } from "./admin-sections";
 import { AdminEmptyState } from "./empty-state";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge, type AdminStatus } from "./status-badge";
@@ -101,7 +102,7 @@ export function WorkshopsList({
           {rows.map((row) => (
             <li
               key={row.id}
-              className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
+              className={`flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card ${ADMIN_TAP_CARD}`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <a href={`/admin/talleres/${row.id}`} className={linkClasses}>
@@ -141,6 +142,7 @@ export function WorkshopsList({
                   </AdminButton>
                 </form>
               ) : null}
+              <AdminTapTarget href={`/admin/talleres/${row.id}`} />
             </li>
           ))}
         </ul>

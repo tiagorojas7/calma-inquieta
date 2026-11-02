@@ -107,6 +107,7 @@ export const adminMicrocopy = {
         message: "Probá con otro mes, taller o búsqueda.",
       },
       action: "Ver por cobrar",
+      actionWhenNothingToCharge: "Ver pagadas",
     },
     consolidationLink: "Materiales a pedir",
     consolidation: {
@@ -427,6 +428,8 @@ export const adminMicrocopy = {
     title: "Inicio",
     greeting: (email: string) => `Hola, ${email}`,
     todayTitle: "Hoy tenés que…",
+    areasTitle: "Ir a…",
+    areasLabel: "Áreas",
     allDone: "Todo al día. No hay nada pendiente para hoy.",
     tasks: {
       charge: {

@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import { AdminAreaProvider } from "./admin-area";
 import { AdminFeedback, AdminPageActions, AdminPageHeader } from "./admin-page";
 
 describe("AdminPageHeader", () => {
@@ -82,5 +83,38 @@ describe("AdminFeedback", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos guardar.");
     await expectNoAxeViolations(container);
+  });
+});
+
+describe("AdminPageHeader wayfinding", () => {
+  it("renders the back link as a large visible button with an arrow", () => {
+    render(
+      <AdminPageHeader
+        title="Editar taller"
+        back={{ href: "/admin/talleres", label: "Volver a talleres" }}
+      />,
+    );
+    const back = screen.getByRole("link", { name: "Volver a talleres" });
+    expect(back).toHaveAttribute("data-variant", "secondary");
+    expect(back).toHaveAttribute("data-role", "back");
+    expect(back).toHaveClass("min-h-12");
+    expect(back.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("tints the header band and shows the area icon when inside an area", () => {
+    render(
+      <AdminAreaProvider area="workshops">
+        <AdminPageHeader title="Talleres" />
+      </AdminAreaProvider>,
+    );
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-area", "workshops");
+    expect(header).toHaveClass("bg-area-workshops-bg");
+    expect(header.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("stays plain outside an area", () => {
+    render(<AdminPageHeader title="Talleres" />);
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-area");
   });
 });

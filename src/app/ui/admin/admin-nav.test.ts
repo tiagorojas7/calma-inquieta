@@ -62,3 +62,12 @@ describe("short admin navigation", () => {
     expect(active("/admin/talleres-x")).toBeUndefined();
   });
 });
+
+describe("area identity", () => {
+  it("gives every entry an area key and an icon, one of each per area", () => {
+    const all = [...ADMIN_NAV_MAIN, ...ADMIN_NAV_MORE];
+    expect(all).toHaveLength(13);
+    expect(new Set(all.map((entry) => entry.area)).size).toBe(13);
+    expect(new Set(all.map((entry) => entry.icon)).size).toBe(13);
+  });
+});

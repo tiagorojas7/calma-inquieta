@@ -7,10 +7,12 @@ describe("admin navigation for students", () => {
       ADMIN_NAV.filter((entry) => isActiveAdminEntry(entry, pathname)).map(
         (entry) => entry.label,
       );
-    expect(ADMIN_NAV).toContainEqual({
-      label: "Alumnas",
-      href: "/admin/alumnas",
-    });
+    expect(ADMIN_NAV).toContainEqual(
+      expect.objectContaining({
+        label: "Alumnas",
+        href: "/admin/alumnas",
+      }),
+    );
     expect(active("/admin/alumnas")).toEqual(["Alumnas"]);
     expect(active("/admin/alumnas/ana%40example.com")).toEqual(["Alumnas"]);
     expect(active("/admin/alumnas-x")).toEqual([]);

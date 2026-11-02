@@ -5,7 +5,7 @@ export type AdminButtonVariant = "primary" | "secondary" | "outline" | "danger";
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 const base =
-  "relative inline-flex min-h-11 items-center justify-center rounded-md px-6 py-3 font-sans font-semibold";
+  "relative inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-6 py-3 font-sans text-base font-bold";
 const disabled =
   "disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 

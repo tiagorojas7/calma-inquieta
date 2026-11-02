@@ -65,3 +65,19 @@ describe("AdminButtonLink variants", () => {
     expect(link).toHaveAttribute("href", "/admin/x");
   });
 });
+
+describe("AdminButtonLink icons", () => {
+  it("shows a decorative leading icon and a trailing arrow for next steps", () => {
+    render(
+      <AdminButtonLink href="/admin/talleres/nuevo" icon="workshops" next>
+        Nuevo taller
+      </AdminButtonLink>,
+    );
+    const link = screen.getByRole("link", { name: "Nuevo taller" });
+    const icons = link.querySelectorAll("svg");
+    expect(icons).toHaveLength(2);
+    for (const icon of icons)
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(link).toHaveClass("min-h-12");
+  });
+});

@@ -9,7 +9,7 @@ export function BookingSummary({
   return (
     <aside
       aria-label={label}
-      className="flex min-w-0 flex-col gap-5 rounded-md bg-surface p-5 shadow-raised lg:sticky lg:top-24"
+      className="card-accent flex min-w-0 flex-col gap-5 rounded-md bg-surface p-6 pt-8 shadow-raised lg:sticky lg:top-24"
     >
       {children}
     </aside>

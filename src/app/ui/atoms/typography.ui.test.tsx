@@ -37,9 +37,9 @@ describe("typography atoms", () => {
   });
 
   it.each([
-    ["display", "font-medium"],
-    ["h1", "font-medium"],
-    ["h2", "font-medium"],
+    ["display", "font-semibold"],
+    ["h1", "font-semibold"],
+    ["h2", "font-semibold"],
     ["h3", "font-semibold"],
   ] as const)("gives heading size %s the weight %s", (size, weight) => {
     render(
@@ -84,7 +84,7 @@ describe("typography atoms", () => {
     expect(screen.getByText("Sección")).toHaveClass(
       "text-eyebrow",
       "tracking-eyebrow",
-      "text-ink-600",
+      "text-terracotta-700",
     );
   });
   it("has an accessible heading outline", async () => {

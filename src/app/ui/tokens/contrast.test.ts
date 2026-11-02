@@ -219,6 +219,15 @@ const REFERENCE_RATIOS = [
   { fg: "clay-800", bg: "canvas", kind: "ui", ratio: 6.85 },
   { fg: "clay-800", bg: "surface", kind: "ui", ratio: 7.38 },
   { fg: "clay-800", bg: "sand-200", kind: "ui", ratio: 5.23 },
+  { fg: "canvas", bg: "cocoa-900", kind: "text", ratio: 13.72 },
+  { fg: "sand-200", bg: "cocoa-900", kind: "text", ratio: 10.48 },
+  { fg: "apricot-300", bg: "cocoa-900", kind: "text", ratio: 8.17 },
+  { fg: "cocoa-900", bg: "canvas", kind: "text", ratio: 13.72 },
+  { fg: "cocoa-900", bg: "sand-200", kind: "text", ratio: 10.48 },
+  { fg: "ink-900", bg: "blush-100", kind: "text", ratio: 14.07 },
+  { fg: "ink-700", bg: "blush-100", kind: "text", ratio: 5.56 },
+  { fg: "terracotta-700", bg: "blush-100", kind: "text", ratio: 5.53 },
+  { fg: "clay-800", bg: "blush-100", kind: "text", ratio: 6.08 },
   { fg: "tan-400", bg: "canvas", kind: "decorative", ratio: 3.14 },
 ] as const;
 

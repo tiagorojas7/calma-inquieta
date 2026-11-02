@@ -12,7 +12,7 @@ export function ContactItem({
   href?: string;
 }) {
   return (
-    <div className="card-hover flex items-start gap-4 rounded-md bg-white p-4 shadow-card">
+    <div className="card-hover card-accent flex items-start gap-4 rounded-md bg-white p-4 shadow-card">
       <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sand-100 text-clay-800">
         <Icon name={icon} aria-hidden="true" />
       </span>

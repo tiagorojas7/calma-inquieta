@@ -4,9 +4,9 @@ import type { ElementType, HTMLAttributes, PropsWithChildren } from "react";
 const headingClasses: Record<string, string> = {
   // Line heights come from the --text-* tokens. Weights: 500 for the large
   // sizes, 600 for h3 where the smaller size needs the extra hierarchy.
-  display: "font-display text-display font-medium text-ink-900",
-  h1: "font-display text-display font-medium text-ink-900",
-  h2: "font-display text-h2 font-medium text-ink-900",
+  display: "font-display text-display font-semibold text-ink-900",
+  h1: "font-display text-display font-semibold text-ink-900",
+  h2: "font-display text-h2 font-semibold text-ink-900",
   h3: "font-display text-h3 font-semibold text-ink-900",
   h4: "font-sans text-base font-semibold leading-tight text-ink-900",
 };
@@ -67,7 +67,7 @@ export function Eyebrow({
   return (
     <span
       {...props}
-      className={`font-sans text-eyebrow font-semibold uppercase tracking-eyebrow text-ink-600 ${className as string}`}
+      className={`font-sans eyebrow-mark text-eyebrow font-semibold uppercase tracking-eyebrow text-terracotta-700 ${className as string}`}
       data-eyebrow="true"
     >
       {children}

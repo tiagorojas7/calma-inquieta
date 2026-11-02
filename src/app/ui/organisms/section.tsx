@@ -6,7 +6,7 @@ import type { HTMLAttributes, PropsWithChildren } from "react";
  * (`max-w-page` plus gutters). Boxed bands stay inside the page grid with
  * rounded corners.
  *
- * Tones: canvas (page colour), sand (sand-100), clay (deep clay-800 with
+ * Tones: canvas (page colour), sand (sand-100), cocoa (chocolate, the closing band), clay (deep clay-800 with
  * light text; headings, paragraphs and eyebrows inherit the light colour and
  * `<em>` turns sand-200), white (surface). All text pairs are AA.
  */
@@ -14,6 +14,7 @@ const toneClasses = {
   canvas: "bg-canvas text-ink-700",
   sand: "bg-sand-100 text-ink-700",
   clay: "bg-clay-800 text-canvas tone-clay",
+  cocoa: "bg-cocoa-900 text-canvas tone-cocoa",
   white: "bg-surface text-ink-700",
 } as const;
 

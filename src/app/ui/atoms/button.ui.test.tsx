@@ -173,7 +173,7 @@ describe("Button", () => {
     const busy = screen.getByRole("button", { name: "Guardando" });
     expect(busy).toBeDisabled();
     expect(busy).toHaveAttribute("aria-busy", "true");
-    expect(busy).toHaveClass("min-h-11", "px-6", "py-3");
+    expect(busy).toHaveClass("min-h-11", "px-7", "py-3");
     await user.click(busy);
     expect(onClick).toHaveBeenCalledTimes(2);
   });
@@ -244,10 +244,52 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: "Contacto" });
     expect(link).toHaveAttribute("aria-disabled", "true");
     expect(link).toHaveAttribute("aria-busy", "true");
-    expect(link).toHaveClass("min-h-11", "px-6", "py-3");
+    expect(link).toHaveClass("min-h-11", "px-7", "py-3");
     await user.click(link);
     await user.keyboard("{Enter}");
     expect(onClick).not.toHaveBeenCalled();
     expect(screen.queryByText("Página de contacto")).not.toBeInTheDocument();
+  });
+});
+
+describe("Button identity treatment", () => {
+  const renderLink = (variant: "primary" | "secondary" | "tertiary") => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <ButtonLink href="/talleres" variant={variant}>
+            Ver talleres
+          </ButtonLink>
+        ),
+      },
+    ]);
+    render(<Stub />);
+    return screen.getByRole("link", { name: "Ver talleres" });
+  };
+
+  it("draws the arrow on primary links", () => {
+    expect(renderLink("primary")).toHaveClass("btn-arrow", "rounded-pill");
+  });
+
+  it("gives the primary fill the layered button shadow", () => {
+    expect(renderLink("primary")).toHaveClass("shadow-button");
+  });
+});
+
+describe("Button identity treatment (secondary and tertiary)", () => {
+  it("keeps the arrow off text links", () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <ButtonLink href="/talleres" variant="tertiary">
+            Ver talleres
+          </ButtonLink>
+        ),
+      },
+    ]);
+    render(<Stub />);
+    expect(screen.getByRole("link")).not.toHaveClass("btn-arrow");
   });
 });

@@ -50,7 +50,7 @@ function statusPresentation(status: string): {
 
 function ContactFallback({ number }: { number: string }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-md border border-sand-300 bg-sand-100 p-4">
+    <div className="flex flex-col items-start gap-3 card-accent rounded-md bg-sand-100 p-4 pt-6">
       <Text>
         {`No pudimos armar el enlace de WhatsApp. Anotá tu número de pedido (${number}) y escribinos desde Contacto.`}
       </Text>
@@ -115,7 +115,7 @@ export function OrderPage(props: OrderPageProps) {
 
       <section
         aria-labelledby="order-receipt"
-        className="flex flex-col gap-4 rounded-lg border border-sand-300 bg-white p-5 shadow-card"
+        className="flex flex-col gap-4 card-accent rounded-md bg-white p-6 pt-8 shadow-card"
       >
         <Heading level={2} id="order-receipt">
           Resumen del pedido

@@ -33,7 +33,7 @@ export function ErrorPage({
         <Butterfly size="lg" className="left-0 top-0" />
       </div>
       <Heading level={1}>{copy.title}</Heading>
-      <Text>{copy.message}</Text>
+      <Text className="text-lead">{copy.message}</Text>
       <div className="flex flex-wrap items-center gap-4">
         <ButtonLink href="/" className="gap-2">
           Volver al inicio

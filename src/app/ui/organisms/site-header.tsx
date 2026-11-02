@@ -123,7 +123,7 @@ export function SiteHeader({
             href={profile.whatsappHref}
             aria-label="Escribinos por WhatsApp"
             style={stagger(pages.length)}
-            className="menu-item inline-flex min-h-11 items-center gap-2 rounded-md bg-clay-600 px-6 py-3 font-sans text-white transition-[background-color,box-shadow,transform] duration-200 ease-calm hover:bg-clay-700 hover:shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 motion-safe:hover:-translate-y-0.5 max-lg:self-start"
+            className="menu-item inline-flex min-h-11 items-center gap-2 rounded-pill bg-clay-600 px-6 py-3 font-sans font-semibold text-white shadow-button transition-[background-color,box-shadow,transform] duration-200 ease-calm hover:bg-clay-700 hover:shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 motion-safe:hover:-translate-y-0.5 max-lg:self-start"
             onClick={() => {
               onMenuOpenChange(false);
             }}

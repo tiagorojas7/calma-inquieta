@@ -361,6 +361,12 @@ describe("home organisms", () => {
       expect(container.querySelector("[data-variant]")).not.toBeNull();
     });
 
+    it("marks itself as the page's closing band so the footer does not repeat the call to action", () => {
+      const { container } = renderBand();
+
+      expect(container.querySelector("section")).toHaveClass("closing-band");
+    });
+
     it("styles both calls to action for the dark band", async () => {
       const { container } = renderBand();
 

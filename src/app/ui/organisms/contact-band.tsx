@@ -55,7 +55,7 @@ export function ContactBand({
       tone="cocoa"
       spacing="lg"
       grain
-      className="band-glow band-frame overflow-x-clip"
+      className="closing-band band-glow band-frame overflow-x-clip"
     >
       <Butterfly
         size="xl"

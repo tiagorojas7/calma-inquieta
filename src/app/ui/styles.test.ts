@@ -570,6 +570,12 @@ describe("layout stylesheet", () => {
     );
   });
 
+  it("hides the footer booking panel when the page already closes with a call-to-action band", () => {
+    expect(css).toMatch(
+      /:has\(\.closing-band\)\s+\.site-footer-cta\s*\{[^}]*display:\s*none/,
+    );
+  });
+
   it("app.css clips the horizontal overshoot of full-bleed bands", () => {
     expect(readStyles("app.css")).toMatch(/html\s*\{[^}]*overflow-x:\s*clip/);
   });

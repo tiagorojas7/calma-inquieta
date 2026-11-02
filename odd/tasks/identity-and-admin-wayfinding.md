@@ -12,7 +12,7 @@ S2. Admin wayfinding with direction buttons, icons and color. Owner, verbatim: "
 
 ## Tasks
 
-- [ ] P1 — S1: public identity pass (bolder). Route: delegated (one writer; machine runs one agent at a time). Commit: —
+- [x] P1 — S1: public identity pass (bolder). Route: delegated (one writer). Commit: e2be2d8 (single slice, about 560 changed lines). Gate: format, typecheck, lint, vitest unit+ui src/app green; detector []. Gaps: not every inner page screenshotted (talleres detail, intensivos, order, enrollment need DB data).
 - [ ] A1 — S2: admin wayfinding (direction buttons, icons, color, type contrast). Route: delegated. Commit: —
 
 ## Log

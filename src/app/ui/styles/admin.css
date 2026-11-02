@@ -24,6 +24,40 @@
   --color-status-grey-fg: #3b414a;
   --color-status-neutral-bg: #f7f5f2; /* Borrador */
   --color-status-neutral-fg: #3a3631;
+
+  /*
+   * Area identity: one tint (icon chip, header band, active nav) and one strong
+   * color (icon, accent text) per admin area. Hues stay clear of the status
+   * colors above (orange, green, blue, teal, grey); status is a pill with
+   * words, an area is a square icon chip. Pairs and the distance to the status
+   * colors are asserted in admin-colors.test.ts.
+   */
+  --color-area-home-bg: #efe0d4;
+  --color-area-home-fg: #6e4f3b;
+  --color-area-enrollments-bg: #e6dcfb;
+  --color-area-enrollments-fg: #3f2f94;
+  --color-area-workshops-bg: #fadbe9;
+  --color-area-workshops-fg: #8b1c52;
+  --color-area-intensives-bg: #ecdcf7;
+  --color-area-intensives-fg: #5b2a86;
+  --color-area-materials-bg: #f1ecb8;
+  --color-area-materials-fg: #4f4a06;
+  --color-area-attendance-bg: #e0efb8;
+  --color-area-attendance-fg: #3b5508;
+  --color-area-teachers-bg: #f4dcd0;
+  --color-area-teachers-fg: #7a3418;
+  --color-area-suppliers-bg: #e6dfd2;
+  --color-area-suppliers-fg: #574a30;
+  --color-area-students-bg: #f6d9f3;
+  --color-area-students-fg: #7d1f78;
+  --color-area-events-bg: #ffd8e0;
+  --color-area-events-fg: #a3192f;
+  --color-area-reminders-bg: #f8e4a8;
+  --color-area-reminders-fg: #6b4a00;
+  --color-area-statistics-bg: #e3e8d0;
+  --color-area-statistics-fg: #44521c;
+  --color-area-catalog-bg: #e9d7d0;
+  --color-area-catalog-fg: #6b3a35;
 }
 
 /* Every raised card gets a visible edge against the grey page. */
@@ -31,7 +65,49 @@
   border: 1px solid var(--color-admin-line);
 }
 
-/* Titles carry the hierarchy: heavier than the public headings. */
+/* Titles carry the hierarchy: h1 heaviest, section titles clearly below it. */
 .admin-root h1 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.admin-root h2 {
+  font-weight: 650;
+}
+
+/* Figures line up in columns: money, counts, dates and times. */
+.admin-root {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Labels read as labels, values as values. */
+.admin-root dt {
+  color: var(--color-ink-700);
   font-weight: 600;
+}
+.admin-root dd {
+  color: var(--color-ink-900);
+}
+
+/*
+ * Whole-card tap target. The card carries an invisible anchor stretched over
+ * it (aria-hidden, out of the tab order: the named link inside stays the one
+ * accessible destination); real controls inside sit above the overlay.
+ */
+.admin-tap {
+  position: relative;
+}
+.admin-tap [data-tap] {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.admin-tap
+  :is(a, button, input, select, textarea, summary, label):not([data-tap]) {
+  position: relative;
+  z-index: 1;
+}
+.admin-tap:hover,
+.admin-tap:has([data-tap]:focus-visible) {
+  background-color: var(--color-sand-100);
 }

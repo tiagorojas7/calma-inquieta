@@ -72,6 +72,7 @@ export function WorkshopPeriodsList({
         label={copy.listLabel}
         rows={rows}
         rowKey={(row) => row.id}
+        href={(row) => row.href}
         card={(row) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">

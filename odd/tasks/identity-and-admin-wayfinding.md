@@ -13,7 +13,7 @@ S2. Admin wayfinding with direction buttons, icons and color. Owner, verbatim: "
 ## Tasks
 
 - [ ] P1 — S1: public identity pass (bolder). Route: delegated (one writer; machine runs one agent at a time). Commit: —
-- [ ] A1 — S2: admin wayfinding (direction buttons, icons, color, type contrast). Route: delegated. Commit: —
+- [x] A1 — S2: admin wayfinding (direction buttons, icons, color, type contrast). Route: delegated. Commit: see branch `feat/admin-wayfinding` (feat(admin): wayfinding with direction buttons, area icons and color). Gate observed: format, typecheck, lint, `vitest --project unit --project ui src/app`.
 
 ## Log
 

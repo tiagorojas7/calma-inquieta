@@ -3,10 +3,12 @@ import { ADMIN_NAV, isActiveAdminEntry } from "./admin-nav";
 
 describe("admin navigation for statistics", () => {
   it("lists Estadísticas and keeps it active under its path only", () => {
-    expect(ADMIN_NAV).toContainEqual({
-      label: "Estadísticas",
-      href: "/admin/estadisticas",
-    });
+    expect(ADMIN_NAV).toContainEqual(
+      expect.objectContaining({
+        label: "Estadísticas",
+        href: "/admin/estadisticas",
+      }),
+    );
     const active = (pathname: string) =>
       ADMIN_NAV.filter((entry) => isActiveAdminEntry(entry, pathname)).map(
         (entry) => entry.label,

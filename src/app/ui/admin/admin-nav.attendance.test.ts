@@ -7,10 +7,12 @@ describe("admin navigation for attendance", () => {
       ADMIN_NAV.filter((entry) => isActiveAdminEntry(entry, pathname)).map(
         (entry) => entry.label,
       );
-    expect(ADMIN_NAV).toContainEqual({
-      label: "Asistencia",
-      href: "/admin/asistencia",
-    });
+    expect(ADMIN_NAV).toContainEqual(
+      expect.objectContaining({
+        label: "Asistencia",
+        href: "/admin/asistencia",
+      }),
+    );
     expect(active("/admin/asistencia")).toEqual(["Asistencia"]);
     expect(active("/admin/asistencia/0b6f7a3e/7c9d1a52")).toEqual([
       "Asistencia",

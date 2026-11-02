@@ -3,10 +3,12 @@ import { ADMIN_NAV, isActiveAdminEntry } from "./admin-nav";
 
 describe("admin navigation for private events", () => {
   it("lists Eventos privados and keeps it active under its detail pages", () => {
-    expect(ADMIN_NAV).toContainEqual({
-      label: "Eventos privados",
-      href: "/admin/eventos",
-    });
+    expect(ADMIN_NAV).toContainEqual(
+      expect.objectContaining({
+        label: "Eventos privados",
+        href: "/admin/eventos",
+      }),
+    );
     const active = (pathname: string) =>
       ADMIN_NAV.filter((entry) => isActiveAdminEntry(entry, pathname)).map(
         (entry) => entry.label,

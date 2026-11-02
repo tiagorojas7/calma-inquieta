@@ -145,3 +145,39 @@ describe("AdminShell", () => {
     );
   });
 });
+
+describe("AdminShell wayfinding", () => {
+  it("draws one decorative area icon before every nav label and tints the active entry", () => {
+    render(
+      <AdminShell email={null} pathname="/admin/talleres/t1">
+        <h1>Taller</h1>
+      </AdminShell>,
+    );
+    const sidebar = screen.getByRole("navigation", { name: "Secciones" });
+    const links = within(sidebar).getAllByRole("link");
+    expect(links).toHaveLength(13);
+    for (const link of links) {
+      const icon = link.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(link).toHaveClass("min-h-12");
+    }
+    const active = links.find(
+      (link) => link.getAttribute("aria-current") === "page",
+    ) as HTMLElement;
+    expect(active).toHaveAttribute("data-area", "workshops");
+    expect(active).toHaveClass(
+      "bg-area-workshops-bg",
+      "text-area-workshops-fg",
+    );
+  });
+
+  it("keeps Salir a 44 px target", () => {
+    render(
+      <AdminShell email={null} pathname="/admin">
+        <h1>Inicio</h1>
+      </AdminShell>,
+    );
+    expect(screen.getByRole("link", { name: "Salir" })).toHaveClass("min-h-11");
+  });
+});

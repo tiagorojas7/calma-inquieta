@@ -7,10 +7,12 @@ describe("admin navigation for reminders", () => {
       ADMIN_NAV.filter((entry) => isActiveAdminEntry(entry, pathname)).map(
         (entry) => entry.label,
       );
-    expect(ADMIN_NAV).toContainEqual({
-      label: "Recordatorios",
-      href: "/admin/recordatorios",
-    });
+    expect(ADMIN_NAV).toContainEqual(
+      expect.objectContaining({
+        label: "Recordatorios",
+        href: "/admin/recordatorios",
+      }),
+    );
     expect(active("/admin/recordatorios")).toEqual(["Recordatorios"]);
     expect(active("/admin/recordatorios-x")).toEqual([]);
   });

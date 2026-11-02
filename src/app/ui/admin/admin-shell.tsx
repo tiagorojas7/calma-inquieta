@@ -1,6 +1,8 @@
 import { useState, type PropsWithChildren } from "react";
 import { Icon } from "../atoms/icon";
 import { SkipLink } from "../atoms/skip-link";
+import { AdminAreaProvider, AreaChip } from "./admin-area";
+import { ADMIN_AREAS } from "./admin-areas";
 import {
   ADMIN_NAV_MAIN,
   ADMIN_NAV_MORE,
@@ -17,7 +19,7 @@ export function AdminNoIndex() {
 }
 
 const linkBase =
-  "flex min-h-11 items-center rounded-md px-3 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+  "flex min-h-12 items-center gap-3 rounded-md px-2 text-base hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 function NavLinks({
   entries,
@@ -34,9 +36,15 @@ function NavLinks({
           <li key={entry.href}>
             <a
               href={entry.href}
+              data-area={entry.area}
               {...(active ? { "aria-current": "page" as const } : {})}
-              className={`${linkBase} ${active ? "bg-clay-800 font-semibold text-white hover:bg-clay-800" : "text-ink-900"}`}
+              className={`${linkBase} ${active ? `${ADMIN_AREAS[entry.area].band} font-bold hover:brightness-95` : "font-medium text-ink-900"}`}
             >
+              {active ? (
+                <Icon name={entry.icon} size={24} aria-hidden="true" />
+              ) : (
+                <AreaChip area={entry.area} size={20} className="p-1.5" />
+              )}
               {entry.label}
             </a>
           </li>
@@ -57,8 +65,9 @@ function NavList({ pathname }: { pathname: string }) {
     <div className="flex flex-col gap-1">
       <NavLinks entries={ADMIN_NAV_MAIN} activeHref={activeHref} />
       <details data-more open={moreActive || undefined} className="mt-1">
-        <summary className="flex min-h-11 cursor-pointer items-center rounded-md px-3 font-semibold text-ink-900 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
+        <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-md px-3 font-bold text-ink-900 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
           {adminMicrocopy.shell.more}
+          <Icon name="chevron-right" size={20} aria-hidden="true" />
         </summary>
         <div className="mt-1 border-l-2 border-admin-line pl-2">
           <NavLinks entries={ADMIN_NAV_MORE} activeHref={activeHref} />
@@ -142,12 +151,14 @@ export function AdminShell({
       <div className="lg:flex">
         <nav
           aria-label={copy.sections}
-          className="hidden w-60 shrink-0 border-r border-admin-line bg-surface p-4 lg:block"
+          className="hidden w-64 shrink-0 border-r border-admin-line bg-surface p-4 lg:block"
         >
           <NavList pathname={pathname} />
         </nav>
         <main id="contenido" className="min-w-0 flex-1 p-gutter">
-          {children}
+          <AdminAreaProvider area={activeAdminEntry(pathname)?.area}>
+            {children}
+          </AdminAreaProvider>
         </main>
       </div>
     </div>

@@ -126,10 +126,26 @@ describe("AdminLanding", () => {
     ).toHaveAttribute("href", "/admin/estadisticas?mes=2026-10");
   });
 
-  it("no longer repeats the navigation as a grid of sections", () => {
+  it("offers one large tile per main area, each with its icon and a chevron", () => {
     render(<AdminLanding email="agus@example.com" summary={summary} />);
-    expect(screen.queryByRole("heading", { name: "Secciones" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Talleres" })).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Áreas" });
+    const links = within(nav).getAllByRole("link");
+    expect(
+      links.map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Inscripciones", "/admin/inscripciones"],
+      ["Talleres", "/admin/talleres"],
+      ["Intensivos", "/admin/intensivos"],
+      ["Materiales", "/admin/inscripciones/materiales"],
+      ["Asistencia", "/admin/asistencia"],
+    ]);
+    for (const link of links) {
+      expect(link).toHaveClass("min-h-16");
+      expect(link.querySelectorAll("svg")).toHaveLength(2);
+      for (const icon of link.querySelectorAll("svg"))
+        expect(icon).toHaveAttribute("aria-hidden", "true");
+    }
+    expect(links[1]).toHaveAttribute("data-area", "workshops");
   });
 
   it("says everything is up to date when nothing is due", () => {

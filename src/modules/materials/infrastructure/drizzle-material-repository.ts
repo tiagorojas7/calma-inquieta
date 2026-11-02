@@ -42,12 +42,14 @@ function toSupplier(row: SupplierRow): Supplier {
 }
 
 function toVariant(row: VariantRow): MaterialVariant {
-  const price = Money.fromCentavos(row.priceCentavos);
-  if (!price.ok) throw new Error("persisted material price is invalid");
+  const price =
+    row.priceCentavos === null ? null : Money.fromCentavos(row.priceCentavos);
+  if (price && !price.ok)
+    throw new Error("persisted material price is invalid");
   return {
     id: row.id,
     label: row.label,
-    price: price.value,
+    price: price?.value ?? null,
     available: row.available,
     used: false,
     position: row.position,
@@ -117,7 +119,7 @@ function variantValues(value: Material) {
     materialId: value.id,
     label: variant.label,
     labelKey: variantLabelKey(variant.label),
-    priceCentavos: variant.price.toCentavos(),
+    priceCentavos: variant.price?.toCentavos() ?? null,
     available: variant.available,
     position: variant.position,
     swatch: variant.swatch,

@@ -35,6 +35,24 @@ function renderForm(props: Partial<Parameters<typeof MaterialForm>[0]> = {}) {
 }
 
 describe("MaterialForm", () => {
+  it("swaps the price field for an empty one when Consultar precio is checked", async () => {
+    const { container } = renderForm();
+    fireEvent.click(await screen.findByLabelText("Consultar precio"));
+
+    expect(
+      screen.queryByLabelText("Precio (en pesos)"),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector<HTMLInputElement>('input[name="variantPrice"]')
+        ?.value,
+    ).toBe("");
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="variantPriceOnRequest"]',
+      )?.value,
+    ).toBe("0");
+  });
+
   it("renders a native document form with its default Única variant and image field", async () => {
     const { container } = renderForm();
     for (const label of [

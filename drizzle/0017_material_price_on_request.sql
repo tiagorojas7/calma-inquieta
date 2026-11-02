@@ -1,0 +1,1 @@
+ALTER TABLE "material_variant" ALTER COLUMN "price_centavos" DROP NOT NULL;

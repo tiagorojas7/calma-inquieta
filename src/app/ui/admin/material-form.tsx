@@ -10,12 +10,14 @@ import {
   TextField,
 } from "./form-fields";
 import { DEFAULT_SWATCH } from "./material-swatch";
+import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminMicrocopy } from "./microcopy";
 
 export interface MaterialFormVariant {
   readonly id?: string | undefined;
   readonly label: string;
   readonly price: string;
+  readonly priceOnRequest?: boolean | undefined;
   readonly swatch: string;
   readonly available: boolean;
 }
@@ -210,15 +212,29 @@ export function MaterialForm({
                   updateVariant(index, "label", event.target.value);
                 }}
               />
-              <TextField
-                label={copy.price}
-                hint={copy.priceHint}
-                name="variantPrice"
-                inputMode="numeric"
-                value={variant.price}
-                error={rowErrors?.price}
+              {variant.priceOnRequest ? (
+                <input type="hidden" name="variantPrice" value="" />
+              ) : (
+                <TextField
+                  label={copy.price}
+                  hint={copy.priceHint}
+                  name="variantPrice"
+                  inputMode="numeric"
+                  value={variant.price}
+                  error={rowErrors?.price}
+                  onChange={(event) => {
+                    updateVariant(index, "price", event.target.value);
+                  }}
+                />
+              )}
+              <CheckboxField
+                label={materialCatalogCopy.priceOnRequest}
+                hint={materialCatalogCopy.priceOnRequestHint}
+                name="variantPriceOnRequest"
+                value={String(index)}
+                checked={variant.priceOnRequest === true}
                 onChange={(event) => {
-                  updateVariant(index, "price", event.target.value);
+                  updateVariant(index, "priceOnRequest", event.target.checked);
                 }}
               />
               <CheckboxField

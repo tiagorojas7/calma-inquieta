@@ -242,7 +242,7 @@ function resolveLines(
     );
     if (variant === undefined)
       return err({ kind: "material-not-offered", materialId: line.materialId });
-    if (!variant.available)
+    if (!variant.available || variant.unitPrice === null)
       return err({ kind: "material-unavailable", materialId: line.materialId });
     lines.push({
       materialId: material.materialId,
@@ -305,7 +305,11 @@ export function createPublicEnrollmentService(
                     height: m.image.height,
                   },
             variants: m.variants
-              .filter((v) => v.available)
+              .flatMap((v) =>
+                v.available && v.unitPrice !== null
+                  ? [{ ...v, unitPrice: v.unitPrice }]
+                  : [],
+              )
               .map((v) => ({
                 variantId: v.variantId,
                 label: v.label,

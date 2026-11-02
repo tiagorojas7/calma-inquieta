@@ -51,7 +51,7 @@ describe("createRequestServices", () => {
       ok: true,
       value: {
         status: "ok",
-        latestMigration: "0016_workshop_images",
+        latestMigration: "0017_material_price_on_request",
         buildCommit: "abc",
       },
     });

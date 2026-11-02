@@ -466,6 +466,23 @@ describe("requestEnrollment materials", () => {
     });
   });
 
+  it("refuses a variant without a price as unavailable", async () => {
+    const { service, materials } = setup();
+    materials.set("p-1", [
+      materialFixture({
+        variants: materialFixture().variants.map((v) =>
+          v.variantId === "v-2" ? { ...v, unitPrice: null } : v,
+        ),
+      }),
+    ]);
+    expect(
+      await service.requestEnrollment(request({ lines: [line("v-2")] })),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+  });
+
   it("refuses an inactive offered material before checking its variants", async () => {
     const { service, materials } = setup();
     materials.set("p-1", [materialFixture({ active: false, variants: [] })]);
@@ -559,6 +576,23 @@ describe("getOffer", () => {
     expect(result.value.materialsRequired).toBe(false);
     expect(result.value.turnos.map((t) => t.id)).toEqual(["t-1", "t-2"]);
     expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
+  });
+
+  it("leaves variants without a price out of the public offer", async () => {
+    const materials = new InMemoryOfferedMaterials({
+      "p-1": [
+        materialFixture({
+          variants: materialFixture().variants.map((v) =>
+            v.variantId === "v-2" ? { ...v, unitPrice: null } : v,
+          ),
+        }),
+      ],
+    });
+    const result = await setup({ materials }).service.getOffer(query);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.materials[0]?.variants.map((v) => v.variantId)).toEqual(
+      ["v-1"],
+    );
   });
 
   it("carries the material image and variant swatch, and null when unset", async () => {

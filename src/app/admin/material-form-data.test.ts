@@ -53,6 +53,29 @@ describe("parseMaterialDraft", () => {
     });
   });
 
+  it("marks only the rows whose Consultar precio box is checked", () => {
+    expect(
+      parseMaterialDraft(
+        formOf({
+          variantLabel: ["Chica", "Grande"],
+          variantPrice: ["1200", ""],
+          variantSwatch: ["", ""],
+          variantAvailable: ["0", "1"],
+          variantPriceOnRequest: ["1"],
+        }),
+      ).variants,
+    ).toEqual([
+      { label: "Chica", price: "1200", swatch: "", available: true },
+      {
+        label: "Grande",
+        price: "",
+        priceOnRequest: true,
+        swatch: "",
+        available: true,
+      },
+    ]);
+  });
+
   it("keeps a persisted ID aligned after a new row", () => {
     expect(
       parseMaterialDraft(

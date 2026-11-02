@@ -55,7 +55,8 @@ export interface SuppliersService {
 export interface MaterialVariant {
   readonly id: string;
   readonly label: string;
-  readonly price: import("~/modules/_shared").Money;
+  /** Null means "consultar precio". */
+  readonly price: import("~/modules/_shared").Money | null;
   readonly available: boolean;
   readonly used: boolean;
   readonly position: number;
@@ -104,7 +105,8 @@ export interface OfferedMaterialSnapshot {
   readonly variants: readonly {
     readonly variantId: string;
     readonly label: string;
-    readonly unitPrice: import("~/modules/_shared").Money;
+    /** Null means "consultar precio": never orderable. */
+    readonly unitPrice: import("~/modules/_shared").Money | null;
     readonly available: boolean;
     readonly swatch: string | null;
   }[];

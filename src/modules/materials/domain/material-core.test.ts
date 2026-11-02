@@ -82,9 +82,9 @@ describe("material core", () => {
         },
       ],
     });
-    expect(value.variants.map((variant) => variant.price.toCentavos())).toEqual(
-      [300_000, 500_000],
-    );
+    expect(
+      value.variants.map((variant) => variant.price?.toCentavos()),
+    ).toEqual([300_000, 500_000]);
   });
 
   it("aggregates required material fields and the at-least-one-variant rule", () => {
@@ -136,7 +136,33 @@ describe("material core", () => {
     const value = valueOf(
       validateMaterialDraft(draft({ variants: [{ ...variant, price }] })),
     );
-    expect(value.variants[0]?.price.toCentavos()).toBe(centavos);
+    expect(value.variants[0]?.price?.toCentavos()).toBe(centavos);
+  });
+
+  it("accepts a variant marked as price on request and stores no price", () => {
+    const variant = draft().variants[0];
+    if (!variant) throw new Error("expected draft variant");
+    const value = valueOf(
+      validateMaterialDraft(
+        draft({
+          variants: [{ ...variant, price: "", priceOnRequest: true }],
+        }),
+      ),
+    );
+    expect(value.variants[0]?.price).toBeNull();
+  });
+
+  it("ignores a typed price when the variant is marked as price on request", () => {
+    const variant = draft().variants[0];
+    if (!variant) throw new Error("expected draft variant");
+    const value = valueOf(
+      validateMaterialDraft(
+        draft({
+          variants: [{ ...variant, price: "999", priceOnRequest: true }],
+        }),
+      ),
+    );
+    expect(value.variants[0]?.price).toBeNull();
   });
 
   it("expands a short #RGB swatch to its six-digit form", () => {

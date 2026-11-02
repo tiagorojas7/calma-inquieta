@@ -210,7 +210,7 @@ describe("admin material create route", () => {
         { ...VALID, variantPrice: price, variantSwatch: "" },
       );
       const [created] = [...fixture.repository.materials.values()];
-      expect(created?.variants[0]?.price.toCentavos()).toBe(1250000);
+      expect(created?.variants[0]?.price?.toCentavos()).toBe(1250000);
       expect(created?.variants[0]?.swatch).toBeNull();
     },
   );

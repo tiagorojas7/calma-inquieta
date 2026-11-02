@@ -28,6 +28,8 @@ export interface MaterialDraft {
     readonly id?: string;
     readonly label: string;
     readonly price: string;
+    /** True when students must enquire; the typed price is then ignored. */
+    readonly priceOnRequest?: boolean;
     readonly available: boolean;
     readonly swatch: string;
   }[];
@@ -36,7 +38,8 @@ export interface MaterialDraft {
 export interface ValidMaterialVariantDraft {
   readonly id?: string;
   readonly label: string;
-  readonly price: Money;
+  /** Null means "consultar precio": shown to students, never orderable. */
+  readonly price: Money | null;
   readonly available: boolean;
   readonly swatch: string | null;
   readonly position: number;
@@ -105,17 +108,20 @@ export function validateMaterialDraft(
       issues.push({ field: row("label"), code: "duplicate" });
     else seenLabels.add(key);
 
-    const parsedPrice = parseWholePesos(variant.price);
+    const parsedPrice =
+      variant.priceOnRequest === true
+        ? ({ ok: true, value: null } as const)
+        : parseWholePesos(variant.price);
     if (!parsedPrice.ok)
       issues.push({ field: row("price"), code: parsedPrice.error });
-    else if (parsedPrice.value.isZero())
+    else if (parsedPrice.value?.isZero())
       issues.push({ field: row("price"), code: "out-of-range" });
 
     const swatch = normalizeSwatch(variant.swatch);
     if (!swatch.ok)
       issues.push({ field: row("swatch"), code: "invalid-format" });
 
-    if (label && parsedPrice.ok && !parsedPrice.value.isZero()) {
+    if (label && parsedPrice.ok && !parsedPrice.value?.isZero()) {
       variants.push({
         ...(variant.id ? { id: variant.id } : {}),
         label,

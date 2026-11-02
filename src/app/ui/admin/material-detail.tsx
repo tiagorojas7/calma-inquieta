@@ -5,6 +5,7 @@ import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError } from "./form-fields";
 import { MaterialForm, type MaterialFormErrors } from "./material-form";
 import type { ImageFieldFailure } from "./image-field";
+import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge } from "./status-badge";
 
@@ -63,6 +64,7 @@ export function MaterialDetail({
     id: string;
     label: string;
     price: string;
+    priceOnRequest?: boolean;
     available: boolean;
     used: boolean;
     swatch: string | null;
@@ -79,6 +81,7 @@ export function MaterialDetail({
       id?: string;
       label: string;
       price: string;
+      priceOnRequest?: boolean;
       swatch: string | null;
       available: boolean;
     }[];
@@ -171,7 +174,11 @@ export function MaterialDetail({
                   />
                 )}
                 <span className="font-semibold">{variant.label}</span>
-                <span>{copy.price(variant.price)}</span>
+                <span>
+                  {variant.priceOnRequest
+                    ? materialCatalogCopy.priceOnRequest
+                    : copy.price(variant.price)}
+                </span>
                 {!variant.available && <span>{copy.unavailable}</span>}
                 {variant.used && <span>{copy.used}</span>}
               </div>

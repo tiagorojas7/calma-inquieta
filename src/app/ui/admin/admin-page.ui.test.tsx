@@ -101,7 +101,7 @@ describe("AdminPageHeader wayfinding", () => {
     expect(back.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("tints the header band and shows the area icon when inside an area", () => {
+  it("keeps the header unfilled and carries the area color only on its icon chip", () => {
     render(
       <AdminAreaProvider area="workshops">
         <AdminPageHeader title="Talleres" />
@@ -109,8 +109,10 @@ describe("AdminPageHeader wayfinding", () => {
     );
     const header = screen.getByRole("banner");
     expect(header).toHaveAttribute("data-area", "workshops");
-    expect(header).toHaveClass("bg-area-workshops-bg");
-    expect(header.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(header.className).not.toMatch(/bg-area-/);
+    const icon = header.querySelector("svg");
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon?.parentElement?.className).toMatch(/bg-area-workshops-bg/);
   });
 
   it("stays plain outside an area", () => {

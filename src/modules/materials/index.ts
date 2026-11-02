@@ -27,6 +27,11 @@ export type {
   MaterialUseCases,
 } from "./application/material-service";
 export {
+  CATALOG_MAX_BYTES,
+  CATALOG_MAX_ROWS,
+  type CatalogFileError,
+} from "./domain/catalog-csv";
+export {
   materialNameKey,
   validateMaterialDraft,
   variantLabelKey,

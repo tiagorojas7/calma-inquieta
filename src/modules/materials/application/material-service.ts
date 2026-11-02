@@ -28,6 +28,7 @@ import {
   MaterialVariantLabelConflictError,
   type MaterialRepository,
 } from "./material-repository";
+import { createCatalogTools } from "./catalog-tools";
 import type { SupplierRepository } from "./supplier-repository";
 
 type MaybeActor = AdminActor | null | undefined;
@@ -104,6 +105,14 @@ export function createMaterialsService(
   const newId = deps.newId ?? (() => crypto.randomUUID());
   const newVariantId = deps.newVariantId ?? (() => crypto.randomUUID());
 
+  const tools = createCatalogTools({
+    repository,
+    suppliers,
+    clock,
+    newId,
+    newVariantId,
+  });
+
   const stamp = (actor: AdminActor) => ({
     updatedBy: actor.email,
     updatedAt: clock.now(),
@@ -112,6 +121,7 @@ export function createMaterialsService(
   const summary = (material: Material): MaterialSummary => ({
     id: material.id,
     name: material.name,
+    hasImage: material.image !== null,
     category: material.category,
     supplierName: material.supplier.name,
     variantCount: material.variants.length,
@@ -252,7 +262,13 @@ export function createMaterialsService(
     async list(actor, filter) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
-      return ok((await repository.list(filter)).map(summary));
+      const { withoutImage, ...stored } = filter;
+      const listed = await repository.list(stored);
+      return ok(
+        listed
+          .filter((material) => !withoutImage || material.image === null)
+          .map(summary),
+      );
     },
 
     async listSelectable(actor) {
@@ -329,6 +345,56 @@ export function createMaterialsService(
         throw error;
       }
       return ok(next);
+    },
+
+    async setImage(actor, id, image) {
+      const loaded = await loadForToggle(actor, id);
+      if (!loaded.ok) return err(loaded.error);
+      const alt = image.alt.trim().normalize("NFC");
+      if (!alt)
+        return err({
+          kind: "invalid",
+          issues: [{ field: "image", code: "required" }],
+        });
+      const asset = (await media.findAssets([image.assetId])).get(
+        image.assetId,
+      );
+      if (!asset)
+        return err({
+          kind: "invalid",
+          issues: [{ field: "image", code: "unknown-reference" }],
+        });
+      const next = {
+        ...loaded.value.material,
+        image: { assetId: asset.id, alt, asset },
+        audit: stamp(loaded.value.actor),
+      };
+      await repository.update(next);
+      return ok(next);
+    },
+
+    async previewCatalogImport(actor, supplierId, csv) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return tools.previewCatalogImport(authorized.value, supplierId, csv);
+    },
+
+    async importCatalog(actor, supplierId, csv) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return tools.importCatalog(authorized.value, supplierId, csv);
+    },
+
+    async previewPriceRaise(actor, scope, percent) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return tools.previewPriceRaise(authorized.value, scope, percent);
+    },
+
+    async raisePrices(actor, scope, percent) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return tools.raisePrices(authorized.value, scope, percent);
     },
 
     async categorySuggestions(actor) {

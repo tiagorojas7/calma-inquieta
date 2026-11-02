@@ -6,7 +6,7 @@ Test runner: `pnpm vitest run --project unit --project ui <paths>`; db tests `pn
 
 ## Specs
 
-S1. Import the catalog from a spreadsheet. A CSV with the columns `Categoría;Producto;Medida;Precio` (`;` separator, UTF-8, optional BOM, prices in whole pesos without thousands separators, empty price = "consultar precio") creates or updates materials (product = material, category = category, medida = variant) for one supplier the owner picks on the import screen. Re-importing updates prices and adds new rows without duplicating; rows not in the file are left as they are. Show a preview before applying (counts of new materials, new variants, price changes, errors with line numbers), then one "Importar" button. Description defaults to "<Producto> (<Categoría>)" when a new material is created. The October file from the owner's PDF is `docs/materials/catalogo-octubre-2026.csv` (187 measures, 101 products, 21 categories).
+S1. Import the catalog from a spreadsheet. A CSV with the columns `Categoría;Producto;Medida;Precio` (`;` separator, UTF-8, optional BOM, prices in whole pesos without thousands separators, empty price = "consultar precio") creates or updates materials (product = material, category = category, medida = variant) for one supplier the owner picks on the import screen. Re-importing updates prices and adds new rows without duplicating; rows not in the file are left as they are. Show a preview before applying (counts of new materials, new variants, price changes, errors with line numbers), then one "Importar" button. Description defaults to "<Producto> (<Categoría>)" when a new material is created. The October file from the owner's PDF is `docs/materials/catalogo-octubre-2026.csv` (as found in the file: 189 measures, 95 products, 20 categories, 4 without price; the earlier 187/101/21 counts did not match the file).
 
 S2. "Consultar precio" variants. A variant may have no price; students see it with a "Consultar precio" WhatsApp link and cannot add it to an enrollment. Today the domain requires a price > 0 (`material-core.ts`), so the price becomes optional.
 
@@ -20,7 +20,7 @@ S6. Student selector (M2). Students see only the materials chosen for their tall
 
 ## Tasks
 
-- [ ] M1 — S1-S5: admin import, consultar precio, percentage raise, quick photo, period selection by category. Route: delegated (parallel with P1/A1, disjoint surfaces). Risk: item 1 if the variant price column becomes nullable (migration). Commit: —
+- [x] M1 — S1-S5: admin import, consultar precio, percentage raise, quick photo, period selection by category. Route: delegated (parallel with P1/A1, disjoint surfaces). Risk: item 1 (migration 0017 drops NOT NULL on material_variant.price_centavos). Commits: migration and S2 in PR 1 (branch feat/materials-catalog); S1, S3, S4, S5 in PR 2 (branch feat/materials-catalog-tools, chained on PR 1). Gaps: S4 is a one-click "Subir foto" screen per row rather than an inline upload; the public offer leaves no-price variants out until M2 shows them with a WhatsApp link.
 - [ ] M2 — S6: public materials selector. Route: delegated, after P1 merges. Commit: —
 
 ## Log

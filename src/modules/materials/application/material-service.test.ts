@@ -100,6 +100,9 @@ describe("material service", () => {
       expect(await service.deactivate(missingActor, "id")).toEqual(denied);
       expect(await service.reactivate(missingActor, "id")).toEqual(denied);
       expect(await service.categorySuggestions(missingActor)).toEqual(denied);
+      expect(
+        await service.setImage(missingActor, "id", { assetId: "a", alt: "b" }),
+      ).toEqual(denied);
       expect(repositorySpies.every((spy) => spy.mock.calls.length === 0)).toBe(
         true,
       );
@@ -456,6 +459,68 @@ describe("material service", () => {
       "Arcillas",
       "Hilos",
     ]);
+  });
+
+  it("sets a photo on an existing material and lists only the photoless ones on request", async () => {
+    const { service } = await setup();
+    const plain = valueOf(
+      await service.create(actor, draft({ name: "Plano" })),
+    );
+    const withPhoto = valueOf(
+      await service.create(actor, draft({ name: "Con foto" })),
+    );
+
+    expect(
+      valueOf(
+        await service.setImage(actor, withPhoto.id, {
+          assetId: asset.id,
+          alt: "  Frasco  ",
+        }),
+      ).image,
+    ).toMatchObject({ assetId: asset.id, alt: "Frasco" });
+    expect(
+      valueOf(await service.list(actor, { state: "all" })).map((item) => [
+        item.name,
+        item.hasImage,
+      ]),
+    ).toEqual([
+      ["Con foto", true],
+      ["Plano", false],
+    ]);
+    expect(
+      valueOf(
+        await service.list(actor, { state: "all", withoutImage: true }),
+      ).map((item) => item.id),
+    ).toEqual([plain.id]);
+  });
+
+  it("refuses a photo with blank alt text, an unknown asset or an unknown material", async () => {
+    const { service } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    expect(
+      await service.setImage(actor, created.id, {
+        assetId: asset.id,
+        alt: " ",
+      }),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "image", code: "required" }],
+      },
+    });
+    expect(
+      await service.setImage(actor, created.id, { assetId: "nope", alt: "x" }),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "image", code: "unknown-reference" }],
+      },
+    });
+    expect(
+      await service.setImage(actor, "missing", { assetId: asset.id, alt: "x" }),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
   });
 
   it("hydrates a missing stored image as asset null and supports MaterialLookup", async () => {

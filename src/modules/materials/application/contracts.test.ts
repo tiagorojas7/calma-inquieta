@@ -43,7 +43,12 @@ describe("materials contracts", () => {
       "deactivate",
       "reactivate",
       "categorySuggestions",
-    ] as const).toHaveLength(8);
+      "setImage",
+      "previewCatalogImport",
+      "importCatalog",
+      "previewPriceRaise",
+      "raisePrices",
+    ] as const).toHaveLength(13);
     expectTypeOf<import("~/modules/materials").MaterialDraft>().toHaveProperty(
       "variants",
     );
@@ -76,12 +81,17 @@ describe("materials contract signatures", () => {
       "deactivate",
       "reactivate",
       "categorySuggestions",
+      "setImage",
+      "previewCatalogImport",
+      "importCatalog",
+      "previewPriceRaise",
+      "raisePrices",
     ] as const satisfies readonly (keyof MaterialsService)[];
     expect(supplierKeys).toHaveLength(6);
     expectTypeOf<keyof SuppliersService>().toEqualTypeOf<
       (typeof supplierKeys)[number]
     >();
-    expect(materialKeys).toHaveLength(8);
+    expect(materialKeys).toHaveLength(13);
     expectTypeOf<keyof MaterialsService>().toEqualTypeOf<
       (typeof materialKeys)[number]
     >();

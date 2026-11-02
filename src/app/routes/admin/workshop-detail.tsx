@@ -15,6 +15,7 @@ import {
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { failureStep } from "~/app/admin/failure-code";
 import { formatTimeRange, weekdayName } from "~/app/admin/turno-form-data";
+import { emptyOpenMonths } from "~/app/admin/empty-months";
 import { monthName, workshopReadiness } from "~/app/admin/workshop-readiness";
 import { cordobaMonthOf } from "~/modules/workshops";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
@@ -34,6 +35,7 @@ const FEEDBACK = [
   "archived",
   "restored",
   "published-open",
+  "filled",
 ] as const;
 const CHANGED_CODE = {
   publish: "published",
@@ -104,6 +106,9 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       when: `${weekdayName(turno.weekday)} ${formatTimeRange(turno.startsAt, turno.endsAt)}`,
       capacity: turno.defaultCapacity,
     })),
+    emptyMonths: emptyOpenMonths(periods.value.periods, month).map(
+      ({ id, label }) => ({ id, label }),
+    ),
     months: periods.value.periods.map((period) => ({
       period: period.period,
       label: monthName(period.period),
@@ -124,6 +129,22 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const workshops = context.get(servicesContext).monthlyWorkshops;
   const form = await request.formData();
+  if (form.get("intent") === "fill-month") {
+    const services = context.get(servicesContext);
+    const submitted = form.get("periodId");
+    const periodId = typeof submitted === "string" ? submitted : "";
+    const listed = await services.workshopPeriods.list(actor, params.id);
+    if (!listed.ok) throw failureResponse(listed.error);
+    if (!listed.value.periods.some((period) => period.id === periodId))
+      throw data(null, { status: 404 });
+    const filled = await services.workshopPeriods.fillTurnos(actor, periodId);
+    if (filled.ok)
+      return redirect(withFeedback(`${LIST}/${params.id}`, "filled"));
+    // The month closed meanwhile: reload the page, which no longer lists it.
+    if (filled.error.kind === "period-closed")
+      return redirect(`${LIST}/${params.id}`);
+    throw failureResponse(filled.error);
+  }
   const intent = parseWorkshopIntent(form);
   if (intent === null) throw data(null, { status: 400 });
 
@@ -200,6 +221,7 @@ export default function AdminWorkshopDetail() {
         next={workshop.next}
         turnos={workshop.turnos}
         months={workshop.months}
+        emptyMonths={workshop.emptyMonths}
         turnosHref={`${LIST}/${workshop.id}/turnos`}
         monthsHref={`${LIST}/${workshop.id}/periodos`}
       />

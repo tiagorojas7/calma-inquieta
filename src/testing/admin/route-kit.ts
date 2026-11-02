@@ -57,7 +57,10 @@ export function workshopsFixture() {
     media: { findAssets: () => Promise.resolve(new Map()) },
     turnos,
     turnoUsage: { isUsed: () => Promise.resolve(false) },
-    periods: { hasPeriods: () => Promise.resolve(false) },
+    periods: {
+      hasPeriods: () => Promise.resolve(false),
+      openPeriodIds: () => Promise.resolve([]),
+    },
     clock: fixedClock(new Date("2026-10-05T12:00:00.000Z")),
     newId: () => `w${String(++next)}`,
   });

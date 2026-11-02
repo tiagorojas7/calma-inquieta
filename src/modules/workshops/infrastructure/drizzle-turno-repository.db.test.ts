@@ -202,6 +202,55 @@ describe("createDrizzleTurnoRepository", () => {
     }
   });
 
+  it("writes the new turno into the open months in the same transaction", async () => {
+    const { repo, openSession } = await freshRepository();
+    const teacherId = "00000000-0000-4000-8000-000000000301";
+    const periodId = "00000000-0000-4000-8000-000000000101";
+    const session = await openSession();
+    try {
+      await session.db.execute(sql`
+        INSERT INTO teacher (id, name, name_key, bio_line, modality, active, updated_by, updated_at)
+        VALUES (${teacherId}, 'Docente', 'docente', '', 'own', true, 'seed', now())`);
+      await session.db.execute(sql`
+        INSERT INTO workshop_period
+          (id, workshop_id, period, fee_centavos, materials_required, snapshot_teacher_id, snapshot_teacher_name, snapshot_teacher_modality, status, opened_by, opened_at, updated_by, updated_at)
+        VALUES (${periodId}, ${WORKSHOP_ID}, '2026-12', 1000, false, ${teacherId}, 'Docente', 'own', 'open', 'seed', now(), 'seed', now())`);
+    } finally {
+      await session.close();
+    }
+
+    await expect(
+      repo.mutate(storedWorkshop(), {
+        kind: "insert",
+        value: storedTurno(),
+        joinPeriods: [{ periodId, capacity: 8 }],
+      }),
+    ).resolves.toEqual({ ok: true, value: undefined });
+    const read = await openSession();
+    try {
+      const { rows } = await read.db.execute<{ capacity: number }>(sql`
+        SELECT capacity FROM period_turno
+        WHERE period_id = ${periodId} AND turno_id = ${storedTurno().id}`);
+      expect(rows.map((row) => row.capacity)).toEqual([8]);
+    } finally {
+      await read.close();
+    }
+
+    await expect(
+      repo.mutate(storedWorkshop(), {
+        kind: "insert",
+        value: storedTurno({
+          id: "00000000-0000-4000-8000-000000000012",
+          label: "Tarde",
+        }),
+        joinPeriods: [{ periodId: UNKNOWN_ID, capacity: 8 }],
+      }),
+    ).rejects.toBeDefined();
+    expect(
+      await repo.findById("00000000-0000-4000-8000-000000000012"),
+    ).toBeNull();
+  });
+
   it("rolls a child change back when its owner audit cannot be updated", async () => {
     const { repo } = await freshRepository();
 

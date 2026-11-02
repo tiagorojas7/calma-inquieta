@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { err, ok, type NotFound, type Result } from "~/modules/_shared";
-import { monthlyWorkshop, workshopTurno } from "~/platform/db/schema/workshops";
+import {
+  monthlyWorkshop,
+  periodTurno,
+  workshopTurno,
+} from "~/platform/db/schema/workshops";
 import type { DbSessionFactory } from "~/platform/db/session";
 import { compareTurnos, turnoLabelKey } from "../domain/turno-core";
 import type {
@@ -99,6 +103,15 @@ export function createDrizzleTurnoRepository(
       await db
         .insert(workshopTurno)
         .values({ id: mutation.value.id, ...values(mutation.value) });
+      if (mutation.joinPeriods?.length)
+        await db.insert(periodTurno).values(
+          mutation.joinPeriods.map((join) => ({
+            periodId: join.periodId,
+            turnoId: mutation.value.id,
+            workshopId: mutation.value.workshopId,
+            capacity: join.capacity,
+          })),
+        );
       return ok(undefined);
     }
     const rows =

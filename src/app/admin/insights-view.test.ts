@@ -93,6 +93,32 @@ describe("toPanelSummary", () => {
     ]);
   });
 
+  it("lists an open month without an active turno with a link to its taller", () => {
+    const summary = toPanelSummary(panel, {
+      privateEventsUnanswered: 0,
+      emptyMonths: [
+        {
+          periodId: "p1",
+          workshopId: "w9",
+          workshopName: "Cerámica",
+          month: "Noviembre",
+        },
+      ],
+    });
+
+    expect(
+      summary.tasks
+        .filter((task) => task.key === "empty-p1")
+        .map(({ text, action, href }) => ({ text, action, href })),
+    ).toEqual([
+      {
+        text: "Noviembre no tiene turnos activos en Cerámica: agregá uno",
+        action: "Arreglar",
+        href: "/admin/talleres/w9",
+      },
+    ]);
+  });
+
   it("has no task when nothing is due", () => {
     const summary = toPanelSummary({
       ...panel,

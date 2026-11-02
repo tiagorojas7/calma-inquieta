@@ -1,4 +1,5 @@
 import { Heading, Text } from "../atoms/heading";
+import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { adminMicrocopy } from "./microcopy";
 import { StatusChip } from "./status-chip";
@@ -11,6 +12,12 @@ export interface OverviewTurno {
   readonly label: string;
   readonly when: string;
   readonly capacity: number;
+}
+
+export interface OverviewEmptyMonth {
+  readonly id: string;
+  /** Capitalized month name. */
+  readonly label: string;
 }
 
 export interface OverviewMonth {
@@ -34,6 +41,7 @@ export function WorkshopOverview({
   next,
   turnos,
   months,
+  emptyMonths = [],
   turnosHref,
   monthsHref,
 }: {
@@ -43,6 +51,8 @@ export function WorkshopOverview({
   next: { cta: string; href: string } | null;
   turnos: readonly OverviewTurno[];
   months: readonly OverviewMonth[];
+  /** Open months without an active turno: nobody can enroll in them. */
+  emptyMonths?: readonly OverviewEmptyMonth[];
   turnosHref: string;
   monthsHref: string;
 }) {
@@ -60,6 +70,25 @@ export function WorkshopOverview({
           </div>
         ) : null}
       </section>
+      {emptyMonths.map((month) => (
+        <section
+          key={month.id}
+          role="alert"
+          aria-label={copy.emptyMonth.warning(month.label)}
+          className="flex flex-col gap-3 rounded-md border-2 border-clay-800 bg-surface p-4 shadow-card"
+        >
+          <p className="text-lg font-semibold text-ink-900">
+            {copy.emptyMonth.warning(month.label)}
+          </p>
+          <form method="post">
+            <input type="hidden" name="intent" value="fill-month" />
+            <input type="hidden" name="periodId" value={month.id} />
+            <AdminButton type="submit">
+              {copy.emptyMonth.fix(month.label)}
+            </AdminButton>
+          </form>
+        </section>
+      ))}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section
           aria-labelledby="overview-turnos"

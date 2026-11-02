@@ -16,6 +16,9 @@ import type {
 
 export class InMemoryTurnoRepository implements TurnoRepository {
   readonly items = new Map<string, StoredTurno>();
+  /** The default-capacity rows an insert wrote into open months. */
+  readonly joined: { turnoId: string; periodId: string; capacity: number }[] =
+    [];
   private readonly workshops:
     Pick<MonthlyWorkshopRepository, "update"> | undefined;
 
@@ -81,6 +84,7 @@ export class InMemoryTurnoRepository implements TurnoRepository {
     mutation: TurnoMutation,
   ): Promise<Result<void, TurnoLabelConflict | NotFound>> {
     const before = new Map(this.items);
+    const joinedBefore = this.joined.length;
     const changed =
       mutation.kind === "insert"
         ? await this.insert(mutation.value)
@@ -88,9 +92,13 @@ export class InMemoryTurnoRepository implements TurnoRepository {
           ? await this.update(mutation.value)
           : await this.delete(mutation.id);
     if (!changed.ok) return changed;
+    if (mutation.kind === "insert")
+      for (const join of mutation.joinPeriods ?? [])
+        this.joined.push({ turnoId: mutation.value.id, ...join });
     if (!this.workshops) return changed;
     const audit = await this.workshops.update(workshop);
     if (audit.ok) return changed;
+    this.joined.length = joinedBefore;
     this.items.clear();
     for (const [id, value] of before) this.items.set(id, value);
     return err({ kind: "not-found" });

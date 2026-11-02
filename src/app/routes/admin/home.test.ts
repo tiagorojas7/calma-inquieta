@@ -51,6 +51,68 @@ describe("admin home route", () => {
     expect(result.summary.figures.collected).toBe("$ 0");
   });
 
+  it("adds a task for each open month with no active turno", async () => {
+    const { service } = insightsFixture();
+    const workshops = withOverrides(createTestServices().monthlyWorkshops, {
+      list: () =>
+        Promise.resolve({ ok: true, value: [{ id: "w1", name: "Cerámica" }] }),
+    } as never);
+    const periods = withOverrides(createTestServices().workshopPeriods, {
+      list: () =>
+        Promise.resolve({
+          ok: true,
+          value: {
+            periods: [
+              {
+                id: "p-nov",
+                period: "2026-11",
+                status: "open",
+                activeTurnos: 0,
+              },
+              {
+                id: "p-oct",
+                period: "2026-10",
+                status: "open",
+                activeTurnos: 0,
+              },
+              {
+                id: "p-dic",
+                period: "2026-12",
+                status: "open",
+                activeTurnos: 2,
+              },
+            ],
+            suggestedNext: null,
+          },
+        }),
+    } as never);
+
+    const result = await loader({
+      request: getRequest("/admin"),
+      params: {},
+      context: adminContext({
+        insights: service,
+        monthlyWorkshops: workshops,
+        workshopPeriods: periods,
+      }),
+    } as never);
+
+    expect(
+      result.summary.tasks.filter((task) => task.key.startsWith("empty-")),
+    ).toMatchObject([
+      {
+        key: "empty-p-oct",
+        text: "Octubre no tiene turnos activos en Cerámica: agregá uno",
+        href: "/admin/talleres/w1",
+      },
+      {
+        key: "empty-p-nov",
+        text: "Noviembre no tiene turnos activos en Cerámica: agregá uno",
+        href: "/admin/talleres/w1",
+      },
+    ]);
+  });
+
   it("still shows the day when the private events cannot be read", async () => {
     const { service } = insightsFixture();
 

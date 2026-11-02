@@ -260,6 +260,8 @@ export interface PeriodSummary {
   readonly status: PeriodStatus;
   readonly fee: Money;
   readonly totalCapacity: number;
+  /** Turnos of this month that are still active; zero means nobody can enroll. */
+  readonly activeTurnos: number;
 }
 /** Actorless B9 offer membership read; order follows the persisted period offers. */
 export interface WorkshopOfferedMaterialIdsLookup {
@@ -493,6 +495,11 @@ export interface WorkshopPeriodsService {
     | { readonly kind: "period-closed" }
     | { readonly kind: "capacity-below-confirmed" }
   >;
+  /** Adds the workshop's active turnos, with their default capacity, to a month that lacks them. */
+  fillTurnos(
+    a: AdminActor,
+    id: string,
+  ): R<WorkshopPeriod, { readonly kind: "period-closed" }>;
   publish(
     a: AdminActor,
     id: string,

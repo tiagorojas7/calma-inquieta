@@ -66,7 +66,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     variants: material.variants.map((variant) => ({
       id: variant.id,
       label: variant.label,
-      price: String(variant.price.toCentavos() / 100),
+      price: variant.price ? String(variant.price.toCentavos() / 100) : "",
+      priceOnRequest: variant.price === null,
       available: variant.available,
       used: variant.used,
       swatch: variant.swatch,

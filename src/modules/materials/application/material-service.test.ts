@@ -149,7 +149,7 @@ describe("material service", () => {
       ],
       audit: { updatedBy: actor.email, updatedAt: NOW },
     });
-    expect(created.variants[0]?.price.toCentavos()).toBe(1_250_000);
+    expect(created.variants[0]?.price?.toCentavos()).toBe(1_250_000);
   });
 
   it("aggregates pure validation before supplier or media lookups", async () => {

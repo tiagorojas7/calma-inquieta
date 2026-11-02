@@ -106,6 +106,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
   const prices = texts(form, "variantPrice");
   const swatches = texts(form, "variantSwatch");
   const availableVariants = new Set(texts(form, "variantAvailable"));
+  const onRequestVariants = new Set(texts(form, "variantPriceOnRequest"));
   const rowCount = Math.max(
     ids.length,
     labels.length,
@@ -128,6 +129,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
       ...(ids[index] ? { id: ids[index] } : {}),
       label: labels[index] ?? (index === 0 ? DEFAULT_VARIANT_LABEL : ""),
       price: prices[index] ?? "",
+      ...(onRequestVariants.has(String(index)) ? { priceOnRequest: true } : {}),
       swatch: swatches[index] ?? "",
       available:
         labels.length === 0 && index === 0

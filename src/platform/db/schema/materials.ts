@@ -79,7 +79,8 @@ export const materialVariant = pgTable(
     label: text("label").notNull(),
     // Case-folded in code (variantLabelKey); lower() is locale-dependent.
     labelKey: text("label_key").notNull(),
-    priceCentavos: bigint("price_centavos", { mode: "number" }).notNull(),
+    // NULL means "consultar precio": shown to students, never orderable.
+    priceCentavos: bigint("price_centavos", { mode: "number" }),
     available: boolean("available").notNull().default(true),
     position: integer("position").notNull(),
     swatch: text("swatch"),

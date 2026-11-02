@@ -139,6 +139,22 @@ describe("runMigrations", () => {
     ]);
   });
 
+  it("lets a material variant have no price and still rejects a zero price", async () => {
+    const { url } = await database;
+
+    const column = await query<{ is_nullable: string }>(
+      url,
+      "SELECT is_nullable FROM information_schema.columns WHERE table_name = 'material_variant' AND column_name = 'price_centavos'",
+    );
+    const checks = await query<{ conname: string }>(
+      url,
+      "SELECT conname FROM pg_constraint WHERE conname = 'material_variant_price_check'",
+    );
+
+    expect(column).toEqual([{ is_nullable: "YES" }]);
+    expect(checks).toEqual([{ conname: "material_variant_price_check" }]);
+  });
+
   it("applies 0011 after the 0010 database state without replacing prior tables", async () => {
     const migrationPathDatabase = createTestDatabase({ empty: true });
     const { url } = await migrationPathDatabase;

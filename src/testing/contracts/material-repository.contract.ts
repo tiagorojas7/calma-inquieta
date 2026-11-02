@@ -257,6 +257,28 @@ export function runMaterialRepositoryContract(
       ).toBe(false);
     });
 
+    it("stores a variant without a price and reads it back as null", async () => {
+      const { repository } = await create();
+      const material = buildStoredMaterial({
+        variants: [
+          buildStoredVariant({ label: "Con precio" }),
+          buildStoredVariant({
+            id: "00000000-0000-4000-8000-000000000203",
+            label: "Consultar",
+            price: null,
+            position: 1,
+          }),
+        ],
+      });
+      await repository.insert(material);
+
+      const stored = await repository.findById(MATERIAL_A);
+      expect(stored?.variants.map((variant) => variant.price)).toEqual([
+        material.variants[0]?.price,
+        null,
+      ]);
+    });
+
     it("rolls back root and variants when a child constraint fails", async () => {
       const { repository } = await create();
       const original = buildStoredMaterial();

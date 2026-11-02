@@ -3,7 +3,8 @@ import type { Money } from "~/modules/_shared";
 export interface OfferedVariant {
   readonly variantId: string;
   readonly label: string;
-  readonly unitPrice: Money;
+  /** Null means "consultar precio": never orderable. */
+  readonly unitPrice: Money | null;
   readonly available: boolean;
   readonly swatch?: string | null;
 }

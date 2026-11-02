@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { adminButtonClasses } from "./admin-button";
 import { TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -45,9 +46,11 @@ export function ImageField({
   const [chosen, setChosen] = useState<Chosen | undefined>(current);
   const [error, setError] = useState<ImageFieldFailure | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   async function onChange(file: File | undefined) {
     if (!file) return;
+    setFileName(file.name);
     setBusy(true);
     setError(null);
     const result = await upload(file);
@@ -62,18 +65,28 @@ export function ImageField({
       <label htmlFor={inputId} className="font-semibold text-ink-900">
         {label}
       </label>
-      <input
-        id={inputId}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        disabled={busy}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        onChange={(event) => {
-          void onChange(event.target.files?.[0]);
-        }}
-        className="min-h-11 text-base text-ink-900"
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <span
+          className={`${adminButtonClasses.success} cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-clay-800 ${busy ? "opacity-60" : ""}`}
+        >
+          <input
+            id={inputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={busy}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${inputId}-error` : undefined}
+            onChange={(event) => {
+              void onChange(event.target.files?.[0]);
+            }}
+            className="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+          />
+          <span aria-hidden="true">{copy.choose}</span>
+        </span>
+        <span className="min-w-0 break-all text-base text-ink-700">
+          {fileName ?? copy.noneChosen}
+        </span>
+      </div>
       {busy && <p role="status">{copy.uploading}</p>}
       {error && (
         <p

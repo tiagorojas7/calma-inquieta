@@ -56,6 +56,8 @@ describe("Button", () => {
     ["tertiary", ["text-clay-800"]],
     ["outline", ["border-clay-600", "text-clay-800"]],
     ["text-arrow", ["text-clay-800"]],
+    ["success", ["bg-moss-600", "text-white", "hover:bg-moss-700"]],
+    ["danger", ["bg-berry-600", "text-white", "hover:bg-berry-700"]],
   ] as const)("supports %s with token roles", (variant, classes) => {
     render(<Button variant={variant}>Acción</Button>);
     expect(screen.getByRole("button")).toHaveAttribute("data-variant", variant);

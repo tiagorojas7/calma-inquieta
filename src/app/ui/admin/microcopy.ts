@@ -578,6 +578,8 @@ export const adminMicrocopy = {
     backToSite: "Ir al sitio",
   },
   imageField: {
+    choose: "Elegir imagen",
+    noneChosen: "Ninguna imagen elegida",
     altLabel: "Texto alternativo",
     altHint: "Describí la imagen para quien no puede verla.",
     uploading: "Subiendo imagen…",

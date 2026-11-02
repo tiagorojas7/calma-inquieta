@@ -59,6 +59,26 @@ describe("TallerDetailPage", () => {
     ).toBeTruthy();
   });
 
+  it("colors Inscribirme green and keeps an inquiry in the brand primary", () => {
+    const { container, unmount } = inRouter(<TallerDetailPage {...taller} />);
+    expect(screen.getByRole("link", { name: "Inscribirme" })).toHaveClass(
+      "bg-moss-600",
+    );
+    expect(container.querySelector("[data-sticky-action] a")).toHaveClass(
+      "bg-moss-600",
+    );
+    unmount();
+    inRouter(
+      <TallerDetailPage
+        {...taller}
+        action={{ kind: "inquiry", href: "/contacto", label: "Consultar" }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Consultar" })).toHaveClass(
+      "bg-clay-600",
+    );
+  });
+
   it("offers a sticky mobile action that stays out of the accessibility tree", () => {
     const { container } = inRouter(<TallerDetailPage {...taller} />);
     const bar = container.querySelector("[data-sticky-action]");
@@ -114,6 +134,13 @@ describe("IntensivoDetailPage", () => {
     expect(
       within(summary).getByRole("link", { name: "Reservar lugar" }),
     ).toHaveAttribute("href", "/reserva");
+  });
+
+  it("colors Reservar green", () => {
+    inRouter(<IntensivoDetailPage {...intensivo} />);
+    expect(screen.getByRole("link", { name: "Reservar lugar" })).toHaveClass(
+      "bg-moss-600",
+    );
   });
 
   it("repeats the action as a sticky mobile bar", () => {

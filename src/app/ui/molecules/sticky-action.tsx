@@ -7,14 +7,27 @@ import { ButtonLink } from "../atoms/button";
  * It is a flow-sticky element at the end of the article, so it never covers
  * content; the footer scrolls past it.
  */
-export function StickyAction({ href, label }: { href: string; label: string }) {
+export function StickyAction({
+  href,
+  label,
+  variant = "primary",
+}: {
+  href: string;
+  label: string;
+  variant?: "primary" | "success";
+}) {
   return (
     <div
       data-sticky-action
       aria-hidden="true"
       className="sticky bottom-0 z-20 -mx-4 bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-raised lg:hidden"
     >
-      <ButtonLink href={href} tabIndex={-1} className="w-full">
+      <ButtonLink
+        href={href}
+        variant={variant}
+        tabIndex={-1}
+        className="w-full"
+      >
         {label}
       </ButtonLink>
     </div>

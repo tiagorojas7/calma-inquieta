@@ -103,7 +103,9 @@ export function IntensivoRequestPage({
           error={errors.policy}
         />
         <div className="flex flex-wrap items-center gap-4">
-          <Button type="submit">{copy.submit}</Button>
+          <Button type="submit" variant="success">
+            {copy.submit}
+          </Button>
           <a href={backHref} className={linkClasses}>
             {copy.back}
           </a>

@@ -216,7 +216,15 @@ describe("supplier consolidation", () => {
       phoneDigits: "5493515550001",
       workshopName: "Cerámica",
       turnoLabel: "Lunes 18:00",
-      lines: [{ materialName: "Arcilla", variantLabel: "Grande", quantity: 2 }],
+      lines: [
+        {
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 2,
+          supplierName: "Papelería Sur",
+          unitPrice: pesos(1_000),
+        },
+      ],
       ...overrides,
     });
 

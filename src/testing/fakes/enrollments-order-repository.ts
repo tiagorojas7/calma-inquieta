@@ -407,6 +407,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
   async deliveryOrders(period: string): Promise<readonly DeliveryOrder[]> {
     const found: DeliveryOrder[] = [];
     for (const status of [
+      "paid",
       "materials_requested",
       "materials_received",
     ] as const) {
@@ -426,6 +427,8 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                 materialName: line.materialName,
                 variantLabel: line.variantLabel,
                 quantity: line.quantity,
+                supplierName: line.supplierName,
+                unitPrice: line.unitPrice,
               })),
             });
         if (rows.length < 50) break;

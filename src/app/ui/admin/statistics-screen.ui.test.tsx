@@ -74,6 +74,26 @@ const props: StatisticsScreenProps = {
     { key: "new", cells: ["Nuevas", "6"] },
     { key: "returning", cells: ["Que ya venían de otro mes", "4"] },
   ],
+  materialsRecord: [
+    {
+      key: "o1-0",
+      cells: [
+        "Ana Pérez",
+        "Cerámica · Lunes 18:00",
+        "Arcilla Grande",
+        "2",
+        "Papelería Sur",
+        "$ 25.000",
+        "Por pedir",
+      ],
+    },
+    {
+      key: "total",
+      cells: ["Total", "", "", "2", "", "$ 25.000", ""],
+      total: true,
+    },
+  ],
+  materialsRecordHref: "/admin/estadisticas/materiales?mes=2026-10",
 };
 
 describe("StatisticsScreen", () => {
@@ -186,5 +206,45 @@ describe("StatisticsScreen", () => {
     expect(
       screen.getAllByText("Todavía no hay datos para este mes").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("keeps a visible record of every material ordered, with its download", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const record = screen
+      .getByRole("heading", { name: "Registro de materiales" })
+      .closest("section") as HTMLElement;
+    const table = within(record).getByRole("table", {
+      name: "Registro de materiales",
+    });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      "Alumna",
+      "Taller y turno",
+      "Material",
+      "Cantidad",
+      "Proveedor",
+      "Monto",
+      "Estado",
+    ]);
+    expect(within(table).getAllByRole("row")[1]).toHaveTextContent("Ana Pérez");
+    expect(record.closest("details")).toBeNull();
+    expect(
+      within(record).getByRole("link", { name: "Descargar registro" }),
+    ).toHaveAttribute("href", "/admin/estadisticas/materiales?mes=2026-10");
+  });
+
+  it("says so when no material was ordered in the month", () => {
+    render(<StatisticsScreen {...props} materialsRecord={[]} />);
+
+    const record = screen
+      .getByRole("heading", { name: "Registro de materiales" })
+      .closest("section") as HTMLElement;
+    expect(record).toHaveTextContent("No hay materiales pedidos este mes.");
+    expect(within(record).queryByRole("table")).toBeNull();
+    expect(within(record).queryByRole("link")).toBeNull();
   });
 });

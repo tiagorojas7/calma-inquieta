@@ -1,11 +1,39 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { Money, ok } from "~/modules/_shared";
+import {
+  createUnavailableSupplierConsolidationService,
+  type DeliveryOrder,
+} from "~/modules/enrollments";
 import {
   adminContext,
   getRequest,
   thrownStatus,
+  withOverrides,
 } from "~/testing/admin/route-kit";
 import { insightsFixture } from "~/testing/admin/insights-kit";
 import { loader } from "./statistics";
+
+const price = Money.fromCentavos(12_500_00);
+if (!price.ok) throw new Error("invalid test money");
+const ordered: DeliveryOrder = {
+  id: "o1",
+  number: "CI-2026-0001",
+  status: "materials_requested",
+  studentName: "Ana Pérez",
+  phoneDigits: "5493515550001",
+  workshopName: "Ceramica",
+  turnoLabel: "Martes",
+  lines: [
+    {
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      supplierName: "Papelería Sur",
+      unitPrice: price.value,
+    },
+  ],
+};
+const deliveries = vi.fn(() => Promise.resolve(ok([ordered])));
 
 function run(path: string, admin = true) {
   const { orders, workshops, teachers, service } = insightsFixture();
@@ -57,7 +85,16 @@ function run(path: string, admin = true) {
   return loader({
     request: getRequest(path),
     params: {},
-    context: adminContext({ insights: service }, { admin }),
+    context: adminContext(
+      {
+        insights: service,
+        consolidation: withOverrides(
+          createUnavailableSupplierConsolidationService(),
+          { deliveries },
+        ),
+      },
+      { admin },
+    ),
   } as never);
 }
 
@@ -89,6 +126,27 @@ describe("admin statistics route", () => {
     expect(totals[5]).toBe(figure("teachers"));
     expect(totals[6]).toBe(figure("materials"));
     expect(totals[7]).toBe(figure("profit"));
+  });
+
+  it("adds the month's materials record and its download link", async () => {
+    const result = await run("/admin/estadisticas?mes=2026-09");
+
+    expect(deliveries).toHaveBeenCalledWith(expect.anything(), "2026-09");
+    expect(result.materialsRecord.map((row) => row.cells)).toEqual([
+      [
+        "Ana Pérez",
+        "Ceramica · Martes",
+        "Arcilla Grande",
+        "2",
+        "Papelería Sur",
+        "$ 25.000",
+        "Pedido",
+      ],
+      ["Total", "", "", "2", "", "$ 25.000", ""],
+    ]);
+    expect(result.materialsRecordHref).toBe(
+      "/admin/estadisticas/materiales?mes=2026-09",
+    );
   });
 
   it("falls back to the current month for a malformed one instead of failing", async () => {

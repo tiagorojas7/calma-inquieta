@@ -46,7 +46,7 @@ export interface SupplierConsolidationUseCases {
     actor: Actor,
     period: string,
   ): Promise<Result<SupplierConsolidation, ConsolidationError>>;
-  /** Orders of the month whose materials were requested or already handed, one per order. */
+  /** Paid orders of the month with materials, from still to request to already handed, one per order. */
   deliveries(
     actor: Actor,
     period: string,

@@ -251,3 +251,24 @@ describe("EnrollmentMaterialsPage selector (S6)", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("EnrollmentMaterialsPage sticky continue", () => {
+  it("repeats the total and Continuar in a mobile bar that stays visible while choosing", async () => {
+    const { container } = setup();
+    const bar = container.querySelector("[data-sticky-action]") as HTMLElement;
+    expect(bar).not.toBeNull();
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect(bar).toHaveClass("sticky", "bottom-0", "lg:hidden");
+    expect(bar).toHaveTextContent("$ 83.000");
+    const copy = bar.querySelector("button") as HTMLButtonElement;
+    expect(copy).toHaveAttribute("type", "submit");
+    expect(copy).toHaveAttribute("tabindex", "-1");
+    expect(copy).toHaveTextContent("Continuar");
+    expect(copy.form).toBe(container.querySelector("form"));
+    // The real action stays the single accessible Continuar.
+    expect(screen.getAllByRole("button", { name: "Continuar" })).toHaveLength(
+      1,
+    );
+    await expectNoAxeViolations(container);
+  });
+});

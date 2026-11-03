@@ -83,6 +83,9 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   let materialsLabel = "Materiales opcionales";
   if (props.materialsRequired) materialsLabel = "Materiales requeridos";
   else if (emptyOptional) materialsLabel = "Ya tengo mis materiales";
+  const continueLabel = emptyOptional
+    ? "Continuar sin materiales"
+    : "Continuar";
 
   const header = (
     <header className="flex flex-col gap-2">
@@ -214,6 +217,24 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                 </div>
               </section>
             ))}
+          {/* Mobile copy of the summary's submit: the list is long, so the
+              total and Continuar stay in reach. Hidden from assistive
+              technology and the keyboard; the summary keeps the real one. */}
+          <div
+            data-sticky-action
+            aria-hidden="true"
+            className="sticky bottom-0 z-20 -mx-4 flex items-center gap-4 bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-raised lg:hidden"
+          >
+            <span className="flex flex-col">
+              <span className="text-sm">Total</span>
+              <strong className="font-display tabular-nums">
+                {props.total}
+              </strong>
+            </span>
+            <Button type="submit" tabIndex={-1} className="flex-1">
+              {continueLabel}
+            </Button>
+          </div>
         </div>
 
         <aside
@@ -268,9 +289,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
               })),
             )}
           />
-          <Button type="submit">
-            {emptyOptional ? "Continuar sin materiales" : "Continuar"}
-          </Button>
+          <Button type="submit">{continueLabel}</Button>
         </aside>
       </form>
     </main>

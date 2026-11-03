@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { EnrollmentMaterialsPage } from "~/app/ui/templates/enrollment-materials-page";
@@ -130,8 +130,11 @@ describe("EnrollmentMaterialsPage", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Chica/ }));
     expect(onSelect).toHaveBeenCalledWith("arcilla", "chica", 2);
 
-    const total = screen.getByText("$ 83.000");
-    expect(total.closest("aside")).toHaveClass("lg:sticky");
+    const summary = screen.getByRole("complementary", {
+      name: "Resumen del pedido",
+    });
+    expect(within(summary).getByText("$ 83.000")).toBeVisible();
+    expect(summary).toHaveClass("lg:sticky");
   });
 
   it("offers a clear recovery path when the student draft is missing", () => {

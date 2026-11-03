@@ -61,8 +61,20 @@ const deliveryOrder = (overrides: Partial<DeliveryOrder>): DeliveryOrder => ({
   workshopName: "Cerámica",
   turnoLabel: "Lunes 18:00",
   lines: [
-    { materialName: "Arcilla", variantLabel: "Grande", quantity: 2 },
-    { materialName: "Esmalte", variantLabel: "Azul", quantity: 1 },
+    {
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      supplierName: "Papelería Sur",
+      unitPrice: pesos(1_000),
+    },
+    {
+      materialName: "Esmalte",
+      variantLabel: "Azul",
+      quantity: 1,
+      supplierName: "Papelería Sur",
+      unitPrice: pesos(1_000),
+    },
   ],
   ...overrides,
 });
@@ -217,13 +229,25 @@ describe("admin supplier consolidation loader", () => {
           studentName: "Bea Gómez",
           phoneDigits: "",
           lines: [
-            { materialName: "Pincel", variantLabel: "Fino", quantity: 3 },
+            {
+              materialName: "Pincel",
+              variantLabel: "Fino",
+              quantity: 3,
+              supplierName: "Papelería Sur",
+              unitPrice: pesos(1_000),
+            },
           ],
         }),
         deliveryOrder({
           id: "2d0b7e30-6f5c-4b8d-9c90-3e4f5a6b7c8d",
           status: "materials_received",
           studentName: "Cata Díaz",
+        }),
+        // A paid order still to request belongs to the record, not to the cards.
+        deliveryOrder({
+          id: "3e1c8f41-7a6d-4c9e-8da1-4f5a6b7c8d9e",
+          status: "paid",
+          studentName: "Dora Paga",
         }),
       ]),
     );

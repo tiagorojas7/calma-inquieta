@@ -420,6 +420,7 @@ export function createDrizzleAdminEnrollmentStore(
             and(
               eq(enrollmentOrder.period, period),
               inArray(enrollmentOrder.status, [
+                "paid",
                 "materials_requested",
                 "materials_received",
               ]),
@@ -447,6 +448,8 @@ export function createDrizzleAdminEnrollmentStore(
               materialName: line.materialName,
               variantLabel: line.variantLabel,
               quantity: line.quantity,
+              supplierName: line.supplierName,
+              unitPrice: money(line.unitPriceCentavos),
             }));
           return lines.length === 0
             ? []

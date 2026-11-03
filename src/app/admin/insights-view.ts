@@ -167,7 +167,9 @@ function teacherCell(
 }
 
 /** The statistics screen: the month's figures and every table as text. */
-export function toStatisticsScreen(view: EarningsView): StatisticsScreenProps {
+export function toStatisticsScreen(
+  view: EarningsView,
+): Omit<StatisticsScreenProps, "materialsRecord" | "materialsRecordHref"> {
   const { totals } = view;
   const base = "/admin/estadisticas";
   const figures = stats.figures;

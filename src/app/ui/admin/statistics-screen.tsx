@@ -38,6 +38,9 @@ export interface StatisticsScreenProps {
   /** The one line saying materials are charged at cost, when it applies. */
   readonly materialsNote: string | null;
   readonly students: readonly StatisticsRow[];
+  /** One row per material ordered in the month, then the totals. */
+  readonly materialsRecord: readonly StatisticsRow[];
+  readonly materialsRecordHref: string;
 }
 
 const copy = adminMicrocopy.statistics;
@@ -135,7 +138,7 @@ const arrowClasses =
  * requests.
  */
 export function StatisticsScreen(props: StatisticsScreenProps) {
-  const { activities, teachers, materials, students } = copy;
+  const { activities, teachers, materials, students, record } = copy;
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -207,6 +210,34 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
           rows={props.activities}
           textColumns={[4]}
         />
+      </section>
+      <section id="registro-materiales" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Heading level={2} size="h3">
+            {record.title}
+          </Heading>
+          {props.materialsRecord.length > 0 ? (
+            <AdminButtonLink
+              href={props.materialsRecordHref}
+              variant="secondary"
+            >
+              {record.download}
+            </AdminButtonLink>
+          ) : null}
+        </div>
+        {props.materialsRecord.length > 0 ? (
+          <>
+            <Text tone="muted">{record.intro}</Text>
+            <StatsTable
+              title={record.title}
+              headers={Object.values(record.columns)}
+              rows={props.materialsRecord}
+              textColumns={[1, 2, 4, 6]}
+            />
+          </>
+        ) : (
+          <Text tone="muted">{record.empty}</Text>
+        )}
       </section>
       <div className="flex flex-col gap-3">
         <Collapsible title={teachers.title} intro={teachers.intro}>

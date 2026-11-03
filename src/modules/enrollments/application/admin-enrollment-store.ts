@@ -54,11 +54,11 @@ export interface ConsolidationLine {
   readonly unitPrice: Money;
 }
 
-/** One order whose materials were requested from the supplier or already handed to the student. */
+/** One paid order with materials: still to request, requested from the supplier, or already handed to the student. */
 export interface DeliveryOrder {
   readonly id: string;
   readonly number: string;
-  readonly status: "materials_requested" | "materials_received";
+  readonly status: "paid" | "materials_requested" | "materials_received";
   readonly studentName: string;
   readonly phoneDigits: string;
   readonly workshopName: string;
@@ -67,6 +67,9 @@ export interface DeliveryOrder {
     readonly materialName: string;
     readonly variantLabel: string;
     readonly quantity: number;
+    /** The supplier name snapshotted on the order line. */
+    readonly supplierName: string;
+    readonly unitPrice: Money;
   }[];
 }
 

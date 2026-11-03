@@ -8,7 +8,7 @@ const SEPARATOR = ";";
 const NEWLINE = "\r\n";
 
 /** Whole pesos as a plain number; a comma marks cents, as es-AR Excel reads. */
-function pesos(amount: Money): string {
+export function pesos(amount: Money): string {
   const centavos = amount.toCentavos();
   return centavos % 100 === 0
     ? String(centavos / 100)
@@ -75,6 +75,11 @@ export function earningsCsv(view: EarningsView): string {
       pesos(totals.profit),
     ],
   ];
+  return csvDocument(rows);
+}
+
+/** Rows as a CSV Excel opens with accents intact (see `earningsCsv`). */
+export function csvDocument(rows: readonly (readonly string[])[]): string {
   return (
     BOM +
     rows.map((row) => row.map(field).join(SEPARATOR)).join(NEWLINE) +

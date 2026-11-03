@@ -120,6 +120,7 @@ export const adminMicrocopy = {
           ? "Marca 1 pedido cobrado como pedido al proveedor."
           : `Marca ${String(count)} pedidos cobrados como pedidos al proveedor.`,
       goDeliver: "Ir a Para entregar",
+      record: "Ver registro de materiales del mes",
       month: "Mes",
       apply: "Ver mes",
       pending: (count: number) =>
@@ -558,6 +559,27 @@ export const adminMicrocopy = {
         units: "Unidades",
         charged: "Cobrado",
         cost: "Costo",
+      },
+    },
+    record: {
+      title: "Registro de materiales",
+      intro:
+        "Cada material del mes: para quién es, a qué proveedor se pide y cuánto sale.",
+      download: "Descargar registro",
+      empty: "No hay materiales pedidos este mes.",
+      columns: {
+        student: "Alumna",
+        activity: "Taller y turno",
+        material: "Material",
+        quantity: "Cantidad",
+        supplier: "Proveedor",
+        amount: "Monto",
+        status: "Estado",
+      },
+      status: {
+        paid: "Por pedir",
+        materials_requested: "Pedido",
+        materials_received: "Recibido",
       },
     },
     students: {

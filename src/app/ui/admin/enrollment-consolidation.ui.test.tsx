@@ -141,6 +141,19 @@ describe("EnrollmentConsolidation: shell", () => {
   });
 });
 
+describe("EnrollmentConsolidation: record", () => {
+  it("links to the month's materials record in Estadísticas", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    expect(
+      screen.getByRole("link", { name: "Ver registro de materiales del mes" }),
+    ).toHaveAttribute(
+      "href",
+      `/admin/estadisticas?mes=${base.period}#registro-materiales`,
+    );
+  });
+});
+
 describe("EnrollmentConsolidation: Para pedir", () => {
   it("shows each supplier with its materials, totals and the pending count", () => {
     render(<EnrollmentConsolidation {...base} />);

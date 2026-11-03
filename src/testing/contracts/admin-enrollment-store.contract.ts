@@ -441,7 +441,7 @@ export function runAdminEnrollmentStoreContract(
       ).resolves.toEqual({ lines: [], pendingOrders: 0 });
     });
 
-    it("lists, per order, the students whose materials were requested or received", async () => {
+    it("lists, per order, the students whose materials were paid, requested or received", async () => {
       const harness = await setup();
       const withLine = (
         period: string,
@@ -524,6 +524,24 @@ export function runAdminEnrollmentStoreContract(
         })),
       ).toEqual([
         {
+          id: paid.id,
+          number: paid.number,
+          status: "paid",
+          studentName: "Ana Paga",
+          phoneDigits: "5493515550001",
+          workshopName: paid.workshopName,
+          turnoLabel: paid.turnoLabel,
+          lines: [
+            {
+              materialName: "Arcilla",
+              variantLabel: "Grande",
+              quantity: 2,
+              supplierName: "Papelería Sur",
+              unitPrice: pesos(1_000),
+            },
+          ],
+        },
+        {
           id: requested.id,
           number: requested.number,
           status: "materials_requested",
@@ -532,7 +550,13 @@ export function runAdminEnrollmentStoreContract(
           workshopName: requested.workshopName,
           turnoLabel: requested.turnoLabel,
           lines: [
-            { materialName: "Esmalte", variantLabel: "Grande", quantity: 1 },
+            {
+              materialName: "Esmalte",
+              variantLabel: "Grande",
+              quantity: 1,
+              supplierName: "Papelería Sur",
+              unitPrice: pesos(1_000),
+            },
           ],
         },
         {
@@ -544,7 +568,13 @@ export function runAdminEnrollmentStoreContract(
           workshopName: received.workshopName,
           turnoLabel: received.turnoLabel,
           lines: [
-            { materialName: "Pincel", variantLabel: "Grande", quantity: 3 },
+            {
+              materialName: "Pincel",
+              variantLabel: "Grande",
+              quantity: 3,
+              supplierName: "Papelería Sur",
+              unitPrice: pesos(1_000),
+            },
           ],
         },
       ]);

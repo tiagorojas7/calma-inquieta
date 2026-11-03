@@ -366,11 +366,19 @@ export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
           {copy.apply}
         </Button>
       </form>
-      <SectionLinks
-        period={props.period}
-        section={props.section}
-        counts={props.counts}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionLinks
+          period={props.period}
+          section={props.section}
+          counts={props.counts}
+        />
+        <a
+          href={`/admin/estadisticas?mes=${props.period}#registro-materiales`}
+          className="inline-flex min-h-11 items-center font-semibold text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+        >
+          {copy.record}
+        </a>
+      </div>
       {props.notice ? (
         <Notice notice={props.notice} period={props.period} />
       ) : null}

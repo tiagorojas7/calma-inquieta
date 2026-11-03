@@ -21,6 +21,7 @@ import {
 import type { TeacherLookup } from "~/modules/teachers";
 import type { Material, MaterialLookup } from "~/modules/materials";
 import type { MonthlyWorkshopRepository } from "./monthly-workshop-repository";
+import type { WorkshopPeriodLookup } from "./monthly-workshop-service";
 import type { TurnoRepository } from "./turno-repository";
 import type { WorkshopPeriodRepository } from "./workshop-period-repository";
 import { parsePercentage } from "./contracts";
@@ -54,10 +55,14 @@ export function createPeriodTurnoUsageLookup(
 /** B4's read-only deletion-protection seam backed by period history rows. */
 export function createWorkshopPeriodLookup(
   repository: WorkshopPeriodRepository,
-): { hasPeriods(workshopId: string): Promise<boolean> } {
+): WorkshopPeriodLookup {
   return {
     hasPeriods: async (workshopId) =>
       (await repository.listForWorkshop(workshopId)).length > 0,
+    openPeriodIds: async (workshopId, fromPeriod) =>
+      (await repository.listForWorkshop(workshopId))
+        .filter((item) => item.status === "open" && item.period >= fromPeriod)
+        .map((item) => item.id),
   };
 }
 
@@ -130,6 +135,8 @@ export function createWorkshopPeriodsService(
               (sum, turno) => sum + turno.capacity,
               0,
             ),
+            activeTurnos: value.turnos.filter((turno) => turno.turnoActive)
+              .length,
           };
         }),
         suggestedNext: periodInRange(
@@ -410,6 +417,32 @@ export function createWorkshopPeriodsService(
       };
       const saved = await deps.repository.update(value);
       return saved.ok ? ok(effective(value)) : err(notFound);
+    },
+    async fillTurnos(actor, id) {
+      const loaded = await load(actor, id);
+      if (!loaded.ok) return loaded;
+      const value = loaded.value.value;
+      if (closed(value)) return err({ kind: "period-closed" });
+      const present = new Set(value.turnos.map((turno) => turno.turnoId));
+      const missing = (await deps.turnos.listForWorkshop(value.workshopId))
+        .filter((turno) => turno.active && !present.has(turno.id))
+        .map((turno) => ({
+          turnoId: turno.id,
+          label: turno.label,
+          weekday: turno.weekday,
+          startsAt: turno.startsAt,
+          endsAt: turno.endsAt,
+          turnoActive: true,
+          capacity: turno.defaultCapacity,
+        }));
+      if (missing.length === 0) return ok(effective(value));
+      const next: WorkshopPeriod = {
+        ...value,
+        turnos: [...value.turnos, ...missing],
+        audit: stamp(loaded.value.actor),
+      };
+      const saved = await deps.repository.update(next);
+      return saved.ok ? ok(effective(next)) : err(notFound);
     },
     async publish(actor, id) {
       const loaded = await load(actor, id);

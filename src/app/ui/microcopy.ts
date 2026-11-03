@@ -14,6 +14,7 @@ export const microcopy = {
   bookingSummary: "Resumen",
   balanceLabel: "Saldo restante",
   writeUs: "Escribinos",
+  doubtsLabel: "¿Dudas? Escribinos",
   whatsappSuffix: " por WhatsApp",
   followInstagram: "Seguinos en Instagram",
   /** Decorative signpost above the closing band heading. */

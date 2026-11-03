@@ -80,7 +80,10 @@ function service(
       media: { findAssets: findKnownAssets },
       turnos,
       turnoUsage: { isUsed: () => Promise.resolve(false) },
-      periods: { hasPeriods: () => Promise.resolve(hasPeriods) },
+      periods: {
+        hasPeriods: () => Promise.resolve(hasPeriods),
+        openPeriodIds: () => Promise.resolve([]),
+      },
       clock,
       newId: () =>
         `00000000-0000-4000-8000-${String(nextId++).padStart(12, "0")}`,
@@ -590,6 +593,10 @@ describe("monthly workshops service", () => {
   });
 });
 
+const noPeriods = {
+  hasPeriods: () => Promise.resolve(false),
+  openPeriodIds: () => Promise.resolve([] as readonly string[]),
+};
 const turnoDraft = (overrides = {}) => ({
   label: " Mañana ",
   weekday: "2",
@@ -611,7 +618,7 @@ function turnoService() {
       media: { findAssets: () => Promise.resolve(new Map()) },
       turnos,
       turnoUsage: { isUsed: () => Promise.resolve(false) },
-      periods: { hasPeriods: () => Promise.resolve(false) },
+      periods: noPeriods,
       clock,
       newId: () => `turno-${String(nextId++)}`,
     }),
@@ -773,12 +780,67 @@ describe("monthly workshop turno mutations", () => {
       media: { findAssets: () => Promise.resolve(new Map()) },
       turnos,
       turnoUsage: { isUsed: (id) => Promise.resolve(id === turno.id) },
-      periods: { hasPeriods: () => Promise.resolve(false) },
+      periods: noPeriods,
       clock,
     });
     expect(await used.deleteTurno(actor, created.value.id, turno.id)).toEqual({
       ok: false,
       error: { kind: "rules-unmet", rules: ["turno-used"] },
     });
+  });
+});
+
+describe("a new turno joins the open months", () => {
+  function withOpenMonths(ids: readonly string[]) {
+    const asked: [string, string][] = [];
+    const repository = new InMemoryMonthlyWorkshopRepository();
+    const turnos = new InMemoryTurnoRepository(repository);
+    const subject = createMonthlyWorkshopsService({
+      repository,
+      teachers: { findByIds: () => Promise.resolve(new Map()) },
+      media: { findAssets: () => Promise.resolve(new Map()) },
+      turnos,
+      turnoUsage: { isUsed: () => Promise.resolve(false) },
+      periods: {
+        hasPeriods: () => Promise.resolve(true),
+        openPeriodIds: (workshopId, fromPeriod) => {
+          asked.push([workshopId, fromPeriod]);
+          return Promise.resolve(ids);
+        },
+      },
+      clock,
+      newId: (() => {
+        let next = 1;
+        return () => `id-${String(next++)}`;
+      })(),
+    });
+    return { subject, turnos, asked };
+  }
+
+  it("adds the turno with its default capacity to each open month from the current Córdoba month on", async () => {
+    const { subject, turnos, asked } = withOpenMonths(["p-jan", "p-feb"]);
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+
+    const added = await subject.addTurno(actor, created.value.id, turnoDraft());
+
+    expect(added.ok).toBe(true);
+    expect(asked).toEqual([[created.value.id, "2026-01"]]);
+    const turnoId = [...turnos.items.keys()][0];
+    expect(turnos.joined).toEqual([
+      { turnoId, periodId: "p-jan", capacity: 8 },
+      { turnoId, periodId: "p-feb", capacity: 8 },
+    ]);
+  });
+
+  it("joins nothing when the taller has no open month", async () => {
+    const { subject, turnos } = withOpenMonths([]);
+    const created = await subject.create(actor, draft());
+    if (!created.ok) throw new Error("fixture");
+
+    await subject.addTurno(actor, created.value.id, turnoDraft());
+
+    expect(turnos.items.size).toBe(1);
+    expect(turnos.joined).toEqual([]);
   });
 });

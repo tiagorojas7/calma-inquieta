@@ -40,15 +40,28 @@ export function compareIntensivos(
 /**
  * The monthly offering: the current Córdoba month when open, else the earliest
  * later open month, else none. Past months are never selected; `YYYY-MM` keys
- * sort chronologically as strings.
+ * sort chronologically as strings. With the taller's active turno ids, an open
+ * month whose capacities hold none of them cannot be enrolled in, so it is
+ * skipped and the next valid month is offered.
  */
-export function selectOffering<T extends { readonly period: string }>(
+export function selectOffering<
+  T extends {
+    readonly period: string;
+    readonly capacities?: readonly { readonly turnoId: string }[];
+  },
+>(
   openPeriods: readonly T[],
   currentPeriod: string,
+  activeTurnoIds?: ReadonlySet<string>,
 ): T | null {
   let best: T | null = null;
   for (const candidate of openPeriods) {
     if (candidate.period < currentPeriod) continue;
+    if (
+      activeTurnoIds !== undefined &&
+      !(candidate.capacities ?? []).some((c) => activeTurnoIds.has(c.turnoId))
+    )
+      continue;
     if (best === null || candidate.period < best.period) best = candidate;
   }
   return best;

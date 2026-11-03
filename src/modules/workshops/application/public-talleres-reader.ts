@@ -61,7 +61,11 @@ export const createPublicTalleresReader: CreatePublicTalleresReader = ({
     currentPeriod: string,
   ): Promise<readonly PublicTaller[]> {
     const selections = found.map((record) =>
-      selectOffering(record.openPeriods, currentPeriod),
+      selectOffering(
+        record.openPeriods,
+        currentPeriod,
+        new Set(record.activeTurnos.map((turno) => turno.id)),
+      ),
     );
     const teacherIds = [
       ...new Set(

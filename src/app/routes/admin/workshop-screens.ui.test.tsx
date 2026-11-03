@@ -287,6 +287,44 @@ describe("workshop admin screens", () => {
     ).toBeVisible();
   });
 
+  it("edit screen warns about an open month without an active turno and offers the one-click fix", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/admin/talleres/:id",
+        Component: AdminWorkshopDetail,
+        action: () => null,
+        loader: () => ({
+          id: "w1",
+          status: "published",
+          published: true,
+          values: VALUES,
+          teachers: TEACHERS,
+          activeTurnos: 1,
+          ...DETAIL_EXTRA,
+          emptyMonths: [{ id: "p-nov", label: "Noviembre" }],
+        }),
+      },
+    ]);
+    const { container } = render(
+      <Stub initialEntries={["/admin/talleres/w1"]} />,
+    );
+
+    expect(
+      await screen.findByText("Noviembre no tiene turnos activos: agregá uno"),
+    ).toBeVisible();
+    const fix = screen.getByRole("button", {
+      name: "Agregar los turnos activos a Noviembre",
+    });
+    expect(fix.closest("form")).toHaveAttribute("method", "post");
+    expect(fix.closest("form")?.querySelector("[name=intent]")).toHaveValue(
+      "fill-month",
+    );
+    expect(fix.closest("form")?.querySelector("[name=periodId]")).toHaveValue(
+      "p-nov",
+    );
+    await expectNoAxeViolations(container);
+  });
+
   it("edit screen of a published workshop loads the values, the lifecycle controls and the slug confirmation", async () => {
     const Stub = createRoutesStub([
       {

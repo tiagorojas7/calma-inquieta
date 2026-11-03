@@ -16,8 +16,18 @@ export interface StoredTurno {
 export interface TurnoLabelConflict {
   readonly kind: "label-conflict";
 }
+/** A new turno's default-capacity row in an open month, written with the turno. */
+export interface PeriodJoin {
+  readonly periodId: string;
+  readonly capacity: number;
+}
 export type TurnoMutation =
-  | { readonly kind: "insert"; readonly value: StoredTurno }
+  | {
+      readonly kind: "insert";
+      readonly value: StoredTurno;
+      /** Open months that offer the new turno; stored in the same transaction. */
+      readonly joinPeriods?: readonly PeriodJoin[];
+    }
   | { readonly kind: "update"; readonly value: StoredTurno }
   | { readonly kind: "delete"; readonly id: string };
 /**

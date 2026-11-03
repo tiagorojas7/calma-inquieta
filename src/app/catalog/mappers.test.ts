@@ -283,6 +283,7 @@ describe("intensivoToDetail", () => {
     expect(detail.materialsBadge).toBe("Materiales incluidos");
     expect(detail.seats).toBe("Cupo limitado");
     expect(detail.action).toEqual({ kind: "inquiry", ...link });
+    expect(detail.doubts).toBeUndefined();
     expect(JSON.parse(JSON.stringify(detail))).toEqual(detail);
   });
 
@@ -298,6 +299,10 @@ describe("intensivoToDetail", () => {
       reservation,
     );
     expect(detail.action).toEqual({ kind: "reserve", ...reservation });
+    expect(detail.doubts).toEqual({
+      href: link.href,
+      label: "¿Dudas? Escribinos",
+    });
   });
 
   it("keeps the paused notice even when a reservation link is offered", () => {

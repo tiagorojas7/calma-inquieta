@@ -459,6 +459,12 @@ export const adminMicrocopy = {
         action: (month: string) => `Abrir ${month}`,
         hint: (workshop: string) => `Abrir inscripciones de ${workshop}`,
       },
+      emptyMonth: {
+        text: (month: string, workshop: string) =>
+          `${month} no tiene turnos activos en ${workshop}: agregá uno`,
+        action: "Arreglar",
+        hint: (workshop: string) => `Agregar turnos a ${workshop}`,
+      },
       intensiveDeposit: {
         text: (count: number) =>
           count === 1
@@ -701,6 +707,12 @@ export const adminMicrocopy = {
         title: "Listo: taller publicado",
         message: "Las inscripciones del mes ya están abiertas.",
       },
+      filled: { title: "Turnos agregados al mes" },
+    },
+    emptyMonth: {
+      warning: (month: string) =>
+        `${month} no tiene turnos activos: agregá uno`,
+      fix: (month: string) => `Agregar los turnos activos a ${month}`,
     },
     periods: {
       manage: "Administrar períodos",

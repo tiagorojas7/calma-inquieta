@@ -383,6 +383,88 @@ describe("admin workshop detail overview", () => {
     });
   });
 
+  describe("an open month left without an active turno", () => {
+    async function emptied() {
+      const { flow, id } = await openWorkshop();
+      const added = await flow.service.addTurno(testAdminActor(), id, {
+        ...TURNO,
+        label: "Tarde",
+        startsAt: "15:00",
+        endsAt: "17:00",
+      });
+      if (!added.ok) throw new Error("add failed");
+      const morning = added.value.turnos.find((t) => t.label === "Mañana");
+      if (!morning) throw new Error("missing turno");
+      await flow.service.retireTurno(testAdminActor(), id, morning.id);
+      // The database derives turnoActive from the turno row; the fake stores it.
+      const stored = [...flow.periodRepository.items.values()][0];
+      if (!stored) throw new Error("missing period");
+      await flow.periodRepository.update({
+        ...stored,
+        turnos: stored.turnos.map((t) => ({ ...t, turnoActive: false })),
+      });
+      return { flow, id };
+    }
+
+    it("lists the month so the page can warn and offer the fix", async () => {
+      const { flow, id } = await emptied();
+      const month = await flow.periods.get(testAdminActor(), id, FLOW_MONTH);
+      if (!month.ok) throw new Error("month");
+
+      expect(await load(flow, id)).toMatchObject({
+        emptyMonths: [
+          {
+            id: month.value.id,
+            label: monthName(FLOW_MONTH).replace(/^./, (c) => c.toUpperCase()),
+          },
+        ],
+      });
+    });
+
+    it("adds the active turnos to that month with one POST and says so", async () => {
+      const { flow, id } = await emptied();
+      const month = await flow.periods.get(testAdminActor(), id, FLOW_MONTH);
+      if (!month.ok) throw new Error("month");
+
+      const response = await action({
+        request: postRequest(`/admin/talleres/${id}`, {
+          intent: "fill-month",
+          periodId: month.value.id,
+        }),
+        params: { id },
+        context: adminContext({
+          monthlyWorkshops: flow.service,
+          teachers: flow.teachers.service,
+          workshopPeriods: flow.periods,
+        }),
+      } as never);
+
+      expect((response as Response).headers.get("Location")).toBe(
+        `/admin/talleres/${id}?ok=filled`,
+      );
+      expect((await load(flow, id)).emptyMonths).toEqual([]);
+    });
+
+    it("refuses a month that belongs to another taller", async () => {
+      const { flow, id } = await emptied();
+      const status = await thrownStatus(() =>
+        action({
+          request: postRequest(`/admin/talleres/${id}`, {
+            intent: "fill-month",
+            periodId: "someone-elses",
+          }),
+          params: { id },
+          context: adminContext({
+            monthlyWorkshops: flow.service,
+            teachers: flow.teachers.service,
+            workshopPeriods: flow.periods,
+          }),
+        } as never),
+      );
+      expect(status).toBe(404);
+    });
+  });
+
   it("reports the step that stopped the one-click flow only when it is declared", async () => {
     const { flow, id } = await openWorkshop();
     expect((await load(flow, id, "?fallo=month")).failure).toBe("month");

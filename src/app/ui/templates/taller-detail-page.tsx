@@ -42,6 +42,8 @@ export interface TallerDetailProps {
         text: string;
         link: { href: string; label: string };
       };
+  /** A discreet text link for questions, only beside an enrollment action. */
+  doubts?: { href: string; label: string };
   project?: ProjectSectionProps;
   gallery: (DetailImage & { id: string })[];
 }
@@ -62,6 +64,7 @@ export function TallerDetailPage({
   fee,
   notice,
   action,
+  doubts,
   project,
   gallery,
 }: TallerDetailProps) {
@@ -91,6 +94,14 @@ export function TallerDetailPage({
               {action.label}
             </ButtonLink>
           )}
+          {doubts && action.kind !== "paused" ? (
+            <a
+              href={doubts.href}
+              className="min-h-11 text-center text-clay-800 underline underline-offset-4"
+            >
+              {doubts.label}
+            </a>
+          ) : null}
         </BookingSummary>
         <div className="flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-1">
           <Image

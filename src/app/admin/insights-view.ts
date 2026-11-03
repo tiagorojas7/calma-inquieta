@@ -53,6 +53,13 @@ function pesosOf(amounts: readonly Money[]): string {
 export interface TodayExtras {
   /** Private-event enquiries nobody answered yet. */
   readonly privateEventsUnanswered: number;
+  /** Open months nobody can book because they hold no active turno. */
+  readonly emptyMonths?: readonly {
+    readonly periodId: string;
+    readonly workshopId: string;
+    readonly workshopName: string;
+    readonly month: string;
+  }[];
 }
 
 /**
@@ -96,6 +103,14 @@ export function toPanelSummary(
       action: today.openMonth.action(next),
       hint: today.openMonth.hint(workshop.name),
       href: "/admin/talleres",
+    });
+  for (const empty of extras.emptyMonths ?? [])
+    tasks.push({
+      key: `empty-${empty.periodId}`,
+      text: today.emptyMonth.text(empty.month, empty.workshopName),
+      action: today.emptyMonth.action,
+      hint: today.emptyMonth.hint(empty.workshopName),
+      href: `/admin/talleres/${empty.workshopId}`,
     });
   if (view.today.pendingIntensiveRequests > 0)
     tasks.push({

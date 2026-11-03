@@ -181,3 +181,40 @@ describe("the use of the clock and the lookups", () => {
     expect(lookups).toBe(0);
   });
 });
+
+describe("a month whose only turno was deactivated (owner evidence, taller-prueba-1)", () => {
+  it("offers the next open month with its active turno", async () => {
+    const martes = seedTurno({ label: "Martes 12:15", active: false });
+    const tarde = seedTurno({ label: "Turno tarde" });
+    const seed = buildSeed({
+      talleres: [
+        seedTaller({
+          slug: "taller-prueba-1",
+          turnos: [martes, tarde],
+          periods: [
+            seedPeriod({
+              period: "2026-11",
+              capacities: [{ turnoId: martes.id, capacity: 8 }],
+            }),
+            seedPeriod({
+              period: "2026-12",
+              capacities: [{ turnoId: tarde.id, capacity: 6 }],
+            }),
+          ],
+        }),
+      ],
+    });
+    const reader = createPublicTalleresReader({
+      records: createInMemoryPublicTallerRecords(seed),
+      teachers: seedTeacherLookup(seed),
+      media: seedMediaLookup(seed),
+      clock: fixedClock(new Date("2026-11-02T15:00:00Z")),
+    });
+
+    const taller = await reader.findBySlug("taller-prueba-1");
+
+    expect(taller?.offering?.period).toBe("2026-12");
+    expect(taller?.turnos.map((turno) => turno.label)).toEqual(["Turno tarde"]);
+    expect(taller?.turnos[0]?.seats.capacity).toBe(6);
+  });
+});

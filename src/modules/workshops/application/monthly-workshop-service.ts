@@ -29,6 +29,7 @@ import {
 } from "../domain/monthly-workshop-core";
 import { validateTurnoCore } from "../domain/turno-core";
 import {
+  cordobaMonthOf,
   parsePercentage,
   slugify,
   type MonthlyWorkshop,
@@ -60,6 +61,11 @@ export interface TurnoUsageLookup {
 /** Read-only seam until B6 owns period persistence. */
 export interface WorkshopPeriodLookup {
   hasPeriods(workshopId: string): Promise<boolean>;
+  /** Ids of the workshop's open months from `fromPeriod` (`YYYY-MM`) on. */
+  openPeriodIds(
+    workshopId: string,
+    fromPeriod: string,
+  ): Promise<readonly string[]>;
 }
 export interface MonthlyWorkshopServiceDeps {
   readonly repository: MonthlyWorkshopRepository;
@@ -426,7 +432,20 @@ export function createMonthlyWorkshopsService(
         active: true,
       };
       const next = { ...loaded.value.value, audit: stamp(loaded.value.actor) };
-      const inserted = await turnos.mutate(next, { kind: "insert", value });
+      // The open months from now on offer the new turno too, so a taller that
+      // is open for enrollment never ends up with a month nobody can book.
+      const openIds = await periods.openPeriodIds(
+        workshopId,
+        cordobaMonthOf(clock.now()),
+      );
+      const inserted = await turnos.mutate(next, {
+        kind: "insert",
+        value,
+        joinPeriods: openIds.map((periodId) => ({
+          periodId,
+          capacity: value.defaultCapacity,
+        })),
+      });
       if (!inserted.ok)
         return inserted.error.kind === "label-conflict"
           ? err({

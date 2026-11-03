@@ -145,20 +145,31 @@ describe("Taller detail", { timeout: 60_000 }, () => {
     expectNoSkippedLevels(headingLevels());
   });
 
-  it("shows the enrollment link and one WhatsApp link per turno when open", async () => {
-    await renderDetail([full]);
+  it("shows ONE enrollment action and a single discreet WhatsApp link in the body when open", async () => {
+    const { container } = await renderDetail([full]);
     expect(
       (await screen.findByRole("link", { name: "Inscribirme" })).getAttribute(
         "href",
       ),
     ).toMatch(/^\/talleres\/[^/]+\/inscripcion\?period=2026-11$/u);
-    const links = await screen.findAllByRole("link", {
-      name: /Consultá por WhatsApp/u,
-    });
-    expect(links).toHaveLength(2);
-    for (const link of links) {
-      expect(link.getAttribute("href")).toMatch(/^https:\/\/wa\.me\//u);
-    }
+    expect(screen.queryByRole("link", { name: /Consultá/u })).toBeNull();
+    const body = container
+      .querySelector("article")
+      ?.querySelectorAll('a[href^="https://wa.me/"]');
+    expect(body).toHaveLength(1);
+    expect(body?.[0]?.textContent).toBe("¿Dudas? Escribinos");
+  });
+
+  it("keeps the WhatsApp links per turno and the main inquiry when nobody can enroll", async () => {
+    const { container } = await renderDetail([
+      buildPublicTaller({ ...full, offering: null }),
+    ]);
+    await screen.findByRole("heading", { level: 1 });
+    const body = container
+      .querySelector("article")
+      ?.querySelectorAll('a[href^="https://wa.me/"]');
+    expect(body?.length).toBeGreaterThan(2);
+    expect(screen.queryByRole("link", { name: "Inscribirme" })).toBeNull();
   });
 
   it("shows the paused notice, no inquiry action and no seats when paused", async () => {

@@ -752,8 +752,18 @@ describe("WorkshopPeriodsService", () => {
       ok: true,
       value: {
         periods: [
-          { id: "furthest", period: "2027-10", totalCapacity: 0 },
-          { id: "older", period: "2026-10", totalCapacity: 7 },
+          {
+            id: "furthest",
+            period: "2027-10",
+            totalCapacity: 0,
+            activeTurnos: 0,
+          },
+          {
+            id: "older",
+            period: "2026-10",
+            totalCapacity: 7,
+            activeTurnos: 1,
+          },
         ],
         suggestedNext: null,
       },
@@ -1021,5 +1031,95 @@ describe("WorkshopPeriodsService", () => {
       }),
     ).toEqual({ ok: false, error: { kind: "period-closed" } });
     expect(materialLookupCalls).toEqual([]);
+  });
+});
+
+describe("fillTurnos", () => {
+  const oldTurno = {
+    turnoId: "old",
+    label: "Martes 12:15",
+    weekday: 2 as const,
+    startsAt: "12:15",
+    endsAt: "13:15",
+    turnoActive: false,
+    capacity: 5,
+  };
+
+  it("adds the workshop's active turnos with their default capacity and keeps the rest", async () => {
+    const { service, periods } = await setup();
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "nov",
+        workshopId: "w",
+        period: "2026-11",
+        status: "open",
+        fee,
+        turnos: [oldTurno],
+      }),
+    );
+
+    const filled = await service.fillTurnos(testAdminActor(), "nov");
+
+    expect(filled).toMatchObject({
+      ok: true,
+      value: {
+        id: "nov",
+        status: "open",
+        turnos: [
+          { turnoId: "old", capacity: 5, turnoActive: false },
+          { turnoId: "t", label: "Morning", capacity: 8, turnoActive: true },
+        ],
+      },
+    });
+    expect(
+      (await periods.findById("nov"))?.turnos.map((x) => x.turnoId),
+    ).toEqual(["old", "t"]);
+  });
+
+  it("does nothing twice and never duplicates a turno", async () => {
+    const { service, periods } = await setup();
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "nov",
+        workshopId: "w",
+        period: "2026-11",
+        status: "open",
+        fee,
+        turnos: [oldTurno],
+      }),
+    );
+
+    await service.fillTurnos(testAdminActor(), "nov");
+    await service.fillTurnos(testAdminActor(), "nov");
+
+    expect((await periods.findById("nov"))?.turnos).toHaveLength(2);
+  });
+
+  it("refuses a closed month, an unknown one and a missing actor", async () => {
+    const { service, periods } = await setup();
+    await periods.insert(
+      buildWorkshopPeriod({
+        id: "sep",
+        workshopId: "w",
+        period: "2026-09",
+        status: "open",
+        fee,
+        turnos: [oldTurno],
+      }),
+    );
+
+    expect(await service.fillTurnos(testAdminActor(), "sep")).toEqual({
+      ok: false,
+      error: { kind: "period-closed" },
+    });
+    expect(await service.fillTurnos(testAdminActor(), "nope")).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+    expect(await service.fillTurnos(null, "sep")).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    expect((await periods.findById("sep"))?.turnos).toHaveLength(1);
   });
 });

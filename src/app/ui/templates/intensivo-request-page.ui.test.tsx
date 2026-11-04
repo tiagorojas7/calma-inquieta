@@ -31,6 +31,23 @@ const base = {
 };
 
 describe("IntensivoRequestPage", () => {
+  it("marks name, email and phone with their own icons", () => {
+    render(<IntensivoRequestPage {...base} />);
+    const glyphs = [
+      intensiveRequestCopy.form.fullName,
+      intensiveRequestCopy.form.email,
+      intensiveRequestCopy.form.phone,
+    ].map((label) => {
+      const icon = screen
+        .getByLabelText(label)
+        .parentElement?.querySelector("[data-field-icon]");
+      expect(icon, String(label)).not.toBeNull();
+      return icon?.innerHTML;
+    });
+
+    expect(new Set(glyphs).size).toBe(3);
+  });
+
   it("renders a native post form with the conditions visible and values preserved", async () => {
     const { container } = render(<IntensivoRequestPage {...base} />);
 

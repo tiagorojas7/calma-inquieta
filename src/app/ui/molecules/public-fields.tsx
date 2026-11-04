@@ -3,6 +3,8 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from "react";
+import type { IconName } from "../atoms/icons";
+import { FieldIcon, iconPadding } from "./field-icon";
 
 interface FieldProps {
   /** Stable id: the error summary links to it and tests can address it. */
@@ -10,6 +12,11 @@ interface FieldProps {
   label: string;
   hint?: string | undefined;
   error?: string | undefined;
+}
+
+/** A field's optional leading icon (see `FieldIcon`). */
+interface IconProps {
+  icon?: IconName | undefined;
 }
 
 const controlBase =
@@ -63,18 +70,21 @@ export function PublicTextField({
   label,
   hint,
   error,
+  icon,
   ...props
-}: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+}: FieldProps & IconProps & InputHTMLAttributes<HTMLInputElement>) {
   const field = { id: props.id, label, hint, error };
   return (
     <Field {...field}>
-      <input
-        type="text"
-        {...props}
-        aria-describedby={describedBy(field)}
-        aria-invalid={error ? true : undefined}
-        className={controlClasses(error)}
-      />
+      <FieldIcon icon={icon}>
+        <input
+          type="text"
+          {...props}
+          aria-describedby={describedBy(field)}
+          aria-invalid={error ? true : undefined}
+          className={`${controlClasses(error)} ${iconPadding(icon)}`.trim()}
+        />
+      </FieldIcon>
     </Field>
   );
 }
@@ -83,27 +93,31 @@ export function PublicSelectField({
   label,
   hint,
   error,
+  icon,
   options,
   ...props
 }: FieldProps &
+  IconProps &
   SelectHTMLAttributes<HTMLSelectElement> & {
     options: readonly { value: string; label: string }[];
   }) {
   const field = { id: props.id, label, hint, error };
   return (
     <Field {...field}>
-      <select
-        {...props}
-        aria-describedby={describedBy(field)}
-        aria-invalid={error ? true : undefined}
-        className={controlClasses(error)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <FieldIcon icon={icon}>
+        <select
+          {...props}
+          aria-describedby={describedBy(field)}
+          aria-invalid={error ? true : undefined}
+          className={`${controlClasses(error)} ${iconPadding(icon)}`.trim()}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </FieldIcon>
     </Field>
   );
 }

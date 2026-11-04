@@ -1,4 +1,5 @@
 import { Button, ButtonLink } from "../atoms/button";
+import { EmphasizedLastWord } from "../atoms/emphasis";
 import { Icon } from "../atoms/icons";
 import { Heading, Text } from "../atoms/heading";
 import { TextAreaField, TextField } from "../admin/form-fields";
@@ -53,7 +54,7 @@ export type PrivateEventPageProps = {
 );
 
 const cardClasses =
-  "card-accent flex flex-col gap-4 rounded-md bg-surface p-5 pt-8 shadow-raised sm:p-8 sm:pt-10";
+  "flex flex-col gap-4 rounded-md bg-surface p-5 shadow-raised sm:p-8";
 
 /** Public private-event request page; plain structural props, native form post. */
 export function PrivateEventPage(props: PrivateEventPageProps) {
@@ -84,16 +85,18 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
 
   const { values, errors, minDate } = props;
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
-      <header className="flex flex-col gap-2">
-        <Heading level={1}>{copy.title}</Heading>
-        <Text>{copy.intro}</Text>
+    <main className="flex max-w-prose flex-col gap-8 py-section">
+      <header className="flex flex-col gap-4">
+        <Heading level={1}>
+          <EmphasizedLastWord text={copy.title} />
+        </Heading>
+        <Text className="text-lead">{copy.intro}</Text>
       </header>
       <div data-form-card className={cardClasses}>
         <form
           method="post"
           aria-label={copy.form.label}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-8"
         >
           <div className="sr-only" aria-hidden="true">
             <label htmlFor="honeypot">No completes este campo</label>
@@ -105,70 +108,89 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
               type="text"
             />
           </div>
-          <TextField
-            label={copy.form.fullName}
-            name="fullName"
-            autoComplete="name"
-            required
-            defaultValue={values.fullName}
-            error={errors.fullName}
-          />
-          <TextField
-            label={copy.form.phone}
-            hint={copy.form.phoneHint}
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            required
-            defaultValue={values.phone}
-            error={errors.phone}
-          />
-          <TextField
-            label={copy.form.email}
-            name="email"
-            type="email"
-            autoComplete="email"
-            defaultValue={values.email}
-            error={errors.email}
-          />
-          <TextField
-            label={copy.form.desiredDate}
-            name="desiredDate"
-            type="date"
-            min={minDate}
-            required
-            defaultValue={values.desiredDate}
-            error={errors.desiredDate}
-          />
-          <TextField
-            label={copy.form.place}
-            hint={copy.form.placeHint}
-            name="place"
-            required
-            maxLength={200}
-            defaultValue={values.place}
-            error={errors.place}
-          />
-          <TextField
-            label={copy.form.participants}
-            hint={copy.form.participantsHint}
-            name="participants"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={200}
-            required
-            defaultValue={values.participants}
-            error={errors.participants}
-          />
-          <TextAreaField
-            label={copy.form.notes}
-            hint={copy.form.notesHint}
-            name="notes"
-            maxLength={1000}
-            defaultValue={values.notes}
-            error={errors.notes}
-          />
+          {/* Fields are grouped by meaning: who writes, then the event. */}
+          <div data-field-group className="flex flex-col gap-4">
+            <TextField
+              label={copy.form.fullName}
+              icon="user"
+              name="fullName"
+              autoComplete="name"
+              required
+              defaultValue={values.fullName}
+              error={errors.fullName}
+            />
+            <div data-field-pair className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                label={copy.form.phone}
+                icon="phone"
+                hint={copy.form.phoneHint}
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                required
+                defaultValue={values.phone}
+                error={errors.phone}
+              />
+              <TextField
+                label={copy.form.email}
+                icon="mail"
+                name="email"
+                type="email"
+                autoComplete="email"
+                defaultValue={values.email}
+                error={errors.email}
+              />
+            </div>
+          </div>
+          <div
+            data-field-group
+            className="flex flex-col gap-4 border-t border-tan-400 pt-8"
+          >
+            <div data-field-pair className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                label={copy.form.desiredDate}
+                icon="calendar"
+                name="desiredDate"
+                type="date"
+                min={minDate}
+                required
+                defaultValue={values.desiredDate}
+                error={errors.desiredDate}
+              />
+              <TextField
+                label={copy.form.participants}
+                icon="group"
+                hint={copy.form.participantsHint}
+                name="participants"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={200}
+                required
+                defaultValue={values.participants}
+                error={errors.participants}
+              />
+            </div>
+            <TextField
+              label={copy.form.place}
+              icon="pin"
+              hint={copy.form.placeHint}
+              name="place"
+              required
+              maxLength={200}
+              defaultValue={values.place}
+              error={errors.place}
+            />
+            <TextAreaField
+              label={copy.form.notes}
+              icon="note"
+              hint={copy.form.notesHint}
+              name="notes"
+              maxLength={1000}
+              defaultValue={values.notes}
+              error={errors.notes}
+            />
+          </div>
           <Button type="submit" className="w-full sm:w-auto sm:self-start">
             {copy.form.submit}
           </Button>

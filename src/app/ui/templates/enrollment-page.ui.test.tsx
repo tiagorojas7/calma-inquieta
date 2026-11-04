@@ -37,6 +37,24 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     );
   });
 
+  it("marks name, email, phone and turno with their own icons", () => {
+    setup();
+    const glyphs = [
+      "Nombre completo",
+      "Email",
+      "Teléfono argentino",
+      "Turno",
+    ].map((label) => {
+      const icon = screen
+        .getByLabelText(label)
+        .parentElement?.querySelector("[data-field-icon]");
+      expect(icon, label).not.toBeNull();
+      return icon?.innerHTML;
+    });
+
+    expect(new Set(glyphs).size).toBe(4);
+  });
+
   it("counts two steps when materials are not required", () => {
     setup({}, false);
     expect(screen.getByText("Paso 1 de 2")).toBeInTheDocument();

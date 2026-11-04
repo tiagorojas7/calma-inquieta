@@ -71,6 +71,7 @@ export function IntensivoRequestPage({
         </div>
         <TextField
           label={copy.fullName}
+          icon="user"
           name="fullName"
           autoComplete="name"
           required
@@ -79,6 +80,7 @@ export function IntensivoRequestPage({
         />
         <TextField
           label={copy.email}
+          icon="mail"
           name="email"
           type="email"
           autoComplete="email"
@@ -88,6 +90,7 @@ export function IntensivoRequestPage({
         />
         <TextField
           label={copy.phone}
+          icon="phone"
           hint={copy.phoneHint}
           name="phone"
           type="tel"

@@ -101,7 +101,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
           ) : null}
           <ErrorSummary title="Revisá estos datos" errors={summary} />
           <form
-            className="card-accent flex flex-col gap-5 rounded-md bg-surface p-5 pt-8 shadow-raised sm:p-8 sm:pt-10"
+            className="flex flex-col gap-5 rounded-md bg-surface p-5 shadow-raised sm:p-8"
             method="post"
           >
             <input name="period" type="hidden" value={offer.period} />
@@ -119,6 +119,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="fullName"
               label="Nombre completo"
+              icon="user"
               name="fullName"
               autoComplete="name"
               defaultValue={values.fullName}
@@ -128,6 +129,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="email"
               label="Email"
+              icon="mail"
               name="email"
               type="email"
               autoComplete="email"
@@ -138,6 +140,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="phone"
               label="Teléfono argentino"
+              icon="phone"
               hint="Con código de área, por ejemplo 351 555 0101."
               name="phone"
               type="tel"
@@ -150,6 +153,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicSelectField
               id="turnoId"
               label="Turno"
+              icon="clock"
               name="turnoId"
               defaultValue={values.turnoId}
               options={[

@@ -90,6 +90,9 @@ export function createKeyFetch(
       init,
     };
     calls.push(call);
+    // Workers' fetch throws on this mode, so the fake must too.
+    if (init?.redirect === "error")
+      return Promise.reject(new TypeError("Invalid redirect value"));
     return Promise.resolve(respond(call));
   };
   return { fetch: fetchImpl, calls };

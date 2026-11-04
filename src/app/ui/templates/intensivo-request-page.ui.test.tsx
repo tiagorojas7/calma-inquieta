@@ -41,7 +41,7 @@ describe("IntensivoRequestPage", () => {
       const icon = screen
         .getByLabelText(label)
         .parentElement?.querySelector("[data-field-icon]");
-      expect(icon, String(label)).not.toBeNull();
+      expect(icon, label).not.toBeNull();
       return icon?.innerHTML;
     });
 

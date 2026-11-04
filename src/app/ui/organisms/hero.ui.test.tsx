@@ -116,9 +116,10 @@ describe("HeroSection structure", () => {
       "href",
       "/talleres",
     );
-    expect(
-      screen.getByRole("link", { name: "Ver workshops" }),
-    ).toHaveAttribute("href", "/intensivos");
+    expect(screen.getByRole("link", { name: "Ver workshops" })).toHaveAttribute(
+      "href",
+      "/intensivos",
+    );
   });
 
   it("contains the narrow hero locally with a ratio-driven collage board", () => {

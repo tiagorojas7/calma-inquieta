@@ -48,7 +48,10 @@ describe("findCopyViolations", () => {
     const violations = findCopyViolations([text, text]);
 
     expect(violations).toHaveLength(2);
-    expect(violations.every((v) => v.rule === "tuteo")).toBe(true);
+    expect(violations.map((v) => v.match.toLowerCase())).toEqual([
+      "haz clic",
+      "haz clic",
+    ]);
     expect(findCopyViolations([text])).toHaveLength(1);
   });
 });

@@ -27,6 +27,7 @@ const taller: TallerDetailProps = {
 const intensivo: IntensivoDetailProps = {
   breadcrumb,
   name: "Intensivo",
+  oneDay: "Encuentro de un solo día: te llevás tu pieza ya terminada.",
   image,
   dateLine: "Sábado 4 de abril",
   duration: "4 h",
@@ -142,6 +143,18 @@ describe("IntensivoDetailPage", () => {
     expect(
       within(summary).getByRole("link", { name: "Reservar lugar" }),
     ).toHaveAttribute("href", "/reserva");
+  });
+
+  it("says what a workshop is in the header, after the hours", () => {
+    inRouter(<IntensivoDetailPage {...intensivo} />);
+    const line = screen.getByText(intensivo.oneDay);
+
+    expect(line.closest("header")).not.toBeNull();
+    expect(line).toHaveClass("text-ink-700");
+    expect(
+      screen.getByText("4 h").compareDocumentPosition(line) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("tells the date, the hours and the duration apart in the header", () => {

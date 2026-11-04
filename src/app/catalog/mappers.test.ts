@@ -110,7 +110,7 @@ describe("intensivoToUpcomingItem (Inicio)", () => {
       detail: "10:00 a 18:00 h",
       badge: undefined,
       href: "/intensivos/intensivo-demo",
-      ctaLabel: "Ver intensivo",
+      ctaLabel: "Ver workshop",
     });
     expect(JSON.stringify(item)).not.toMatch(/\$|58/u);
   });
@@ -172,7 +172,7 @@ describe("intensivoToCard (listing)", () => {
       policyText: "Texto de política de prueba",
     });
     expect(card.href).toBe("/intensivos/intensivo-demo");
-    expect(card.ctaLabel).toBe("Ver intensivo");
+    expect(card.ctaLabel).toBe("Ver workshop");
     expect(JSON.parse(JSON.stringify(card))).toEqual(card);
   });
 
@@ -267,10 +267,13 @@ describe("intensivoToDetail", () => {
     expect(detail.breadcrumb).toEqual({
       label: "Ruta de navegación",
       items: [
-        { label: "Talleres intensivos", href: "/intensivos" },
+        { label: "Workshops", href: "/intensivos" },
         { label: "Intensivo Demo" },
       ],
     });
+    expect(detail.oneDay).toBe(
+      "Encuentro de un solo día: te llevás tu pieza ya terminada.",
+    );
     expect(detail.dateLine).toBe("Sábado 14 de noviembre");
     expect(detail.timeRange).toBe("10:00 a 12:00 h");
     expect(detail.duration).toBe("2 horas");

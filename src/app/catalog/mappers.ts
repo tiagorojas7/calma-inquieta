@@ -200,6 +200,7 @@ export function intensivoToDetail(
       ],
     },
     name: intensivo.name,
+    oneDay: content.intensivos.oneDay,
     image: coverOf(intensivo.images, content),
     dateLine: formatEventDate(intensivo.date),
     duration: intensivoDuration(intensivo),

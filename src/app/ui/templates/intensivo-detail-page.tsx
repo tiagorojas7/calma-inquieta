@@ -24,6 +24,8 @@ type DetailImage = {
 export interface IntensivoDetailProps {
   breadcrumb: { label: string; items: { label: string; href?: string }[] };
   name: string;
+  /** What a workshop is, shown once in the header. */
+  oneDay: string;
   image: DetailImage;
   dateLine: string;
   duration: string;
@@ -54,6 +56,7 @@ export interface IntensivoDetailProps {
 export function IntensivoDetailPage({
   breadcrumb,
   name,
+  oneDay,
   image,
   dateLine,
   duration,
@@ -82,6 +85,7 @@ export function IntensivoDetailPage({
           {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
           {seats ? <Pill>{seats}</Pill> : null}
         </div>
+        <p className="max-w-prose text-ink-700">{oneDay}</p>
       </header>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <BookingSummary>

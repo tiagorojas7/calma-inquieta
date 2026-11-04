@@ -1,6 +1,5 @@
 import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
-import { Icon } from "../atoms/icon";
 import { Image } from "../atoms/image";
 import { Pill } from "../atoms/pill";
 import { Text } from "../atoms/text";
@@ -8,6 +7,7 @@ import { ConditionsNote } from "./conditions-note";
 import { DateBadge, type DateBadgeParts } from "./date-badge";
 import { PausedNotice } from "./paused-notice";
 import { PriceTag } from "./price-tag";
+import { TimePill } from "./time-pill";
 
 type CardImage = {
   src: string;
@@ -84,10 +84,7 @@ export function IntensivoCard({
         {teacher ? (
           <p className="font-display text-xl italic text-ink-900">{teacher}</p>
         ) : null}
-        <p className="flex items-center gap-2 rounded-sm bg-sage-200 px-3 py-2 text-sm font-semibold tabular-nums text-olive-800">
-          <Icon name="clock" aria-hidden="true" className="size-4 shrink-0" />
-          <span>{duration}</span>
-        </p>
+        <TimePill>{duration}</TimePill>
         <div
           data-slot="price-block"
           className="flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-tan-400 pt-4"

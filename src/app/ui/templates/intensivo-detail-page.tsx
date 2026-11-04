@@ -2,7 +2,6 @@ import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { Image } from "../atoms/image";
 import { Pill } from "../atoms/pill";
-import { Text } from "../atoms/text";
 import { microcopy } from "../microcopy";
 import { BookingSummary } from "../molecules/booking-summary";
 import { Breadcrumb } from "../molecules/breadcrumb";
@@ -11,6 +10,7 @@ import { PausedNotice } from "../molecules/paused-notice";
 import { PricingSummary } from "../molecules/pricing-summary";
 import { StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
+import { TimePill } from "../molecules/time-pill";
 import { GalleryGrid } from "../organisms/gallery-grid";
 
 type DetailImage = {
@@ -75,8 +75,10 @@ export function IntensivoDetailPage({
       <Breadcrumb {...breadcrumb} />
       <header className="flex flex-col gap-3">
         <Heading level={1}>{name}</Heading>
-        <Text>{`${dateLine} · ${timeRange} · ${duration}`}</Text>
-        <div className="flex flex-wrap gap-2">
+        <p className="font-display text-xl italic text-ink-900">{dateLine}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <TimePill>{timeRange}</TimePill>
+          <TimePill>{duration}</TimePill>
           {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
           {seats ? <Pill>{seats}</Pill> : null}
         </div>

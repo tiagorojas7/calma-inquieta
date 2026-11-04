@@ -5,7 +5,8 @@ import { ButtonLink } from "../atoms/button";
  * focusable action lives in the booking summary, so this copy is hidden from
  * assistive technology and skipped by the keyboard to avoid duplicate stops.
  * It is a flow-sticky element at the end of the article, so it never covers
- * content; the footer scrolls past it.
+ * content; the footer scrolls past it. It is liquid glass, so the page shows
+ * through the blur as it scrolls under the bar.
  */
 export function StickyAction({
   href,
@@ -20,7 +21,7 @@ export function StickyAction({
     <div
       data-sticky-action
       aria-hidden="true"
-      className="sticky bottom-0 z-20 -mx-4 bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-raised lg:hidden"
+      className="glass sticky bottom-0 z-20 -mx-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden"
     >
       <ButtonLink
         href={href}

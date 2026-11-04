@@ -1,8 +1,8 @@
 import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
-import { Icon } from "../atoms/icon";
 import { Pill } from "../atoms/pill";
 import { DateBadge, type DateBadgeParts } from "./date-badge";
+import { TimePill } from "./time-pill";
 
 /**
  * One upcoming intensivo as a soft ticket: a sage date block with the day set
@@ -31,12 +31,7 @@ export function UpcomingItem({
       </div>
       <div className="flex min-w-0 flex-1 basis-40 flex-col items-start gap-2">
         <Heading level={3}>{title}</Heading>
-        {detail ? (
-          <p className="flex items-center gap-2 rounded-sm bg-sage-200 px-3 py-1.5 text-sm font-semibold tabular-nums text-olive-800">
-            <Icon name="clock" aria-hidden="true" className="size-4 shrink-0" />
-            <span>{detail}</span>
-          </p>
-        ) : null}
+        {detail ? <TimePill>{detail}</TimePill> : null}
         {badge ? <Pill tone="notice">{badge}</Pill> : null}
       </div>
       <ButtonLink href={href} className="w-full sm:w-auto">

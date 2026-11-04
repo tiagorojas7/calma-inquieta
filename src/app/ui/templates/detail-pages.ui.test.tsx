@@ -89,6 +89,14 @@ describe("TallerDetailPage", () => {
     );
   });
 
+  it("lays the sticky mobile bar as liquid glass", () => {
+    const { container } = inRouter(<TallerDetailPage {...taller} />);
+    const bar = container.querySelector("[data-sticky-action]");
+
+    expect(bar).toHaveClass("glass");
+    expect(bar?.className).not.toContain("bg-surface");
+  });
+
   it("omits the sticky action when paused", () => {
     const { container } = inRouter(
       <TallerDetailPage
@@ -134,6 +142,26 @@ describe("IntensivoDetailPage", () => {
     expect(
       within(summary).getByRole("link", { name: "Reservar lugar" }),
     ).toHaveAttribute("href", "/reserva");
+  });
+
+  it("tells the date, the hours and the duration apart in the header", () => {
+    inRouter(<IntensivoDetailPage {...intensivo} />);
+
+    // The date is the italic subtitle under the title.
+    expect(screen.getByText("Sábado 4 de abril")).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    // The hours and the duration are pills, not one line of plain text.
+    expect(screen.getByText("10:00 a 14:00").parentElement).toHaveClass(
+      "bg-sage-200",
+      "tabular-nums",
+    );
+    expect(screen.getByText("4 h").parentElement).toHaveClass(
+      "bg-sage-200",
+      "tabular-nums",
+    );
+    expect(screen.queryByText(/·/)).toBeNull();
   });
 
   it("colors Reservar green", () => {

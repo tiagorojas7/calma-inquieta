@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
+import { EmphasizedLastWord } from "../atoms/emphasis";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
@@ -193,7 +194,9 @@ export function AboutIntro({
       >
         <div className="flex max-w-prose flex-col gap-5">
           <Reveal>
-            <Heading level={1}>{heading}</Heading>
+            <Heading level={1}>
+              <EmphasizedLastWord text={heading} />
+            </Heading>
           </Reveal>
           {lead ? (
             <p className="drop-cap text-lead font-medium text-ink-900">

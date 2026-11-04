@@ -27,8 +27,11 @@ const PHOTO_SIZES = "(min-width: 64rem) 42vw, calc(100vw - 2.5rem)";
  * Contacto: a full-bleed sand band. The info sits on one side; the photo
  * bleeds to the right page edge on desktop and follows the info as a wide
  * card on a phone. The facade is dark blue at night, so a warm colour
- * overlay pulls it into the palette. No text ever sits on the photo. WhatsApp
- * is the one primary action; the catalog and the directions are subordinate.
+ * overlay pulls it into the palette. No text ever sits on the photo itself:
+ * with a photo, the address and the directions go on a liquid-glass card that
+ * rises over its lower edge (beside it on desktop), so a visitor sees the
+ * place and how to get there together. WhatsApp is the one primary action;
+ * the catalog and the directions are subordinate.
  */
 export function ContactSection({
   heading,
@@ -45,7 +48,11 @@ export function ContactSection({
 }) {
   // WhatsApp is the preferred channel: it leads as the single primary action.
   const primary = items.find((item) => item.icon === "whatsapp" && item.href);
-  const rest = items.filter((item) => item !== primary);
+  // With a photo the address moves onto the glass card over it.
+  const place = photo
+    ? items.find((item) => item.icon === "pin" && item !== primary)
+    : undefined;
+  const rest = items.filter((item) => item !== primary && item !== place);
   return (
     <Section
       bleed
@@ -80,10 +87,12 @@ export function ContactSection({
               <Icon name="calendar" aria-hidden="true" className="size-5" />
               Ver talleres
             </ButtonLink>
-            <ButtonLink href={directionsHref} variant="tertiary">
-              <Icon name="map" aria-hidden="true" className="size-5" />
-              {microcopy.directions}
-            </ButtonLink>
+            {place ? null : (
+              <ButtonLink href={directionsHref} variant="tertiary">
+                <Icon name="map" aria-hidden="true" className="size-5" />
+                {microcopy.directions}
+              </ButtonLink>
+            )}
           </div>
         </Reveal>
         {photo ? (
@@ -117,6 +126,29 @@ export function ContactSection({
               size="lg"
               className="right-8 top-16 lg:right-20 lg:top-36"
             />
+          </div>
+        ) : null}
+        {photo && place ? (
+          <div className="glass relative z-10 mx-4 -mt-16 flex flex-col items-start gap-4 rounded-md p-5 lg:absolute lg:bottom-12 lg:right-8 lg:mx-0 lg:mt-0 lg:w-96">
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sage-200 text-olive-800">
+                <Icon name={place.icon} aria-hidden="true" />
+              </span>
+              <div className="flex flex-col">
+                <span className="font-display text-lg font-semibold text-ink-900">
+                  {place.label}
+                </span>
+                <span className="text-ink-900">{place.value}</span>
+              </div>
+            </div>
+            <ButtonLink
+              href={directionsHref}
+              variant="secondary"
+              className="w-full gap-2"
+            >
+              <Icon name="map" aria-hidden="true" className="size-5" />
+              {microcopy.directions}
+            </ButtonLink>
           </div>
         ) : null}
       </div>

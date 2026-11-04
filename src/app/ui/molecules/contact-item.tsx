@@ -12,8 +12,8 @@ export function ContactItem({
   href?: string;
 }) {
   return (
-    <div className="card-hover flex items-start gap-4 rounded-md bg-white p-4 shadow-card">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sand-100 text-clay-800">
+    <div className="card-hover relative flex items-start gap-4 rounded-md bg-white p-4 shadow-card has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-clay-800">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sage-200 text-olive-800">
         <Icon name={icon} aria-hidden="true" />
       </span>
       <div className="flex flex-col">
@@ -22,7 +22,7 @@ export function ContactItem({
         </span>
         {href ? (
           <a
-            className="link-underline-rest link-underline text-clay-800"
+            className="link-underline-rest link-underline text-clay-800 after:absolute after:inset-0"
             href={href}
             rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
           >

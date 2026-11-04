@@ -57,6 +57,31 @@ describe("CatalogListingPage", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("sets the last word of a multi-word title in the accent italic, and leaves a one-word title plain", () => {
+    const { rerender } = render(
+      <CatalogListingPage heading="Talleres mensuales" intro="Intro.">
+        <p>Grilla</p>
+      </CatalogListingPage>,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).querySelector("em"),
+    ).toHaveTextContent("mensuales");
+
+    rerender(
+      <CatalogListingPage heading="Intensivos" intro="Intro.">
+        <p>Grilla</p>
+      </CatalogListingPage>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Intensivos",
+    );
+    expect(
+      screen.getByRole("heading", { level: 1 }).querySelector("em"),
+    ).toBeNull();
+  });
+
   it("keeps the h1, the intro and the empty state when there is no data", async () => {
     const { container } = render(
       <main>

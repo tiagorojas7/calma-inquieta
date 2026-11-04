@@ -59,7 +59,7 @@ async function fetchKeySet(
       `https://${teamDomain}/cdn-cgi/access/certs`,
       {
         signal: AbortSignal.timeout(timeoutMs),
-        redirect: "error",
+        redirect: "manual",
       },
     );
     if (

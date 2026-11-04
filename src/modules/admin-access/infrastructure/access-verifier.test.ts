@@ -61,7 +61,22 @@ describe("WebCrypto access verifier", () => {
     expect(keyFetch.calls).toHaveLength(1);
     expect(keyFetch.calls[0]?.url).toBe(KEYS_URL);
     expect(keyFetch.calls[0]?.init?.signal).toBeInstanceOf(AbortSignal);
-    expect(keyFetch.calls[0]?.init?.redirect).toBe("error");
+    expect(keyFetch.calls[0]?.init?.redirect).toBe("manual");
+  });
+
+  it("never follows a redirect from the key endpoint", async () => {
+    const { make } = setup();
+    const redirected = createKeyFetch(
+      () =>
+        new Response(JSON.stringify({ keys: [main.jwk] }), {
+          status: 302,
+          headers: { Location: "https://elsewhere.example/certs" },
+        }),
+    );
+
+    expect(await make(redirected.fetch).verify(await sign(main))).toBe(
+      "key-source",
+    );
   });
 
   it("denies a tampered payload, a tampered signature and a signature from another key", async () => {

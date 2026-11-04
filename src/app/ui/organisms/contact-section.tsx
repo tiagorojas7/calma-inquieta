@@ -106,7 +106,6 @@ export function ContactSection({
                 className="pointer-events-none absolute inset-0"
               >
                 <div className="absolute inset-0 bg-clay-600/55 mix-blend-color" />
-                <div className="absolute inset-0 bg-linear-to-t from-sand-300/50 to-transparent mix-blend-soft-light" />
               </div>
             </div>
             <BotanicalSprig

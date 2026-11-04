@@ -15,7 +15,7 @@ export function UpcomingList({
     <section className="flex flex-col gap-module">
       <Heading level={2}>{title}</Heading>
       {items.length ? (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-4">
           {items.map(({ id, ...item }) => (
             <UpcomingItem key={id} {...item} />
           ))}

@@ -102,6 +102,35 @@ describe("TallerCard", () => {
     expect(block).toHaveClass("border-t", "border-tan-400");
     expect(
       screen.getByRole("link", { name: tallerCardFixture.ctaLabel }),
-    ).toHaveClass("w-full", "border-clay-600");
+    ).toHaveClass("w-full", "bg-clay-600");
+  });
+
+  it("raises a liquid-glass panel over the lower edge of the photo", () => {
+    renderCard(tallerCardFixture);
+    const photo = screen.getByRole("img", {
+      name: tallerCardFixture.image.alt,
+    });
+    const panel = screen
+      .getByRole("heading", { level: 2, name: tallerCardFixture.name })
+      .closest(".glass");
+
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("-mt-10", "rounded-md");
+    expect(photo.parentElement).not.toContainElement(panel as HTMLElement);
+    expect(screen.getByRole("article")).not.toHaveClass("bg-cocoa-900");
+  });
+
+  it("tells name, teacher and hours apart by typeface and treatment", () => {
+    renderCard(tallerCardFixture);
+
+    expect(screen.getByText(tallerCardFixture.teacher)).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    expect(screen.getByText("18:00 a 19:30 h")).toHaveClass(
+      "bg-sage-200",
+      "font-semibold",
+      "tabular-nums",
+    );
   });
 });

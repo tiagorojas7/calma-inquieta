@@ -33,6 +33,35 @@ describe("ActivityCard extensions", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("raises a liquid-glass panel over the lower edge of the photo", () => {
+    renderCard();
+    const card = screen.getByRole("article");
+    const panel = screen
+      .getByRole("heading", { name: activityFixture.title })
+      .closest(".glass");
+
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("-mt-10", "rounded-md");
+    expect(card).toContainElement(panel as HTMLElement);
+    expect(card).not.toHaveClass("bg-cocoa-900");
+  });
+
+  it("closes with a solid full-width button instead of a text link", () => {
+    renderCard();
+    const cta = screen.getByRole("link", { name: activityFixture.ctaLabel });
+
+    expect(cta).toHaveClass("w-full", "bg-clay-600");
+    expect(cta).not.toHaveClass("link-underline");
+  });
+
+  it("sets the schedule apart in a sage pill with a clock and tabular numerals", () => {
+    renderCard({ schedule: "Lunes de 10:00 a 12:00 h" });
+    const pill = screen.getByText("Lunes de 10:00 a 12:00 h").parentElement;
+
+    expect(pill?.querySelector("svg")).not.toBeNull();
+    expect(pill).toHaveClass("bg-sage-200", "tabular-nums", "font-semibold");
+  });
+
   it("crops the photo to a short landscape frame on phones", () => {
     renderCard();
     const photo = screen.getByRole("img");

@@ -149,6 +149,25 @@ describe("Inicio route", () => {
     },
   );
 
+  it("signs no section with a kicker above its heading", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => fixture,
+      },
+    ]);
+    const { container } = render(<Stub initialEntries={["/"]} />);
+    await screen.findAllByRole("heading", { level: 1 });
+
+    expect(container.querySelector("[data-eyebrow]")).toBeNull();
+    expect(screen.queryByText("Encuentros de un día")).not.toBeInTheDocument();
+  });
+
   it("keeps the spaces around the italic accent in the hero title", async () => {
     const real = {
       ...fixture,
@@ -247,7 +266,13 @@ describe("Inicio route", () => {
       intensivos?.querySelector('a[href="/intensivos/intensivo-demo"]'),
     ).toBeTruthy();
     expect(container.textContent).not.toMatch(/\$\s?\d|58\.000/u);
-    for (const section of [monthly, intensivos]) {
+    // Hours come from the catalog: the sections and the hero's next-intensivo
+    // strip carry them; nothing else on Inicio may.
+    const heroNext = container.querySelector(
+      '.hero-copy a[href^="/intensivos/"]',
+    );
+    expect(heroNext).toHaveTextContent("Intensivo de torno");
+    for (const section of [monthly, intensivos, heroNext]) {
       section?.remove();
     }
     expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/u);
@@ -543,7 +568,7 @@ describe("Inicio bands and motifs", () => {
 
     expect(intensivosBand).not.toBe(monthlyBand);
     expect(intensivosBand).toHaveAttribute("data-tone", "white");
-    expect(intensivosBand).toHaveTextContent("Encuentros de un día");
+    expect(intensivosBand).not.toHaveTextContent("Encuentros de un día");
   });
 
   it("keeps the booking lead but drops the activity sections when the catalog read fails", async () => {
@@ -621,8 +646,10 @@ describe("Inicio bands and motifs", () => {
     });
     const withMotifs = snapshot(container);
     const bare = container.cloneNode(true) as HTMLElement;
+    // Motifs are decoration around the content; a glyph inside a link is part
+    // of the link, so it stays.
     for (const motif of bare.querySelectorAll("[aria-hidden='true']")) {
-      motif.remove();
+      if (!motif.closest("a")) motif.remove();
     }
 
     expect(snapshot(bare)).toEqual(withMotifs);

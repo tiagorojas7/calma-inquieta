@@ -1,5 +1,6 @@
 import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
+import { Icon } from "../atoms/icon";
 import { Image } from "../atoms/image";
 import { Pill } from "../atoms/pill";
 import { Text } from "../atoms/text";
@@ -16,8 +17,13 @@ type CardImage = {
 };
 
 /**
- * Listing card of an intensivo. The conditions note never carries the minimum
- * seats line: that line belongs to the detail page only.
+ * Listing card of an intensivo, the liquid-glass one: the date and the
+ * materials/seats marks are small glass chips over the photo, and the details
+ * sit on a glass panel that rises over the photo's lower edge. Type roles: the
+ * name in the display serif, the teacher a display italic subtitle, the hours
+ * in a sage pill with tabular numerals, the price in the display face and the
+ * deposit in small sans. The conditions note never carries the minimum seats
+ * line: that line belongs to the detail page only.
  */
 export function IntensivoCard({
   image,
@@ -48,50 +54,60 @@ export function IntensivoCard({
   href: string;
   ctaLabel: string;
 }) {
+  const showSeats = Boolean(seats) && !paused;
   return (
-    <article className="card-hover card-accent flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-raised">
-      <div className="card-hover-frame w-full rounded-sm">
+    <article className="card-hover flex h-full flex-col overflow-hidden rounded-md bg-surface shadow-raised">
+      <div className="card-hover-frame relative w-full">
         <Image {...image} className="block w-full object-cover" />
-      </div>
-      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="rounded-sm bg-sand-100 p-2 shadow-rest">
-          <DateBadge {...date} />
+        <div className="glass absolute left-3 top-3 rounded-sm px-3 py-2">
+          <DateBadge {...date} tone="ink" />
         </div>
-        <div className="min-w-0 flex-1 basis-40">
-          <Heading level={2} size="h3">
-            {name}
-          </Heading>
+        {materialsBadge || showSeats ? (
+          <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+            {materialsBadge ? (
+              <span className="glass rounded-pill px-3 py-1 text-sm font-semibold text-ink-900">
+                {materialsBadge}
+              </span>
+            ) : null}
+            {showSeats ? (
+              <span className="glass rounded-pill px-3 py-1 text-sm font-semibold text-ink-900">
+                {seats}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <div className="glass relative z-10 mx-3 -mt-10 mb-3 flex flex-1 flex-col items-start gap-4 rounded-md p-5">
+        <Heading level={2} size="h3">
+          {name}
+        </Heading>
+        {teacher ? (
+          <p className="font-display text-xl italic text-ink-900">{teacher}</p>
+        ) : null}
+        <p className="flex items-center gap-2 rounded-sm bg-sage-200 px-3 py-2 text-sm font-semibold tabular-nums text-olive-800">
+          <Icon name="clock" aria-hidden="true" className="size-4 shrink-0" />
+          <span>{duration}</span>
+        </p>
+        <div
+          data-slot="price-block"
+          className="flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-tan-400 pt-4"
+        >
+          <PriceTag amount={price} />
+          <Text tone="muted" className="text-sm">
+            {deposit}
+          </Text>
         </div>
+        {paused ? (
+          <>
+            <Pill tone="notice">Pausado</Pill>
+            <PausedNotice text={paused} />
+          </>
+        ) : null}
+        <ConditionsNote {...conditions} />
+        <ButtonLink href={href} className="mt-auto w-full justify-center">
+          {ctaLabel}
+        </ButtonLink>
       </div>
-      <div className="flex flex-col gap-1">
-        <Text>{duration}</Text>
-        {teacher ? <Text tone="muted">{teacher}</Text> : null}
-      </div>
-      <div
-        data-slot="price-block"
-        className="flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-tan-400 pt-4"
-      >
-        <PriceTag amount={price} />
-        <Text tone="muted">{deposit}</Text>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
-        {seats && !paused ? <Pill>{seats}</Pill> : null}
-      </div>
-      {paused ? (
-        <>
-          <Pill tone="notice">Pausado</Pill>
-          <PausedNotice text={paused} />
-        </>
-      ) : null}
-      <ConditionsNote {...conditions} />
-      <ButtonLink
-        href={href}
-        variant="secondary"
-        className="mt-auto w-full justify-center"
-      >
-        {ctaLabel}
-      </ButtonLink>
     </article>
   );
 }

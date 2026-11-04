@@ -74,8 +74,8 @@ export function SiteHeader({
     <header
       data-solid={String(solid)}
       data-backdrop={heroBackdrop}
-      className={`site-header sticky top-0 z-30 text-ink-900 transition-[background-color,box-shadow] duration-300 ease-calm ${
-        solid ? "bg-sand-200 shadow-header" : "bg-transparent"
+      className={`site-header sticky top-0 z-30 text-ink-900 transition-[background-color,box-shadow,backdrop-filter] duration-300 ease-calm ${
+        solid ? "glass" : "bg-transparent"
       }`}
     >
       <div className="mx-auto flex max-w-page items-center justify-between gap-6 px-gutter py-4">

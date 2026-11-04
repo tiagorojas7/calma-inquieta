@@ -38,7 +38,7 @@ export function ValuesRow({
             const disc = DISCS[at % DISCS.length] ?? DISCS[0];
             return (
               <Reveal as="li" key={item.id} index={at} className="h-full">
-                <div className="card-hover card-accent flex h-full gap-5 rounded-md bg-white p-6 pt-8 shadow-card sm:flex-col sm:gap-4">
+                <div className="card-hover flex h-full gap-5 rounded-md bg-white p-6 shadow-card sm:flex-col sm:gap-4">
                   <span
                     data-disc={disc.tone}
                     className={`flex size-16 shrink-0 items-center justify-center rounded-full ring-8 ring-sand-100 ${disc.classes}`}

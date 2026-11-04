@@ -22,7 +22,9 @@ export function TurnoList({
           <span className="font-display text-lg font-semibold text-ink-900">
             {item.weekday}
           </span>
-          <span>{item.timeRange}</span>
+          <span className="rounded-pill bg-sage-200 px-3 py-1 text-sm font-semibold tabular-nums text-olive-800">
+            {item.timeRange}
+          </span>
           {item.duration ? <span>{item.duration}</span> : null}
           {item.seats ? <Pill>{item.seats}</Pill> : null}
           {item.inquiry ? (

@@ -17,12 +17,13 @@ describe("PaperNote", () => {
     expect(text).toHaveClass("font-script", "text-ink-900");
   });
 
-  it("has a premium finish: a tape strip class and a light sheet", () => {
+  it("holds the sheet with a tape strip and paints it in one flat colour", () => {
     const { container } = render(<PaperNote>Hola</PaperNote>);
 
     expect(container.firstElementChild).toHaveClass("paper-note");
-    expect(container.querySelector(".paper-torn")).toHaveClass(
-      "paper-note-sheet",
+    expect(container.querySelector(".paper-torn")).toHaveClass("bg-sand-300");
+    expect(container.querySelector(".paper-torn")?.className).not.toMatch(
+      /sheet|gradient/,
     );
   });
 

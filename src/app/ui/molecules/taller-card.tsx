@@ -15,8 +15,11 @@ type CardImage = {
 };
 
 /**
- * Listing card of a monthly taller. Paused wins over the no-offering notice,
- * and the seats indicator shows only for an open taller with an offering.
+ * Listing card of a monthly taller: the photo on top and a liquid-glass panel
+ * over its lower edge. The name is the display serif, the teacher a display
+ * italic subtitle, the summary the sans body and each turno a weekday plus a
+ * sage time pill. Paused wins over the no-offering notice, and the seats
+ * indicator shows only for an open taller with an offering.
  */
 export function TallerCard({
   image,
@@ -45,47 +48,47 @@ export function TallerCard({
 }) {
   const showSeats = Boolean(seats) && !paused && !notice;
   return (
-    <article className="card-hover card-accent flex h-full flex-col items-start gap-4 rounded-md bg-surface p-4 shadow-raised">
-      <div className="card-hover-frame w-full rounded-sm">
+    <article className="card-hover flex h-full flex-col overflow-hidden rounded-md bg-surface shadow-raised">
+      <div className="card-hover-frame relative w-full">
         <Image
           {...image}
           intrinsicRatio={false}
           className="block aspect-3/2 h-auto w-full object-cover md:aspect-4/3"
         />
       </div>
-      <Heading level={2} size="h3">
-        {name}
-      </Heading>
-      {teacher ? <Text tone="muted">{teacher}</Text> : null}
-      <Text>{summary}</Text>
-      <TurnoList items={turnos} />
-      {price ? (
-        <div
-          data-slot="price-block"
-          className="w-full border-t border-tan-400 pt-4"
-        >
-          <PriceTag {...price} />
-        </div>
-      ) : null}
-      {paused ? (
-        <>
-          <Pill tone="notice">Pausado</Pill>
-          <PausedNotice text={paused} />
-        </>
-      ) : notice ? (
-        <>
-          <Pill tone="notice">Próximamente</Pill>
-          <Text tone="accent">{notice}</Text>
-        </>
-      ) : null}
-      {showSeats && seats ? <Pill>{seats}</Pill> : null}
-      <ButtonLink
-        href={href}
-        variant="secondary"
-        className="mt-auto w-full justify-center"
-      >
-        {ctaLabel}
-      </ButtonLink>
+      <div className="glass relative z-10 mx-3 -mt-10 mb-3 flex flex-1 flex-col items-start gap-4 rounded-md p-5">
+        <Heading level={2} size="h3">
+          {name}
+        </Heading>
+        {teacher ? (
+          <p className="font-display text-xl italic text-ink-900">{teacher}</p>
+        ) : null}
+        <Text>{summary}</Text>
+        <TurnoList items={turnos} />
+        {price ? (
+          <div
+            data-slot="price-block"
+            className="w-full border-t border-tan-400 pt-4"
+          >
+            <PriceTag {...price} />
+          </div>
+        ) : null}
+        {paused ? (
+          <>
+            <Pill tone="notice">Pausado</Pill>
+            <PausedNotice text={paused} />
+          </>
+        ) : notice ? (
+          <>
+            <Pill tone="notice">Próximamente</Pill>
+            <Text tone="accent">{notice}</Text>
+          </>
+        ) : null}
+        {showSeats && seats ? <Pill>{seats}</Pill> : null}
+        <ButtonLink href={href} className="mt-auto w-full">
+          {ctaLabel}
+        </ButtonLink>
+      </div>
     </article>
   );
 }

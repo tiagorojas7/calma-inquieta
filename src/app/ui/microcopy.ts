@@ -17,10 +17,6 @@ export const microcopy = {
   doubtsLabel: "¿Dudas? Escribinos",
   whatsappSuffix: " por WhatsApp",
   followInstagram: "Seguinos en Instagram",
-  /** Decorative signpost above the closing band heading. */
-  closingBandEyebrow: "Hay un lugar para vos",
-  /** Decorative signpost above the Quiénes somos heading. */
-  aboutEyebrow: "Nuestra historia",
   notFound: {
     title: "Página no encontrada",
     message: "La página que buscás no existe.",

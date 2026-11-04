@@ -55,7 +55,7 @@ export function SiteFooter({ pages, profile, brand, inert }: SiteFooterProps) {
       inert={inert || undefined}
     >
       <div className="mx-auto flex max-w-page flex-col gap-12 px-gutter py-12 lg:py-16">
-        <div className="site-footer-cta tone-cocoa band-glow band-frame relative flex overflow-hidden flex-col gap-6 rounded-md bg-cocoa-900 px-8 py-10 text-canvas shadow-lift lg:flex-row lg:items-center lg:justify-between lg:px-14 lg:py-12">
+        <div className="site-footer-cta tone-cocoa band-frame relative flex overflow-hidden flex-col gap-6 rounded-md bg-cocoa-900 px-8 py-10 text-canvas shadow-lift lg:flex-row lg:items-center lg:justify-between lg:px-14 lg:py-12">
           <div className="flex max-w-prose flex-col gap-2">
             <p className="font-display text-h2 font-semibold">
               Tu lugar te está esperando
@@ -74,7 +74,7 @@ export function SiteFooter({ pages, profile, brand, inert }: SiteFooterProps) {
             href={profile.whatsappHref}
             data-footer-cta=""
             {...externalProps(profile.whatsappHref)}
-            className="relative z-10 inline-flex min-h-11 items-center gap-2 self-start rounded-pill bg-canvas px-7 py-3 font-sans font-semibold text-cocoa-900 shadow-button transition-[background-color,box-shadow,transform] duration-200 ease-calm hover:bg-sand-200 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas motion-safe:hover:-translate-y-0.5"
+            className="relative z-10 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-pill sm:w-auto sm:self-start bg-canvas px-7 py-3 font-sans font-semibold text-cocoa-900 shadow-button transition-[background-color,box-shadow,transform] duration-200 ease-calm hover:bg-sand-200 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas motion-safe:hover:-translate-y-0.5"
           >
             <Icon name="whatsapp" className="size-5" />
             Reservá tu lugar

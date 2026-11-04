@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
-import { Eyebrow } from "../atoms/eyebrow";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
@@ -193,8 +192,7 @@ export function AboutIntro({
         className={`grid items-center gap-12 ${main || loops.length > 0 ? "lg:grid-cols-2 lg:gap-16" : ""}`}
       >
         <div className="flex max-w-prose flex-col gap-5">
-          <Reveal className="flex flex-col gap-4">
-            <Eyebrow>{microcopy.aboutEyebrow}</Eyebrow>
+          <Reveal>
             <Heading level={1}>{heading}</Heading>
           </Reveal>
           {lead ? (

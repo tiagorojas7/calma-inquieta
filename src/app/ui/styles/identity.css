@@ -5,26 +5,8 @@
  * prefers-reduced-motion: no-preference.
  */
 
-/* Section titles carry a short two-tone rule: terracotta into tan. Bands that
-   darken the ground redefine --flourish-from / --flourish-to. */
-.public-main h2[data-size="h2"]::after {
-  content: "";
-  display: block;
-  inline-size: 3.5rem;
-  block-size: 0.25rem;
-  margin-block-start: 1rem;
-  border-radius: var(--radius-pill);
-  background-image: linear-gradient(
-    90deg,
-    var(--flourish-from, var(--color-terracotta-700)),
-    var(--flourish-to, var(--color-tan-400))
-  );
-}
-
 .tone-cocoa {
   --em-color: var(--color-apricot-300);
-  --flourish-from: var(--color-apricot-300);
-  --flourish-to: var(--color-tan-400);
 }
 
 .tone-cocoa :is(h1, h2, h3, h4, p, li, dt, dd, figcaption, blockquote) {
@@ -33,28 +15,6 @@
 
 .tone-cocoa [data-eyebrow] {
   color: var(--color-apricot-300);
-}
-
-.tone-clay {
-  --flourish-from: var(--color-sand-200);
-  --flourish-to: var(--color-tan-400);
-}
-
-/* Eyebrow: a short rule leads the label so it reads as a signpost. */
-.eyebrow-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.eyebrow-mark::before {
-  content: "";
-  inline-size: 2rem;
-  block-size: 2px;
-  flex: none;
-  border-radius: var(--radius-pill);
-  background-color: currentColor;
-  opacity: 0.7;
 }
 
 /* Lead paragraph: a display drop cap in terracotta. */
@@ -114,26 +74,6 @@
     center / contain no-repeat;
 }
 
-/* Cards: a two-tone top edge (terracotta into tan) marks the surface as a
-   brand component; it is a 4 px band, not a side border. */
-.card-accent {
-  position: relative;
-  overflow: hidden;
-}
-
-.card-accent::before {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  inset-block-start: 0;
-  block-size: 0.25rem;
-  background-image: linear-gradient(
-    90deg,
-    var(--color-terracotta-700),
-    var(--color-tan-400)
-  );
-}
-
 /* Closing band: a hairline frame inset from the edge, like a stitched label. */
 .band-frame::after {
   content: "";
@@ -143,20 +83,6 @@
   border-radius: var(--radius-md);
   opacity: 0.55;
   pointer-events: none;
-}
-
-.band-glow {
-  background-image:
-    radial-gradient(
-      60% 80% at 85% 20%,
-      color-mix(in srgb, var(--color-terracotta-700) 55%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      50% 60% at 5% 100%,
-      color-mix(in srgb, var(--color-clay-800) 70%, transparent),
-      transparent 70%
-    );
 }
 
 @media (prefers-reduced-motion: no-preference) {

@@ -1,0 +1,35 @@
+/*
+ * Liquid glass: a blurred, translucent sheet with a lit rim. There is no
+ * gradient anywhere: the rim light is an inset shadow and the sheet is one
+ * solid tint, kept at 78 % so dark text stays AA over any photo behind it
+ * (ink-900 on the worst backdrop, cocoa-900, is about 9:1). Colours come from
+ * the brand tokens only.
+ */
+.glass {
+  background-color: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-white) 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-white) 40%, transparent),
+    0 12px 32px color-mix(in srgb, var(--color-ink-900) 16%, transparent);
+}
+
+/* Without backdrop blur the sheet would show the photo as is: make it nearly
+   opaque so the text keeps its contrast. */
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .glass {
+    background-color: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  }
+}
+
+/* People who ask for less transparency get a solid sheet. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background-color: var(--color-canvas);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

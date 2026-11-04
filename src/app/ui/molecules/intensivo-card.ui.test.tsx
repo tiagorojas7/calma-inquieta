@@ -29,10 +29,8 @@ describe("IntensivoCard", () => {
       intensivoCardFixture.date.label,
     );
     expect(screen.getByRole("time")).toHaveTextContent("14");
-    expect(screen.getByRole("time").parentElement).toHaveClass(
-      "bg-sand-100",
-      "shadow-rest",
-    );
+    expect(screen.getByRole("time").parentElement).toHaveClass("glass");
+    expect(screen.getByRole("time")).toHaveClass("text-ink-900");
     expect(screen.getByText("2 h 30 min")).toBeVisible();
     expect(screen.getByText("$ 45.000")).toBeVisible();
     expect(screen.getByText("Seña $ 15.000")).toBeVisible();
@@ -50,11 +48,8 @@ describe("IntensivoCard", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("leads with date and title, separates the price block and anchors a full-width CTA", () => {
+  it("separates the price block and anchors a full-width CTA", () => {
     renderCard(intensivoCardFixture);
-    const heading = screen.getByRole("heading", { level: 2 });
-    expect(heading.parentElement).toHaveClass("min-w-0");
-    expect(heading.parentElement?.parentElement).toHaveClass("flex-wrap");
     const price = screen.getByText("$ 45.000");
     expect(price.closest("[data-slot='price-block']")).toHaveClass(
       "border-t",
@@ -68,8 +63,48 @@ describe("IntensivoCard", () => {
     const cta = screen.getByRole("link", {
       name: intensivoCardFixture.ctaLabel,
     });
-    expect(cta).toHaveClass("border-clay-600");
-    expect(cta).toHaveClass("w-full");
+    expect(cta).toHaveClass("bg-clay-600", "w-full");
+  });
+
+  it("is the liquid-glass card: glass chips over the photo and a glass panel over its lower edge", () => {
+    renderCard(intensivoCardFixture);
+    const photo = screen.getByRole("img", {
+      name: intensivoCardFixture.image.alt,
+    });
+    const frame = photo.parentElement as HTMLElement;
+    const panel = screen
+      .getByRole("heading", { level: 2, name: intensivoCardFixture.name })
+      .closest(".glass");
+
+    // Date, materials and seats are glass chips on the photo.
+    expect(frame.querySelectorAll(".glass").length).toBeGreaterThanOrEqual(3);
+    expect(frame).toContainElement(screen.getByText("Cupo limitado"));
+    expect(frame).toContainElement(screen.getByText("Materiales incluidos"));
+    // The details sit on a glass panel that rises over the photo.
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("-mt-10");
+    expect(frame).not.toContainElement(panel as HTMLElement);
+    expect(screen.getByRole("article")).not.toHaveClass("bg-cocoa-900");
+  });
+
+  it("tells title, subtitle and hours apart by typeface and treatment", () => {
+    renderCard(intensivoCardFixture);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: intensivoCardFixture.name,
+      }),
+    ).toHaveClass("font-display", "font-semibold");
+    expect(screen.getByText(intensivoCardFixture.teacher)).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    expect(screen.getByText("2 h 30 min").parentElement).toHaveClass(
+      "bg-sage-200",
+      "font-semibold",
+      "tabular-nums",
+    );
   });
 
   it("shows the always-visible policy note with no minimum seats line", async () => {

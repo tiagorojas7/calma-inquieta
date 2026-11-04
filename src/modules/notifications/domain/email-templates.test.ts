@@ -57,7 +57,7 @@ describe("email templates", () => {
     expect(email.text).toContain("comprobante");
   });
 
-  it("never says workshop and uses intensivo wording", () => {
+  it("does not call a monthly taller a workshop", () => {
     for (const email of [
       enrollmentReceivedEmail(order),
       paymentConfirmedEmail(order),
@@ -122,13 +122,13 @@ describe("email templates", () => {
       expect(email.text).toContain(reservation.reservationUrl);
     });
 
-    it("uses voseo and never says workshop", () => {
+    it("calls the one-day event a workshop, never an intensivo", () => {
       for (const email of [
         intensiveReservationReceivedEmail(reservation),
         intensiveReservationConfirmedEmail(reservation),
       ]) {
-        expect(`${email.subject} ${email.text}`).not.toMatch(/workshop/i);
-        expect(email.text).toMatch(/intensivo/i);
+        expect(`${email.subject} ${email.text}`).not.toMatch(/intensivo/i);
+        expect(email.text).toMatch(/el workshop Bordado libre/);
       }
     });
 

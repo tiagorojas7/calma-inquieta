@@ -69,6 +69,7 @@ describe("intensive request summary loader", () => {
 
     expect(result.status).toBe("cancelled");
     expect(result.whatsappHref).toBeNull();
+    expect(result.workshopsHref).toBe("/intensivos");
   });
 
   it("answers 404 for an unknown id and 503 when unavailable", async () => {

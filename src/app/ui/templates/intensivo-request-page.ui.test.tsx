@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { intensiveRequestCopy } from "~/app/intensive-requests/copy";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -70,7 +71,7 @@ describe("IntensivoRequestPage", () => {
       screen.getByRole("button", { name: "Enviar solicitud" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Volver al intensivo" }),
+      screen.getByRole("link", { name: "Volver al workshop" }),
     ).toHaveAttribute("href", "/intensivos/intensivo-de-ceramica");
     await expectNoAxeViolations(container);
   });
@@ -114,6 +115,7 @@ const summary: IntensivoRequestSummaryProps = {
     whatsapp: intensiveRequestCopy.summary.whatsapp,
     confirmed: intensiveRequestCopy.summary.confirmed,
     cancelled: intensiveRequestCopy.summary.cancelled,
+    cancelledCta: intensiveRequestCopy.summary.cancelledCta,
   },
   reference: "abcdefgh",
   status: "pending_confirmation",
@@ -123,6 +125,7 @@ const summary: IntensivoRequestSummaryProps = {
   time: "10:00 a 14:00",
   deposit: "$ 15.000",
   whatsappHref: "https://wa.me/5493515550100?text=Hola",
+  workshopsHref: "/intensivos",
 };
 
 describe("IntensivoRequestSummaryPage", () => {
@@ -133,10 +136,11 @@ describe("IntensivoRequestSummaryPage", () => {
       "Solicitud abcdefgh",
     );
     expect(screen.getByText("Pendiente de seña")).toBeVisible();
+    expect(screen.getByText("Workshop")).toBeVisible();
     const steps = screen.getByRole("list");
     expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
     expect(
-      screen.getByRole("link", { name: /Enviar solicitud por WhatsApp/ }),
+      screen.getByRole("link", { name: /Enviar resumen por WhatsApp/ }),
     ).toHaveAttribute("href", "https://wa.me/5493515550100?text=Hola");
     await expectNoAxeViolations(container);
   });
@@ -161,16 +165,24 @@ describe("IntensivoRequestSummaryPage", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
-  it("tells a cancelled request it was cancelled", () => {
+  it("sends a cancelled request back to the site to book again", () => {
     render(
-      <IntensivoRequestSummaryPage
-        {...summary}
-        status="cancelled"
-        statusLabel="Solicitud cancelada"
-      />,
+      <MemoryRouter>
+        <IntensivoRequestSummaryPage
+          {...summary}
+          status="cancelled"
+          statusLabel="Solicitud cancelada"
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.getByText(/fue cancelada/)).toBeVisible();
+    expect(screen.getByText(/desde la web/)).toBeVisible();
+    expect(screen.queryByText(/escribinos/i)).toBeNull();
+    expect(screen.getByRole("link", { name: "Ver workshops" })).toHaveAttribute(
+      "href",
+      "/intensivos",
+    );
     expect(screen.queryByRole("list")).toBeNull();
   });
 });

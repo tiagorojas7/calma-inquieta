@@ -102,7 +102,7 @@ export function HeroSection({
                 {next.title}
               </span>
               <span className="text-sm text-ink-700">
-                <span className="whitespace-nowrap">Próximo intensivo</span>
+                <span className="whitespace-nowrap">Próximo workshop</span>
                 {next.detail ? (
                   <>
                     {" · "}

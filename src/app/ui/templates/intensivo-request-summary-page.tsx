@@ -11,6 +11,7 @@ export interface IntensivoRequestSummaryProps {
     whatsapp: string;
     confirmed: string;
     cancelled: string;
+    cancelledCta: string;
   };
   reference: string;
   status: "pending_confirmation" | "confirmed" | "cancelled";
@@ -20,6 +21,7 @@ export interface IntensivoRequestSummaryProps {
   time: string;
   deposit: string;
   whatsappHref: string | null;
+  workshopsHref: string;
 }
 
 /** Public summary of a seat request: plain structural props, no application types. */
@@ -33,6 +35,7 @@ export function IntensivoRequestSummaryPage({
   time,
   deposit,
   whatsappHref,
+  workshopsHref,
 }: IntensivoRequestSummaryProps) {
   return (
     <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
@@ -69,7 +72,12 @@ export function IntensivoRequestSummaryPage({
       ) : null}
 
       {status === "confirmed" ? <Text>{copy.confirmed}</Text> : null}
-      {status === "cancelled" ? <Text>{copy.cancelled}</Text> : null}
+      {status === "cancelled" ? (
+        <section className="flex flex-col items-start gap-3">
+          <Text>{copy.cancelled}</Text>
+          <ButtonLink href={workshopsHref}>{copy.cancelledCta}</ButtonLink>
+        </section>
+      ) : null}
     </main>
   );
 }

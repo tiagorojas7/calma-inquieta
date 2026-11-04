@@ -48,7 +48,7 @@ describe("HeroSection next intensivo", () => {
       "dateTime",
       "2026-11-07",
     );
-    expect(link).toHaveTextContent("Próximo intensivo");
+    expect(link).toHaveTextContent("Próximo workshop");
     const after = screen.getByRole("link", { name: "Ver workshops" });
     expect(
       after.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -74,7 +74,7 @@ describe("HeroSection next intensivo", () => {
   it("leaves the strip out when no intensivo is open", () => {
     renderHero();
 
-    expect(screen.queryByText("Próximo intensivo")).toBeNull();
+    expect(screen.queryByText("Próximo workshop")).toBeNull();
     expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 });

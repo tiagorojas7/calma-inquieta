@@ -14,7 +14,7 @@ export function CatalogListingPage({
   children,
 }: PropsWithChildren<{ heading: string; intro: string }>) {
   return (
-    <section className="flex flex-col gap-8 py-section">
+    <section className="flex flex-col gap-10 pt-page-top pb-section">
       <header className="flex max-w-3xl flex-col gap-4">
         <Heading level={1}>
           {heading.trim().includes(" ") ? (

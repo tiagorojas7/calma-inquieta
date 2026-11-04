@@ -188,7 +188,7 @@ export function AboutIntro({
   const [main, ...rest] = loops.length > 0 ? [] : images;
   const [lead, ...others] = paragraphs;
   return (
-    <Section bleed tone="canvas" spacing="lg">
+    <Section bleed tone="canvas" spacing="page">
       <div
         className={`grid items-center gap-12 ${main || loops.length > 0 ? "lg:grid-cols-2 lg:gap-16" : ""}`}
       >

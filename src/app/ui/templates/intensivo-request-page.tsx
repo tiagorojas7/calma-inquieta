@@ -45,7 +45,7 @@ export function IntensivoRequestPage({
   formError,
 }: IntensivoRequestPageProps) {
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
+    <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
       <header className="flex flex-col gap-2">
         <Heading level={1}>{copy.title}</Heading>
         <Text>{`${intensivo.name} · ${intensivo.dateLine}`}</Text>

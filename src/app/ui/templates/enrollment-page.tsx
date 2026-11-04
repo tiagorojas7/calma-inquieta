@@ -41,7 +41,7 @@ export type EnrollmentPageProps =
 export function EnrollmentPage(props: EnrollmentPageProps) {
   if (props.state === "paused") {
     return (
-      <main className="flex flex-col gap-4 py-section">
+      <main className="flex flex-col gap-6 pt-page-top pb-section">
         <Heading level={1}>Inscripciones pausadas</Heading>
         <Text>Por ahora no estamos tomando nuevas inscripciones.</Text>
       </main>
@@ -69,7 +69,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     ] as const
   ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
+    <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
       {backHref ? (
         <ButtonLink href={backHref} variant="tertiary" className="self-start">
           <Icon name="chevron-left" aria-hidden="true" className="size-5" />

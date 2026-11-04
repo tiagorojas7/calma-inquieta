@@ -35,7 +35,7 @@ export function IntensivoRequestSummaryPage({
   whatsappHref,
 }: IntensivoRequestSummaryProps) {
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
+    <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
       <header className="flex flex-col gap-2">
         <Heading level={1}>{`${copy.reference} ${reference}`}</Heading>
         <Text tone="accent">{statusLabel}</Text>

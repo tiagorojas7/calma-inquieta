@@ -23,6 +23,8 @@ const spacingClasses = {
   sm: "py-10 lg:py-14",
   md: "py-section",
   lg: "py-16 lg:py-28",
+  /** The first band of a page: close to the navbar, the usual space below. */
+  page: "pt-page-top pb-16 lg:pb-28",
 } as const;
 
 export type SectionTone = keyof typeof toneClasses;

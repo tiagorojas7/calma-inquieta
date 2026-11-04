@@ -97,7 +97,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   );
   if (props.draftState === "loading") {
     return (
-      <main className="flex flex-col gap-6 py-section">
+      <main className="flex flex-col gap-8 pt-page-top pb-section">
         {header}
         <Text>Cargando tu inscripción…</Text>
       </main>
@@ -105,7 +105,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   }
   if (props.draftState === "missing") {
     return (
-      <main className="flex flex-col gap-6 py-section">
+      <main className="flex flex-col gap-8 pt-page-top pb-section">
         {header}
         <Text>Volvé a completar tus datos para continuar.</Text>
         <ButtonLink href={props.recoveryHref ?? "/talleres"}>
@@ -116,7 +116,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   }
 
   return (
-    <main className="flex flex-col gap-6 py-section">
+    <main className="flex flex-col gap-8 pt-page-top pb-section">
       {props.recoveryHref ? (
         <ButtonLink
           href={props.recoveryHref}

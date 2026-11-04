@@ -69,7 +69,7 @@ export function TallerDetailPage({
   gallery,
 }: TallerDetailProps) {
   return (
-    <article className="flex flex-col gap-8 py-section">
+    <article className="flex flex-col gap-10 pt-page-top pb-section">
       <Breadcrumb {...breadcrumb} />
       <header className="flex flex-col gap-3">
         <Heading level={1}>{name}</Heading>

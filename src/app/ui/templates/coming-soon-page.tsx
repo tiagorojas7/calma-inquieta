@@ -15,7 +15,7 @@ export function ComingSoonPage({
   instagramHref,
 }: ComingSoonPageProps) {
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-6 py-section">
+    <section className="mx-auto flex max-w-3xl flex-col gap-8 pt-page-top pb-section">
       <Heading level={1}>{title}</Heading>
       <Text>{message}</Text>
       <div className="flex flex-wrap gap-4">

@@ -57,7 +57,7 @@ export function ContactSection({
     <Section
       bleed
       tone="sand"
-      spacing="lg"
+      spacing="page"
       className="lg:flex lg:min-h-144 lg:items-center"
     >
       <div className="flex flex-col gap-10">

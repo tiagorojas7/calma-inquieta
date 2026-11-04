@@ -62,7 +62,7 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
 
   if (props.state === "thanks") {
     return (
-      <main className="max-w-prose py-section">
+      <main className="max-w-prose pt-page-top pb-section">
         <div data-form-card className={cardClasses}>
           <Heading level={1}>{copy.thanks.title}</Heading>
           <Text>{copy.thanks.message}</Text>
@@ -85,7 +85,7 @@ export function PrivateEventPage(props: PrivateEventPageProps) {
 
   const { values, errors, minDate } = props;
   return (
-    <main className="flex max-w-prose flex-col gap-8 py-section">
+    <main className="flex max-w-prose flex-col gap-10 pt-page-top pb-section">
       <header className="flex flex-col gap-4">
         <Heading level={1}>
           <EmphasizedLastWord text={copy.title} />

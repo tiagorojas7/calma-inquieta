@@ -57,6 +57,18 @@ describe("CatalogListingPage", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("gives the title room before the content and little space under the navbar", () => {
+    const { container } = render(
+      <CatalogListingPage heading="Talleres mensuales" intro="Intro.">
+        <p>Grilla</p>
+      </CatalogListingPage>,
+    );
+    const page = container.firstElementChild;
+
+    expect(page).toHaveClass("pt-page-top", "pb-section", "gap-10");
+    expect(page).not.toHaveClass("py-section", "gap-8");
+  });
+
   it("sets the last word of a multi-word title in the accent italic, and leaves a one-word title plain", () => {
     const { rerender } = render(
       <CatalogListingPage heading="Talleres mensuales" intro="Intro.">

@@ -24,7 +24,7 @@ export function ErrorPage({
   const notFound = status === 404;
   const copy = notFound ? microcopy.notFound : microcopy.serverError;
   return (
-    <section className="mx-auto flex max-w-prose flex-col items-start gap-5 py-section">
+    <section className="mx-auto flex max-w-prose flex-col items-start gap-5 pt-page-top pb-section">
       <div
         aria-hidden="true"
         data-error-art

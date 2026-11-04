@@ -114,6 +114,24 @@ describe("tallerToCard", () => {
     expect(normalize(card.price?.amount ?? "")).toBe("$ 1.250.000");
   });
 
+  it("carries the teacher's short description to the card when there is one", () => {
+    const card = tallerToCard(
+      buildPublicTaller({
+        teacher: { name: "Docente Demo", bioLine: "Tejedora desde hace años" },
+      }),
+      content,
+    );
+    expect(card.teacher).toBe("Docente Demo");
+    expect(card.teacherBio).toBe("Tejedora desde hace años");
+
+    const plain = tallerToCard(
+      buildPublicTaller({ teacher: { name: "Docente Demo", bioLine: null } }),
+      content,
+    );
+    expect(plain.teacher).toBe("Docente Demo");
+    expect(plain.teacherBio).toBeUndefined();
+  });
+
   it("uses the stand-in image and omits the teacher when missing", () => {
     const card = tallerToCard(buildPublicTaller({ teacher: null }), content);
     expect(card.image).toEqual(content.fallbackImage);

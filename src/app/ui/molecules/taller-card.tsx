@@ -5,6 +5,7 @@ import { Pill } from "../atoms/pill";
 import { Text } from "../atoms/text";
 import { PausedNotice } from "./paused-notice";
 import { PriceTag } from "./price-tag";
+import { TeacherLine } from "./teacher-line";
 import { TurnoList } from "./turno-list";
 
 type CardImage = {
@@ -25,6 +26,7 @@ export function TallerCard({
   image,
   name,
   teacher,
+  teacherBio,
   summary,
   turnos,
   price,
@@ -37,6 +39,8 @@ export function TallerCard({
   image: CardImage;
   name: string;
   teacher?: string;
+  /** A short excerpt of the teacher's description. */
+  teacherBio?: string;
   summary: string;
   turnos: Parameters<typeof TurnoList>[0]["items"];
   price?: { label?: string; amount: string; suffix?: string };
@@ -60,9 +64,7 @@ export function TallerCard({
         <Heading level={2} size="h3">
           {name}
         </Heading>
-        {teacher ? (
-          <p className="font-display text-xl italic text-ink-900">{teacher}</p>
-        ) : null}
+        {teacher ? <TeacherLine name={teacher} bio={teacherBio} /> : null}
         <Text>{summary}</Text>
         <TurnoList items={turnos} />
         {price ? (

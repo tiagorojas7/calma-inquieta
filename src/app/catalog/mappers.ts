@@ -129,7 +129,14 @@ export function intensivoToCard(
     date: dateBadgeParts(intensivo.date),
     name: intensivo.name,
     duration: intensivoDuration(intensivo),
-    ...(intensivo.teacher ? { teacher: intensivo.teacher.name } : {}),
+    ...(intensivo.teacher
+      ? {
+          teacher: intensivo.teacher.name,
+          ...(intensivo.teacher.bioLine
+            ? { teacherBio: intensivo.teacher.bioLine }
+            : {}),
+        }
+      : {}),
     price: formatPesos(intensivo.price),
     deposit: `${content.intensivos.depositLabel} ${formatPesos(intensivo.deposit)}`,
     ...(seats === undefined ? {} : { seats }),
@@ -270,7 +277,14 @@ export function tallerToCard(taller: PublicTaller, content: CatalogContent) {
     id: taller.slug,
     image: coverOf(taller.images, content),
     name: taller.name,
-    ...(taller.teacher ? { teacher: taller.teacher.name } : {}),
+    ...(taller.teacher
+      ? {
+          teacher: taller.teacher.name,
+          ...(taller.teacher.bioLine
+            ? { teacherBio: taller.teacher.bioLine }
+            : {}),
+        }
+      : {}),
     summary: taller.summary,
     turnos,
     ...(taller.offering

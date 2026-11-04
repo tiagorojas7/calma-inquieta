@@ -87,6 +87,19 @@ describe("IntensivoCard", () => {
     expect(screen.getByRole("article")).not.toHaveClass("bg-cocoa-900");
   });
 
+  it("labels the teacher and shows a short line about her", () => {
+    renderCard({
+      ...intensivoCardFixture,
+      teacherBio: "Ceramista invitada, trabaja el barro desde hace años.",
+    });
+
+    expect(screen.getByText("Profesora:")).toBeVisible();
+    expect(screen.getByText(intensivoCardFixture.teacher)).toBeVisible();
+    expect(
+      screen.getByText("Ceramista invitada, trabaja el barro desde hace años."),
+    ).toHaveClass("line-clamp-2");
+  });
+
   it("tells title, subtitle and hours apart by typeface and treatment", () => {
     renderCard(intensivoCardFixture);
 

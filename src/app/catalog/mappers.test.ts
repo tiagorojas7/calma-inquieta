@@ -208,6 +208,17 @@ describe("intensivoToCard (listing)", () => {
     expect(card.seats).toBeUndefined();
   });
 
+  it("carries the teacher's short description to the intensivo card when there is one", () => {
+    const card = intensivoToCard(
+      buildPublicIntensivo({
+        teacher: { name: "Docente Demo", bioLine: "Ceramista invitada" },
+      }),
+      content,
+    );
+    expect(card.teacher).toBe("Docente Demo");
+    expect(card.teacherBio).toBe("Ceramista invitada");
+  });
+
   it("omits the teacher when there is none", () => {
     const card = intensivoToCard(
       buildPublicIntensivo({ teacher: null }),

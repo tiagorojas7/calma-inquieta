@@ -120,6 +120,36 @@ describe("TallerCard", () => {
     expect(screen.getByRole("article")).not.toHaveClass("bg-cocoa-900");
   });
 
+  it("labels the teacher and shows a short line about her", () => {
+    renderCard({
+      ...tallerCardFixture,
+      teacherBio: "Tejedora y docente desde hace muchos años.",
+    });
+
+    expect(screen.getByText("Profesora:")).toBeVisible();
+    expect(screen.getByText(tallerCardFixture.teacher)).toBeVisible();
+    const bio = screen.getByText("Tejedora y docente desde hace muchos años.");
+    expect(bio).toBeVisible();
+    // A short excerpt: two lines at most.
+    expect(bio).toHaveClass("line-clamp-2");
+  });
+
+  it("keeps the label and the name when there is no description, and drops the block without a teacher", () => {
+    const first = renderCard(tallerCardFixture);
+
+    expect(screen.getByText("Profesora:")).toBeVisible();
+    expect(document.querySelector(".line-clamp-2"), "no bio line").toBeNull();
+    first.unmount();
+
+    const withoutTeacher: Partial<Parameters<typeof TallerCard>[0]> = {
+      ...tallerCardFixture,
+    };
+    delete withoutTeacher.teacher;
+    renderCard(withoutTeacher as Parameters<typeof TallerCard>[0]);
+
+    expect(screen.queryByText("Profesora:")).toBeNull();
+  });
+
   it("tells name, teacher and hours apart by typeface and treatment", () => {
     renderCard(tallerCardFixture);
 

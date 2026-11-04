@@ -7,6 +7,7 @@ import { ConditionsNote } from "./conditions-note";
 import { DateBadge, type DateBadgeParts } from "./date-badge";
 import { PausedNotice } from "./paused-notice";
 import { PriceTag } from "./price-tag";
+import { TeacherLine } from "./teacher-line";
 import { TimePill } from "./time-pill";
 
 type CardImage = {
@@ -31,6 +32,7 @@ export function IntensivoCard({
   name,
   duration,
   teacher,
+  teacherBio,
   price,
   deposit,
   seats,
@@ -45,6 +47,8 @@ export function IntensivoCard({
   name: string;
   duration: string;
   teacher?: string;
+  /** A short excerpt of the teacher's description. */
+  teacherBio?: string;
   price: string;
   deposit: string;
   seats?: string;
@@ -81,9 +85,7 @@ export function IntensivoCard({
         <Heading level={2} size="h3">
           {name}
         </Heading>
-        {teacher ? (
-          <p className="font-display text-xl italic text-ink-900">{teacher}</p>
-        ) : null}
+        {teacher ? <TeacherLine name={teacher} bio={teacherBio} /> : null}
         <TimePill>{duration}</TimePill>
         <div
           data-slot="price-block"

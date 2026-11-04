@@ -11,6 +11,7 @@ export const microcopy = {
   playAnimation: "Reproducir animación",
   directions: "Cómo llegar",
   gallery: "Galería",
+  teacherLabel: "Profesora",
   bookingSummary: "Resumen",
   balanceLabel: "Saldo restante",
   writeUs: "Escribinos",

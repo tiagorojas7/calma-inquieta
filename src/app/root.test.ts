@@ -9,14 +9,17 @@ import { ErrorBoundary, Layout, links } from "./root";
 // Vitest resolves a ?url css import to "", so pin the build-time href.
 vi.mock("./ui/styles/app.css?url", () => ({ default: "/assets/app.css" }));
 
+const route = vi.hoisted(() => ({ matches: [] as { handle?: unknown }[] }));
+
 // Meta, Links, Scripts and ScrollRestoration need a framework router
 // context; the document shell is what these tests inspect.
 vi.mock("react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-router")>()),
   Meta: () => null,
   Links: () => null,
-  Scripts: () => null,
-  ScrollRestoration: () => null,
+  Scripts: () => createElement("script", { "data-testid": "scripts" }),
+  ScrollRestoration: () => createElement("script", { "data-testid": "scroll" }),
+  useMatches: () => route.matches,
 }));
 
 const render = (error: unknown) =>
@@ -65,6 +68,19 @@ describe("root error boundary", () => {
 describe("root document", () => {
   const document = () =>
     renderToStaticMarkup(createElement(Layout, { children: null }));
+
+  it("loads the client scripts on a normal page", () => {
+    route.matches = [{ handle: undefined }, { handle: {} }];
+
+    expect(document()).toContain('data-testid="scripts"');
+    expect(document()).toContain('data-testid="scroll"');
+  });
+
+  it("leaves the client scripts out of a page that must stay static", () => {
+    route.matches = [{ handle: undefined }, { handle: { hydrate: false } }];
+
+    expect(document()).not.toContain("<script");
+  });
 
   it("declares the es-AR language", () => {
     expect(document()).toContain('<html lang="es-AR">');

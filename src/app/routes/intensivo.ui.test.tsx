@@ -201,7 +201,7 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
 
   it("marks Intensivos as the current menu entry", async () => {
     await renderDetail([full]);
-    const entries = await screen.findAllByRole("link", { name: "Intensivos" });
+    const entries = await screen.findAllByRole("link", { name: "Workshops" });
     expect(
       entries.some((entry) => entry.getAttribute("aria-current") === "page"),
     ).toBe(true);
@@ -229,7 +229,7 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
       await screen.findByRole("heading", { name: "Página no encontrada" });
       expect(screen.getAllByRole("banner").length).toBeGreaterThan(0);
       expect(container.querySelector("main")?.textContent).toBe(
-        "Página no encontradaLa página que buscás no existe.Volver al inicioVer talleresVer intensivosContacto",
+        "Página no encontradaLa página que buscás no existe.Volver al inicioVer talleresVer workshopsContacto",
       );
     },
   );

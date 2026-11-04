@@ -49,7 +49,7 @@ describe("HeroSection next intensivo", () => {
       "2026-11-07",
     );
     expect(link).toHaveTextContent("Próximo intensivo");
-    const after = screen.getByRole("link", { name: "Ver intensivos" });
+    const after = screen.getByRole("link", { name: "Ver workshops" });
     expect(
       after.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();

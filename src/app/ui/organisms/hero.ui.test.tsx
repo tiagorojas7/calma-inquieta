@@ -96,7 +96,7 @@ describe("HeroSection structure", () => {
     expect(container.querySelector("[data-eyebrow]")).toBeNull();
     const place = screen.getByText("Calma Inquieta");
     expect(place.closest("[data-hero-location]")).not.toBeNull();
-    const cta = screen.getByRole("link", { name: "Ver intensivos" });
+    const cta = screen.getByRole("link", { name: "Ver workshops" });
     expect(
       cta.compareDocumentPosition(place) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -117,7 +117,7 @@ describe("HeroSection structure", () => {
       "/talleres",
     );
     expect(
-      screen.getByRole("link", { name: "Ver intensivos" }),
+      screen.getByRole("link", { name: "Ver workshops" }),
     ).toHaveAttribute("href", "/intensivos");
   });
 
@@ -271,7 +271,7 @@ describe("HeroSection loop tile", () => {
     expect(element?.closest(".collage-loop")).not.toBeNull();
     for (const text of [
       screen.getByRole("heading", { level: 1 }),
-      screen.getByRole("link", { name: "Ver intensivos" }),
+      screen.getByRole("link", { name: "Ver workshops" }),
     ]) {
       expect(
         text.compareDocumentPosition(element as Element) &

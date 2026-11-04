@@ -106,17 +106,7 @@ function AboutPage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         heading={data.cta.heading}
         body={data.cta.body}
         primary={{ href: "/talleres", label: "Ver talleres" }}
-        secondary={
-          data.cta.whatsappHref
-            ? [
-                {
-                  href: data.cta.whatsappHref,
-                  label: "Escribinos por WhatsApp",
-                  icon: "whatsapp",
-                },
-              ]
-            : []
-        }
+        secondary={[{ href: "/intensivos", label: "Ver workshops" }]}
       />
     </>
   );

@@ -42,7 +42,7 @@ describe("ErrorPage", () => {
         screen.getByRole("link", { name: "Ver talleres" }),
       ).toHaveAttribute("href", "/talleres");
       expect(
-        screen.getByRole("link", { name: "Ver intensivos" }),
+        screen.getByRole("link", { name: "Ver workshops" }),
       ).toHaveAttribute("href", "/intensivos");
       expect(screen.getByRole("link", { name: "Contacto" })).toHaveAttribute(
         "href",

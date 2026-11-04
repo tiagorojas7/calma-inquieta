@@ -118,7 +118,7 @@ describe("Quiénes somos route", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("closes with a booking band: Ver talleres first, WhatsApp second", async () => {
+  it("closes with a booking band that leads into the site: Ver talleres first, Ver workshops second", async () => {
     renderAbout(base);
     const heading = await screen.findByRole("heading", {
       level: 2,
@@ -129,13 +129,13 @@ describe("Quiénes somos route", () => {
     const links = [...band.querySelectorAll("a")];
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/talleres",
-      "https://wa.me/5493510000000?text=Hola",
+      "/intensivos",
     ]);
     expect(links[0]).toHaveTextContent("Ver talleres");
-    expect(links[1]).toHaveTextContent("Escribinos por WhatsApp");
+    expect(links[1]).toHaveTextContent("Ver workshops");
   });
 
-  it("offers only Ver talleres when there is no WhatsApp link", async () => {
+  it("books on the site: the band never sends the visitor to WhatsApp, with or without a WhatsApp link", async () => {
     const cta = { heading: base.cta.heading, body: base.cta.body };
     renderAbout({ ...base, cta });
     const heading = await screen.findByRole("heading", {
@@ -143,7 +143,8 @@ describe("Quiénes somos route", () => {
       name: "¿Querés sumarte?",
     });
     const band = heading.closest("section") as HTMLElement;
-    expect(band.querySelectorAll("a")).toHaveLength(1);
+    expect(band.querySelectorAll("a")).toHaveLength(2);
+    expect(band.querySelector('a[href*="wa.me"]')).toBeNull();
   });
 
   it("plays the intro loops in place of the intro photos", async () => {

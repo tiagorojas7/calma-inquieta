@@ -85,7 +85,7 @@ export function HeroSection({
             variant="secondary"
             className="hero-cta"
           >
-            Ver intensivos
+            Ver workshops
           </ButtonLink>
         </div>
         {next ? (

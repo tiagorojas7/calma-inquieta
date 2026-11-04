@@ -53,7 +53,7 @@ export function ErrorPage({
           <Icon name="arrow" size={18} />
         </ButtonLink>
         <ButtonLink href="/intensivos" variant="tertiary">
-          Ver intensivos
+          Ver workshops
           <Icon name="arrow" size={18} />
         </ButtonLink>
         <ButtonLink href="/contacto" variant="tertiary">

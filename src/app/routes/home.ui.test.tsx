@@ -115,7 +115,7 @@ describe("Inicio route", () => {
         .getByRole("heading", { name: "Talleres mensuales" })
         .closest("section");
       const intensivos = screen
-        .getByRole("heading", { name: "Próximos intensivos" })
+        .getByRole("heading", { name: "Próximos workshops" })
         .closest("section");
       expect(monthly).not.toBeNull();
       expect(intensivos).not.toBeNull();
@@ -262,6 +262,8 @@ describe("Inicio route", () => {
     expect(monthly).toHaveTextContent("Lunes, 10:00 a 12:00 h");
     expect(monthly?.querySelector('a[href="/talleres/a"]')).toBeTruthy();
     expect(intensivos).toHaveTextContent("Intensivo de torno");
+    // The band says what these events are, from the catalog content.
+    expect(intensivos).toHaveTextContent("Encuentro de un solo día");
     expect(
       intensivos?.querySelector('a[href="/intensivos/intensivo-demo"]'),
     ).toBeTruthy();
@@ -360,7 +362,7 @@ describe("Inicio route", () => {
       }
     });
 
-    it("the contact band photo sits in the clay band next to the WhatsApp call to action", async () => {
+    it("the contact band photo sits in the band next to calls to action that book on the site, not on WhatsApp", async () => {
       await renderFixture();
       const band = screen
         .getByRole("heading", { name: "Hablemos" })
@@ -369,9 +371,9 @@ describe("Inicio route", () => {
       expect(
         band?.querySelector('img[alt="Manos terminando un espejo de paja"]'),
       ).not.toBeNull();
-      expect(
-        band?.querySelector('a[href="https://wa.me/5493510000000"]'),
-      ).not.toBeNull();
+      expect(band?.querySelector('a[href="/talleres"]')).not.toBeNull();
+      expect(band?.querySelector('a[href="/intensivos"]')).not.toBeNull();
+      expect(band?.querySelector('a[href*="wa.me"]')).toBeNull();
     });
 
     it("the catalog photo pair sits in the catalog band, with a call to action to book", async () => {
@@ -564,7 +566,7 @@ describe("Inicio bands and motifs", () => {
         .closest("section[data-bleed='true']");
 
     const monthlyBand = bandOf("Talleres mensuales");
-    const intensivosBand = bandOf("Próximos intensivos");
+    const intensivosBand = bandOf("Próximos workshops");
 
     expect(intensivosBand).not.toBe(monthlyBand);
     expect(intensivosBand).toHaveAttribute("data-tone", "white");

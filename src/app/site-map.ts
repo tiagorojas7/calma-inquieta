@@ -4,7 +4,7 @@ export const PUBLIC_PAGES = [
   {
     id: "intensivos",
     path: "/intensivos",
-    label: "Intensivos",
+    label: "Workshops",
     indexable: true,
   },
   {

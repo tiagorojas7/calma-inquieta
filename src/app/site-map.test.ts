@@ -50,7 +50,7 @@ describe("public site map", () => {
       {
         id: "intensivos",
         path: "/intensivos",
-        label: "Intensivos",
+        label: "Workshops",
         indexable: true,
       },
       {

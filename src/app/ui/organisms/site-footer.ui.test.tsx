@@ -142,13 +142,18 @@ describe("SiteFooter", () => {
     );
   });
 
-  it("closes with a booking call to action that reaches WhatsApp", () => {
+  it("closes with a booking call to action that leads into the site, not to WhatsApp", () => {
     renderFooter();
 
-    const cta = screen.getByRole("link", { name: /reservá tu lugar/i });
-    expect(cta).toHaveAttribute("href", profile.whatsappHref);
+    const cta = screen.getByRole("link", { name: /ver talleres/i });
+    expect(cta).toHaveAttribute("href", "/talleres");
     expect(cta).toHaveAttribute("data-footer-cta");
     expect(cta).toHaveClass("min-h-11");
+    expect(cta).not.toHaveAttribute("target");
+    expect(
+      cta.closest(".site-footer-cta")?.textContent,
+      "the panel says where booking happens",
+    ).toContain("desde la web");
   });
 
   it("shows the logo beside the name and the tagline in the script accent", () => {

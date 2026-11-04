@@ -71,6 +71,7 @@ export async function loader({ context }: Route.LoaderArgs) {
       intensivoToUpcomingItem(intensivo, catalogContent),
     ),
     intensivosHeading: content.intensivos.heading,
+    intensivosDescription: catalogContent.intensivos.oneDay,
     teaser: {
       ...content.teaser,
       body: content.teaser.body.text,
@@ -155,7 +156,6 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           body={data.catalogBand.body}
           primary={data.catalogBand.primary}
           secondary={data.catalogBand.secondary}
-          whatsappHref={data.whatsappHref}
         />
         {data.catalogFailed ? null : (
           <Reveal className="mt-12 lg:mt-16">
@@ -179,6 +179,7 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           <Reveal>
             <UpcomingList
               title={data.intensivosHeading}
+              description={data.intensivosDescription}
               items={data.intensivos}
               emptyAction={{
                 href: data.instagramHref,
@@ -202,22 +203,8 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
       <ContactBand
         heading={data.contactBand.heading}
         body={data.contactBand.body}
-        primary={{
-          href: data.whatsappHref ?? "#",
-          label: "Escribinos por WhatsApp",
-          icon: "whatsapp",
-        }}
-        secondary={
-          data.instagramHref
-            ? [
-                {
-                  href: data.instagramHref,
-                  label: "Instagram",
-                  icon: "instagram",
-                },
-              ]
-            : []
-        }
+        primary={{ href: "/talleres", label: "Ver talleres" }}
+        secondary={[{ href: "/intensivos", label: "Ver workshops" }]}
         image={data.contactBand.image}
       />
       <JsonLdScript json={data.jsonLd} />

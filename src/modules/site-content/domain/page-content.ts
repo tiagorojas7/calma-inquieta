@@ -216,6 +216,8 @@ export interface CatalogContent {
     readonly seo: SeoCopy;
     readonly heading: string;
     readonly intro: ApprovableText;
+    /** What a workshop is: a one-day gathering where the finished piece goes home. */
+    readonly oneDay: string;
     readonly emptyMessage: string;
     readonly cardCtaLabel: string;
     readonly priceLabel: string;

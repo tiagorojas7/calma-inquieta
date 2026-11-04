@@ -2,14 +2,12 @@ import { describe, expect, it } from "vitest";
 import { findCopyViolations } from "./copy-rules";
 
 describe("findCopyViolations", () => {
-  it.each(["workshop", "Workshop de acuarela", "TALLER WORKSHOP"])(
-    "flags the forbidden word in %j regardless of case",
+  // "Workshops" is the name of the one-day events (owner decision 2026-11-04),
+  // so the word is no longer forbidden.
+  it.each(["workshop", "Workshop de acuarela", "Próximos WORKSHOPS"])(
+    "accepts the word workshop in %j",
     (text) => {
-      const violations = findCopyViolations([text]);
-
-      expect(violations).toHaveLength(1);
-      expect(violations[0]).toMatchObject({ text, rule: "workshop" });
-      expect(violations[0]?.match.toLowerCase()).toBe("workshop");
+      expect(findCopyViolations([text])).toEqual([]);
     },
   );
 
@@ -44,13 +42,13 @@ describe("findCopyViolations", () => {
     expect(findCopyViolations(["Eligen su propio ritmo"])).toEqual([]);
   });
 
-  it("reports a string once per rule, and reports both rules for one string", () => {
+  it("reports a string once for the tuteo rule, even when it holds several terms and a workshop", () => {
     const text = "Haz clic y elige tu workshop";
 
     const violations = findCopyViolations([text, text]);
 
-    expect(violations.filter((v) => v.rule === "workshop")).toHaveLength(2);
-    expect(violations.filter((v) => v.rule === "tuteo")).toHaveLength(2);
-    expect(findCopyViolations([text])).toHaveLength(2);
+    expect(violations).toHaveLength(2);
+    expect(violations.every((v) => v.rule === "tuteo")).toBe(true);
+    expect(findCopyViolations([text])).toHaveLength(1);
   });
 });

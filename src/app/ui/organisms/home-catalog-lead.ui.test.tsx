@@ -29,7 +29,6 @@ function renderLead(props: object = {}) {
         body="Sumate a un taller mensual."
         primary={primary}
         secondary={secondary}
-        whatsappHref="https://wa.me/5493510000000"
         {...props}
       />
     </MemoryRouter>,
@@ -45,22 +44,19 @@ describe("HomeCatalogLead", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Sumate a un taller mensual.")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Reservá tu lugar por WhatsApp/ }),
-    ).toHaveAttribute("href", "https://wa.me/5493510000000");
-    expect(
-      screen.getByRole("link", { name: "Ver todos los talleres" }),
+      screen.getByRole("link", { name: "Reservá tu lugar" }),
     ).toHaveAttribute("href", "/talleres");
+    expect(screen.getByRole("link", { name: "Ver workshops" })).toHaveAttribute(
+      "href",
+      "/intensivos",
+    );
   });
 
-  it("falls back to the talleres page when there is no WhatsApp link", () => {
-    renderLead({ whatsappHref: undefined });
+  it("books on the site: no call to action sends the visitor to WhatsApp", () => {
+    const { container } = renderLead();
 
-    expect(
-      screen.queryByRole("link", { name: /Reservá tu lugar por WhatsApp/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Ver todos los talleres" }),
-    ).toHaveAttribute("href", "/talleres");
+    expect(container.querySelector('a[href*="wa.me"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/whatsapp/iu);
   });
 
   it("layers two lazy photos of different ratios, the second in a white frame", () => {

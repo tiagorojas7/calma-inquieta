@@ -23,7 +23,7 @@ export const aboutContent = {
     {
       id: "about-history-2",
       approved: false,
-      text: "En el espacio damos talleres mensuales de encordado y cestería, talleres intensivos con instructoras invitadas y eventos privados para grupos. También hacemos pedidos a medida.",
+      text: "En el espacio damos talleres mensuales de encordado y cestería, workshops con instructoras invitadas y eventos privados para grupos. También hacemos pedidos a medida.",
     },
     {
       id: "about-history-3",

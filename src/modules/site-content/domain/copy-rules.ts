@@ -1,6 +1,6 @@
 export interface CopyViolation {
   readonly text: string;
-  readonly rule: "workshop" | "tuteo";
+  readonly rule: "tuteo";
   readonly match: string;
 }
 
@@ -14,8 +14,8 @@ const TUTEO_TERMS = [
   "reserva tu",
 ] as const;
 
-// "workshop" is forbidden anywhere, even inside a longer word.
-const WORKSHOP = /workshop/iu;
+// "workshop" used to be forbidden anywhere (DMR R1). The owner lifted it on
+// 2026-11-04: "Workshops" is now the name of the one-day events.
 // A tuteo term counts only as a whole word: "eligen" must not trip "elige".
 const TUTEO = new RegExp(
   String.raw`(?<![\p{L}])(?:${TUTEO_TERMS.join("|")})(?![\p{L}])`,
@@ -23,18 +23,14 @@ const TUTEO = new RegExp(
 );
 
 /**
- * Scans copy for the forbidden word "workshop" and for tuteo. Each string is
- * reported at most once per rule, with the first text that matched.
+ * Scans copy for tuteo. Each string is reported at most once, with the first
+ * term that matched.
  */
 export function findCopyViolations(
   strings: readonly string[],
 ): readonly CopyViolation[] {
   const violations: CopyViolation[] = [];
   for (const text of strings) {
-    const workshop = WORKSHOP.exec(text);
-    if (workshop) {
-      violations.push({ text, rule: "workshop", match: workshop[0] });
-    }
     const tuteo = TUTEO.exec(text);
     if (tuteo) {
       violations.push({ text, rule: "tuteo", match: tuteo[0] });

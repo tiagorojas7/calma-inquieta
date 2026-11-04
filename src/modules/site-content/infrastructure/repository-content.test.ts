@@ -179,7 +179,7 @@ describe("the drafted page content", () => {
     const home = await content.getHomePage();
 
     expect(home.hero.primaryCtaLabel).toBe("Ver talleres");
-    expect(home.hero.secondaryCtaLabel).toBe("Ver intensivos");
+    expect(home.hero.secondaryCtaLabel).toBe("Ver workshops");
     expect(home.hero.backdrop.alt.trim()).not.toBe("");
     expect(home.testimonials.items).toEqual([]);
   });
@@ -328,7 +328,7 @@ describe("the catalog copy", () => {
   it("returns the CatalogContent with the spec-named literals", async () => {
     const catalog = await content.getCatalogContent();
 
-    expect(catalog.talleres.heading).toBe("Talleres");
+    expect(catalog.talleres.heading).toBe("Talleres mensuales");
     expect(catalog.talleres.cardCtaLabel).toBe("Ver taller");
     expect(catalog.talleres.feeLabel).toBe("Cuota mensual");
     expect(catalog.talleres.feeSuffix).toBe("/ mes");
@@ -338,13 +338,57 @@ describe("the catalog copy", () => {
     expect(catalog.talleres.projectHeading).toBe(
       "Proyectos que vamos a realizar",
     );
-    expect(catalog.intensivos.heading).toBe("Talleres intensivos");
-    expect(catalog.intensivos.cardCtaLabel).toBe("Ver intensivo");
+    expect(catalog.intensivos.heading).toBe("Workshops");
+    expect(catalog.intensivos.cardCtaLabel).toBe("Ver workshop");
     expect(catalog.intensivos.depositLabel).toBe("Seña");
     expect(catalog.shared.seatsLimited).toBe("Cupo limitado");
     expect(catalog.shared.paused).toBe("Inscripciones pausadas");
     expect(catalog.shared.inquiryCta).toBe("Consultá por WhatsApp");
     expect(catalog.shared.pausedLinkLabel).toBe("Escribinos por WhatsApp");
+  });
+
+  it("says what a workshop is: a one-day gathering where the finished piece goes home", async () => {
+    const { intensivos } = await content.getCatalogContent();
+
+    expect(intensivos.seo.title).toBe("Próximos workshops");
+    for (const text of [intensivos.oneDay, intensivos.intro.text]) {
+      expect(text).toMatch(/un solo día/u);
+      expect(text).toMatch(/te llevás/u);
+    }
+  });
+
+  it("never tells visitors to join, book or take a turn through WhatsApp: that happens on the site", async () => {
+    const raw = await source.load();
+    const offenders = stringsIn([
+      raw.profile,
+      raw.home,
+      raw.about,
+      raw.contact,
+      raw.catalog,
+      raw.comingSoon,
+    ]).filter(
+      (text) =>
+        /whatsapp|escribinos/iu.test(text) &&
+        /sumar|sumate|reserv|inscrib|sacar un turno|sacá un turno|guardamos un lugar|coordinamos/iu.test(
+          text,
+        ),
+    );
+
+    // WhatsApp is for questions and for the summary that follows a booking.
+    expect(offenders).toEqual([]);
+  });
+
+  it("no public copy still calls the one-day events intensivos", async () => {
+    const raw = await source.load();
+    const offenders = stringsIn([
+      raw.profile,
+      raw.home,
+      raw.about,
+      raw.catalog,
+    ]).filter((text) => /\s/u.test(text) && /intensiv/iu.test(text));
+
+    // Single-word ids and enum values such as `appliesTo` are not copy.
+    expect(offenders).toEqual([]);
   });
 
   it("has no copy violation in any catalog string", async () => {

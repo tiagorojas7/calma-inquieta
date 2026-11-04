@@ -17,13 +17,13 @@ export const catalogContent = {
     seo: {
       title: "Talleres para crear con calma",
       description:
-        "Conocé los talleres de Calma Inquieta: quién los guía, en qué días y horarios se cursan y cómo sumarte por WhatsApp.",
+        "Conocé los talleres mensuales de Calma Inquieta: quién los guía, en qué días y horarios se cursan y cómo inscribirte desde la web.",
     },
-    heading: "Talleres",
+    heading: "Talleres mensuales",
     intro: {
       id: "catalog-talleres-intro",
       approved: false,
-      text: "Elegí un taller, conocé a quien lo guía y escribinos para sumarte.",
+      text: "Elegí un taller, conocé a quien lo guía e inscribite desde acá.",
     },
     emptyMessage:
       "Estamos preparando los próximos talleres. Escribinos por WhatsApp y te contamos cuándo abren.",
@@ -37,19 +37,20 @@ export const catalogContent = {
   },
   intensivos: {
     seo: {
-      title: "Próximos talleres intensivos",
+      title: "Próximos workshops",
       description:
-        "Mirá las próximas fechas de los talleres intensivos de Calma Inquieta, con su precio, la seña y las condiciones, y consultanos por WhatsApp.",
+        "Mirá las próximas fechas de los workshops de Calma Inquieta: encuentros de un solo día en los que te llevás tu pieza ya terminada. Reservá tu lugar desde la web.",
     },
-    heading: "Talleres intensivos",
+    heading: "Workshops",
     intro: {
       id: "catalog-intensivos-intro",
       approved: false,
-      text: "Propuestas para dedicarle un tiempo especial a crear. Mirá las próximas fechas y consultanos.",
+      text: "Encuentros de un solo día para crear con calma: te llevás tu pieza ya terminada. Mirá las próximas fechas y reservá tu lugar desde acá.",
     },
+    oneDay: "Encuentro de un solo día: te llevás tu pieza ya terminada.",
     emptyMessage:
       "Todavía no hay fechas confirmadas. Escribinos por WhatsApp y te avisamos de las próximas.",
-    cardCtaLabel: "Ver intensivo",
+    cardCtaLabel: "Ver workshop",
     priceLabel: "Precio",
     depositLabel: "Seña",
     materialsIncluded: "Materiales incluidos",
@@ -70,7 +71,7 @@ export const catalogContent = {
     taller: "Hola, quiero consultar por el taller {nombre}.",
     turno:
       "Hola, quiero consultar por el taller {nombre}, el turno del {dia} de {horario}.",
-    intensivo: "Hola, quiero consultar por el intensivo {nombre} del {fecha}.",
+    intensivo: "Hola, quiero consultar por el workshop {nombre} del {fecha}.",
     paused:
       "Hola, vi que las inscripciones de {nombre} están pausadas. ¿Me avisan cuando reabran?",
   },

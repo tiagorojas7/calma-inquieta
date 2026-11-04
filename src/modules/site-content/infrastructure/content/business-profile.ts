@@ -23,7 +23,7 @@ export const businessProfile = {
   whatsappMessages: {
     general: "Hola, quiero hacerles una consulta.",
     talleres: "Hola, quiero información sobre los talleres mensuales.",
-    intensivos: "Hola, quiero información sobre los talleres intensivos.",
+    intensivos: "Hola, quiero información sobre los workshops.",
     "eventos-privados": "Hola, quiero consultar por un evento privado.",
   },
 } as const satisfies RawBusinessProfile;

@@ -4,7 +4,7 @@ import { deniedAccess } from "~/testing/fakes/admin-actor";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import routes from "../routes";
-import { headers, loader } from "./admin-denied";
+import { handle, headers, loader } from "./admin-denied";
 
 function run(identityEmail: string | null) {
   return loader(
@@ -34,6 +34,12 @@ describe("denial route", () => {
     expect(result.init?.status).toBe(403);
     expect(result.data).toMatchObject({ email: null });
     expect(result.data.whatsappHref).toContain("https://wa.me/");
+  });
+
+  // The Worker serves it at the denied /admin URL: hydrating would rebuild the
+  // admin routes there and replace this page with their failed data request.
+  it("stays a static document", () => {
+    expect(handle).toEqual({ hydrate: false });
   });
 
   it("is never cached or indexed", () => {

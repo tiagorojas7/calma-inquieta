@@ -5,10 +5,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useMatches,
 } from "react-router";
 import type { Route } from "./+types/root";
 import appCss from "./ui/styles/app.css?url";
 import { ErrorPage } from "./ui/templates/error-page";
+
+type RouteHandle = { readonly hydrate?: boolean };
 
 // The sand-200 token value (tokens.css); root.test.ts asserts it matches.
 const THEME_COLOR = "#e6d7c4";
@@ -42,6 +45,10 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // A route opts out with `handle = { hydrate: false }`.
+  const hydrate = !useMatches().some(
+    (match) => (match.handle as RouteHandle | undefined)?.hydrate === false,
+  );
   return (
     <html lang="es-AR">
       <head>
@@ -53,8 +60,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-        <ScrollRestoration />
-        <Scripts />
+        {hydrate ? (
+          <>
+            <ScrollRestoration />
+            <Scripts />
+          </>
+        ) : null}
       </body>
     </html>
   );

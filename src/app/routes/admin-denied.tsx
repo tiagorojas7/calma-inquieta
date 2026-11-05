@@ -5,6 +5,9 @@ import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import type { Route } from "./+types/admin-denied";
 
+/** Plain links only: hydrating at the denied `/admin` URL would rebuild the admin routes. */
+export const handle = { hydrate: false };
+
 /**
  * Served by the Worker gate (re-dispatch of a denied `/admin` document request)
  * and answerable directly: always 403, and the email shows only for an identity

@@ -8,7 +8,7 @@ import { Breadcrumb } from "../molecules/breadcrumb";
 import { ConditionsNote } from "../molecules/conditions-note";
 import { PausedNotice } from "../molecules/paused-notice";
 import { PricingSummary } from "../molecules/pricing-summary";
-import { StickyAction } from "../molecules/sticky-action";
+import { PRIMARY_ACTION_ID, StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
 import { TimePill } from "../molecules/time-pill";
 import { GalleryGrid } from "../organisms/gallery-grid";
@@ -98,6 +98,7 @@ export function IntensivoDetailPage({
             <PausedNotice text={action.text} link={action.link} />
           ) : (
             <ButtonLink
+              id={PRIMARY_ACTION_ID}
               href={action.href}
               variant={action.kind === "reserve" ? "success" : "primary"}
             >

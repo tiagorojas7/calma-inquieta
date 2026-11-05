@@ -7,7 +7,7 @@ import { BookingSummary } from "../molecules/booking-summary";
 import { Breadcrumb } from "../molecules/breadcrumb";
 import { PausedNotice } from "../molecules/paused-notice";
 import { PriceTag } from "../molecules/price-tag";
-import { StickyAction } from "../molecules/sticky-action";
+import { PRIMARY_ACTION_ID, StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
 import { TurnoList } from "../molecules/turno-list";
 import { GalleryGrid } from "../organisms/gallery-grid";
@@ -88,6 +88,7 @@ export function TallerDetailPage({
             <PausedNotice text={action.text} link={action.link} />
           ) : (
             <ButtonLink
+              id={PRIMARY_ACTION_ID}
               href={action.href}
               variant={action.kind === "enrollment" ? "success" : "primary"}
             >

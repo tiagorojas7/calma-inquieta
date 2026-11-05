@@ -1,7 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import {
+  removeIntersectionObserver,
+  restoreBrowserStubs,
+  stubIntersectionObserver,
+  stubMatchMedia,
+} from "~/testing/ui/browser-stubs";
 import {
   IntensivoDetailPage,
   type IntensivoDetailProps,
@@ -192,5 +198,55 @@ describe("IntensivoDetailPage", () => {
   it("has no axe violations", async () => {
     const { container } = inRouter(<IntensivoDetailPage {...intensivo} />);
     await expectNoAxeViolations(container);
+  });
+});
+
+describe.each([
+  ["taller", () => <TallerDetailPage {...taller} />],
+  ["workshop", () => <IntensivoDetailPage {...intensivo} />],
+])("sticky action of the %s detail page", (_name, page) => {
+  const barOf = (container: HTMLElement) =>
+    container.querySelector("[data-sticky-action]");
+
+  let observer: ReturnType<typeof stubIntersectionObserver>;
+
+  beforeEach(() => {
+    observer = stubIntersectionObserver();
+    stubMatchMedia();
+  });
+  afterEach(() => {
+    restoreBrowserStubs();
+  });
+
+  it("stays hidden until the real action leaves the screen, and hides again when it returns", () => {
+    const { container } = inRouter(page());
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+    expect(barOf(container)).toHaveClass("invisible");
+
+    observer.trigger(true);
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+
+    observer.trigger(false);
+    expect(barOf(container)).toHaveAttribute("data-shown", "true");
+    expect(barOf(container)).not.toHaveClass("invisible");
+
+    observer.trigger(true);
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+  });
+
+  it("stops watching when the page goes away", () => {
+    const { unmount } = inRouter(page());
+    expect(observer.active()).toBeGreaterThan(0);
+
+    unmount();
+
+    expect(observer.active()).toBe(0);
+  });
+
+  it("keeps the bar on screen when the browser cannot watch the action", () => {
+    removeIntersectionObserver();
+    const { container } = inRouter(page());
+
+    expect(barOf(container)).toHaveAttribute("data-shown", "true");
   });
 });

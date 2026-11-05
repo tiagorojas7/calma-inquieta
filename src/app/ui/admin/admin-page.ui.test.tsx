@@ -101,6 +101,28 @@ describe("AdminPageHeader wayfinding", () => {
     expect(back.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("keeps the way back and the path on one row", () => {
+    render(
+      <AdminPageHeader
+        title="Editar taller"
+        back={{ href: "/admin/talleres", label: "Volver a talleres" }}
+        breadcrumbs={[
+          { href: "/admin", label: "Panel" },
+          { label: "Editar taller" },
+        ]}
+      />,
+    );
+
+    const row = screen.getByRole("link", {
+      name: "Volver a talleres",
+    }).parentElement;
+
+    expect(row).toHaveClass("flex-wrap");
+    expect(row).toContainElement(
+      screen.getByRole("navigation", { name: "Migas de pan" }),
+    );
+  });
+
   it("sets the title on a raised sheet, with the actions beside it", () => {
     render(
       <AdminPageHeader

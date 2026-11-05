@@ -129,6 +129,11 @@ describe("StatisticsScreen", () => {
       "/admin/estadisticas?mes=2026-11",
     );
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-10");
+    expect(
+      screen
+        .getByRole("button", { name: "Ver mes" })
+        .closest("[data-title-sheet]"),
+    ).not.toBeNull();
     expect(screen.getByRole("button", { name: "Ver mes" })).toBeVisible();
   });
 

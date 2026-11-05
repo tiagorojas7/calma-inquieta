@@ -35,6 +35,8 @@ describe("StudentsList", () => {
   it("keeps the filters closed until one is active", () => {
     const { rerender } = render(<StudentsList {...props} />);
     const summary = screen.getByText("Buscar y filtrar");
+    expect(summary).toHaveClass("rounded-pill");
+    expect(summary.closest("details")).not.toHaveClass("bg-surface");
     expect(summary.closest("details")).not.toHaveAttribute("open");
 
     rerender(

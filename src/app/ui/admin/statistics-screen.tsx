@@ -145,36 +145,38 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
         title={copy.title}
         description={copy.subtitle(props.periodLabel)}
         back={{ href: "/admin", label: copy.backToPanel }}
+        actions={
+          <div className="flex flex-wrap items-end gap-3">
+            <a href={props.previousHref} className={arrowClasses}>
+              <span aria-hidden="true">←&nbsp;</span>
+              {copy.previous}
+            </a>
+            <form
+              role="search"
+              method="get"
+              action="/admin/estadisticas"
+              className="flex flex-wrap items-end gap-3"
+            >
+              <TextField
+                label={copy.month}
+                name="mes"
+                type="month"
+                defaultValue={props.period}
+              />
+              <button
+                type="submit"
+                className="inline-flex min-h-11 items-center rounded-md bg-clay-800 px-6 py-3 font-sans font-semibold text-white hover:bg-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+              >
+                {copy.apply}
+              </button>
+            </form>
+            <a href={props.nextHref} className={arrowClasses}>
+              {copy.next}
+              <span aria-hidden="true">&nbsp;→</span>
+            </a>
+          </div>
+        }
       />
-      <div className="flex flex-wrap items-end gap-3">
-        <a href={props.previousHref} className={arrowClasses}>
-          <span aria-hidden="true">←&nbsp;</span>
-          {copy.previous}
-        </a>
-        <form
-          role="search"
-          method="get"
-          action="/admin/estadisticas"
-          className="flex flex-wrap items-end gap-3"
-        >
-          <TextField
-            label={copy.month}
-            name="mes"
-            type="month"
-            defaultValue={props.period}
-          />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center rounded-md bg-clay-800 px-6 py-3 font-sans font-semibold text-white hover:bg-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
-          >
-            {copy.apply}
-          </button>
-        </form>
-        <a href={props.nextHref} className={arrowClasses}>
-          {copy.next}
-          <span aria-hidden="true">&nbsp;→</span>
-        </a>
-      </div>
       <ul
         aria-label={props.periodLabel}
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"

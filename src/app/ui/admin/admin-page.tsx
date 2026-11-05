@@ -55,34 +55,40 @@ export function AdminPageHeader({
   const area = useAdminArea();
   return (
     <header data-area={area} className="flex flex-col gap-3">
-      {back ? <AdminBackButton href={back.href} label={back.label} /> : null}
-      {breadcrumbs && breadcrumbs.length > 0 ? (
-        <nav aria-label="Migas de pan">
-          <ol className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-ink-700">
-            {breadcrumbs.map((breadcrumb, index) => {
-              const current = index === breadcrumbs.length - 1;
-              return (
-                <li key={`${breadcrumb.label}-${String(index)}`}>
-                  {breadcrumb.href && !current ? (
-                    <a
-                      className="inline-flex min-h-11 items-center underline underline-offset-4"
-                      href={breadcrumb.href}
-                    >
-                      {breadcrumb.label}
-                    </a>
-                  ) : (
-                    <span
-                      aria-current={current ? "page" : undefined}
-                      className="inline-flex min-h-11 items-center font-semibold text-ink-900"
-                    >
-                      {breadcrumb.label}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+      {back || breadcrumbs?.length ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {back ? (
+            <AdminBackButton href={back.href} label={back.label} />
+          ) : null}
+          {breadcrumbs && breadcrumbs.length > 0 ? (
+            <nav aria-label="Migas de pan">
+              <ol className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-ink-700">
+                {breadcrumbs.map((breadcrumb, index) => {
+                  const current = index === breadcrumbs.length - 1;
+                  return (
+                    <li key={`${breadcrumb.label}-${String(index)}`}>
+                      {breadcrumb.href && !current ? (
+                        <a
+                          className="inline-flex min-h-11 items-center underline underline-offset-4"
+                          href={breadcrumb.href}
+                        >
+                          {breadcrumb.label}
+                        </a>
+                      ) : (
+                        <span
+                          aria-current={current ? "page" : undefined}
+                          className="inline-flex min-h-11 items-center font-semibold text-ink-900"
+                        >
+                          {breadcrumb.label}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          ) : null}
+        </div>
       ) : null}
       <div
         data-title-sheet

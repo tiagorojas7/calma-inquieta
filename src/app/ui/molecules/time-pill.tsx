@@ -3,7 +3,7 @@ import { Icon } from "../atoms/icons";
 
 /**
  * Hours and durations get their own treatment so they never blend with the
- * titles and the body copy: a sage pill (olive-800 on sage-200, about 7:1)
+ * titles and the body copy: a sage pill (olive-800 on sage-200, about 6:1)
  * with a clock, semibold and tabular numerals so the digits line up.
  */
 export function TimePill({ children }: { children: ReactNode }) {

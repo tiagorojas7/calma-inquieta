@@ -531,6 +531,14 @@ describe("home organisms", () => {
       expect(panel?.parentElement).toHaveClass("min-h-128", "lg:min-h-112");
     });
 
+    it("sets the body in ink-900, because ink-700 falls below AA on glass over a dark photo", () => {
+      const { container } = renderWithPhoto();
+      const panel = container.querySelector(".glass");
+
+      expect(panel?.querySelector("p")).toHaveClass("text-ink-900");
+      expect(panel?.querySelector("p")).not.toHaveClass("text-ink-700");
+    });
+
     it("never prints text on the photo: the heading and the actions sit on the glass panel", () => {
       renderWithPhoto();
       const panel = screen

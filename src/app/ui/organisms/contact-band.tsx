@@ -97,7 +97,9 @@ export function ContactBand({
           <Heading level={2}>
             <EmphasizedLastWord text={heading} />
           </Heading>
-          <Text className="text-lead">{body}</Text>
+          <Text tone="strong" className="text-lead">
+            {body}
+          </Text>
           <div className="mt-2 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
             <ButtonLink href={primary.href} className="w-full gap-2 sm:w-auto">
               {primary.icon ? (

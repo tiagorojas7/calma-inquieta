@@ -223,7 +223,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           <div
             data-sticky-action
             aria-hidden="true"
-            className="glass sticky bottom-0 z-20 -mx-4 flex items-center gap-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden"
+            className="glass sticky bottom-0 z-20 -mx-4 flex items-center gap-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-ink-900 lg:hidden"
           >
             <span className="flex flex-col">
               <span className="text-sm">Total</span>

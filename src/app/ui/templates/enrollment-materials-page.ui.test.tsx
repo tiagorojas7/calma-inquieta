@@ -257,7 +257,7 @@ describe("EnrollmentMaterialsPage sticky continue", () => {
     const { container } = setup();
     const bar = container.querySelector("[data-sticky-action]");
 
-    expect(bar).toHaveClass("glass");
+    expect(bar).toHaveClass("glass", "text-ink-900");
     expect(bar?.className).not.toContain("bg-surface");
   });
 

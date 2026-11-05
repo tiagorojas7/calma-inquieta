@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET, AdminDangerZone } from "./admin-sections";
+import { ADMIN_SHEET, AdminDangerZone, AdminFieldPair } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import {
   FormError,
@@ -59,20 +59,22 @@ export function TeacherForm({
         defaultValue={values.bioLine}
         error={errors.bioLine}
       />
-      <TextField
-        label={copy.form.phone}
-        name="phone"
-        type="tel"
-        defaultValue={values.phone}
-        error={errors.phone}
-      />
-      <TextField
-        label={copy.form.email}
-        name="email"
-        type="email"
-        defaultValue={values.email}
-        error={errors.email}
-      />
+      <AdminFieldPair>
+        <TextField
+          label={copy.form.phone}
+          name="phone"
+          type="tel"
+          defaultValue={values.phone}
+          error={errors.phone}
+        />
+        <TextField
+          label={copy.form.email}
+          name="email"
+          type="email"
+          defaultValue={values.email}
+          error={errors.email}
+        />
+      </AdminFieldPair>
       <SelectField
         label={copy.form.modality}
         name="modality"

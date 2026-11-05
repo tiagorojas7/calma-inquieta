@@ -56,6 +56,23 @@ describe("panel surfaces", () => {
     expect(plain.map(({ name }) => name)).toEqual([]);
   });
 
+  it("pairs the short fields of every long form", () => {
+    const forms = [
+      "workshop-form.tsx",
+      "workshop-quick-form.tsx",
+      "intensive-form.tsx",
+      "material-form.tsx",
+      "teacher-form.tsx",
+      "supplier-form.tsx",
+    ];
+    const unpaired = screens.filter(
+      ({ name, source }) =>
+        forms.includes(name) && !source.includes("<AdminFieldPair>"),
+    );
+
+    expect(unpaired.map(({ name }) => name)).toEqual([]);
+  });
+
   it("uses that one filter on every list", () => {
     const plain = screens.filter(({ source }) =>
       /\$\{linkClasses\} \$\{key === filter/.test(source),

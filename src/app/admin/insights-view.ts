@@ -141,6 +141,7 @@ export function toPanelSummary(
         view.month.enrolled,
         view.month.capacity,
       ),
+      profitTone: view.month.profit.toCentavos() < 0 ? "expense" : "income",
     },
   };
 }

@@ -152,7 +152,17 @@ describe("toPanelSummary", () => {
       teachers: "$ 27.000",
       occupancy: "39 %",
       occupancyDetail: "9 de 23 lugares",
+      profitTone: "income",
     });
+  });
+
+  it("marks a month at a loss as money out", () => {
+    const { figures } = toPanelSummary({
+      ...panel,
+      month: { ...panel.month, profit: pesos(-1) },
+    });
+
+    expect(figures.profitTone).toBe("expense");
   });
 });
 

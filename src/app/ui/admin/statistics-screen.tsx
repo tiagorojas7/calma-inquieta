@@ -3,6 +3,11 @@ import { Heading, Text } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import {
+  ADMIN_TONE_FILL,
+  ADMIN_TONE_TEXT,
+  type AdminTone,
+} from "./admin-tones";
 import { TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { ResponsiveList } from "./responsive-list";
@@ -15,9 +20,6 @@ export interface StatisticsRow {
   readonly total?: boolean;
 }
 
-/** What a number means: money that comes in, money that goes out, or people. */
-export type StatisticsTone = "income" | "expense" | "people";
-
 /** A big figure of the month's summary row. */
 export interface StatisticsFigure {
   readonly key: string;
@@ -26,7 +28,7 @@ export interface StatisticsFigure {
   readonly detail?: string;
   /** The figure the owners look for first. */
   readonly highlight?: boolean;
-  readonly tone?: StatisticsTone;
+  readonly tone?: AdminTone;
 }
 
 export interface StatisticsScreenProps {
@@ -56,18 +58,6 @@ const empty = {
   action: { href: "/admin/inscripciones", label: copy.empty.action },
 };
 
-const toneText: Record<StatisticsTone, string> = {
-  income: "text-status-green-fg",
-  expense: "text-status-orange-fg",
-  people: "text-status-blue-fg",
-};
-
-const toneFill: Record<StatisticsTone, string> = {
-  income: "bg-status-green-bg",
-  expense: "bg-status-orange-bg",
-  people: "bg-status-blue-bg",
-};
-
 /** What a money column holds; a profit column also reads heavier. */
 type ColumnTone = "income" | "expense" | "profit";
 
@@ -78,14 +68,14 @@ type ColumnTone = "income" | "expense" | "profit";
 function amountClasses(value: string, tone: ColumnTone | undefined): string {
   if (tone === undefined || !/[1-9]/.test(value)) return "";
   const out = tone === "expense" || value.includes("-");
-  const colour = toneText[out ? "expense" : "income"];
+  const colour = ADMIN_TONE_TEXT[out ? "expense" : "income"];
   return tone === "profit" ? `${colour} font-semibold` : colour;
 }
 
 function figureClasses(figure: StatisticsFigure): string {
   const surface =
     figure.highlight === true && figure.tone !== undefined
-      ? toneFill[figure.tone]
+      ? ADMIN_TONE_FILL[figure.tone]
       : "bg-surface";
   const width = figure.tone === "people" ? "lg:col-span-2" : "";
   return `flex flex-col gap-1 rounded-md p-5 shadow-card ${surface} ${width}`;
@@ -269,7 +259,7 @@ export function StatisticsScreen(props: StatisticsScreenProps) {
           <li key={figure.key} className={figureClasses(figure)}>
             <p className="font-semibold text-ink-900">{figure.label}</p>
             <p
-              className={`font-display text-h2 font-semibold lining-nums ${figure.tone === undefined ? "text-ink-900" : toneText[figure.tone]}`}
+              className={`font-display text-h2 font-semibold lining-nums ${figure.tone === undefined ? "text-ink-900" : ADMIN_TONE_TEXT[figure.tone]}`}
             >
               {figure.value}
             </p>

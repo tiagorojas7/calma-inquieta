@@ -4,6 +4,11 @@ import { ADMIN_NAV_MAIN } from "./admin-nav";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
 import { AdminSection } from "./admin-sections";
+import {
+  ADMIN_TONE_FILL,
+  ADMIN_TONE_TEXT,
+  type AdminTone,
+} from "./admin-tones";
 import { adminMicrocopy } from "./microcopy";
 
 /** One thing due today: what it is and the single button that handles it. */
@@ -27,6 +32,8 @@ export interface AdminPanelSummary {
     readonly teachers: string;
     readonly occupancy: string;
     readonly occupancyDetail: string;
+    /** A month at a loss reads as money out. */
+    readonly profitTone: "income" | "expense";
   };
 }
 
@@ -36,19 +43,23 @@ function Figure({
   label,
   value,
   detail,
+  tone,
   highlight = false,
 }: {
   label: string;
   value: string;
   detail?: string;
+  tone: AdminTone;
   highlight?: boolean;
 }) {
   return (
     <li
-      className={`flex flex-col gap-1 rounded-md p-4 ${highlight ? "bg-sand-200" : "bg-sand-100"}`}
+      className={`flex flex-col gap-1 rounded-md p-4 ${highlight ? ADMIN_TONE_FILL[tone] : "bg-sand-100"}`}
     >
-      <p className="text-sm font-semibold text-ink-700">{label}</p>
-      <p className="font-display text-3xl font-semibold tabular-nums text-ink-900">
+      <p className="text-sm font-semibold text-ink-900">{label}</p>
+      <p
+        className={`font-display text-3xl font-semibold tabular-nums lining-nums ${ADMIN_TONE_TEXT[tone]}`}
+      >
         {value}
       </p>
       {detail ? <p className="text-sm text-ink-700">{detail}</p> : null}
@@ -103,18 +114,28 @@ export function AdminLanding({ summary }: { summary: AdminPanelSummary }) {
           }
         >
           <ul className="grid gap-3 sm:grid-cols-2">
-            <Figure label={copy.figures.collected} value={figures.collected} />
+            <Figure
+              label={copy.figures.collected}
+              value={figures.collected}
+              tone="income"
+            />
             <Figure
               label={copy.figures.profit}
               value={figures.profit}
+              tone={figures.profitTone}
               highlight
             />
             <Figure
               label={copy.figures.occupancy}
               value={figures.occupancy}
               detail={figures.occupancyDetail}
+              tone="people"
             />
-            <Figure label={copy.figures.teachers} value={figures.teachers} />
+            <Figure
+              label={copy.figures.teachers}
+              value={figures.teachers}
+              tone="expense"
+            />
           </ul>
         </AdminSection>
       </div>

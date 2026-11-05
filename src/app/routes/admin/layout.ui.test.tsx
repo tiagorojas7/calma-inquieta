@@ -15,6 +15,7 @@ const summary = {
     teachers: "$ 0",
     occupancy: "0 %",
     occupancyDetail: "0 de 0 lugares",
+    profitTone: "income",
   },
 };
 

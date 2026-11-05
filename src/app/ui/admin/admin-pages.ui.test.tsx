@@ -73,6 +73,7 @@ const summary: AdminPanelSummary = {
     teachers: "$ 27.000",
     occupancy: "39 %",
     occupancyDetail: "9 de 23 lugares",
+    profitTone: "income",
   },
 };
 
@@ -136,6 +137,37 @@ describe("AdminLanding", () => {
     expect(
       screen.getByRole("link", { name: "Ver estadísticas" }),
     ).toHaveAttribute("href", "/admin/estadisticas?mes=2026-10");
+  });
+
+  it("colours the month's figures as Estadísticas does", () => {
+    render(<AdminLanding summary={summary} />);
+
+    expect(screen.getByText("$ 96.000")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 27.000")).toHaveClass("text-status-orange-fg");
+    expect(screen.getByText("39 %")).toHaveClass("text-status-blue-fg");
+    expect(screen.getByText("$ 63.000")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 63.000").closest("li")).toHaveClass(
+      "bg-status-green-bg",
+    );
+  });
+
+  it("shows a month at a loss in the colour of money out", () => {
+    render(
+      <AdminLanding
+        summary={{
+          ...summary,
+          figures: {
+            ...summary.figures,
+            profit: "$ -5.000",
+            profitTone: "expense",
+          },
+        }}
+      />,
+    );
+
+    const profit = screen.getByText("$ -5.000");
+    expect(profit).toHaveClass("text-status-orange-fg");
+    expect(profit.closest("li")).toHaveClass("bg-status-orange-bg");
   });
 
   it("offers one large tile per main area, each with its icon and a chevron", () => {

@@ -18,6 +18,7 @@ export const intensiveRequestCopy = {
     policy: "Leí las condiciones y acepto la política de privacidad.",
     submit: "Enviar solicitud",
     back: "Volver al workshop",
+    errorsTitle: "Revisá estos datos",
   },
   conditions: {
     label: "Condiciones",

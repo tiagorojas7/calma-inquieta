@@ -3,7 +3,10 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { intensiveRequestCopy } from "~/app/intensive-requests/copy";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
-import { IntensivoRequestPage } from "./intensivo-request-page";
+import {
+  IntensivoRequestPage,
+  type IntensivoRequestPageProps,
+} from "./intensivo-request-page";
 import {
   IntensivoRequestSummaryPage,
   type IntensivoRequestSummaryProps,
@@ -31,9 +34,17 @@ const base = {
   errors: {},
 };
 
+function renderForm(props: Partial<IntensivoRequestPageProps> = {}) {
+  return render(
+    <MemoryRouter>
+      <IntensivoRequestPage {...base} {...props} />
+    </MemoryRouter>,
+  );
+}
+
 describe("IntensivoRequestPage", () => {
   it("marks name, email and phone with their own icons", () => {
-    render(<IntensivoRequestPage {...base} />);
+    renderForm();
     const glyphs = [
       intensiveRequestCopy.form.fullName,
       intensiveRequestCopy.form.email,
@@ -50,7 +61,7 @@ describe("IntensivoRequestPage", () => {
   });
 
   it("renders a native post form with the conditions visible and values preserved", async () => {
-    const { container } = render(<IntensivoRequestPage {...base} />);
+    const { container } = renderForm();
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Reservar mi lugar",
@@ -76,18 +87,45 @@ describe("IntensivoRequestPage", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("hides the honeypot from people and shows each error next to its field", async () => {
-    const { container } = render(
-      <IntensivoRequestPage
-        {...base}
-        errors={{
-          email: "Ingresá un correo electrónico válido.",
-          policy:
-            "Tenés que aceptar las condiciones y la política de privacidad.",
-        }}
-        formError="Ya tenés una solicitud activa para este intensivo."
-      />,
+  it("lands on a linked summary after a failed submit, so a phone sees what went wrong", () => {
+    renderForm({ errors: { phone: "Ingresá un teléfono argentino válido." } });
+
+    const summary = screen
+      .getByText("Revisá estos datos")
+      .closest("[role=alert]");
+    expect(summary).toHaveFocus();
+    expect(
+      screen.getByRole("link", {
+        name: "Ingresá un teléfono argentino válido.",
+      }),
+    ).toHaveAttribute("href", "#phone");
+    expect(summary?.compareDocumentPosition(screen.getByRole("form"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("matches the enrollment form: a card, the conditions by the checkbox and a full-width submit", () => {
+    renderForm();
+    const form = screen.getByRole("form", { name: "Reservar mi lugar" });
+
+    expect(form).toHaveClass("bg-surface", "shadow-raised");
+    expect(
+      within(form).getByText("Si no llegamos al mínimo, devolvemos la seña."),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Enviar solicitud" }),
+    ).toHaveClass("w-full", "sm:w-auto");
+  });
+
+  it("hides the honeypot from people and shows each error next to its field", async () => {
+    const { container } = renderForm({
+      errors: {
+        email: "Ingresá un correo electrónico válido.",
+        policy:
+          "Tenés que aceptar las condiciones y la política de privacidad.",
+      },
+      formError: "Ya tenés una solicitud activa para este workshop.",
+    });
 
     expect(container.querySelector("#honeypot")?.parentElement).toHaveAttribute(
       "aria-hidden",
@@ -97,9 +135,9 @@ describe("IntensivoRequestPage", () => {
       screen.getByLabelText("Correo electrónico"),
     ).toHaveAccessibleDescription("Ingresá un correo electrónico válido.");
     expect(screen.getByLabelText(/Leí las condiciones/)).toBeInvalid();
-    expect(screen.getAllByRole("alert")).toHaveLength(3);
+    expect(screen.getAllByRole("alert")).toHaveLength(2);
     expect(
-      screen.getByText("Ya tenés una solicitud activa para este intensivo."),
+      screen.getByText("Ya tenés una solicitud activa para este workshop."),
     ).toBeVisible();
     await expectNoAxeViolations(container);
   });

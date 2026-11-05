@@ -253,6 +253,27 @@ describe("EnrollmentMaterialsPage selector (S6)", () => {
 });
 
 describe("EnrollmentMaterialsPage sticky continue", () => {
+  it("lays the mobile bar as liquid glass", () => {
+    const { container } = setup();
+    const bar = container.querySelector("[data-sticky-action]");
+
+    expect(bar).toHaveClass("glass");
+    expect(bar?.className).not.toContain("bg-surface");
+  });
+
+  it("tells the period and the fee apart in the header", () => {
+    setup();
+
+    expect(screen.getByText("Noviembre 2026")).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    expect(screen.getByText(/^Cuota:/)).toHaveClass(
+      "font-semibold",
+      "tabular-nums",
+    );
+  });
+
   it("repeats the total and Continuar in a mobile bar that stays visible while choosing", async () => {
     const { container } = setup();
     const bar = container.querySelector("[data-sticky-action]") as HTMLElement;

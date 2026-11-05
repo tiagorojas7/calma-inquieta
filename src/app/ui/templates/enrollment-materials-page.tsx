@@ -90,8 +90,8 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   const header = (
     <header className="flex flex-col gap-2">
       <Heading level={1}>{props.workshopName}</Heading>
-      <Text>{props.period}</Text>
-      <Text>Cuota: {props.fee}</Text>
+      <p className="font-display text-xl italic text-ink-900">{props.period}</p>
+      <Text className="font-semibold tabular-nums">Cuota: {props.fee}</Text>
       <Text tone="accent">{materialsLabel}</Text>
     </header>
   );
@@ -223,7 +223,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           <div
             data-sticky-action
             aria-hidden="true"
-            className="sticky bottom-0 z-20 -mx-4 flex items-center gap-4 bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-raised lg:hidden"
+            className="glass sticky bottom-0 z-20 -mx-4 flex items-center gap-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden"
           >
             <span className="flex flex-col">
               <span className="text-sm">Total</span>

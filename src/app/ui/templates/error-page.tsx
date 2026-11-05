@@ -1,5 +1,6 @@
 import { Butterfly } from "../atoms/butterfly";
 import { Button, ButtonLink } from "../atoms/button";
+import { EmphasizedLastWord } from "../atoms/emphasis";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { Text } from "../atoms/text";
@@ -32,21 +33,28 @@ export function ErrorPage({
       >
         <Butterfly size="lg" className="left-0 top-0" />
       </div>
-      <Heading level={1}>{copy.title}</Heading>
+      <Heading level={1}>
+        <EmphasizedLastWord text={copy.title} />
+      </Heading>
       <Text className="text-lead">{copy.message}</Text>
-      <div className="flex flex-wrap items-center gap-4">
-        <ButtonLink href="/" className="gap-2">
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <ButtonLink href="/" className="w-full gap-2 sm:w-fit">
           Volver al inicio
         </ButtonLink>
         {notFound ? null : (
-          <Button type="button" variant="secondary" onClick={onRetry}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onRetry}
+            className="w-full sm:w-fit"
+          >
             Reintentar
           </Button>
         )}
       </div>
       <nav
         aria-label="Otras páginas"
-        className="flex flex-wrap gap-x-6 gap-y-1"
+        className="flex flex-col items-start gap-y-1 sm:flex-row sm:flex-wrap sm:gap-x-6"
       >
         <ButtonLink href="/talleres" variant="tertiary">
           Ver talleres

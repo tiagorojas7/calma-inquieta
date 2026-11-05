@@ -69,6 +69,20 @@ describe("ErrorPage", () => {
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
   });
 
+  it.each([404, 500])(
+    "accents the title and fills the width with the way home on a phone for %s",
+    (status) => {
+      renderError(status);
+
+      expect(
+        screen.getByRole("heading", { level: 1 }).querySelector("em"),
+      ).not.toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Volver al inicio" }),
+      ).toHaveClass("w-full", "sm:w-fit");
+    },
+  );
+
   it("keeps the decorative art out of the accessibility tree", () => {
     const { container } = renderError(404);
     expect(container.querySelector("[data-error-art]")).toHaveAttribute(

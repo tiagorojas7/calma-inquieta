@@ -1,6 +1,6 @@
 import { Heading, Text } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminDangerZone } from "./admin-sections";
+import { ADMIN_PANEL, AdminDangerZone } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError } from "./form-fields";
 import { MaterialForm, type MaterialFormErrors } from "./material-form";
@@ -135,14 +135,17 @@ export function MaterialDetail({
         </dl>
       </header>
 
-      <section aria-labelledby="material-supplier-title">
+      <section
+        aria-labelledby="material-supplier-title"
+        className={ADMIN_PANEL}
+      >
         <Heading level={2} id="material-supplier-title">
           {copy.supplier}
         </Heading>
         <Text>{supplier?.name ?? copy.noSupplier}</Text>
       </section>
 
-      <section aria-labelledby="material-image-title">
+      <section aria-labelledby="material-image-title" className={ADMIN_PANEL}>
         <Heading level={2} id="material-image-title">
           {copy.image}
         </Heading>
@@ -157,7 +160,10 @@ export function MaterialDetail({
         )}
       </section>
 
-      <section aria-labelledby="material-variants-title">
+      <section
+        aria-labelledby="material-variants-title"
+        className={ADMIN_PANEL}
+      >
         <Heading level={2} id="material-variants-title">
           {copy.variants}
         </Heading>
@@ -187,10 +193,7 @@ export function MaterialDetail({
         </ul>
       </section>
 
-      <section
-        aria-labelledby="material-audit-title"
-        className="rounded-md bg-sand-100 p-4"
-      >
+      <section aria-labelledby="material-audit-title" className={ADMIN_PANEL}>
         <Heading level={2} id="material-audit-title">
           {copy.audit.title}
         </Heading>

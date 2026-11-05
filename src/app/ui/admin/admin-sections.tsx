@@ -7,6 +7,10 @@ import { AdminEmptyState } from "./empty-state";
 export const ADMIN_SHEET =
   "flex w-full max-w-3xl flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
 
+/** The surface of a section whose heading and content the screen writes itself. */
+export const ADMIN_PANEL =
+  "flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+
 /** The name that opens a list card: a title first, a link on hover. */
 export const ADMIN_CARD_TITLE =
   "inline-flex min-h-11 items-center font-display text-xl font-semibold text-ink-900 underline-offset-4 hover:text-clay-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";

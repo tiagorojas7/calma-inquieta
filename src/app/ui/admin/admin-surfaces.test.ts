@@ -73,6 +73,18 @@ describe("panel surfaces", () => {
     expect(unpaired.map(({ name }) => name)).toEqual([]);
   });
 
+  it("sets the facts of a detail screen on panels", () => {
+    const material = screens.find(({ name }) => name === "material-detail.tsx");
+    const period = readFileSync(
+      new URL("../../routes/admin/workshop-period-detail.tsx", import.meta.url),
+      "utf-8",
+    );
+
+    expect(material?.source.match(/ADMIN_PANEL/g)?.length).toBeGreaterThan(3);
+    expect(period.match(/ADMIN_PANEL/g)?.length).toBeGreaterThan(3);
+    expect(period).not.toContain("flex max-w-prose flex-col gap-6");
+  });
+
   it("uses that one filter on every list", () => {
     const plain = screens.filter(({ source }) =>
       /\$\{linkClasses\} \$\{key === filter/.test(source),

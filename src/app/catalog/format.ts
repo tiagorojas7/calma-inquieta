@@ -84,8 +84,13 @@ export function formatPesos(money: Money): string {
   return `${sign}$${NO_BREAK_SPACE}${groupThousands(whole)}${suffix}`;
 }
 
+/** A stored time may carry seconds ("14:00:00"); people read "14:00". */
+function hourAndMinute(time: string): string {
+  return time.slice(0, 5);
+}
+
 export function formatTimeRange(startsAt: string, endsAt: string): string {
-  return `${startsAt} a ${endsAt} h`;
+  return `${hourAndMinute(startsAt)} a ${hourAndMinute(endsAt)} h`;
 }
 
 export function formatDuration(minutes: number): string {

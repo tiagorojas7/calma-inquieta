@@ -19,9 +19,7 @@ export function Receipt({
       <Heading level={2} id={id}>
         {heading}
       </Heading>
-      <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2">
-        {children}
-      </dl>
+      <dl className="flex flex-col gap-2">{children}</dl>
     </section>
   );
 }
@@ -37,11 +35,11 @@ export function ReceiptFact({
   children: ReactNode;
 }) {
   return (
-    <>
-      <dt className="text-sm font-semibold text-ink-600">{label}</dt>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="shrink-0 text-sm font-semibold text-ink-600">{label}</dt>
       <dd className={`text-right ${numeric ? "tabular-nums" : ""}`.trim()}>
         {children}
       </dd>
-    </>
+    </div>
   );
 }

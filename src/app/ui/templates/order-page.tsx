@@ -73,7 +73,9 @@ export function OrderPage(props: OrderPageProps) {
   return (
     <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
       <header className="flex flex-col gap-3">
-        <Heading level={1}>{`Pedido ${props.number}`}</Heading>
+        <Heading level={1}>
+          Pedido <span className="whitespace-nowrap">{props.number}</span>
+        </Heading>
         <StatusBadge
           status={props.status}
           tone={tone}
@@ -99,12 +101,12 @@ export function OrderPage(props: OrderPageProps) {
             </ReceiptFact>
           </>
         ) : null}
-        <dt className="mt-2 border-t-2 border-clay-600 pt-3 text-base font-semibold text-ink-900">
-          Total
-        </dt>
-        <dd className="mt-2 border-t-2 border-clay-600 pt-3 text-right font-display text-h3 tabular-nums text-ink-900">
-          {props.total}
-        </dd>
+        <div className="mt-2 flex items-baseline justify-between gap-4 border-t-2 border-clay-600 pt-3">
+          <dt className="text-base font-semibold text-ink-900">Total</dt>
+          <dd className="text-right font-display text-h3 tabular-nums text-ink-900">
+            {props.total}
+          </dd>
+        </div>
       </Receipt>
 
       {pending ? (
@@ -153,11 +155,11 @@ function ReceiptLine({
   line: { label: string; quantity: number; lineTotal: string };
 }) {
   return (
-    <>
+    <div className="flex items-baseline justify-between gap-4">
       <dt className="text-sm text-ink-700">{`${line.label} ×${String(line.quantity)}`}</dt>
-      <dd className="text-right text-sm tabular-nums text-ink-700">
+      <dd className="shrink-0 text-right text-sm tabular-nums text-ink-700">
         {line.lineTotal}
       </dd>
-    </>
+    </div>
   );
 }

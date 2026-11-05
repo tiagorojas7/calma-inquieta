@@ -84,6 +84,29 @@ describe("OrderPage status (O02)", () => {
   });
 });
 
+describe("OrderPage on a phone", () => {
+  it("gives each receipt row its own width, so a long material does not squeeze the rest", () => {
+    renderOrder(pending);
+
+    const receipt = screen.getByRole("region", { name: "Resumen del pedido" });
+    for (const label of ["Taller", "Mes", "Turno", "Cuota", "Total"]) {
+      expect(within(receipt).getByText(label).parentElement).toHaveClass(
+        "flex",
+        "justify-between",
+      );
+    }
+  });
+
+  it("keeps the order number on one line", () => {
+    renderOrder(pending);
+
+    expect(screen.getByText("CI-2026-0007")).toHaveClass("whitespace-nowrap");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Pedido CI-2026-0007",
+    );
+  });
+});
+
 describe("OrderPage progress", () => {
   it.each([
     ["pending_confirmation", "Pendiente", "bg-sand-200"],

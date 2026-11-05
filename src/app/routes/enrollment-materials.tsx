@@ -11,6 +11,7 @@ import {
   selectEnrollmentDraft,
   type StoredEnrollmentDraft,
 } from "~/app/enrollment/enrollment-draft";
+import { monthLabel } from "~/app/enrollment/order-labels";
 import { EnrollmentMaterialsPage } from "~/app/ui/templates/enrollment-materials-page";
 import type { AppServices } from "~/composition/request-services";
 import { buildWhatsAppUrl } from "~/modules/site-content";
@@ -74,6 +75,7 @@ export async function loader({ context, params, request }: RouteArgs) {
     offer: {
       workshopName: result.value.workshopName,
       period: result.value.period,
+      periodLabel: monthLabel(result.value.period),
       fee: formatPesos(result.value.fee.toCentavos()),
       feeCentavos: result.value.fee.toCentavos(),
       materialsRequired: result.value.materialsRequired,
@@ -182,7 +184,7 @@ export default function EnrollmentMaterialsRoute() {
       onSelect={onSelect}
       onRemove={onRemove}
       onSetQuantity={onSetQuantity}
-      period={loaded.offer.period}
+      period={loaded.offer.periodLabel}
       recoveryHref={`/talleres/${loaded.slug}/inscripcion?period=${encodeURIComponent(loaded.offer.period)}`}
       studentJson={draft === null ? "" : JSON.stringify(draft.student)}
       total={formatPesos(total)}

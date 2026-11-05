@@ -90,7 +90,9 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   const header = (
     <header className="flex flex-col gap-2">
       <Heading level={1}>{props.workshopName}</Heading>
-      <p className="font-display text-xl italic text-ink-900">{props.period}</p>
+      <p className="font-display text-xl italic text-ink-900 first-letter:uppercase">
+        {props.period}
+      </p>
       <Text className="font-semibold tabular-nums">Cuota: {props.fee}</Text>
       <Text tone="accent">{materialsLabel}</Text>
     </header>

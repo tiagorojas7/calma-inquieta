@@ -16,7 +16,10 @@ export type EnrollmentPageProps =
       state: "open";
       offer: {
         workshopName: string;
+        /** The raw key, posted back with the form. */
         period: string;
+        /** The month in words, shown to the student. */
+        periodLabel: string;
         fee: string;
         materialsRequired: boolean;
         turnos: readonly { id: string; label: string }[];
@@ -69,7 +72,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     ] as const
   ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
   return (
-    <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
+    <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
       {backHref ? (
         <ButtonLink href={backHref} variant="tertiary" className="self-start">
           <Icon name="chevron-left" aria-hidden="true" className="size-5" />
@@ -79,8 +82,10 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
       <StepIndicator steps={steps} current={1} />
       <header className="flex flex-col gap-2">
         <Heading level={1}>{offer.workshopName}</Heading>
-        <Text>{offer.period}</Text>
-        <Text className="font-semibold text-ink-900">{offer.fee}</Text>
+        <p className="font-display text-xl italic text-ink-900 first-letter:uppercase">
+          {offer.periodLabel}
+        </p>
+        <Text className="font-semibold tabular-nums">Cuota: {offer.fee}</Text>
         {offer.materialsRequired ? (
           <Text tone="accent">Materiales requeridos</Text>
         ) : null}

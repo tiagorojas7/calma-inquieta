@@ -9,7 +9,8 @@ describe("EnrollmentPage", () => {
         state="open"
         offer={{
           workshopName: "Cerámica inicial",
-          period: "Noviembre 2026",
+          period: "2026-11",
+          periodLabel: "noviembre 2026",
           fee: "$ 58.000",
           materialsRequired: true,
           turnos: [{ id: "turno-1", label: "Martes · 18:00 a 20:00 h" }],
@@ -21,7 +22,7 @@ describe("EnrollmentPage", () => {
     expect(
       screen.getByRole("heading", { name: "Cerámica inicial" }),
     ).toBeVisible();
-    expect(screen.getByText("Noviembre 2026")).toBeVisible();
+    expect(screen.getByText("noviembre 2026")).toBeVisible();
     expect(screen.getByText("Materiales requeridos")).toBeVisible();
     expect(screen.getByLabelText("Nombre completo")).toBeRequired();
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
@@ -38,13 +39,45 @@ describe("EnrollmentPage", () => {
     );
   });
 
+  it("shows the month in words and labels the fee, and posts the raw period", () => {
+    const { container } = render(
+      <EnrollmentPage
+        state="open"
+        offer={{
+          workshopName: "Cerámica",
+          period: "2026-11",
+          periodLabel: "noviembre 2026",
+          fee: "$ 58.000",
+          materialsRequired: false,
+          turnos: [{ id: "a", label: "Martes" }],
+        }}
+        values={{ fullName: "", email: "", phone: "", turnoId: "" }}
+        errors={{}}
+      />,
+    );
+
+    expect(screen.getByText("noviembre 2026")).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    expect(screen.queryByText("2026-11")).toBeNull();
+    expect(screen.getByText("Cuota: $ 58.000")).toHaveClass(
+      "font-semibold",
+      "tabular-nums",
+    );
+    expect(container.querySelector('input[name="period"]')).toHaveValue(
+      "2026-11",
+    );
+  });
+
   it("shows all named errors and retains submitted values", () => {
     render(
       <EnrollmentPage
         state="open"
         offer={{
           workshopName: "Cerámica",
-          period: "Noviembre",
+          period: "2026-11",
+          periodLabel: "noviembre 2026",
           fee: "$ 58.000",
           materialsRequired: false,
           turnos: [{ id: "a", label: "Martes" }],
@@ -77,6 +110,7 @@ describe("EnrollmentPage", () => {
         offer={{
           workshopName: "Cerámica",
           period: "2026-11",
+          periodLabel: "noviembre 2026",
           fee: "$ 58.000",
           materialsRequired: true,
           turnos: [{ id: "a", label: "Martes" }],

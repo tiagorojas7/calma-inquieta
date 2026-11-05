@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import { servicesContext } from "~/app/context";
 import { saveEnrollmentDraft } from "~/app/enrollment/enrollment-draft";
+import { monthLabel } from "~/app/enrollment/order-labels";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 import type { AppServices } from "~/composition/request-services";
 import type { RequestEnrollmentError } from "~/modules/enrollments";
@@ -125,6 +126,7 @@ export async function loader({ context, params, request }: RouteArgs) {
     offer: {
       workshopName: offer.workshopName,
       period: offer.period,
+      periodLabel: monthLabel(offer.period),
       fee: formatPesos(offer.fee.toCentavos()),
       materialsRequired: offer.materialsRequired,
       turnos: offer.turnos.map((turno) => ({

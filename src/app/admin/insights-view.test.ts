@@ -152,7 +152,17 @@ describe("toPanelSummary", () => {
       teachers: "$ 27.000",
       occupancy: "39 %",
       occupancyDetail: "9 de 23 lugares",
+      profitTone: "income",
     });
+  });
+
+  it("marks a month at a loss as money out", () => {
+    const { figures } = toPanelSummary({
+      ...panel,
+      month: { ...panel.month, profit: pesos(-1) },
+    });
+
+    expect(figures.profitTone).toBe("expense");
   });
 });
 
@@ -264,6 +274,30 @@ describe("toStatisticsScreen", () => {
     expect(figures.find((figure) => figure.highlight)?.label).toBe(
       "Ganancia del estudio",
     );
+  });
+
+  it("gives each figure the tone of what it means", () => {
+    const { figures } = toStatisticsScreen(earnings);
+
+    expect(figures.map(({ key, tone }) => [key, tone])).toEqual([
+      ["collected", "income"],
+      ["teachers", "expense"],
+      ["materials", "expense"],
+      ["profit", "income"],
+      ["students", "people"],
+      ["occupancy", "people"],
+    ]);
+  });
+
+  it("shows a month at a loss as money out", () => {
+    const loss = Money.fromCentavos(-100);
+    if (!loss.ok) throw new Error("fixture");
+    const { figures } = toStatisticsScreen({
+      ...earnings,
+      totals: { ...earnings.totals, profit: loss.value },
+    });
+
+    expect(figures.find(({ key }) => key === "profit")?.tone).toBe("expense");
   });
 
   it("builds the main table with the teacher, her settlement and a bold totals row", () => {

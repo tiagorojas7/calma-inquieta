@@ -98,6 +98,15 @@ export function AdminShell({
           <a href="/admin" className="font-display text-xl text-ink-900">
             {copy.brand}
           </a>
+          {email ? (
+            <p
+              data-testid="admin-desktop-identity"
+              className="ml-auto hidden min-w-0 break-all text-sm text-ink-700 lg:block"
+            >
+              <span className="sr-only">{copy.signedInAs} </span>
+              {email}
+            </p>
+          ) : null}
           <div
             data-testid="admin-actions"
             className="flex shrink-0 items-center gap-4"
@@ -123,15 +132,6 @@ export function AdminShell({
             </button>
           </div>
         </div>
-        {email ? (
-          <p
-            data-testid="admin-desktop-identity"
-            className="hidden min-w-0 break-all px-gutter pb-2 text-sm text-ink-700 lg:block"
-          >
-            <span className="sr-only">{copy.signedInAs} </span>
-            {email}
-          </p>
-        ) : null}
         {menuOpen ? (
           <nav
             id="menu-admin"

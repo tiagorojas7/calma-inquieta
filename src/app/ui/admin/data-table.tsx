@@ -19,12 +19,15 @@ export function DataTable<Row>({
   columns,
   rows,
   rowKey,
+  rowClassName,
   empty,
 }: {
   caption: string;
   columns: readonly DataTableColumn<Row>[];
   rows: readonly Row[];
   rowKey: (row: Row) => string;
+  /** Sets one row apart, such as a totals row. */
+  rowClassName?: ((row: Row) => string) | undefined;
   empty: {
     title: string;
     message: string;
@@ -60,7 +63,10 @@ export function DataTable<Row>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-t border-sand-200">
+            <tr
+              key={rowKey(row)}
+              className={`border-t border-sand-200 ${rowClassName?.(row) ?? ""}`}
+            >
               {columns.map((column) => (
                 <td
                   key={column.key}

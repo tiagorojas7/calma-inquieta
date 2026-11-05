@@ -1,7 +1,36 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AdminEmptyState } from "./empty-state";
+
+/** A form or panel on its own raised sheet, wider than a text column. */
+export const ADMIN_SHEET =
+  "flex w-full max-w-3xl flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+
+/** The surface of a section whose heading and content the screen writes itself. */
+export const ADMIN_PANEL =
+  "flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+
+/** The name that opens a list card: a title first, a link on hover. */
+export const ADMIN_CARD_TITLE =
+  "inline-flex min-h-11 items-center font-display text-xl font-semibold text-ink-900 underline-offset-4 hover:text-clay-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+/** Two short fields side by side on a form, stacked on a phone. */
+export function AdminFieldPair({ children }: { children: ReactNode }) {
+  return (
+    <div data-field-pair className="grid gap-4 sm:grid-cols-2">
+      {children}
+    </div>
+  );
+}
+
+/** A filter of a list: the active one is filled, so it never reads as a link. */
+export function adminFilterClasses(active: boolean): string {
+  const state = active
+    ? "bg-clay-800 text-white shadow-button"
+    : "border border-admin-line bg-surface text-clay-800 hover:bg-sand-100";
+  return `inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-sm font-semibold transition-colors duration-200 ease-calm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${state}`;
+}
 
 /** Class list for a card that is one big tap target (see `.admin-tap`). */
 export const ADMIN_TAP_CARD = "admin-tap relative pr-12";
@@ -69,6 +98,46 @@ export function AdminCardList<Row>({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * A section on its own raised panel: the title, an optional subtitle and action
+ * on one row, then the content. Sections read as separate surfaces on the page,
+ * so a screen is not one flat run of headings and rows.
+ */
+export function AdminSection({
+  title,
+  description,
+  actions,
+  className = "",
+  children,
+}: {
+  title: string;
+  description?: ReactNode | undefined;
+  actions?: ReactNode | undefined;
+  className?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section
+      aria-labelledby={id}
+      className={`flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6 ${className}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Heading level={2} id={id}>
+            {title}
+          </Heading>
+          {description ? (
+            <p className="text-sm text-ink-700">{description}</p>
+          ) : null}
+        </div>
+        {actions}
+      </div>
+      {children}
+    </section>
   );
 }
 

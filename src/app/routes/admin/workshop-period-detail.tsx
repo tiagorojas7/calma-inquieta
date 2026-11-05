@@ -26,6 +26,7 @@ import {
 } from "~/modules/workshops";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/workshop-period-detail";
+import { ADMIN_PANEL } from "~/app/ui/admin/admin-sections";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 const statuses = adminMicrocopy.workshops.periods.statuses;
@@ -215,7 +216,7 @@ export default function AdminWorkshopPeriodDetail() {
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   return (
-    <section className="flex max-w-prose flex-col gap-6">
+    <section className="flex max-w-3xl flex-col gap-6">
       <AdminPageHeader
         title={copy.title(screen.period)}
         breadcrumbs={[
@@ -256,10 +257,7 @@ export default function AdminWorkshopPeriodDetail() {
         />
       )}
       {screen.status !== "closed" && (
-        <section
-          aria-labelledby="period-actions-title"
-          className="flex flex-col gap-3"
-        >
+        <section aria-labelledby="period-actions-title" className={ADMIN_PANEL}>
           <Heading level={2} id="period-actions-title">
             {copy.actions}
           </Heading>
@@ -307,11 +305,11 @@ export default function AdminWorkshopPeriodDetail() {
           <dd>{screen.values.materialsRequired ? copy.yes : copy.no}</dd>
         </div>
       </dl>
-      <section aria-labelledby="period-project-title">
+      <section aria-labelledby="period-project-title" className={ADMIN_PANEL}>
         <Heading level={2} id="period-project-title">
           {copy.project}
         </Heading>
-        <dl className="mt-3 grid gap-3">
+        <dl className="grid gap-3">
           <div>
             <dt className="font-semibold">{copy.projectTitle}</dt>
             <dd>{screen.values.projectTitle}</dd>
@@ -322,11 +320,14 @@ export default function AdminWorkshopPeriodDetail() {
           </div>
         </dl>
       </section>
-      <section aria-labelledby="period-capacities-title">
+      <section
+        aria-labelledby="period-capacities-title"
+        className={ADMIN_PANEL}
+      >
         <Heading level={2} id="period-capacities-title">
           {copy.capacities}
         </Heading>
-        <ul className="mt-3 flex flex-col gap-1">
+        <ul className="flex flex-col gap-1">
           {screen.values.capacities.map((capacity) => (
             <li key={capacity.turnoId}>
               {copy.capacity(capacity.label, capacity.capacity)}
@@ -336,7 +337,7 @@ export default function AdminWorkshopPeriodDetail() {
       </section>
       <section
         aria-labelledby="period-history-title"
-        className="grid gap-6 sm:grid-cols-2"
+        className={`${ADMIN_PANEL} sm:grid sm:grid-cols-2 sm:gap-6`}
       >
         <div>
           <Heading level={2} id="period-history-title">

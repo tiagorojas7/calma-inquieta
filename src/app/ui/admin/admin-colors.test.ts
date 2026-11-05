@@ -23,13 +23,21 @@ describe("admin status palette", () => {
     },
   );
 
-  it("keeps body and title text readable on the grey page and on cards", () => {
+  it("keeps body and title text readable on the page and on cards", () => {
     for (const fg of ["ink-900", "ink-700"]) {
       const color = fg === "ink-900" ? "#1f1b18" : "#5e5b57";
       expect(contrastRatio(color, get("admin-page"))).toBeGreaterThanOrEqual(
         4.5,
       );
     }
+  });
+
+  it("sits on a warm page, like the public site", () => {
+    const page = get("admin-page");
+    const red = Number.parseInt(page.slice(1, 3), 16);
+    const blue = Number.parseInt(page.slice(5, 7), 16);
+
+    expect(red).toBeGreaterThan(blue);
   });
 
   it("separates cards from the page with a visible border", () => {

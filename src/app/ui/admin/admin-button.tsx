@@ -6,7 +6,7 @@ export type AdminButtonVariant =
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 const base =
-  "relative inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-6 py-3 font-sans text-base font-bold";
+  "relative inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-6 py-3 font-sans text-base font-bold shadow-button transition-[transform,box-shadow,background-color] duration-200 ease-calm hover:shadow-lift motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0";
 const disabled =
   "disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 
@@ -17,10 +17,10 @@ const disabled =
  * navigation. `outline` is kept as an alias of `secondary`.
  */
 export const adminButtonClasses = {
-  primary: `${base} bg-clay-800 text-white shadow-card hover:bg-ink-900 ${focus} ${disabled}`,
+  primary: `${base} bg-clay-800 text-white hover:bg-ink-900 ${focus} ${disabled}`,
   secondary: `${base} border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100 ${focus} ${disabled}`,
-  danger: `${base} bg-admin-danger text-white shadow-card hover:bg-admin-danger-hover ${focus} ${disabled}`,
-  success: `${base} bg-admin-success text-white shadow-card hover:bg-admin-success-hover ${focus} ${disabled}`,
+  danger: `${base} bg-admin-danger text-white hover:bg-admin-danger-hover ${focus} ${disabled}`,
+  success: `${base} bg-admin-success text-white hover:bg-admin-success-hover ${focus} ${disabled}`,
 } as const;
 
 export function normalizeAdminVariant(

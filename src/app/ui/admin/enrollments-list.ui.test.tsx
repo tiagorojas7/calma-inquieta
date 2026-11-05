@@ -50,6 +50,29 @@ const paidProps: EnrollmentsListProps = {
   ],
 };
 
+describe("EnrollmentsList hierarchy", () => {
+  it("leads each card with the student, and keeps the actions on one row", () => {
+    render(<EnrollmentsList {...props} />);
+
+    expect(screen.getByText(pending.studentName)).toHaveClass("font-display");
+    const button = screen.getByRole("button", { name: "Marcar pagado" });
+    expect(button.closest("[data-card-actions]")).toContainElement(
+      screen.getByText("Otro monto"),
+    );
+  });
+
+  it("turns Filtros into a control beside the tabs, not an empty bar", () => {
+    render(<EnrollmentsList {...props} />);
+    const toggle = screen.getByText("Filtros");
+
+    expect(toggle).toHaveClass("rounded-pill");
+    expect(toggle.closest("details")).not.toHaveClass("bg-surface");
+    expect(toggle.closest("[data-list-controls]")).toContainElement(
+      screen.getByRole("navigation", { name: "Estados de inscripciones" }),
+    );
+  });
+});
+
 describe("EnrollmentsList tabs", () => {
   it("shows Por cobrar, Pagadas and Canceladas as plain links with a count", () => {
     render(<EnrollmentsList {...props} />);

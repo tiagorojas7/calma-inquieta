@@ -1,7 +1,11 @@
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
+import {
+  ADMIN_CARD_TITLE,
+  AdminCardList,
+  adminFilterClasses,
+} from "./admin-sections";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge, type AdminStatus } from "./status-badge";
 
@@ -15,8 +19,6 @@ export interface IntensiveRow {
 }
 type FilterKey = keyof typeof adminMicrocopy.intensives.filters;
 const copy = adminMicrocopy.intensives;
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 /** Native anchors avoid the Worker gate's refusal of client `.data` requests. */
 export function IntensivesList({
   rows,
@@ -45,13 +47,13 @@ export function IntensivesList({
         <AdminFeedback tone="success" title={copy.feedback[feedback].title} />
       ) : null}
       <nav aria-label={copy.filterLabel}>
-        <ul className="flex flex-wrap gap-4">
+        <ul className="flex flex-wrap gap-2">
           {(Object.keys(copy.filters) as FilterKey[]).map((key) => (
             <li key={key}>
               <a
                 href={`/admin/intensivos?estado=${key}`}
                 aria-current={key === filter ? "page" : undefined}
-                className={`${linkClasses} ${key === filter ? "font-semibold" : ""}`}
+                className={adminFilterClasses(key === filter)}
               >
                 {copy.filters[key]}
               </a>
@@ -67,7 +69,10 @@ export function IntensivesList({
         card={(row) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <a href={`/admin/intensivos/${row.id}`} className={linkClasses}>
+              <a
+                href={`/admin/intensivos/${row.id}`}
+                className={ADMIN_CARD_TITLE}
+              >
                 {row.name}
               </a>
               <StatusBadge status={row.status} />

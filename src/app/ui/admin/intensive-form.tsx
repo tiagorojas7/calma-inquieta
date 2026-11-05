@@ -10,6 +10,7 @@ import {
   TextField,
 } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
 const copy = adminMicrocopy.intensives;
 /** Image slots shown before the owner asks for more. */
@@ -145,7 +146,7 @@ export function IntensiveForm({
     );
   };
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-5">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       {mode === "edit" && <input type="hidden" name="intent" value="save" />}
       <FormError message={formError} />
       <TextField
@@ -162,13 +163,22 @@ export function IntensiveForm({
         defaultValue={values.description}
         error={errors.description}
       />
-      <TextField
-        label={copy.form.eventDate}
-        name="eventDate"
-        type="date"
-        defaultValue={values.eventDate}
-        error={errors.eventDate}
-      />
+      <AdminFieldPair>
+        <TextField
+          label={copy.form.eventDate}
+          name="eventDate"
+          type="date"
+          defaultValue={values.eventDate}
+          error={errors.eventDate}
+        />
+        <SelectField
+          label={copy.form.teacher}
+          name="teacherId"
+          options={options}
+          defaultValue={values.teacherId}
+          error={errors.teacherId}
+        />
+      </AdminFieldPair>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label={copy.form.startsAt}
@@ -185,13 +195,6 @@ export function IntensiveForm({
           error={errors.timeRange}
         />
       </div>
-      <SelectField
-        label={copy.form.teacher}
-        name="teacherId"
-        options={options}
-        defaultValue={values.teacherId}
-        error={errors.teacherId}
-      />
       <div className="grid gap-4 sm:grid-cols-3">
         <TextField
           label={copy.form.price}

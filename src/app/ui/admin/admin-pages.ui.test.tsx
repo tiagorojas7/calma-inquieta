@@ -73,15 +73,15 @@ const summary: AdminPanelSummary = {
     teachers: "$ 27.000",
     occupancy: "39 %",
     occupancyDetail: "9 de 23 lugares",
+    profitTone: "income",
   },
 };
 
 describe("AdminLanding", () => {
-  it("greets by email and lists what is due today in order, each with one button", async () => {
-    const { container } = render(
-      <AdminLanding email="agus@example.com" summary={summary} />,
-    );
-    expect(screen.getByText("Hola, agus@example.com")).toBeInTheDocument();
+  it("lists what is due today in order, each with one button", async () => {
+    const { container } = render(<AdminLanding summary={summary} />);
+    expect(screen.getByText("Lo que necesita tu atención hoy.")).toBeVisible();
+    expect(screen.queryByText(/agus@example.com/)).toBeNull();
     const today = screen
       .getByRole("heading", { name: "Hoy tenés que…" })
       .closest("section") as HTMLElement;
@@ -104,8 +104,21 @@ describe("AdminLanding", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("groups today and the month on panels, and leaves the shortcuts to phones", () => {
+    render(<AdminLanding summary={summary} />);
+
+    expect(
+      screen
+        .getByRole("heading", { name: "Hoy tenés que…" })
+        .closest("section"),
+    ).toHaveClass("bg-surface", "shadow-card");
+    expect(
+      screen.getByRole("navigation", { name: "Áreas" }).closest("section"),
+    ).toHaveClass("lg:hidden");
+  });
+
   it("shows the four figures of the month and a link to the statistics", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    render(<AdminLanding summary={summary} />);
     expect(
       screen.getByRole("heading", { name: "Tu mes: octubre 2026" }),
     ).toBeVisible();
@@ -126,8 +139,39 @@ describe("AdminLanding", () => {
     ).toHaveAttribute("href", "/admin/estadisticas?mes=2026-10");
   });
 
+  it("colours the month's figures as Estadísticas does", () => {
+    render(<AdminLanding summary={summary} />);
+
+    expect(screen.getByText("$ 96.000")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 27.000")).toHaveClass("text-status-orange-fg");
+    expect(screen.getByText("39 %")).toHaveClass("text-status-blue-fg");
+    expect(screen.getByText("$ 63.000")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 63.000").closest("li")).toHaveClass(
+      "bg-status-green-bg",
+    );
+  });
+
+  it("shows a month at a loss in the colour of money out", () => {
+    render(
+      <AdminLanding
+        summary={{
+          ...summary,
+          figures: {
+            ...summary.figures,
+            profit: "$ -5.000",
+            profitTone: "expense",
+          },
+        }}
+      />,
+    );
+
+    const profit = screen.getByText("$ -5.000");
+    expect(profit).toHaveClass("text-status-orange-fg");
+    expect(profit.closest("li")).toHaveClass("bg-status-orange-bg");
+  });
+
   it("offers one large tile per main area, each with its icon and a chevron", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    render(<AdminLanding summary={summary} />);
     const nav = screen.getByRole("navigation", { name: "Áreas" });
     const links = within(nav).getAllByRole("link");
     expect(
@@ -149,12 +193,7 @@ describe("AdminLanding", () => {
   });
 
   it("says everything is up to date when nothing is due", () => {
-    render(
-      <AdminLanding
-        email="agus@example.com"
-        summary={{ ...summary, tasks: [] }}
-      />,
-    );
+    render(<AdminLanding summary={{ ...summary, tasks: [] }} />);
     expect(
       screen.getByText("Todo al día. No hay nada pendiente para hoy."),
     ).toBeVisible();

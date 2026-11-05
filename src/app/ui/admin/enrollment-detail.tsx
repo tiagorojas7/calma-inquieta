@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminDangerZone } from "./admin-sections";
+import { AdminDangerZone, AdminSection } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -257,146 +257,162 @@ export function EnrollmentDetail({
       ) : null}
       <FormError message={form?.formError} />
 
-      <section
-        aria-label={copy.summary}
-        className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
+      <div
+        data-detail-grid
+        className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
       >
-        <Heading level={2} size="h3">
-          {copy.summary}
-        </Heading>
-        <dl className="grid gap-4 md:grid-cols-2">
-          <Fact label={copy.name}>{order.studentName}</Fact>
-          <Fact label={copy.email}>{order.email}</Fact>
-          <Fact label={copy.phone}>{order.phone}</Fact>
-          <Fact label={copy.workshop}>{order.workshopName}</Fact>
-          <Fact label={copy.month}>{order.month}</Fact>
-          <Fact label={copy.turno}>{order.turno}</Fact>
-        </dl>
-      </section>
-
-      {steps ? (
-        <ol
-          aria-label={copy.progressLabel}
-          className="grid gap-2 md:grid-cols-3"
-        >
-          {steps.map((step) => (
-            <li
-              key={step.label}
-              aria-current={step.state === "current" ? "step" : undefined}
-              className={`rounded-md p-3 ${step.state === "current" ? "bg-sand-200 font-semibold text-ink-900" : "bg-surface text-ink-700 shadow-card"}`}
-            >
-              {`${step.label} (${copy.stepState[step.state]})`}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-
-      <section aria-label={copy.nextStepTitle} className="flex flex-col gap-3">
-        <Heading level={2}>{copy.nextStepTitle}</Heading>
-        <p className="text-ink-900">{nextStepText(order)}</p>
-        {order.actions.confirm ? (
-          <ConfirmPaymentForm
-            total={order.total}
-            totalPesos={order.totalPesos}
-            today={order.today}
-            form={form}
-          />
-        ) : null}
-        {order.actions.materialsRequested ? (
-          <MaterialsStep
-            intent="materials-requested"
-            label={copy.materials.requested}
-          />
-        ) : null}
-        {order.actions.materialsReceived ? (
-          <MaterialsStep
-            intent="materials-received"
-            label={copy.materials.received}
-          />
-        ) : null}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <Heading level={2}>{copy.lines}</Heading>
-        {order.lines.length === 0 ? (
-          <p>{copy.noLines}</p>
-        ) : (
-          <ul aria-label={copy.lines} className="grid gap-3 lg:grid-cols-2">
-            {order.lines.map((line) => (
-              <li
-                key={line.label}
-                className="flex flex-col gap-1 rounded-md bg-surface p-4 shadow-card"
+        <div data-detail-facts className="flex flex-col gap-6 lg:order-2">
+          <AdminSection title={copy.summary}>
+            <dl className="flex flex-col gap-3">
+              <Fact label={copy.name}>{order.studentName}</Fact>
+              <Fact label={copy.email}>{order.email}</Fact>
+              <Fact label={copy.phone}>{order.phone}</Fact>
+              <Fact label={copy.workshop}>{order.workshopName}</Fact>
+              <Fact label={copy.month}>{order.month}</Fact>
+              <Fact label={copy.turno}>{order.turno}</Fact>
+            </dl>
+          </AdminSection>
+          <div className="flex flex-col gap-2 rounded-md bg-surface p-5 shadow-card lg:p-6">
+            <dl className="flex flex-col gap-2">
+              <Fact label={copy.totals.fee}>{order.fee}</Fact>
+              <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
+              <div
+                data-order-total
+                className="mt-1 flex items-baseline justify-between gap-4 border-t-2 border-clay-800 pt-3"
               >
-                <span className="font-semibold text-ink-900">{line.label}</span>
-                <span className="text-ink-700">{line.supplier}</span>
-                <span className="text-ink-700">
-                  {`${String(line.quantity)} × ${line.unitPrice}`}
-                </span>
-                <span className="text-ink-900">{line.lineTotal}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <dl className="grid gap-2 md:grid-cols-3">
-          <Fact label={copy.totals.fee}>{order.fee}</Fact>
-          <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
-          <Fact label={copy.totals.total}>{order.total}</Fact>
-        </dl>
-      </section>
-
-      {order.payment ? (
-        <section className="flex flex-col gap-3">
-          <Heading level={2}>{copy.payment.title}</Heading>
-          <dl className="grid gap-4 md:grid-cols-2">
-            <Fact label={copy.payment.paidOn}>{order.payment.paidOn}</Fact>
-            <Fact label={copy.payment.amount}>{order.payment.amount}</Fact>
-            <Fact label={copy.payment.confirmedBy}>
-              {order.payment.confirmedBy}
-            </Fact>
-            {order.payment.note ? (
-              <Fact label={copy.payment.note}>{order.payment.note}</Fact>
-            ) : null}
-          </dl>
-        </section>
-      ) : null}
-
-      <details className="rounded-md bg-surface p-4 shadow-card">
-        <summary className={summaryClasses}>{copy.moreData}</summary>
-        <dl className="mt-3 grid gap-4 md:grid-cols-2">
-          <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
-          <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
-          <Fact label={copy.order}>
-            {copy.seat(order.seat.confirmed, order.seat.capacity)}
-          </Fact>
-        </dl>
-      </details>
-
-      <details className="rounded-md bg-surface p-4 shadow-card">
-        <summary className={summaryClasses}>{copy.audit.title}</summary>
-        <ol className="mt-3 flex flex-col gap-3">
-          {order.audit.map((entry, index) => (
-            <li
-              key={`${entry.at}-${String(index)}`}
-              className="flex flex-col gap-1 border-l-2 border-sand-200 pl-3"
+                <dt>{copy.totals.total}</dt>
+                <dd className="font-display text-3xl font-semibold tabular-nums">
+                  {order.total}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-col gap-6 lg:order-1">
+          {steps ? (
+            <ol
+              aria-label={copy.progressLabel}
+              className="grid gap-2 md:grid-cols-3"
             >
-              <span className="text-sm text-ink-600">{entry.at}</span>
-              <span className="text-ink-900">
-                {`${entry.from ?? copy.audit.creation} → ${entry.to}`}
-              </span>
-              <span className="text-ink-700">{entry.actor}</span>
-              {entry.note ? (
-                <span className="text-ink-700">{entry.note}</span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </details>
+              {steps.map((step) => (
+                <li
+                  key={step.label}
+                  aria-current={step.state === "current" ? "step" : undefined}
+                  className={`rounded-md p-3 ${step.state === "current" ? "bg-sand-200 font-semibold text-ink-900" : "bg-surface text-ink-700 shadow-card"}`}
+                >
+                  {`${step.label} (${copy.stepState[step.state]})`}
+                </li>
+              ))}
+            </ol>
+          ) : null}
 
-      {order.actions.cancel ? (
-        <AdminDangerZone title={copy.dangerTitle}>
-          <CancelOrderForm form={form} />
-        </AdminDangerZone>
-      ) : null}
+          <AdminSection
+            title={copy.nextStepTitle}
+            description={nextStepText(order)}
+          >
+            {order.actions.confirm ? (
+              <ConfirmPaymentForm
+                total={order.total}
+                totalPesos={order.totalPesos}
+                today={order.today}
+                form={form}
+              />
+            ) : null}
+            {order.actions.materialsRequested ? (
+              <MaterialsStep
+                intent="materials-requested"
+                label={copy.materials.requested}
+              />
+            ) : null}
+            {order.actions.materialsReceived ? (
+              <MaterialsStep
+                intent="materials-received"
+                label={copy.materials.received}
+              />
+            ) : null}
+          </AdminSection>
+
+          <AdminSection title={copy.lines}>
+            {order.lines.length === 0 ? (
+              <p>{copy.noLines}</p>
+            ) : (
+              <ul
+                aria-label={copy.lines}
+                className="flex flex-col divide-y divide-admin-line"
+              >
+                {order.lines.map((line) => (
+                  <li
+                    key={line.label}
+                    className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0"
+                  >
+                    <span className="font-semibold text-ink-900">
+                      {line.label}
+                    </span>
+                    <span className="text-ink-700">{line.supplier}</span>
+                    <span className="text-ink-700">
+                      {`${String(line.quantity)} × ${line.unitPrice}`}
+                    </span>
+                    <span className="text-ink-900">{line.lineTotal}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminSection>
+
+          {order.payment ? (
+            <AdminSection title={copy.payment.title}>
+              <dl className="grid gap-4 md:grid-cols-2">
+                <Fact label={copy.payment.paidOn}>{order.payment.paidOn}</Fact>
+                <Fact label={copy.payment.amount}>{order.payment.amount}</Fact>
+                <Fact label={copy.payment.confirmedBy}>
+                  {order.payment.confirmedBy}
+                </Fact>
+                {order.payment.note ? (
+                  <Fact label={copy.payment.note}>{order.payment.note}</Fact>
+                ) : null}
+              </dl>
+            </AdminSection>
+          ) : null}
+
+          <details className="rounded-md bg-surface p-4 shadow-card">
+            <summary className={summaryClasses}>{copy.moreData}</summary>
+            <dl className="mt-3 grid gap-4 md:grid-cols-2">
+              <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
+              <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
+              <Fact label={copy.order}>
+                {copy.seat(order.seat.confirmed, order.seat.capacity)}
+              </Fact>
+            </dl>
+          </details>
+
+          <details className="rounded-md bg-surface p-4 shadow-card">
+            <summary className={summaryClasses}>{copy.audit.title}</summary>
+            <ol className="mt-3 flex flex-col gap-3">
+              {order.audit.map((entry, index) => (
+                <li
+                  key={`${entry.at}-${String(index)}`}
+                  className="flex flex-col gap-1 border-l-2 border-sand-200 pl-3"
+                >
+                  <span className="text-sm text-ink-600">{entry.at}</span>
+                  <span className="text-ink-900">
+                    {`${entry.from ?? copy.audit.creation} → ${entry.to}`}
+                  </span>
+                  <span className="text-ink-700">{entry.actor}</span>
+                  {entry.note ? (
+                    <span className="text-ink-700">{entry.note}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </details>
+
+          {order.actions.cancel ? (
+            <AdminDangerZone title={copy.dangerTitle}>
+              <CancelOrderForm form={form} />
+            </AdminDangerZone>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }

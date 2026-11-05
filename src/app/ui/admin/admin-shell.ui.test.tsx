@@ -49,6 +49,10 @@ describe("AdminShell", () => {
     const desktopIdentity = screen.getByTestId("admin-desktop-identity");
     expect(desktopIdentity).toHaveTextContent(email);
     expect(desktopIdentity).toHaveClass("min-w-0", "break-all");
+    // One line: the email shares the bar with Salir, not a row of its own.
+    expect(desktopIdentity.parentElement).toBe(
+      screen.getByTestId("admin-actions").parentElement,
+    );
   });
 
   it("shows the email and Salir, lists the short menu and marks the active one", async () => {

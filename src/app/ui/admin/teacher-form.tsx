@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { AdminDangerZone } from "./admin-sections";
+import { ADMIN_SHEET, AdminDangerZone, AdminFieldPair } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import {
   FormError,
@@ -41,7 +41,7 @@ export function TeacherForm({
   cancelHref: string;
 }) {
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <TextField
@@ -59,20 +59,22 @@ export function TeacherForm({
         defaultValue={values.bioLine}
         error={errors.bioLine}
       />
-      <TextField
-        label={copy.form.phone}
-        name="phone"
-        type="tel"
-        defaultValue={values.phone}
-        error={errors.phone}
-      />
-      <TextField
-        label={copy.form.email}
-        name="email"
-        type="email"
-        defaultValue={values.email}
-        error={errors.email}
-      />
+      <AdminFieldPair>
+        <TextField
+          label={copy.form.phone}
+          name="phone"
+          type="tel"
+          defaultValue={values.phone}
+          error={errors.phone}
+        />
+        <TextField
+          label={copy.form.email}
+          name="email"
+          type="email"
+          defaultValue={values.email}
+          error={errors.email}
+        />
+      </AdminFieldPair>
       <SelectField
         label={copy.form.modality}
         name="modality"
@@ -104,7 +106,7 @@ export function TeacherStatePanel({
 }) {
   const state = copy.state;
   return (
-    <section className="flex max-w-prose flex-col gap-3">
+    <section className={ADMIN_SHEET}>
       <Text>{state.archivedNotice}</Text>
       <Text tone="muted">{state.archivedHint}</Text>
       {assignedTo.length > 0 && (

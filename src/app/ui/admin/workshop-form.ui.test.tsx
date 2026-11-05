@@ -22,6 +22,26 @@ function stub(element: React.ReactElement) {
   return render(<Stub />);
 }
 
+describe("short fields on a wide form", () => {
+  const pairOf = (label: string) =>
+    screen.getByLabelText(label).closest("[data-field-pair]");
+
+  it("pairs the name with its link, and the technique with the fee", () => {
+    stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    expect(pairOf("Nombre")).toContainElement(screen.getByLabelText("Enlace"));
+    expect(pairOf("Técnica")).not.toBeNull();
+  });
+});
+
 /** Records whether a submit reached the document (not cancelled by the router). */
 function submitReachesBrowser(form: HTMLFormElement | null) {
   const seen: { prevented: boolean | null } = { prevented: null };

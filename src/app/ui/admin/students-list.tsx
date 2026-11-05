@@ -4,6 +4,7 @@ import { AdminPageHeader } from "./admin-page";
 import { SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { ResponsiveList } from "./responsive-list";
+import { adminFilterClasses } from "./admin-sections";
 
 export interface StudentRow {
   readonly email: string;
@@ -99,11 +100,10 @@ export function StudentsList({
           { label: copy.title },
         ]}
       />
-      <details
-        open={filtered}
-        className="rounded-md bg-surface p-4 shadow-card"
-      >
-        <summary className="min-h-11 cursor-pointer font-semibold text-ink-900">
+      <details open={filtered}>
+        <summary
+          className={`${adminFilterClasses(false)} w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+        >
           {copy.filters.summary}
         </summary>
         <form
@@ -111,7 +111,7 @@ export function StudentsList({
           method="get"
           action="/admin/alumnas"
           aria-label={copy.filterLabel}
-          className="mt-3 grid gap-3 md:grid-cols-2"
+          className="mt-3 grid gap-3 rounded-md bg-surface p-4 shadow-card md:grid-cols-2"
         >
           <TextField
             label={copy.filters.search}

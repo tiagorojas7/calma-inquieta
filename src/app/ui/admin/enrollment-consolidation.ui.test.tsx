@@ -154,6 +154,134 @@ describe("EnrollmentConsolidation: record", () => {
   });
 });
 
+describe("EnrollmentConsolidation: layout", () => {
+  it("puts the month control in the title sheet and names the page Materiales", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    expect(
+      screen.getByRole("search").closest("[data-title-sheet]"),
+    ).not.toBeNull();
+    expect(screen.queryByText("Secciones de materiales")).toBeNull();
+    expect(screen.getByText("Materiales")).toBeVisible();
+  });
+
+  it("opens Para pedir with what the month costs and how many suppliers it takes", () => {
+    const { container } = render(<EnrollmentConsolidation {...base} />);
+
+    const summary = container.querySelector(
+      "[data-order-summary]",
+    ) as HTMLElement;
+    expect(summary).toHaveTextContent("Total general");
+    expect(summary).toHaveTextContent("1 proveedor");
+    expect(
+      summary.compareDocumentPosition(
+        screen.getByRole("region", { name: "Papelería Sur" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("counts several suppliers in the plural", () => {
+    const [first] = base.suppliers as [
+      EnrollmentConsolidationProps["suppliers"][number],
+    ];
+    const { container } = render(
+      <EnrollmentConsolidation
+        {...base}
+        suppliers={[
+          first,
+          { ...first, supplierId: "s2", supplierName: "Otro" },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector("[data-order-summary]")).toHaveTextContent(
+      "2 proveedores",
+    );
+  });
+
+  it("does not show the summary when there is nothing to buy", () => {
+    const { container } = render(
+      <EnrollmentConsolidation {...base} suppliers={[]} pendingOrders={0} />,
+    );
+
+    expect(container.querySelector("[data-order-summary]")).toBeNull();
+  });
+
+  it("shows the supplier total beside the supplier name", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    const section = screen.getByRole("region", { name: "Papelería Sur" });
+    const head = within(section)
+      .getByRole("heading", { level: 2, name: "Papelería Sur" })
+      .closest("[data-supplier-head]") as HTMLElement;
+    expect(head).toHaveTextContent("Total del proveedor");
+  });
+
+  it("splits a supplier in what to order and the steps to order it", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    const section = screen.getByRole("region", { name: "Papelería Sur" });
+    expect(
+      within(section).getByRole("heading", { level: 3, name: "Qué pedir" }),
+    ).toBeVisible();
+    const steps = within(section).getByRole("list", {
+      name: "Pasos para pedir a Papelería Sur",
+    });
+    expect(steps.tagName).toBe("OL");
+    const [copyStep, doneStep] = within(steps).getAllByRole("listitem");
+    expect(copyStep).toHaveTextContent(
+      "Copiá el pedido y mandalo por WhatsApp",
+    );
+    expect(
+      within(copyStep as HTMLElement).getByLabelText(
+        "Pedido para Papelería Sur",
+      ),
+    ).toBeVisible();
+    expect(
+      within(copyStep as HTMLElement).getByRole("button", {
+        name: "Copiar pedido",
+      }),
+    ).toBeVisible();
+    expect(doneStep).toHaveTextContent("Cuando lo mandes, marcalo como pedido");
+    expect(
+      within(doneStep as HTMLElement).getByRole("button", {
+        name: "Ya lo pedí",
+      }),
+    ).toBeVisible();
+  });
+
+  it("leaves only the copy step when no order can still be marked", () => {
+    render(
+      <EnrollmentConsolidation
+        {...base}
+        suppliers={base.suppliers.map((supplier) => ({
+          ...supplier,
+          orderIds: [],
+        }))}
+      />,
+    );
+
+    const steps = screen.getByRole("list", {
+      name: "Pasos para pedir a Papelería Sur",
+    });
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("makes the unconfirmed orders stand out from the page", () => {
+    render(<EnrollmentConsolidation {...base} />);
+
+    expect(screen.getByText(/2 pedidos a confirmar/)).toHaveClass(
+      "bg-status-orange-bg",
+    );
+  });
+
+  it("passes the accessibility check with the steps open", async () => {
+    const { container } = render(<EnrollmentConsolidation {...base} />);
+
+    await expectNoAxeViolations(container);
+  });
+});
+
 describe("EnrollmentConsolidation: Para pedir", () => {
   it("shows each supplier with its materials, totals and the pending count", () => {
     render(<EnrollmentConsolidation {...base} />);
@@ -210,9 +338,7 @@ describe("EnrollmentConsolidation: Para pedir", () => {
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     render(<EnrollmentConsolidation {...base} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copiar pedido por WhatsApp" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Copiar pedido" }));
 
     expect(writeText).toHaveBeenCalledWith(base.suppliers[0]?.summary);
   });

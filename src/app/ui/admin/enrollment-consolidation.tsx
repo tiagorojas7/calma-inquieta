@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { StatusChip } from "./status-chip";
+import { ADMIN_PANEL, adminFilterClasses } from "./admin-sections";
 
 export interface ConsolidationSupplierView {
   readonly supplierId: string;
@@ -55,33 +56,74 @@ const deliver = copy.deliver;
 const sectionHref = (period: string, section: MaterialsSection) =>
   `/admin/inscripciones/materiales?mes=${period}&seccion=${section}`;
 
-const tabClasses = (active: boolean) =>
-  `inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${
-    active
-      ? "bg-clay-800 text-white shadow-card"
-      : "border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100"
-  }`;
-
 function CopySummary({ summary }: { summary: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex flex-col gap-2">
-      <div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            void navigator.clipboard.writeText(summary).then(() => {
-              setCopied(true);
-            });
-          }}
-        >
-          {copy.copy}
-        </Button>
-      </div>
-      <p role="status" className="text-sm text-ink-600">
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          void navigator.clipboard.writeText(summary).then(() => {
+            setCopied(true);
+          });
+        }}
+      >
+        {copy.copy}
+      </Button>
+      <p role="status" className="text-sm text-ink-700">
         {copied ? copy.copied : ""}
       </p>
+    </div>
+  );
+}
+
+/** One numbered step of ordering; the number repeats what the list already says. */
+function OrderStep({
+  number,
+  title,
+  children,
+}: {
+  number: number;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span
+        aria-hidden="true"
+        className="flex size-7 shrink-0 items-center justify-center rounded-pill bg-area-materials-bg text-sm font-bold text-area-materials-fg"
+      >
+        {number}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <p className="font-semibold text-ink-900">{title}</p>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+/** The answer to "how much is this month": it opens Para pedir. */
+function OrderSummary({
+  grandTotal,
+  suppliers,
+}: {
+  grandTotal: string;
+  suppliers: number;
+}) {
+  return (
+    <div
+      data-order-summary
+      className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 rounded-md bg-area-materials-bg px-5 py-4 text-area-materials-fg"
+    >
+      <p className="flex flex-wrap items-baseline gap-x-3">
+        <span className="font-semibold">{copy.grandTotal}</span>
+        <span className="font-display text-3xl font-semibold lining-nums">
+          {grandTotal}
+        </span>
+      </p>
+      <p className="font-semibold">{copy.suppliers(suppliers)}</p>
     </div>
   );
 }
@@ -94,54 +136,79 @@ function SupplierSection({
   period: string;
 }) {
   return (
-    <section
-      aria-label={supplier.supplierName}
-      className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
-    >
-      <Heading level={2} size="h3">
-        {supplier.supplierName}
-      </Heading>
-      <ul
-        aria-label={`${supplier.supplierName}: ${copy.columns.material}`}
-        className="flex flex-col gap-2"
+    <section aria-label={supplier.supplierName} className={ADMIN_PANEL}>
+      <div
+        data-supplier-head
+        className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-admin-line pb-3"
       >
-        {supplier.materials.map((item) => (
-          <li
-            key={item.label}
-            className="flex flex-wrap items-center justify-between gap-x-4 border-t border-sand-200 pt-2"
+        <Heading level={2}>{supplier.supplierName}</Heading>
+        <p className="flex flex-wrap items-baseline gap-x-3">
+          <span className="text-sm font-semibold text-ink-700">
+            {copy.supplierTotal}
+          </span>
+          <span className="font-display text-3xl font-semibold text-ink-900 lining-nums">
+            {supplier.total}
+          </span>
+        </p>
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-2">
+          <Heading level={3}>{copy.itemsTitle}</Heading>
+          <ul
+            aria-label={`${supplier.supplierName}: ${copy.columns.material}`}
+            className="flex flex-col divide-y divide-admin-line"
           >
-            <span className="text-ink-900">{item.label}</span>
-            <span className="text-ink-700">{copy.quantity(item.quantity)}</span>
-            <span className="text-ink-900">{item.total}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="font-semibold text-ink-900">
-        {copy.supplierTotal}: {supplier.total}
-      </p>
-      <TextAreaField
-        label={copy.summaryLabel(supplier.supplierName)}
-        readOnly
-        rows={Math.max(3, supplier.summary.split("\n").length)}
-        value={supplier.summary}
-      />
-      <CopySummary summary={supplier.summary} />
-      {supplier.orderIds.length > 0 ? (
-        <form method="post">
-          <input type="hidden" name="intent" value="mark-requested" />
-          <input type="hidden" name="mes" value={period} />
-          <input type="hidden" name="seccion" value="pedir" />
-          {supplier.orderIds.map((id) => (
-            <input key={id} type="hidden" name="orderId" value={id} />
-          ))}
-          <p className="mb-3 text-ink-700">
-            {copy.consequence(supplier.orderIds.length)}
-          </p>
-          <Button type="submit" variant="success">
-            {copy.markRequested}
-          </Button>
-        </form>
-      ) : null}
+            {supplier.materials.map((item) => (
+              <li
+                key={item.label}
+                className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 last:pb-0"
+              >
+                <span className="min-w-0 flex-1 basis-full font-semibold text-ink-900 sm:basis-0">
+                  {item.label}
+                </span>
+                <span className="whitespace-nowrap text-ink-700">
+                  {copy.quantity(item.quantity)}
+                </span>
+                <span className="ml-auto min-w-24 whitespace-nowrap text-right tabular-nums text-ink-900">
+                  {item.total}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <ol
+          aria-label={copy.stepsLabel(supplier.supplierName)}
+          className="flex min-w-0 flex-col gap-5"
+        >
+          <OrderStep number={1} title={copy.steps.copy}>
+            <TextAreaField
+              label={copy.summaryLabel(supplier.supplierName)}
+              readOnly
+              rows={Math.max(3, supplier.summary.split("\n").length)}
+              value={supplier.summary}
+            />
+            <CopySummary summary={supplier.summary} />
+          </OrderStep>
+          {supplier.orderIds.length > 0 ? (
+            <OrderStep number={2} title={copy.steps.done}>
+              <form method="post" className="flex flex-col items-start gap-3">
+                <input type="hidden" name="intent" value="mark-requested" />
+                <input type="hidden" name="mes" value={period} />
+                <input type="hidden" name="seccion" value="pedir" />
+                {supplier.orderIds.map((id) => (
+                  <input key={id} type="hidden" name="orderId" value={id} />
+                ))}
+                <p className="text-ink-700">
+                  {copy.consequence(supplier.orderIds.length)}
+                </p>
+                <Button type="submit" variant="success">
+                  {copy.markRequested}
+                </Button>
+              </form>
+            </OrderStep>
+          ) : null}
+        </ol>
+      </div>
     </section>
   );
 }
@@ -159,7 +226,7 @@ function SectionLinks({
             <a
               href={sectionHref(period, key)}
               aria-current={key === section ? "page" : undefined}
-              className={tabClasses(key === section)}
+              className={adminFilterClasses(key === section)}
             >
               {copy.sections[key]} <span>{String(counts[key])}</span>
             </a>
@@ -340,32 +407,35 @@ export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
     <section className="flex flex-col gap-4">
       <AdminPageHeader
         title={copy.title(props.periodLabel)}
+        description={copy.subtitle}
         breadcrumbs={[
           { label: "Panel", href: "/admin" },
-          { label: copy.sectionsLabel },
+          { label: copy.crumb },
         ]}
         back={{
           href: "/admin/inscripciones",
           label: adminMicrocopy.enrollments.detail.back,
         }}
+        actions={
+          <form
+            role="search"
+            method="get"
+            action="/admin/inscripciones/materiales"
+            className="flex flex-wrap items-end gap-3"
+          >
+            <input type="hidden" name="seccion" value={props.section} />
+            <TextField
+              label={copy.month}
+              name="mes"
+              type="month"
+              defaultValue={props.period}
+            />
+            <Button type="submit" variant="secondary">
+              {copy.apply}
+            </Button>
+          </form>
+        }
       />
-      <form
-        role="search"
-        method="get"
-        action="/admin/inscripciones/materiales"
-        className="flex flex-wrap items-end gap-3"
-      >
-        <input type="hidden" name="seccion" value={props.section} />
-        <TextField
-          label={copy.month}
-          name="mes"
-          type="month"
-          defaultValue={props.period}
-        />
-        <Button type="submit" variant="secondary">
-          {copy.apply}
-        </Button>
-      </form>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SectionLinks
           period={props.period}
@@ -392,12 +462,18 @@ export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
       ) : (
         <>
           {props.pendingOrders > 0 ? (
-            <p>{copy.pending(props.pendingOrders)}</p>
+            <p className="rounded-md bg-status-orange-bg px-4 py-3 font-semibold text-status-orange-fg">
+              {copy.pending(props.pendingOrders)}
+            </p>
           ) : null}
           {props.suppliers.length === 0 ? (
             <p>{copy.empty}</p>
           ) : (
             <>
+              <OrderSummary
+                grandTotal={props.grandTotal}
+                suppliers={props.suppliers.length}
+              />
               {props.suppliers.map((supplier) => (
                 <SupplierSection
                   key={`${supplier.supplierId}-${supplier.supplierName}`}
@@ -405,9 +481,6 @@ export function EnrollmentConsolidation(props: EnrollmentConsolidationProps) {
                   period={props.period}
                 />
               ))}
-              <p className="text-lg font-semibold text-ink-900">
-                {copy.grandTotal}: {props.grandTotal}
-              </p>
             </>
           )}
         </>

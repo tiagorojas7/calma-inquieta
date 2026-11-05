@@ -12,6 +12,7 @@ import {
 import { DEFAULT_SWATCH } from "./material-swatch";
 import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminMicrocopy } from "./microcopy";
+import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
 export interface MaterialFormVariant {
   readonly id?: string | undefined;
@@ -128,7 +129,7 @@ export function MaterialForm({
   }
 
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
@@ -148,19 +149,21 @@ export function MaterialForm({
           defaultValue={values.description}
           error={errors.description}
         />
-        <TextField
-          label={copy.category}
-          name="category"
-          defaultValue={values.category}
-          error={errors.category}
-        />
-        <SelectField
-          label={copy.supplier}
-          name="supplierId"
-          options={supplierOptions}
-          defaultValue={values.supplierId}
-          error={errors.supplierId}
-        />
+        <AdminFieldPair>
+          <TextField
+            label={copy.category}
+            name="category"
+            defaultValue={values.category}
+            error={errors.category}
+          />
+          <SelectField
+            label={copy.supplier}
+            name="supplierId"
+            options={supplierOptions}
+            defaultValue={values.supplierId}
+            error={errors.supplierId}
+          />
+        </AdminFieldPair>
         <CheckboxField
           label={copy.available}
           name="available"

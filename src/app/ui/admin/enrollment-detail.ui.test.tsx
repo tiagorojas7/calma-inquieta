@@ -91,6 +91,27 @@ describe("EnrollmentDetail", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("works in two columns: the job on the left, the facts on the right", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    const summary = screen.getByRole("region", { name: "Resumen" });
+    const next = screen.getByRole("heading", { name: "Próximo paso" });
+
+    expect(summary.closest("[data-detail-grid]")).toHaveClass(
+      "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]",
+    );
+    expect(summary.closest("[data-detail-facts]")).toHaveClass("lg:order-2");
+    expect(next.closest("section")).toHaveClass("bg-surface", "shadow-card");
+  });
+
+  it("gives the total of the order its own weight", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    expect(
+      screen.getByText("Total").closest("[data-order-total]"),
+    ).not.toBeNull();
+  });
+
   it("shows the progress and the one next step for each status", () => {
     const { rerender } = render(<EnrollmentDetail {...base} />);
     const steps = () => screen.getByRole("list", { name: "Avance del pedido" });

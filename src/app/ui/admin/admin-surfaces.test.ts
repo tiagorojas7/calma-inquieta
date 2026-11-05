@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ADMIN_SHEET, adminFilterClasses } from "./admin-sections";
+import {
+  ADMIN_CARD_TITLE,
+  ADMIN_SHEET,
+  adminFilterClasses,
+} from "./admin-sections";
 
 const folder = new URL("./", import.meta.url);
 const screens = readdirSync(folder)
@@ -30,6 +34,26 @@ describe("panel surfaces", () => {
     expect(adminFilterClasses(true)).toContain("text-white");
     expect(adminFilterClasses(false)).toContain("bg-surface");
     expect(adminFilterClasses(false)).toContain("min-h-11");
+  });
+
+  it("titles each list card in the display face, not as a small link", () => {
+    expect(ADMIN_CARD_TITLE).toContain("font-display");
+
+    const lists = [
+      "workshops-list.tsx",
+      "intensives-list.tsx",
+      "suppliers-list.tsx",
+      "teachers-list.tsx",
+      "materials-list.tsx",
+      "private-events-list.tsx",
+    ];
+    const plain = screens.filter(
+      ({ name, source }) =>
+        lists.includes(name) &&
+        !source.includes("className={ADMIN_CARD_TITLE}"),
+    );
+
+    expect(plain.map(({ name }) => name)).toEqual([]);
   });
 
   it("uses that one filter on every list", () => {

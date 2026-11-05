@@ -7,6 +7,19 @@ import { AdminEmptyState } from "./empty-state";
 export const ADMIN_SHEET =
   "flex w-full max-w-3xl flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
 
+/** The name that opens a list card: a title first, a link on hover. */
+export const ADMIN_CARD_TITLE =
+  "inline-flex min-h-11 items-center font-display text-xl font-semibold text-ink-900 underline-offset-4 hover:text-clay-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+/** Two short fields side by side on a form, stacked on a phone. */
+export function AdminFieldPair({ children }: { children: ReactNode }) {
+  return (
+    <div data-field-pair className="grid gap-4 sm:grid-cols-2">
+      {children}
+    </div>
+  );
+}
+
 /** A filter of a list: the active one is filled, so it never reads as a link. */
 export function adminFilterClasses(active: boolean): string {
   const state = active

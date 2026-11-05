@@ -11,7 +11,7 @@ import {
 import { PeriodMaterialsPicker } from "./workshop-period-materials";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
-import { ADMIN_SHEET } from "./admin-sections";
+import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
@@ -178,13 +178,23 @@ export function QuickWorkshopForm({
         defaultValue={values.description}
         error={errors.description}
       />
-      <SelectField
-        label={copy.form.teacher}
-        name="teacherId"
-        options={teacherOptions}
-        defaultValue={values.teacherId}
-        error={errors.teacherId}
-      />
+      <AdminFieldPair>
+        <SelectField
+          label={copy.form.teacher}
+          name="teacherId"
+          options={teacherOptions}
+          defaultValue={values.teacherId}
+          error={errors.teacherId}
+        />
+        <TextField
+          label={copy.form.defaultFee}
+          hint={copy.form.defaultFeeHint}
+          name="defaultFee"
+          inputMode="numeric"
+          defaultValue={values.defaultFee}
+          error={errors.defaultFee}
+        />
+      </AdminFieldPair>
       <details open={thirdParty || Boolean(errors.percentage) || undefined}>
         <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">
           {quick.percentageSummary}
@@ -198,14 +208,6 @@ export function QuickWorkshopForm({
           error={errors.percentage}
         />
       </details>
-      <TextField
-        label={copy.form.defaultFee}
-        hint={copy.form.defaultFeeHint}
-        name="defaultFee"
-        inputMode="numeric"
-        defaultValue={values.defaultFee}
-        error={errors.defaultFee}
-      />
       <GalleryFields
         images={values.images}
         slots={WORKSHOP_PHOTO_SLOTS}

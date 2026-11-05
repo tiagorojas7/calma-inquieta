@@ -3,6 +3,7 @@ import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import {
+  ADMIN_CARD_TITLE,
   ADMIN_TAP_CARD,
   adminFilterClasses,
   AdminTapTarget,
@@ -36,9 +37,6 @@ export type WorkshopFilterKey = keyof typeof adminMicrocopy.workshops.filters;
 const copy = adminMicrocopy.workshops;
 
 const FILTER_KEYS = Object.keys(copy.filters) as WorkshopFilterKey[];
-
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 /**
  * Talleres list. Every link is a plain anchor: the Worker gate refuses the
@@ -113,7 +111,10 @@ export function WorkshopsList({
               className={`flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card ${ADMIN_TAP_CARD}`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <a href={`/admin/talleres/${row.id}`} className={linkClasses}>
+                <a
+                  href={`/admin/talleres/${row.id}`}
+                  className={ADMIN_CARD_TITLE}
+                >
                   {row.name}
                 </a>
                 <StatusBadge status={row.status} />

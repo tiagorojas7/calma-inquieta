@@ -1,6 +1,6 @@
 import { Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
+import { ADMIN_CARD_TITLE, AdminCardList } from "./admin-sections";
 import { SelectField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { PrivateEventStatusBadge } from "./private-event-status-badge";
@@ -24,9 +24,6 @@ export interface PrivateEventsListProps {
 }
 
 const copy = adminMicrocopy.privateEvents;
-
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 /**
  * Private-event inbox. The filter is a plain GET form and every link a plain
@@ -85,7 +82,7 @@ export function PrivateEventsList({
         card={(row) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <a href={`/admin/eventos/${row.id}`} className={linkClasses}>
+              <a href={`/admin/eventos/${row.id}`} className={ADMIN_CARD_TITLE}>
                 {row.name}
               </a>
               <PrivateEventStatusBadge

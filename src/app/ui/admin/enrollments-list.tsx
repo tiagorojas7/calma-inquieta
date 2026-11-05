@@ -178,14 +178,20 @@ function PayableCard({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-semibold text-ink-900">{row.number}</span>
+        <span className="text-sm font-semibold text-ink-700">{row.number}</span>
         <OrderStatusBadge status={row.status} label={row.statusLabel} />
       </div>
-      <p className="text-lg font-semibold text-ink-900">{row.studentName}</p>
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="min-w-0 font-display text-xl font-semibold text-ink-900">
+          {row.studentName}
+        </p>
+        <p className="shrink-0 font-display text-2xl font-semibold tabular-nums text-ink-900">
+          {row.total}
+        </p>
+      </div>
       <Text tone="muted">
         {`${row.workshopName} · ${row.month} · ${row.turno}`}
       </Text>
-      <p className="text-xl font-semibold text-ink-900">{row.total}</p>
       <div className="flex flex-wrap items-center gap-x-4">
         <a
           href={`/admin/inscripciones/${row.id}`}
@@ -205,70 +211,83 @@ function PayableCard({
         ) : null}
       </div>
       {error ? <AdminFeedback tone="error" title={error} /> : null}
-      <form method="post" action="/admin/inscripciones">
-        <OrderFields intent="confirm" orderId={row.id} returnTo={returnTo} />
-        <input type="hidden" name="amount" value={row.totalPesos} />
-        <input type="hidden" name="paidOn" value={today} />
-        <AdminButton
-          type="submit"
-          variant="success"
+      <div
+        data-card-actions
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-admin-line pt-3"
+      >
+        <form
+          method="post"
+          action="/admin/inscripciones"
           className="w-full sm:w-auto"
         >
-          {card.markPaid}
-        </AdminButton>
-      </form>
-      <details>
-        <summary className={summaryClasses}>{card.otherAmount}</summary>
-        <form
-          method="post"
-          action="/admin/inscripciones"
-          className="mt-2 flex flex-col gap-3"
-        >
           <OrderFields intent="confirm" orderId={row.id} returnTo={returnTo} />
-          <TextField
-            label={card.amount}
-            name="amount"
-            inputMode="numeric"
-            required
-            defaultValue={row.totalPesos}
-          />
-          <TextField
-            label={card.paidOn}
-            name="paidOn"
-            type="date"
-            max={today}
-            required
-            defaultValue={today}
-          />
-          <TextField label={card.note} name="note" />
-          <div>
-            <AdminButton type="submit">{card.saveOther}</AdminButton>
-          </div>
+          <input type="hidden" name="amount" value={row.totalPesos} />
+          <input type="hidden" name="paidOn" value={today} />
+          <AdminButton
+            type="submit"
+            variant="success"
+            className="w-full sm:w-auto"
+          >
+            {card.markPaid}
+          </AdminButton>
         </form>
-      </details>
-      <details>
-        <summary className={summaryClasses}>{card.cancel}</summary>
-        <form
-          method="post"
-          action="/admin/inscripciones"
-          className="mt-2 flex flex-col gap-3"
-        >
-          <OrderFields intent="cancel" orderId={row.id} returnTo={returnTo} />
-          <TextAreaField
-            label={card.reason}
-            hint={card.reasonHint}
-            name="reason"
-            required
-            minLength={3}
-            maxLength={300}
-          />
-          <div>
-            <AdminButton type="submit" variant="danger">
-              {card.cancelSubmit}
-            </AdminButton>
-          </div>
-        </form>
-      </details>
+        <details className="open:basis-full">
+          <summary className={summaryClasses}>{card.otherAmount}</summary>
+          <form
+            method="post"
+            action="/admin/inscripciones"
+            className="mt-2 flex flex-col gap-3"
+          >
+            <OrderFields
+              intent="confirm"
+              orderId={row.id}
+              returnTo={returnTo}
+            />
+            <TextField
+              label={card.amount}
+              name="amount"
+              inputMode="numeric"
+              required
+              defaultValue={row.totalPesos}
+            />
+            <TextField
+              label={card.paidOn}
+              name="paidOn"
+              type="date"
+              max={today}
+              required
+              defaultValue={today}
+            />
+            <TextField label={card.note} name="note" />
+            <div>
+              <AdminButton type="submit">{card.saveOther}</AdminButton>
+            </div>
+          </form>
+        </details>
+        <details className="open:basis-full">
+          <summary className={summaryClasses}>{card.cancel}</summary>
+          <form
+            method="post"
+            action="/admin/inscripciones"
+            className="mt-2 flex flex-col gap-3"
+          >
+            <OrderFields intent="cancel" orderId={row.id} returnTo={returnTo} />
+            <TextAreaField
+              label={card.reason}
+              hint={card.reasonHint}
+              name="reason"
+              required
+              minLength={3}
+              maxLength={300}
+            />
+            <div>
+              <AdminButton type="submit" variant="danger">
+                {card.cancelSubmit}
+              </AdminButton>
+            </div>
+          </form>
+        </details>
+      </div>
     </>
   );
 }
@@ -348,45 +367,51 @@ export function EnrollmentsList({
       {actionError && !rows.some((row) => row.id === actionError.orderId) ? (
         <AdminFeedback tone="error" title={actionError.error} />
       ) : null}
-      <Tabs filter={filter} tab={tab} counts={counts} />
-      <details className="rounded-md bg-surface p-4 shadow-card">
-        <summary className={summaryClasses}>{copy.filterToggle}</summary>
-        <form
-          role="search"
-          method="get"
-          action="/admin/inscripciones"
-          aria-label={copy.filterLabel}
-          className="mt-3 grid gap-3 md:grid-cols-2"
-        >
-          <input type="hidden" name="estado" value={filter.estado} />
-          <TextField
-            label={copy.filters.month}
-            name="mes"
-            type="month"
-            defaultValue={filter.mes}
-          />
-          <SelectField
-            label={copy.filters.workshop}
-            name="taller"
-            defaultValue={filter.taller}
-            options={[
-              { value: "", label: copy.filters.anyWorkshop },
-              ...workshops.map((w) => ({ value: w.id, label: w.name })),
-            ]}
-          />
-          <TextField
-            label={copy.filters.search}
-            hint={copy.filters.searchHint}
-            name="q"
-            defaultValue={filter.q}
-          />
-          <div>
-            <AdminButton type="submit" variant="secondary">
-              {copy.filters.apply}
-            </AdminButton>
-          </div>
-        </form>
-      </details>
+      <div data-list-controls className="flex flex-wrap items-center gap-2">
+        <Tabs filter={filter} tab={tab} counts={counts} />
+        <details className="open:basis-full lg:ml-auto lg:open:ml-0">
+          <summary
+            className={`${adminFilterClasses(false)} w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+          >
+            {copy.filterToggle}
+          </summary>
+          <form
+            role="search"
+            method="get"
+            action="/admin/inscripciones"
+            aria-label={copy.filterLabel}
+            className="mt-3 grid gap-3 rounded-md bg-surface p-4 shadow-card md:grid-cols-2"
+          >
+            <input type="hidden" name="estado" value={filter.estado} />
+            <TextField
+              label={copy.filters.month}
+              name="mes"
+              type="month"
+              defaultValue={filter.mes}
+            />
+            <SelectField
+              label={copy.filters.workshop}
+              name="taller"
+              defaultValue={filter.taller}
+              options={[
+                { value: "", label: copy.filters.anyWorkshop },
+                ...workshops.map((w) => ({ value: w.id, label: w.name })),
+              ]}
+            />
+            <TextField
+              label={copy.filters.search}
+              hint={copy.filters.searchHint}
+              name="q"
+              defaultValue={filter.q}
+            />
+            <div>
+              <AdminButton type="submit" variant="secondary">
+                {copy.filters.apply}
+              </AdminButton>
+            </div>
+          </form>
+        </details>
+      </div>
       {chips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <ul

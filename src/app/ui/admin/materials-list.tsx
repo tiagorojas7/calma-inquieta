@@ -2,7 +2,11 @@ import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminCardList, adminFilterClasses } from "./admin-sections";
+import {
+  ADMIN_CARD_TITLE,
+  AdminCardList,
+  adminFilterClasses,
+} from "./admin-sections";
 import { SelectField } from "./form-fields";
 import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminMicrocopy } from "./microcopy";
@@ -167,7 +171,7 @@ export function MaterialsList({
         card={(row) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <a href={`${BASE}/${row.id}`} className={linkClasses}>
+              <a href={`${BASE}/${row.id}`} className={ADMIN_CARD_TITLE}>
                 {row.name}
               </a>
               <span className="flex flex-wrap items-center gap-2">

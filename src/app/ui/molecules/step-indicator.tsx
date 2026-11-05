@@ -29,7 +29,7 @@ export function StepIndicator({
       <p className="text-sm font-semibold text-ink-700">
         {`Paso ${String(current)} de ${String(steps.length)}`}
       </p>
-      <ol className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <ol className="flex flex-nowrap items-center gap-x-3 gap-y-2 sm:flex-wrap">
         {steps.map((step, at) => {
           const position = at + 1;
           const state: StepState =
@@ -57,7 +57,13 @@ export function StepIndicator({
                   position
                 )}
               </span>
-              {step}
+              <span
+                className={
+                  state === "current" ? undefined : "sr-only sm:not-sr-only"
+                }
+              >
+                {step}
+              </span>
               {state === "done" ? (
                 <VisuallyHidden> completado</VisuallyHidden>
               ) : null}

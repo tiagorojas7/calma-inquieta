@@ -51,6 +51,21 @@ describe("StepIndicator (EN05)", () => {
     );
   });
 
+  it("names only the current step on a phone, so the steps stay on one line", () => {
+    render(
+      <StepIndicator
+        steps={["Tus datos", "Materiales", "Pedido"]}
+        current={2}
+      />,
+    );
+
+    expect(screen.getByText("Materiales")).not.toHaveClass("sr-only");
+    for (const name of ["Tus datos", "Pedido"]) {
+      expect(screen.getByText(name)).toHaveClass("sr-only", "sm:not-sr-only");
+    }
+    expect(screen.getByRole("list")).toHaveClass("flex-nowrap", "sm:flex-wrap");
+  });
+
   it("joins the steps with a rule that fills in as they are finished, and ends after the last one", () => {
     render(
       <StepIndicator

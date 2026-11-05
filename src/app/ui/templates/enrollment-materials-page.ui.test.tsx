@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import {
+  restoreBrowserStubs,
+  stubIntersectionObserver,
+  stubMatchMedia,
+} from "~/testing/ui/browser-stubs";
 import { EnrollmentMaterialsPage } from "./enrollment-materials-page";
 
 const materials = [
@@ -228,6 +233,18 @@ describe("EnrollmentMaterialsPage selector (S6)", () => {
     ).toBeInTheDocument();
   });
 
+  it("lays the category filter on one scrolling row", async () => {
+    render(
+      <MemoryRouter>
+        <EnrollmentMaterialsPage {...props} materials={onRequestMaterials} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("group", { name: "Filtrar por categoría" }),
+    ).toHaveClass("flex-nowrap", "overflow-x-auto", "sm:flex-wrap");
+  });
+
   it("shows no filter when there is a single category", () => {
     render(
       <MemoryRouter>
@@ -249,6 +266,34 @@ describe("EnrollmentMaterialsPage selector (S6)", () => {
       </MemoryRouter>,
     );
     await expectNoAxeViolations(container);
+  });
+});
+
+describe("EnrollmentMaterialsPage on a phone", () => {
+  afterEach(() => {
+    restoreBrowserStubs();
+  });
+
+  it("shows the bar only while the real Continuar is off screen", () => {
+    const observer = stubIntersectionObserver();
+    stubMatchMedia();
+    const { container } = setup();
+    const bar = container.querySelector("[data-sticky-action]");
+    expect(bar).toHaveAttribute("data-shown", "false");
+
+    observer.trigger(false);
+    expect(bar).toHaveAttribute("data-shown", "true");
+
+    observer.trigger(true);
+    expect(bar).toHaveAttribute("data-shown", "false");
+  });
+
+  it("keeps the remove button to one word, with the material in its name", () => {
+    setup();
+
+    expect(
+      screen.getByRole("button", { name: "Quitar Arcilla · Grande" }),
+    ).toHaveTextContent(/^Quitar$/);
   });
 });
 

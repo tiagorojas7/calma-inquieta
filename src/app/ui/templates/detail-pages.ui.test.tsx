@@ -1,7 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import {
+  removeIntersectionObserver,
+  restoreBrowserStubs,
+  stubIntersectionObserver,
+  stubMatchMedia,
+} from "~/testing/ui/browser-stubs";
 import {
   IntensivoDetailPage,
   type IntensivoDetailProps,
@@ -27,6 +33,7 @@ const taller: TallerDetailProps = {
 const intensivo: IntensivoDetailProps = {
   breadcrumb,
   name: "Intensivo",
+  oneDay: "Encuentro de un solo día: te llevás tu pieza ya terminada.",
   image,
   dateLine: "Sábado 4 de abril",
   duration: "4 h",
@@ -89,6 +96,14 @@ describe("TallerDetailPage", () => {
     );
   });
 
+  it("lays the sticky mobile bar as liquid glass", () => {
+    const { container } = inRouter(<TallerDetailPage {...taller} />);
+    const bar = container.querySelector("[data-sticky-action]");
+
+    expect(bar).toHaveClass("glass");
+    expect(bar?.className).not.toContain("bg-surface");
+  });
+
   it("omits the sticky action when paused", () => {
     const { container } = inRouter(
       <TallerDetailPage
@@ -136,6 +151,38 @@ describe("IntensivoDetailPage", () => {
     ).toHaveAttribute("href", "/reserva");
   });
 
+  it("says what a workshop is in the header, after the hours", () => {
+    inRouter(<IntensivoDetailPage {...intensivo} />);
+    const line = screen.getByText(intensivo.oneDay);
+
+    expect(line.closest("header")).not.toBeNull();
+    expect(line).toHaveClass("text-ink-700");
+    expect(
+      screen.getByText("4 h").compareDocumentPosition(line) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("tells the date, the hours and the duration apart in the header", () => {
+    inRouter(<IntensivoDetailPage {...intensivo} />);
+
+    // The date is the italic subtitle under the title.
+    expect(screen.getByText("Sábado 4 de abril")).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    // The hours and the duration are pills, not one line of plain text.
+    expect(screen.getByText("10:00 a 14:00").parentElement).toHaveClass(
+      "bg-sage-200",
+      "tabular-nums",
+    );
+    expect(screen.getByText("4 h").parentElement).toHaveClass(
+      "bg-sage-200",
+      "tabular-nums",
+    );
+    expect(screen.queryByText(/·/)).toBeNull();
+  });
+
   it("colors Reservar green", () => {
     inRouter(<IntensivoDetailPage {...intensivo} />);
     expect(screen.getByRole("link", { name: "Reservar lugar" })).toHaveClass(
@@ -151,5 +198,55 @@ describe("IntensivoDetailPage", () => {
   it("has no axe violations", async () => {
     const { container } = inRouter(<IntensivoDetailPage {...intensivo} />);
     await expectNoAxeViolations(container);
+  });
+});
+
+describe.each([
+  ["taller", () => <TallerDetailPage {...taller} />],
+  ["workshop", () => <IntensivoDetailPage {...intensivo} />],
+])("sticky action of the %s detail page", (_name, page) => {
+  const barOf = (container: HTMLElement) =>
+    container.querySelector("[data-sticky-action]");
+
+  let observer: ReturnType<typeof stubIntersectionObserver>;
+
+  beforeEach(() => {
+    observer = stubIntersectionObserver();
+    stubMatchMedia();
+  });
+  afterEach(() => {
+    restoreBrowserStubs();
+  });
+
+  it("stays hidden until the real action leaves the screen, and hides again when it returns", () => {
+    const { container } = inRouter(page());
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+    expect(barOf(container)).toHaveClass("invisible");
+
+    observer.trigger(true);
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+
+    observer.trigger(false);
+    expect(barOf(container)).toHaveAttribute("data-shown", "true");
+    expect(barOf(container)).not.toHaveClass("invisible");
+
+    observer.trigger(true);
+    expect(barOf(container)).toHaveAttribute("data-shown", "false");
+  });
+
+  it("stops watching when the page goes away", () => {
+    const { unmount } = inRouter(page());
+    expect(observer.active()).toBeGreaterThan(0);
+
+    unmount();
+
+    expect(observer.active()).toBe(0);
+  });
+
+  it("keeps the bar on screen when the browser cannot watch the action", () => {
+    removeIntersectionObserver();
+    const { container } = inRouter(page());
+
+    expect(barOf(container)).toHaveAttribute("data-shown", "true");
   });
 });

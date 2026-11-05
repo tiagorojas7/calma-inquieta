@@ -60,6 +60,30 @@ describe("home cards", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("reads as a soft ticket with a sage date block and a full-width button on phones", () => {
+    const { container } = renderWithRouter(
+      <UpcomingItem {...upcomingItemFixture} detail="10:00 a 12:00 h" />,
+    );
+    const date = screen.getByRole("time");
+    const cta = screen.getByRole("link", {
+      name: upcomingItemFixture.ctaLabel,
+    });
+
+    expect(container.querySelector("article")).toHaveClass(
+      "bg-sand-100",
+      "rounded-md",
+    );
+    expect(date.parentElement).toHaveClass("bg-sage-200");
+    expect(date).toHaveClass("text-olive-800");
+    expect(cta).toHaveClass("w-full", "sm:w-auto");
+    expect(cta).not.toHaveClass("link-underline");
+    // The hours are their own pill, apart from the title.
+    expect(screen.getByText("10:00 a 12:00 h").parentElement).toHaveClass(
+      "bg-sage-200",
+      "tabular-nums",
+    );
+  });
+
   it("renders the upcoming detail and badge only when given", async () => {
     const { container } = renderWithRouter(
       <UpcomingItem

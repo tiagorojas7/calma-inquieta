@@ -11,7 +11,6 @@ import {
   tallerToActivityCard,
 } from "~/app/catalog/mappers";
 import { BotanicalSprig } from "~/app/ui/atoms/botanical-sprig";
-import { Eyebrow } from "~/app/ui/atoms/eyebrow";
 import { AboutTeaser } from "~/app/ui/organisms/about-teaser";
 import { ActivityShowcase } from "~/app/ui/organisms/activity-showcase";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
@@ -21,7 +20,6 @@ import {
 } from "~/app/ui/organisms/hero-section";
 import { HomeCatalogLead } from "~/app/ui/organisms/home-catalog-lead";
 import { Reveal } from "~/app/ui/organisms/reveal";
-import { microcopy } from "~/app/ui/microcopy";
 import { Section } from "~/app/ui/organisms/section";
 import { TestimonialsSection } from "~/app/ui/organisms/testimonials-section";
 import { TrustRow } from "~/app/ui/organisms/trust-row";
@@ -73,6 +71,7 @@ export async function loader({ context }: Route.LoaderArgs) {
       intensivoToUpcomingItem(intensivo, catalogContent),
     ),
     intensivosHeading: content.intensivos.heading,
+    intensivosDescription: catalogContent.intensivos.oneDay,
     teaser: {
       ...content.teaser,
       body: content.teaser.body.text,
@@ -113,9 +112,22 @@ export function meta({ loaderData, error }: Route.MetaArgs) {
 }
 
 function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
+  const nextIntensivo = data.catalogFailed
+    ? undefined
+    : data.intensivos.find((item) => !item.badge);
   return (
     <>
       <HeroSection
+        next={
+          nextIntensivo
+            ? {
+                title: nextIntensivo.title,
+                detail: nextIntensivo.detail,
+                href: nextIntensivo.href,
+                date: nextIntensivo.date,
+              }
+            : undefined
+        }
         eyebrow={data.hero.eyebrow}
         title={
           <>
@@ -144,7 +156,6 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
           body={data.catalogBand.body}
           primary={data.catalogBand.primary}
           secondary={data.catalogBand.secondary}
-          whatsappHref={data.whatsappHref}
         />
         {data.catalogFailed ? null : (
           <Reveal className="mt-12 lg:mt-16">
@@ -165,10 +176,10 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
       {/* The intensivos get their own band so they never read as part of the monthly talleres. */}
       {data.catalogFailed ? null : (
         <Section bleed tone="white" spacing="md">
-          <Reveal className="flex flex-col gap-4">
-            <Eyebrow>Encuentros de un día</Eyebrow>
+          <Reveal>
             <UpcomingList
               title={data.intensivosHeading}
+              description={data.intensivosDescription}
               items={data.intensivos}
               emptyAction={{
                 href: data.instagramHref,
@@ -190,18 +201,10 @@ function HomePage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
         items={data.testimonials}
       />
       <ContactBand
-        eyebrow={microcopy.closingBandEyebrow}
         heading={data.contactBand.heading}
         body={data.contactBand.body}
-        primary={{
-          href: data.whatsappHref ?? "#",
-          label: "Escribinos por WhatsApp",
-        }}
-        secondary={
-          data.instagramHref
-            ? [{ href: data.instagramHref, label: "Instagram" }]
-            : []
-        }
+        primary={{ href: "/talleres", label: "Ver talleres" }}
+        secondary={[{ href: "/intensivos", label: "Ver workshops" }]}
         image={data.contactBand.image}
       />
       <JsonLdScript json={data.jsonLd} />

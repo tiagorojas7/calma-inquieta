@@ -102,6 +102,65 @@ describe("TallerCard", () => {
     expect(block).toHaveClass("border-t", "border-tan-400");
     expect(
       screen.getByRole("link", { name: tallerCardFixture.ctaLabel }),
-    ).toHaveClass("w-full", "border-clay-600");
+    ).toHaveClass("w-full", "bg-clay-600");
+  });
+
+  it("raises a liquid-glass panel over the lower edge of the photo", () => {
+    renderCard(tallerCardFixture);
+    const photo = screen.getByRole("img", {
+      name: tallerCardFixture.image.alt,
+    });
+    const panel = screen
+      .getByRole("heading", { level: 2, name: tallerCardFixture.name })
+      .closest(".glass");
+
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("-mt-10", "rounded-md");
+    expect(photo.parentElement).not.toContainElement(panel as HTMLElement);
+    expect(screen.getByRole("article")).not.toHaveClass("bg-cocoa-900");
+  });
+
+  it("labels the teacher and shows a short line about her", () => {
+    renderCard({
+      ...tallerCardFixture,
+      teacherBio: "Tejedora y docente desde hace muchos años.",
+    });
+
+    expect(screen.getByText("Profesora:")).toBeVisible();
+    expect(screen.getByText(tallerCardFixture.teacher)).toBeVisible();
+    const bio = screen.getByText("Tejedora y docente desde hace muchos años.");
+    expect(bio).toBeVisible();
+    // A short excerpt: two lines at most.
+    expect(bio).toHaveClass("line-clamp-2");
+  });
+
+  it("keeps the label and the name when there is no description, and drops the block without a teacher", () => {
+    const first = renderCard(tallerCardFixture);
+
+    expect(screen.getByText("Profesora:")).toBeVisible();
+    expect(document.querySelector(".line-clamp-2"), "no bio line").toBeNull();
+    first.unmount();
+
+    const withoutTeacher: Partial<Parameters<typeof TallerCard>[0]> = {
+      ...tallerCardFixture,
+    };
+    delete withoutTeacher.teacher;
+    renderCard(withoutTeacher as Parameters<typeof TallerCard>[0]);
+
+    expect(screen.queryByText("Profesora:")).toBeNull();
+  });
+
+  it("tells name, teacher and hours apart by typeface and treatment", () => {
+    renderCard(tallerCardFixture);
+
+    expect(screen.getByText(tallerCardFixture.teacher)).toHaveClass(
+      "font-display",
+      "italic",
+    );
+    expect(screen.getByText("18:00 a 19:30 h")).toHaveClass(
+      "bg-sage-200",
+      "font-semibold",
+      "tabular-nums",
+    );
   });
 });

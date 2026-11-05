@@ -7,6 +7,7 @@ import { EnrollmentPage } from "./enrollment-page";
 const offer = {
   workshopName: "Cerámica inicial",
   period: "2026-11",
+  periodLabel: "noviembre 2026",
   fee: "$ 40.000",
   materialsRequired: true,
   turnos: [{ id: "t1", label: "Lunes 18:00" }],
@@ -35,6 +36,24 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
       "href",
       "/talleres/ceramica",
     );
+  });
+
+  it("marks name, email, phone and turno with their own icons", () => {
+    setup();
+    const glyphs = [
+      "Nombre completo",
+      "Email",
+      "Teléfono argentino",
+      "Turno",
+    ].map((label) => {
+      const icon = screen
+        .getByLabelText(label)
+        .parentElement?.querySelector("[data-field-icon]");
+      expect(icon, label).not.toBeNull();
+      return icon?.innerHTML;
+    });
+
+    expect(new Set(glyphs).size).toBe(4);
   });
 
   it("counts two steps when materials are not required", () => {

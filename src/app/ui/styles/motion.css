@@ -127,6 +127,42 @@
   }
 }
 
+/* Hero entrance: the blocks of the copy rise in turn on first paint. It is
+   pure CSS (no script), so the server HTML is never hidden and a browser
+   without animation simply shows everything. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy > * {
+    animation: hero-rise 700ms var(--ease-calm) both;
+  }
+
+  .hero-copy > :nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .hero-copy > :nth-child(3) {
+    animation-delay: 180ms;
+  }
+
+  .hero-copy > :nth-child(4) {
+    animation-delay: 270ms;
+  }
+
+  .hero-copy > :nth-child(5) {
+    animation-delay: 360ms;
+  }
+}
+
 /* T6 brand */
 @media (prefers-reduced-motion: no-preference) {
   .brand-logo {
@@ -152,5 +188,24 @@
 
   .frame-float:hover {
     transform: translateY(-0.375rem);
+  }
+}
+
+/* The answer of a disclosure rises into place when it opens. */
+@media (prefers-reduced-motion: no-preference) {
+  .disclosure[open] > :not(summary) {
+    animation: disclosure-rise 300ms var(--ease-calm);
+  }
+
+  @keyframes disclosure-rise {
+    from {
+      opacity: 0;
+      transform: translateY(-0.25rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

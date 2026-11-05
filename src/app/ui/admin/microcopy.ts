@@ -271,9 +271,9 @@ export const adminMicrocopy = {
       message: "Mensaje",
       when: "Cuándo",
       whenHint:
-        "Para clase e intensivo. Por ejemplo: mañana, el martes 4 o este sábado.",
-      activity: "Nombre del intensivo",
-      activityHint: "Solo para el recordatorio de intensivo.",
+        "Para clase y workshop. Por ejemplo: mañana, el martes 4 o este sábado.",
+      activity: "Nombre del workshop",
+      activityHint: "Solo para el recordatorio de workshop.",
       text: "Texto del aviso",
       textHint:
         "Solo para el aviso libre. Se agrega después del saludo con el nombre.",
@@ -318,7 +318,7 @@ export const adminMicrocopy = {
         "too-long": "Cuándo puede tener hasta 60 caracteres.",
       },
       activity: {
-        required: "Escribí el nombre del intensivo.",
+        required: "Escribí el nombre del workshop.",
         "too-long": "El nombre puede tener hasta 80 caracteres.",
       },
       text: {
@@ -330,7 +330,7 @@ export const adminMicrocopy = {
       class: "Recordatorio de clase",
       fee: "Cuota pendiente",
       materials: "Materiales listos",
-      intensive: "Reserva de intensivo",
+      intensive: "Reserva de workshop",
       notice: "Aviso libre",
     },
   },
@@ -375,7 +375,7 @@ export const adminMicrocopy = {
       email: "Email",
       phone: "Teléfono",
       activities: {
-        title: "Talleres e intensivos",
+        title: "Talleres y workshops",
         empty: "Todavía no tiene inscripciones vigentes.",
         columns: {
           workshop: "Taller",
@@ -469,10 +469,10 @@ export const adminMicrocopy = {
       intensiveDeposit: {
         text: (count: number) =>
           count === 1
-            ? "1 reserva de intensivo esperando seña"
-            : `${String(count)} reservas de intensivo esperando seña`,
+            ? "1 reserva de workshop esperando seña"
+            : `${String(count)} reservas de workshop esperando seña`,
         action: "Ver reservas",
-        hint: "Ver reservas de intensivos",
+        hint: "Ver reservas de workshops",
       },
       privateEvent: {
         text: (count: number) =>
@@ -523,11 +523,11 @@ export const adminMicrocopy = {
         `${String(enrolled)} de ${String(capacity)} lugares`,
     },
     activities: {
-      title: "Por taller e intensivo",
-      intro: "Cada taller e intensivo con movimiento en el mes.",
-      intensive: "Intensivo",
+      title: "Por taller y workshop",
+      intro: "Cada taller y workshop con movimiento en el mes.",
+      intensive: "Workshop",
       columns: {
-        name: "Taller o intensivo",
+        name: "Taller o workshop",
         enrolled: "Inscriptas",
         capacity: "Lugares",
         collected: "Cobrado",
@@ -545,7 +545,7 @@ export const adminMicrocopy = {
       columns: {
         teacher: "Profesora",
         modality: "Modalidad",
-        activities: "Talleres e intensivos",
+        activities: "Talleres y workshops",
         toSettle: "A pagar",
       },
     },
@@ -1028,21 +1028,21 @@ export const adminMicrocopy = {
     },
   },
   intensives: {
-    title: "Intensivos",
-    newTitle: "Nuevo intensivo",
-    editTitle: "Editar intensivo",
-    newAction: "Nuevo intensivo",
-    back: "Volver a intensivos",
+    title: "Workshops",
+    newTitle: "Nuevo workshop",
+    editTitle: "Editar workshop",
+    newAction: "Nuevo workshop",
+    back: "Volver a workshops",
     seats: (count: number) => `Lugares: ${String(count)}`,
     feedback: {
-      created: { title: "Intensivo creado" },
+      created: { title: "Workshop creado" },
       saved: { title: "Cambios guardados" },
       deleted: { title: "Borrador eliminado" },
-      published: { title: "Intensivo publicado" },
-      paused: { title: "Intensivo pausado" },
-      cancelled: { title: "Intensivo cancelado" },
-      archived: { title: "Intensivo archivado" },
-      restored: { title: "Intensivo restaurado" },
+      published: { title: "Workshop publicado" },
+      paused: { title: "Workshop pausado" },
+      cancelled: { title: "Workshop cancelado" },
+      archived: { title: "Workshop archivado" },
+      restored: { title: "Workshop restaurado" },
       rescheduled: { title: "Fecha y horario actualizados" },
     },
     audit: {
@@ -1050,7 +1050,7 @@ export const adminMicrocopy = {
       by: "Actualizado por",
       at: "Fecha y hora",
     },
-    filterLabel: "Mostrar intensivos",
+    filterLabel: "Mostrar workshops",
     filters: {
       vigentes: "Vigentes",
       borradores: "Borradores",
@@ -1068,7 +1068,7 @@ export const adminMicrocopy = {
     },
     noTeacher: "Sin profesor",
     empty: {
-      title: "Todavía no hay intensivos",
+      title: "Todavía no hay workshops",
       message: "Creá el primero para empezar a organizar actividades.",
     },
     state: {
@@ -1076,24 +1076,24 @@ export const adminMicrocopy = {
       publish: "Publicar",
       resume: "Volver a publicar",
       pause: "Pausar",
-      cancel: "Cancelar intensivo",
+      cancel: "Cancelar workshop",
       archive: "Archivar",
       restore: "Restaurar como borrador",
       delete: "Eliminar borrador",
       reschedule: "Reprogramar",
       confirm: {
         pause: {
-          title: "¿Pausar el intensivo?",
+          title: "¿Pausar el workshop?",
           message:
             "Sigue visible, pero deja de aceptar nuevas solicitudes hasta que lo vuelvas a publicar.",
         },
         cancel: {
-          title: "¿Cancelar el intensivo?",
+          title: "¿Cancelar el workshop?",
           message:
             "Se cancela y no acepta nuevas solicitudes. El historial se conserva y no se puede deshacer.",
         },
         archive: {
-          title: "¿Archivar el intensivo?",
+          title: "¿Archivar el workshop?",
           message:
             "Deja de verse en el sitio. Sus datos se conservan y podés restaurarlo.",
         },
@@ -1109,16 +1109,16 @@ export const adminMicrocopy = {
       advanced: "Opciones avanzadas",
       advancedHint:
         "No hace falta tocar nada acá: ya vienen con valores de uso común.",
-      defaultPolicy: "La seña asegura el lugar en el intensivo.",
+      defaultPolicy: "La seña asegura el lugar en el workshop.",
       derivedNote:
         "El enlace se arma solo con el nombre. El resumen sale de la descripción.",
       percentageHint: "Solo si el profesor es de terceros.",
       minSeatsHint: "Por defecto 1.",
       policyHint: "Si lo dejás vacío se usa el texto estándar de la seña.",
       missingTitle: (missing: string) =>
-        `El intensivo quedó como borrador porque falta: ${missing}.`,
+        `El workshop quedó como borrador porque falta: ${missing}.`,
       notPublished:
-        "El intensivo quedó como borrador porque no se pudo publicar. Revisá los datos y probá de nuevo.",
+        "El workshop quedó como borrador porque no se pudo publicar. Revisá los datos y probá de nuevo.",
     },
     statusLine: {
       draft: "Borrador. Todavía no se ve en el sitio.",
@@ -1334,7 +1334,7 @@ export const adminMicrocopy = {
     cancelConsequence:
       "No se puede deshacer. Si estaba confirmada, libera el lugar.",
     link: "Ver reservas",
-    back: "Volver al intensivo",
+    back: "Volver al workshop",
     summary: {
       date: "Fecha",
       deposit: "Seña",
@@ -1364,7 +1364,7 @@ export const adminMicrocopy = {
     confirmForm: {
       label: "Registrar la seña",
       amount: "Seña cobrada",
-      amountHint: "Tiene que ser la seña completa del intensivo.",
+      amountHint: "Tiene que ser la seña completa del workshop.",
       paidOn: "Fecha del pago",
       note: "Nota (opcional)",
       submit: "Registrar seña y confirmar lugar",
@@ -1377,11 +1377,11 @@ export const adminMicrocopy = {
       submit: "Cancelar solicitud",
     },
     errors: {
-      amount: "Ingresá la seña completa del intensivo, tal como figura arriba.",
+      amount: "Ingresá la seña completa del workshop, tal como figura arriba.",
       paidOn: "Elegí una fecha válida, de hoy hacia atrás.",
       note: "La nota puede tener hasta 500 caracteres.",
       reason: "Escribí un motivo de entre 3 y 300 caracteres.",
-      full: "El intensivo ya tiene todos sus lugares confirmados.",
+      full: "El workshop ya tiene todos sus lugares confirmados.",
       notPending: "Esta solicitud ya no está pendiente.",
       alreadyCancelled: "Esta solicitud ya estaba cancelada.",
       failed: "No pudimos guardar el cambio. Probá de nuevo.",

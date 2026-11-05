@@ -60,6 +60,7 @@ describe("enrollment route", () => {
       offer: {
         workshopName: "Cerámica inicial",
         period: "2026-11",
+        periodLabel: "noviembre 2026",
         fee: "$ 58.000",
         materialsRequired: false,
         turnos: [{ id: "turno-1" }],

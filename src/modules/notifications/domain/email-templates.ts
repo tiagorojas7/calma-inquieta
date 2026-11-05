@@ -116,7 +116,7 @@ export function intensiveReservationReceivedEmail(
   return compose("Recibimos tu reserva", [
     greeting(input.studentName),
     {
-      text: `Recibimos tu pedido de lugar para el intensivo ${input.intensivoName} (${input.dateLabel}). Para reservarlo, la seña es de ${input.deposit}.`,
+      text: `Recibimos tu pedido de lugar para el workshop ${input.intensivoName} (${input.dateLabel}). Para reservarlo, la seña es de ${input.deposit}.`,
     },
     {
       text: "Cuando registremos tu seña, te avisamos. Podés ver el resumen de tu reserva acá:",
@@ -132,7 +132,7 @@ export function intensiveReservationConfirmedEmail(
   return compose("Confirmamos tu reserva", [
     greeting(input.studentName),
     {
-      text: `Confirmamos tu seña de ${input.deposit}: tu lugar en el intensivo ${input.intensivoName} (${input.dateLabel}) está reservado.`,
+      text: `Confirmamos tu seña de ${input.deposit}: tu lugar en el workshop ${input.intensivoName} (${input.dateLabel}) está reservado.`,
     },
     { text: "Podés ver el resumen acá:", link: input.reservationUrl },
     SIGNATURE,

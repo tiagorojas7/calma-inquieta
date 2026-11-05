@@ -796,9 +796,9 @@ describe("T7 home stylesheet", () => {
     }
   });
 
-  it("the paper note has a tape strip and a light sheet from the tokens", () => {
+  it("the paper note has a tape strip and no sheen layer", () => {
     expect(rule(".paper-note::before")?.body).toMatch(/content:/);
-    expect(rule(".paper-note-sheet")?.body).toMatch(/var\(--color-sand-/);
+    expect(rule(".paper-note-sheet")).toBeUndefined();
   });
 });
 

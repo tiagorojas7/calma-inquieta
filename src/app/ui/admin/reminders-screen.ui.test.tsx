@@ -76,7 +76,7 @@ describe("RemindersScreen", () => {
         {...base}
         kinds={[
           ...base.kinds,
-          { value: "intensive", label: "Reserva de intensivo" },
+          { value: "intensive", label: "Reserva de workshop" },
           { value: "notice", label: "Aviso libre" },
         ]}
       />,
@@ -88,7 +88,7 @@ describe("RemindersScreen", () => {
       target: { value: "intensive" },
     });
     expect(screen.getByLabelText("Cuándo")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nombre del intensivo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre del workshop")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Mensaje"), {
       target: { value: "notice" },
@@ -192,13 +192,13 @@ describe("RemindersScreen", () => {
         values={{ ...base.values, mensaje: "intensive" }}
         kinds={[
           ...base.kinds,
-          { value: "intensive", label: "Reserva de intensivo" },
+          { value: "intensive", label: "Reserva de workshop" },
         ]}
-        errors={{ actividad: "Escribí el nombre del intensivo." }}
+        errors={{ actividad: "Escribí el nombre del workshop." }}
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Escribí el nombre del intensivo.",
+      "Escribí el nombre del workshop.",
     );
   });
 });

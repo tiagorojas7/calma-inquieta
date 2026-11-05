@@ -48,6 +48,25 @@ describe("info molecules", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("draws the icon in a calm sage chip and makes the whole card the tap target", () => {
+    const { container } = render(
+      <ContactItem
+        icon="mail"
+        label="Email"
+        value="hola@ci.test"
+        href="mailto:hola@ci.test"
+      />,
+    );
+    const chip = container.querySelector("svg")?.parentElement;
+    const link = screen.getByRole("link");
+
+    expect(chip).toHaveClass("bg-sage-200", "text-olive-800");
+    expect(container.firstElementChild).toHaveClass("relative");
+    // A stretched link: its pseudo-element covers the card.
+    expect(link.className).toContain("after:absolute");
+    expect(link.className).toContain("after:inset-0");
+  });
+
   it("sets a contact item on a lifting white card", () => {
     const { container } = render(
       <ContactItem icon="pin" label="Dirección" value="Córdoba" />,

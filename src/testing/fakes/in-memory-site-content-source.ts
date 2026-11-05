@@ -256,6 +256,7 @@ export function buildRawSiteContent(
           approved: true,
           text: "Intro.",
         },
+        oneDay: "Encuentro de un solo día: te llevás tu pieza ya terminada.",
         emptyMessage: "Pronto.",
         cardCtaLabel: "Ver intensivo",
         priceLabel: "Precio",

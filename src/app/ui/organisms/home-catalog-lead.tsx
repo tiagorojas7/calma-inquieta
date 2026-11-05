@@ -19,7 +19,8 @@ const SECONDARY_SIZES = "(min-width: 64rem) 17rem, 48vw";
 
 /**
  * The booking lead above the Inicio catalog cards (S11, S17): a heading, a
- * line of copy and the two calls to action on one side, and a layered photo
+ * line of copy and the two calls to action on one side (both lead into the
+ * site: booking happens here, not on WhatsApp), and a layered photo
  * pair on the other (a tall 4:5 photo with a wide 3:2 print in a white frame
  * laid over it, a sprig crossing both). The cards below stay untouched, so
  * the band still reads when the catalog is empty. Both photos are lazy: they
@@ -30,13 +31,11 @@ export function HomeCatalogLead({
   body,
   primary,
   secondary,
-  whatsappHref,
 }: {
   heading: string;
   body: string;
   primary: Photo;
   secondary: Photo;
-  whatsappHref?: string | undefined;
 }) {
   return (
     <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-x-16">
@@ -44,16 +43,9 @@ export function HomeCatalogLead({
         <Heading level={2}>{heading}</Heading>
         <Text>{body}</Text>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          {whatsappHref ? (
-            <ButtonLink href={whatsappHref}>
-              Reservá tu lugar por WhatsApp
-            </ButtonLink>
-          ) : null}
-          <ButtonLink
-            href="/talleres"
-            variant={whatsappHref ? "tertiary" : "primary"}
-          >
-            Ver todos los talleres
+          <ButtonLink href="/talleres">Reservá tu lugar</ButtonLink>
+          <ButtonLink href="/intensivos" variant="tertiary">
+            Ver workshops
           </ButtonLink>
         </div>
       </Reveal>

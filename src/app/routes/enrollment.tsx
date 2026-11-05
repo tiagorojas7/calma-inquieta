@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import {
   data,
   redirect,
@@ -7,7 +8,12 @@ import {
   useParams,
 } from "react-router";
 import { servicesContext } from "~/app/context";
-import { saveEnrollmentDraft } from "~/app/enrollment/enrollment-draft";
+import {
+  loadEnrollmentDraft,
+  saveEnrollmentDraft,
+  type EnrollmentDraft,
+} from "~/app/enrollment/enrollment-draft";
+import { monthLabel } from "~/app/enrollment/order-labels";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 import type { AppServices } from "~/composition/request-services";
 import type { RequestEnrollmentError } from "~/modules/enrollments";
@@ -125,6 +131,7 @@ export async function loader({ context, params, request }: RouteArgs) {
     offer: {
       workshopName: offer.workshopName,
       period: offer.period,
+      periodLabel: monthLabel(offer.period),
       fee: formatPesos(offer.fee.toCentavos()),
       materialsRequired: offer.materialsRequired,
       turnos: offer.turnos.map((turno) => ({
@@ -175,16 +182,32 @@ export async function action({ request, context, params }: RouteArgs) {
   } satisfies ActionFailure;
 }
 
-export default function EnrollmentRoute() {
-  const loaded = useLoaderData<typeof loader>();
+type OpenOffer = NonNullable<
+  ReturnType<typeof useLoaderData<typeof loader>>["offer"]
+>;
+
+/** What this student already filled in for this month, if anything. */
+function savedDraft(slug: string, period: string): EnrollmentDraft | null {
+  const draft = loadEnrollmentDraft(window.sessionStorage, slug);
+  return draft?.student.period === period ? draft : null;
+}
+
+function OpenEnrollment({ offer }: { offer: OpenOffer }) {
   const rejected = useActionData<typeof action>();
   const navigate = useNavigate();
   const { slug = "" } = useParams();
-  const offer = loaded.offer;
-  if (offer === undefined) return <EnrollmentPage state="paused" />;
-  const period = offer.period;
+  const { period } = offer;
+  const [saved, setSaved] = useState<FormValues | null>(null);
 
-  function continueToMaterials() {
+  // Coming back from the materials: the student keeps what they typed.
+  useEffect(() => {
+    const student = savedDraft(slug, period)?.student;
+    if (!student) return;
+    const { fullName, email, phone, turnoId } = student;
+    setSaved({ fullName, email, phone, turnoId });
+  }, [slug, period]);
+
+  const continueToMaterials = useCallback(() => {
     if (!rejected?.needsMaterials) return;
     saveEnrollmentDraft(window.sessionStorage, slug, {
       student: {
@@ -192,18 +215,24 @@ export default function EnrollmentRoute() {
         period,
         policyAccepted: true,
       },
-      lines: [],
+      lines: savedDraft(slug, period)?.lines ?? [],
     });
     void navigate(
       `/talleres/${slug}/inscripcion/materiales?period=${encodeURIComponent(period)}`,
     );
-  }
+  }, [navigate, period, rejected, slug]);
+
+  // Valid details need no extra tap: the button below is only the fallback.
+  useEffect(() => {
+    continueToMaterials();
+  }, [continueToMaterials]);
 
   return (
     <EnrollmentPage
+      key={saved ? "saved" : "blank"}
       state="open"
       offer={offer}
-      values={rejected?.values ?? EMPTY_VALUES}
+      values={rejected?.values ?? saved ?? EMPTY_VALUES}
       errors={rejected?.errors ?? {}}
       backHref={`/talleres/${slug}`}
       {...(rejected?.formError ? { formError: rejected.formError } : {})}
@@ -212,4 +241,10 @@ export default function EnrollmentRoute() {
         : {})}
     />
   );
+}
+
+export default function EnrollmentRoute() {
+  const { offer } = useLoaderData<typeof loader>();
+  if (offer === undefined) return <EnrollmentPage state="paused" />;
+  return <OpenEnrollment offer={offer} />;
 }

@@ -102,6 +102,91 @@ describe("PrivateEventPage", () => {
     ).toBeNull();
   });
 
+  it("sets the last word of the title in the accent italic and the intro as a lead", () => {
+    render(
+      <PrivateEventPage
+        {...shared}
+        state="form"
+        values={values}
+        errors={{}}
+        minDate="2026-10-28"
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1 }).querySelector("em"),
+    ).toHaveTextContent("privados");
+    expect(screen.getByText(privateEventsCopy.intro)).toHaveClass("text-lead");
+  });
+
+  it("groups the fields by meaning and pairs the short ones from sm", () => {
+    render(
+      <PrivateEventPage
+        {...shared}
+        state="form"
+        values={values}
+        errors={{}}
+        minDate="2026-10-28"
+      />,
+    );
+    const groups = screen
+      .getByRole("form")
+      .querySelectorAll<HTMLElement>("[data-field-group]");
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toContainElement(
+      screen.getByLabelText("Nombre y apellido"),
+    );
+    expect(groups[0]).toContainElement(
+      screen.getByLabelText(/WhatsApp o teléfono/),
+    );
+    expect(groups[1]).toContainElement(screen.getByLabelText("Fecha deseada"));
+    expect(groups[1]).toContainElement(
+      screen.getByLabelText("Cantidad de personas"),
+    );
+    const dateAndPeople = screen
+      .getByLabelText("Fecha deseada")
+      .closest("[data-field-pair]");
+    expect(dateAndPeople).toHaveClass("grid", "sm:grid-cols-2");
+    expect(dateAndPeople).toContainElement(
+      screen.getByLabelText("Cantidad de personas"),
+    );
+    const phoneAndEmail = screen
+      .getByLabelText(/WhatsApp o teléfono/)
+      .closest("[data-field-pair]");
+    expect(phoneAndEmail).toContainElement(screen.getByLabelText(/Email/));
+  });
+
+  it("marks every field with its own icon so each one is recognised at a glance", () => {
+    render(
+      <PrivateEventPage
+        {...shared}
+        state="form"
+        values={values}
+        errors={{}}
+        minDate="2026-10-28"
+      />,
+    );
+    const labels = [
+      "Nombre y apellido",
+      /WhatsApp o teléfono/,
+      /Email/,
+      "Fecha deseada",
+      /Lugar o tipo de evento/,
+      "Cantidad de personas",
+      /Observaciones/,
+    ];
+    const glyphs = labels.map((label) => {
+      const icon = screen
+        .getByLabelText(label)
+        .parentElement?.querySelector("[data-field-icon]");
+      expect(icon, String(label)).not.toBeNull();
+      return icon?.innerHTML;
+    });
+
+    expect(new Set(glyphs).size).toBe(labels.length);
+  });
+
   it("holds the form in a raised surface card with a full-width submit on phones", () => {
     const { container } = render(
       <PrivateEventPage

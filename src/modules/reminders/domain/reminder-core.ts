@@ -156,7 +156,7 @@ export function buildReminderMessage(
     case "materials":
       return `${greeting} Tus materiales de ${order.workshopName} ya están listos para retirar en Calma Inquieta.`;
     case "intensive":
-      return `${greeting} Te recordamos que ${template.when} tenés reservado tu lugar en el intensivo de ${template.activity}.`;
+      return `${greeting} Te recordamos que ${template.when} tenés reservado tu lugar en el workshop de ${template.activity}.`;
     case "notice":
       return `${greeting} ${template.text}`;
   }

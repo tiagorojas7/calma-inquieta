@@ -29,10 +29,10 @@ describe("buildRequestWhatsAppLink", () => {
     expect(link).toMatch(/^https:\/\/wa\.me\/5493515550100\?text=/);
     expect(messageOf(link)).toBe(
       [
-        "Hola! Quiero reservar mi lugar en un intensivo",
+        "Hola! Ya envié mi solicitud para un workshop desde la web",
         "Solicitud: abcdefgh",
         "Nombre: Ana Pérez",
-        "Intensivo: Intensivo de cerámica",
+        "Workshop: Intensivo de cerámica",
         "Fecha: 14/11/2026",
         "Seña: $ 15.000",
       ].join("\n"),

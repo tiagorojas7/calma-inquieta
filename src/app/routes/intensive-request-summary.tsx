@@ -36,6 +36,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
       request.status === "pending_confirmation"
         ? buildRequestWhatsAppLink(request, profile.whatsapp.display)
         : null,
+    workshopsHref: "/intensivos",
   };
 }
 

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { BotanicalSprig } from "../atoms/botanical-sprig";
-import { Eyebrow } from "../atoms/eyebrow";
+import { EmphasizedLastWord } from "../atoms/emphasis";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
@@ -188,14 +188,15 @@ export function AboutIntro({
   const [main, ...rest] = loops.length > 0 ? [] : images;
   const [lead, ...others] = paragraphs;
   return (
-    <Section bleed tone="canvas" spacing="lg">
+    <Section bleed tone="canvas" spacing="page">
       <div
         className={`grid items-center gap-12 ${main || loops.length > 0 ? "lg:grid-cols-2 lg:gap-16" : ""}`}
       >
         <div className="flex max-w-prose flex-col gap-5">
-          <Reveal className="flex flex-col gap-4">
-            <Eyebrow>{microcopy.aboutEyebrow}</Eyebrow>
-            <Heading level={1}>{heading}</Heading>
+          <Reveal>
+            <Heading level={1}>
+              <EmphasizedLastWord text={heading} />
+            </Heading>
           </Reveal>
           {lead ? (
             <p className="drop-cap text-lead font-medium text-ink-900">

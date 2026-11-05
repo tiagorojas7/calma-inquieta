@@ -328,10 +328,10 @@ describe("intensive detail lifecycle controls", () => {
     render(<Stub initialEntries={["/admin/intensivos/i1"]} />);
     expect(
       await screen.findByText(
-        "El intensivo quedó como borrador porque falta: un profesor asignado, una fecha futura.",
+        "El workshop quedó como borrador porque falta: un profesor asignado, una fecha futura.",
       ),
     ).toBeVisible();
-    expect(screen.getByText("Intensivo creado")).toBeVisible();
+    expect(screen.getByText("Workshop creado")).toBeVisible();
     expect(screen.getByRole("button", { name: "Publicar" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeVisible();
   });

@@ -65,7 +65,7 @@ const INTENT_CODE = {
 } as const;
 
 export function meta() {
-  return [{ title: "Editar intensivo | Panel | Calma Inquieta" }];
+  return [{ title: "Editar workshop | Panel | Calma Inquieta" }];
 }
 
 function formValues(intensive: IntensiveWorkshop) {

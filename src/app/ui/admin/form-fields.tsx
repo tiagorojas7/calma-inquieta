@@ -5,6 +5,8 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import type { IconName } from "../atoms/icons";
+import { FieldIcon, iconPadding } from "../molecules/field-icon";
 
 interface FieldProps {
   label: string;
@@ -72,16 +74,32 @@ function Field({
   );
 }
 
+/** A field's optional leading icon (see `FieldIcon`). */
+interface IconProps {
+  icon?: IconName | undefined;
+}
+
+const withIcon = (icon: IconName | undefined) =>
+  `${controlClasses} ${iconPadding(icon)}`.trim();
+
 export function TextField({
   label,
   hint,
   error,
+  icon,
   ...props
-}: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+}: FieldProps & IconProps & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(control) => (
-        <input type="text" {...props} {...control} className={controlClasses} />
+        <FieldIcon icon={icon}>
+          <input
+            type="text"
+            {...props}
+            {...control}
+            className={withIcon(icon)}
+          />
+        </FieldIcon>
       )}
     </Field>
   );
@@ -91,12 +109,20 @@ export function TextAreaField({
   label,
   hint,
   error,
+  icon,
   ...props
-}: FieldProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: FieldProps & IconProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(control) => (
-        <textarea rows={4} {...props} {...control} className={controlClasses} />
+        <FieldIcon icon={icon} multiline>
+          <textarea
+            rows={4}
+            {...props}
+            {...control}
+            className={withIcon(icon)}
+          />
+        </FieldIcon>
       )}
     </Field>
   );
@@ -106,22 +132,26 @@ export function SelectField({
   label,
   hint,
   error,
+  icon,
   options,
   ...props
 }: FieldProps &
+  IconProps &
   SelectHTMLAttributes<HTMLSelectElement> & {
     options: readonly { value: string; label: string }[];
   }) {
   return (
     <Field label={label} hint={hint} error={error}>
       {(control) => (
-        <select {...props} {...control} className={controlClasses}>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <FieldIcon icon={icon}>
+          <select {...props} {...control} className={withIcon(icon)}>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </FieldIcon>
       )}
     </Field>
   );

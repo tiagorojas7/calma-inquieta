@@ -84,7 +84,7 @@ describe("intensive messages", () => {
         [{ field: "slug", code: "duplicate" }],
         INTENSIVE_FIELD_MESSAGES,
       ),
-    ).toEqual({ slug: "Ese enlace ya lo usa otro intensivo." });
+    ).toEqual({ slug: "Ese enlace ya lo usa otro workshop." });
     expect(
       fieldErrors(
         [{ field: "timeRange", code: "end-before-start" }],
@@ -118,7 +118,7 @@ describe("intensive publish messages", () => {
         "min-seats",
       ]),
     ).toBe(
-      "No se puede guardar este intensivo porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
+      "No se puede guardar este workshop porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
     );
   });
 });

@@ -2,7 +2,7 @@ import type { IssueCode } from "~/modules/_shared";
 
 type StudentFieldName = "fullName" | "email" | "phone" | "policy";
 
-/** Public es-AR (voseo) copy of the intensivo seat request pages. */
+/** Public es-AR (voseo) copy of the workshop seat request pages. */
 export const intensiveRequestCopy = {
   reserveCta: "Reservar mi lugar",
   seo: { title: "Reservar mi lugar" },
@@ -17,12 +17,13 @@ export const intensiveRequestCopy = {
     phoneHint: "Con característica, por ejemplo 351 555 0101.",
     policy: "Leí las condiciones y acepto la política de privacidad.",
     submit: "Enviar solicitud",
-    back: "Volver al intensivo",
+    back: "Volver al workshop",
+    errorsTitle: "Revisá estos datos",
   },
   conditions: {
     label: "Condiciones",
     cancellation:
-      "Si no se alcanza el mínimo de {cantidad} personas, el intensivo se cancela y se devuelve lo que corresponde.",
+      "Si no se alcanza el mínimo de {cantidad} personas, el workshop se cancela y se devuelve lo que corresponde.",
     noShow:
       "Ante una inasistencia rige la política indicada en estas condiciones.",
     noPolicy:
@@ -37,7 +38,7 @@ export const intensiveRequestCopy = {
       cancelled: "Solicitud cancelada",
     },
     fields: {
-      intensivo: "Intensivo",
+      intensivo: "Workshop",
       date: "Fecha",
       time: "Horario",
       deposit: "Seña",
@@ -49,11 +50,13 @@ export const intensiveRequestCopy = {
       "Te pasamos los datos para abonar la seña.",
       "Cuando registramos el pago, tu lugar queda confirmado.",
     ],
-    whatsapp: "Enviar solicitud por WhatsApp",
+    currentStep: "Ahora",
+    whatsapp: "Enviar resumen por WhatsApp",
     confirmed:
       "¡Gracias! Registramos tu seña y tu lugar está confirmado. Te esperamos.",
     cancelled:
-      "Esta solicitud fue cancelada. Si querés reservar de nuevo, escribinos.",
+      "Esta solicitud fue cancelada. Si querés reservar de nuevo, podés hacerlo desde la web.",
+    cancelledCta: "Ver workshops",
   },
 } as const;
 
@@ -81,6 +84,6 @@ export function studentIssueMessage(
 /** Message above the form for a refusal that has no field. */
 export const requestFailureMessages = {
   "duplicate-request":
-    "Ya tenés una solicitud activa para este intensivo. Escribinos por WhatsApp si necesitás cambiarla.",
+    "Ya tenés una solicitud activa para este workshop. Escribinos por WhatsApp si necesitás cambiarla.",
   unavailable: "No pudimos registrar tu solicitud. Probá de nuevo en un rato.",
 } as const;

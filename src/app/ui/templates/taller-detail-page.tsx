@@ -7,6 +7,7 @@ import { BookingSummary } from "../molecules/booking-summary";
 import { Breadcrumb } from "../molecules/breadcrumb";
 import { PausedNotice } from "../molecules/paused-notice";
 import { PriceTag } from "../molecules/price-tag";
+import { PRIMARY_ACTION_ID } from "../molecules/off-screen";
 import { StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
 import { TurnoList } from "../molecules/turno-list";
@@ -69,7 +70,7 @@ export function TallerDetailPage({
   gallery,
 }: TallerDetailProps) {
   return (
-    <article className="flex flex-col gap-8 py-section">
+    <article className="flex flex-col gap-10 pt-page-top pb-section">
       <Breadcrumb {...breadcrumb} />
       <header className="flex flex-col gap-3">
         <Heading level={1}>{name}</Heading>
@@ -88,6 +89,7 @@ export function TallerDetailPage({
             <PausedNotice text={action.text} link={action.link} />
           ) : (
             <ButtonLink
+              id={PRIMARY_ACTION_ID}
               href={action.href}
               variant={action.kind === "enrollment" ? "success" : "primary"}
             >

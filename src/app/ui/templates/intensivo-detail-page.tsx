@@ -2,15 +2,16 @@ import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { Image } from "../atoms/image";
 import { Pill } from "../atoms/pill";
-import { Text } from "../atoms/text";
 import { microcopy } from "../microcopy";
 import { BookingSummary } from "../molecules/booking-summary";
 import { Breadcrumb } from "../molecules/breadcrumb";
 import { ConditionsNote } from "../molecules/conditions-note";
 import { PausedNotice } from "../molecules/paused-notice";
 import { PricingSummary } from "../molecules/pricing-summary";
+import { PRIMARY_ACTION_ID } from "../molecules/off-screen";
 import { StickyAction } from "../molecules/sticky-action";
 import { TeacherBlock } from "../molecules/teacher-block";
+import { TimePill } from "../molecules/time-pill";
 import { GalleryGrid } from "../organisms/gallery-grid";
 
 type DetailImage = {
@@ -24,6 +25,8 @@ type DetailImage = {
 export interface IntensivoDetailProps {
   breadcrumb: { label: string; items: { label: string; href?: string }[] };
   name: string;
+  /** What a workshop is, shown once in the header. */
+  oneDay: string;
   image: DetailImage;
   dateLine: string;
   duration: string;
@@ -54,6 +57,7 @@ export interface IntensivoDetailProps {
 export function IntensivoDetailPage({
   breadcrumb,
   name,
+  oneDay,
   image,
   dateLine,
   duration,
@@ -71,15 +75,18 @@ export function IntensivoDetailPage({
   action,
 }: IntensivoDetailProps) {
   return (
-    <article className="flex flex-col gap-8 py-section">
+    <article className="flex flex-col gap-10 pt-page-top pb-section">
       <Breadcrumb {...breadcrumb} />
       <header className="flex flex-col gap-3">
         <Heading level={1}>{name}</Heading>
-        <Text>{`${dateLine} · ${timeRange} · ${duration}`}</Text>
-        <div className="flex flex-wrap gap-2">
+        <p className="font-display text-xl italic text-ink-900">{dateLine}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <TimePill>{timeRange}</TimePill>
+          <TimePill>{duration}</TimePill>
           {materialsBadge ? <Pill>{materialsBadge}</Pill> : null}
           {seats ? <Pill>{seats}</Pill> : null}
         </div>
+        <p className="max-w-prose text-ink-700">{oneDay}</p>
       </header>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <BookingSummary>
@@ -92,6 +99,7 @@ export function IntensivoDetailPage({
             <PausedNotice text={action.text} link={action.link} />
           ) : (
             <ButtonLink
+              id={PRIMARY_ACTION_ID}
               href={action.href}
               variant={action.kind === "reserve" ? "success" : "primary"}
             >

@@ -115,7 +115,7 @@ describe("Inicio route", () => {
         .getByRole("heading", { name: "Talleres mensuales" })
         .closest("section");
       const intensivos = screen
-        .getByRole("heading", { name: "Próximos intensivos" })
+        .getByRole("heading", { name: "Próximos workshops" })
         .closest("section");
       expect(monthly).not.toBeNull();
       expect(intensivos).not.toBeNull();
@@ -148,6 +148,25 @@ describe("Inicio route", () => {
       await expectNoAxeViolations(container, { page: true });
     },
   );
+
+  it("signs no section with a kicker above its heading", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/",
+        Component: () => (
+          <main>
+            <HomeRoute />
+          </main>
+        ),
+        loader: () => fixture,
+      },
+    ]);
+    const { container } = render(<Stub initialEntries={["/"]} />);
+    await screen.findAllByRole("heading", { level: 1 });
+
+    expect(container.querySelector("[data-eyebrow]")).toBeNull();
+    expect(screen.queryByText("Encuentros de un día")).not.toBeInTheDocument();
+  });
 
   it("keeps the spaces around the italic accent in the hero title", async () => {
     const real = {
@@ -243,11 +262,19 @@ describe("Inicio route", () => {
     expect(monthly).toHaveTextContent("Lunes, 10:00 a 12:00 h");
     expect(monthly?.querySelector('a[href="/talleres/a"]')).toBeTruthy();
     expect(intensivos).toHaveTextContent("Intensivo de torno");
+    // The band says what these events are, from the catalog content.
+    expect(intensivos).toHaveTextContent("Encuentro de un solo día");
     expect(
       intensivos?.querySelector('a[href="/intensivos/intensivo-demo"]'),
     ).toBeTruthy();
     expect(container.textContent).not.toMatch(/\$\s?\d|58\.000/u);
-    for (const section of [monthly, intensivos]) {
+    // Hours come from the catalog: the sections and the hero's next-intensivo
+    // strip carry them; nothing else on Inicio may.
+    const heroNext = container.querySelector(
+      '.hero-copy a[href^="/intensivos/"]',
+    );
+    expect(heroNext).toHaveTextContent("Intensivo de torno");
+    for (const section of [monthly, intensivos, heroNext]) {
       section?.remove();
     }
     expect(container.textContent).not.toMatch(/\d{1,2}:\d{2}/u);
@@ -335,7 +362,7 @@ describe("Inicio route", () => {
       }
     });
 
-    it("the contact band photo sits in the clay band next to the WhatsApp call to action", async () => {
+    it("the contact band photo sits in the band next to calls to action that book on the site, not on WhatsApp", async () => {
       await renderFixture();
       const band = screen
         .getByRole("heading", { name: "Hablemos" })
@@ -344,9 +371,9 @@ describe("Inicio route", () => {
       expect(
         band?.querySelector('img[alt="Manos terminando un espejo de paja"]'),
       ).not.toBeNull();
-      expect(
-        band?.querySelector('a[href="https://wa.me/5493510000000"]'),
-      ).not.toBeNull();
+      expect(band?.querySelector('a[href="/talleres"]')).not.toBeNull();
+      expect(band?.querySelector('a[href="/intensivos"]')).not.toBeNull();
+      expect(band?.querySelector('a[href*="wa.me"]')).toBeNull();
     });
 
     it("the catalog photo pair sits in the catalog band, with a call to action to book", async () => {
@@ -539,11 +566,11 @@ describe("Inicio bands and motifs", () => {
         .closest("section[data-bleed='true']");
 
     const monthlyBand = bandOf("Talleres mensuales");
-    const intensivosBand = bandOf("Próximos intensivos");
+    const intensivosBand = bandOf("Próximos workshops");
 
     expect(intensivosBand).not.toBe(monthlyBand);
     expect(intensivosBand).toHaveAttribute("data-tone", "white");
-    expect(intensivosBand).toHaveTextContent("Encuentros de un día");
+    expect(intensivosBand).not.toHaveTextContent("Encuentros de un día");
   });
 
   it("keeps the booking lead but drops the activity sections when the catalog read fails", async () => {
@@ -621,8 +648,10 @@ describe("Inicio bands and motifs", () => {
     });
     const withMotifs = snapshot(container);
     const bare = container.cloneNode(true) as HTMLElement;
+    // Motifs are decoration around the content; a glyph inside a link is part
+    // of the link, so it stays.
     for (const motif of bare.querySelectorAll("[aria-hidden='true']")) {
-      motif.remove();
+      if (!motif.closest("a")) motif.remove();
     }
 
     expect(snapshot(bare)).toEqual(withMotifs);

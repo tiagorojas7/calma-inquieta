@@ -8,7 +8,7 @@ import { FaqList } from "./faq-list";
 import { ValuesRow } from "./values-row";
 
 describe("about organisms", () => {
-  it("renders the values as coloured icon discs in a full-bleed sand band", () => {
+  it("marks each value with a calm sage chip in a full-bleed sand band", () => {
     const { container } = render(
       <ValuesRow
         heading="Valores"
@@ -21,36 +21,38 @@ describe("about organisms", () => {
     const band = container.querySelector("section");
     expect(band).toHaveAttribute("data-tone", "sand");
     expect(band).toHaveAttribute("data-bleed", "true");
-    const discs = [...container.querySelectorAll("[data-disc]")];
-    expect(discs.map((disc) => disc.getAttribute("data-disc"))).toEqual([
-      "sand",
-      "clay",
-      "olive",
-    ]);
-    for (const disc of discs) {
-      expect(disc).toHaveClass("rounded-full");
-      expect(disc.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    const marks = [...container.querySelectorAll("[data-value-mark]")];
+    expect(marks).toHaveLength(3);
+    for (const mark of marks) {
+      expect(mark).toHaveClass("bg-sage-200", "text-olive-800");
+      expect(mark.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     }
+    expect(container.querySelector("[data-disc]")).toBeNull();
   });
 
-  it("lifts each value on a white card with a soft shadow", () => {
+  it("separates the values with a hairline instead of a card", () => {
     render(<ValuesRow heading="Valores" items={valueItemFixtures} />);
     for (const item of screen.getAllByRole("listitem")) {
-      const card = item.firstElementChild as HTMLElement;
-      expect(card).toHaveClass("card-hover", "bg-white", "shadow-card");
-      expect(card.querySelector("[data-disc]")).not.toBeNull();
+      const row = item.firstElementChild as HTMLElement;
+      expect(row).toHaveClass("border-t", "border-sand-300");
+      expect(row).not.toHaveClass("card-hover");
+      expect(row).not.toHaveClass("bg-white");
+      expect(row).not.toHaveClass("shadow-card");
     }
   });
 
-  it("sets each FAQ question on a rounded card that deepens when open", () => {
+  it("sets each FAQ question on a hairline row with a sage toggle", () => {
     const { container } = render(
       <FaqItem question="¿Cómo?" answer="Así se hace." />,
     );
     const details = container.querySelector("details");
-    expect(details).toHaveClass(
-      "rounded-md",
-      "shadow-card",
-      "open:shadow-lift",
+    expect(details).toHaveClass("disclosure", "border-b", "border-sand-300");
+    expect(details).not.toHaveClass("shadow-card");
+    expect(details?.querySelector("summary")?.className).toContain(
+      "after:bg-sage-200",
+    );
+    expect(details?.querySelector("summary")?.className).not.toContain(
+      "after:bg-clay-600",
     );
   });
 

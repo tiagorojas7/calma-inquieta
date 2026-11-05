@@ -86,10 +86,25 @@ describe("HeroSection structure", () => {
     ).toBeTruthy();
   });
 
-  it("keeps eyebrow, subtitle, bajada and the two CTAs", () => {
+  it("opens on the heading and names the place in a location line below the CTAs, never as a kicker", () => {
+    const { container } = renderHero();
+    const copy = container.querySelector(".hero-copy");
+
+    expect(copy?.firstElementChild).toBe(
+      screen.getByRole("heading", { level: 1 }),
+    );
+    expect(container.querySelector("[data-eyebrow]")).toBeNull();
+    const place = screen.getByText("Calma Inquieta");
+    expect(place.closest("[data-hero-location]")).not.toBeNull();
+    const cta = screen.getByRole("link", { name: "Ver workshops" });
+    expect(
+      cta.compareDocumentPosition(place) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("keeps subtitle, bajada and the two CTAs", () => {
     renderHero();
 
-    expect(screen.getByText("Calma Inquieta")).toBeInTheDocument();
     expect(
       screen.getByText("Un espacio para encontrarnos."),
     ).toBeInTheDocument();
@@ -101,9 +116,10 @@ describe("HeroSection structure", () => {
       "href",
       "/talleres",
     );
-    expect(
-      screen.getByRole("link", { name: "Ver intensivos" }),
-    ).toHaveAttribute("href", "/intensivos");
+    expect(screen.getByRole("link", { name: "Ver workshops" })).toHaveAttribute(
+      "href",
+      "/intensivos",
+    );
   });
 
   it("contains the narrow hero locally with a ratio-driven collage board", () => {
@@ -256,7 +272,7 @@ describe("HeroSection loop tile", () => {
     expect(element?.closest(".collage-loop")).not.toBeNull();
     for (const text of [
       screen.getByRole("heading", { level: 1 }),
-      screen.getByRole("link", { name: "Ver intensivos" }),
+      screen.getByRole("link", { name: "Ver workshops" }),
     ]) {
       expect(
         text.compareDocumentPosition(element as Element) &

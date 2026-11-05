@@ -105,6 +105,33 @@ describe("ContactSection", () => {
     );
   });
 
+  it("puts the address and the directions on a glass card that rises over the photo", () => {
+    const { container } = setup();
+    const card = screen.getByText("Calle 1").closest(".glass");
+    const bleed = container.querySelector("[data-photo-bleed]");
+
+    expect(card).not.toBeNull();
+    expect(card).toHaveClass("-mt-16", "rounded-md", "glass-dense");
+    expect(card).toContainElement(
+      screen.getByRole("link", { name: /Cómo llegar/ }),
+    );
+    // Text sits on the glass, never on the photo itself.
+    expect(bleed).not.toContainElement(card as HTMLElement);
+    // The address lives on the card only, not twice.
+    expect(screen.getAllByText("Calle 1")).toHaveLength(1);
+  });
+
+  it("reads the photo card after Ver talleres", () => {
+    setup();
+    const talleres = screen.getByRole("link", { name: "Ver talleres" });
+    const directions = screen.getByRole("link", { name: /Cómo llegar/ });
+
+    expect(
+      talleres.compareDocumentPosition(directions) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("renders the details and the directions link without a photo", () => {
     const { container } = setup(false);
     expect(container.querySelector("img")).toBeNull();

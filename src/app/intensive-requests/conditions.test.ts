@@ -12,7 +12,7 @@ describe("requestConditions", () => {
       label: "Condiciones",
       policyText: "Seña no reembolsable ante inasistencia.",
       minSeats:
-        "Si no se alcanza el mínimo de 4 personas, el intensivo se cancela y se devuelve lo que corresponde. Ante una inasistencia rige la política indicada en estas condiciones.",
+        "Si no se alcanza el mínimo de 4 personas, el workshop se cancela y se devuelve lo que corresponde. Ante una inasistencia rige la política indicada en estas condiciones.",
     });
   });
 

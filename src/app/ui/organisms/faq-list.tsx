@@ -23,7 +23,7 @@ export function FaqList({
         <Reveal>
           <Heading level={2}>{heading}</Heading>
         </Reveal>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col border-t border-sand-300">
           {items.map(({ id, question, answer }, at) => (
             <Reveal key={id} index={at}>
               <FaqItem question={question} answer={answer} />

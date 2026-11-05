@@ -49,6 +49,14 @@ describe("AboutIntro", () => {
     await expectNoAxeViolations(container, { page: true });
   });
 
+  it("sets the last word of the title in the accent italic", () => {
+    render(<AboutIntro {...props} />);
+    const heading = screen.getByRole("heading", { level: 1 });
+
+    expect(heading).toHaveTextContent("Quiénes somos");
+    expect(heading.querySelector("em")).toHaveTextContent("somos");
+  });
+
   it("sets the pull-quote in the script face", () => {
     render(<AboutIntro {...props} />);
     const quote = screen.getByText(

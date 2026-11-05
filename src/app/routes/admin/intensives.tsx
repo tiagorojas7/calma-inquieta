@@ -13,7 +13,7 @@ import type { Route } from "./+types/intensives";
 const FEEDBACK = ["created", "saved", "deleted"] as const;
 
 export function meta() {
-  return [{ title: "Intensivos | Panel | Calma Inquieta" }];
+  return [{ title: "Workshops | Panel | Calma Inquieta" }];
 }
 
 function formatDateTime(eventDate: string, startsAt: string): string {

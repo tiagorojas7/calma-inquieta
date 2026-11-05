@@ -61,7 +61,7 @@ describe("intensives guided flow", () => {
       "href",
       "/admin",
     );
-    const list = screen.getByRole("list", { name: "Intensivos" });
+    const list = screen.getByRole("list", { name: "Workshops" });
     expect(within(list).getByText("12 dic 2026, 10:00")).toBeVisible();
     expect(within(list).getByText("Lugares: 12")).toBeVisible();
     await expectNoAxeViolations(container);
@@ -78,9 +78,9 @@ describe("intensives guided flow", () => {
     ]);
     render(<Stub initialEntries={["/admin/intensivos/nuevo"]} />);
     expect(
-      await screen.findByRole("link", { name: "Volver a intensivos" }),
+      await screen.findByRole("link", { name: "Volver a workshops" }),
     ).toHaveAttribute("href", "/admin/intensivos");
-    expect(crumbs().getByRole("link", { name: "Intensivos" })).toHaveAttribute(
+    expect(crumbs().getByRole("link", { name: "Workshops" })).toHaveAttribute(
       "href",
       "/admin/intensivos",
     );
@@ -104,13 +104,13 @@ describe("intensives guided flow", () => {
     ]);
     render(<Stub initialEntries={["/admin/intensivos/i1"]} />);
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Intensivo publicado",
+      "Workshop publicado",
     );
     expect(
       screen.getByRole("heading", { level: 1, name: "Cerámica de sábado" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Volver a intensivos" }),
+      screen.getByRole("link", { name: "Volver a workshops" }),
     ).toHaveAttribute("href", "/admin/intensivos");
     expect(crumbs().getByText("Cerámica de sábado")).toHaveAttribute(
       "aria-current",

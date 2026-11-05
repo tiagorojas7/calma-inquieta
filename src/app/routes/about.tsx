@@ -2,7 +2,6 @@ import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { buildPageMeta } from "~/app/seo/meta";
 import { Heading } from "~/app/ui/atoms/heading";
-import { microcopy } from "~/app/ui/microcopy";
 import { VideoFacade } from "~/app/ui/molecules/video-facade";
 import { ContactBand } from "~/app/ui/organisms/contact-band";
 import { AboutIntro } from "~/app/ui/organisms/about-intro";
@@ -104,20 +103,10 @@ function AboutPage({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
       )}
       <FaqList heading={data.sectionHeadings.faq} items={data.faq} />
       <ContactBand
-        eyebrow={microcopy.closingBandEyebrow}
         heading={data.cta.heading}
         body={data.cta.body}
         primary={{ href: "/talleres", label: "Ver talleres" }}
-        secondary={
-          data.cta.whatsappHref
-            ? [
-                {
-                  href: data.cta.whatsappHref,
-                  label: "Escribinos por WhatsApp",
-                },
-              ]
-            : []
-        }
+        secondary={[{ href: "/intensivos", label: "Ver workshops" }]}
       />
     </>
   );

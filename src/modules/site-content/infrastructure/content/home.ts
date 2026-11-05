@@ -10,7 +10,7 @@ export const homeContent = {
   seo: {
     title: "Calma Inquieta | Multiespacio de arte en Argüello, Córdoba",
     description:
-      "Talleres de encordado y cestería, talleres intensivos y eventos privados en Argüello, Córdoba. Equilibrio entre serenidad y movimiento.",
+      "Talleres de encordado y cestería, workshops y eventos privados en Argüello, Córdoba. Equilibrio entre serenidad y movimiento.",
   },
   hero: {
     eyebrow: "Multiespacio de arte en Argüello",
@@ -20,9 +20,9 @@ export const homeContent = {
       trail: "y un poquito de inquietud",
     },
     subtitle:
-      "Talleres de encordado y cestería, talleres intensivos y eventos privados. Un lugar para hacer con las manos y compartir.",
+      "Talleres de encordado y cestería, workshops y eventos privados. Un lugar para hacer con las manos y compartir.",
     primaryCtaLabel: "Ver talleres",
-    secondaryCtaLabel: "Ver intensivos",
+    secondaryCtaLabel: "Ver workshops",
     backdrop: imageRef("home-hero-backdrop"),
     collage: [
       imageRef("home-hero-desktop"),
@@ -44,7 +44,7 @@ export const homeContent = {
     {
       id: "home-claim-materials",
       approved: false,
-      label: "Talleres intensivos con materiales incluidos",
+      label: "Workshops con materiales incluidos",
       icon: "leaf",
       appliesTo: "intensivos",
     },
@@ -59,10 +59,10 @@ export const homeContent = {
   monthly: {
     heading: "Talleres mensuales",
     emptyMessage:
-      "Estamos preparando la información de los talleres mensuales. Escribinos y te contamos cómo sumarte.",
+      "Estamos preparando la información de los talleres mensuales. Pronto vas a poder inscribirte desde acá.",
   },
   intensivos: {
-    heading: "Próximos intensivos",
+    heading: "Próximos workshops",
     emptyMessage:
       "Todavía no hay fechas publicadas. Escribinos o seguinos en Instagram para enterarte primero.",
   },
@@ -84,13 +84,13 @@ export const homeContent = {
   },
   catalogBand: {
     heading: "Tu lugar para crear con las manos",
-    body: "Sumate a un taller mensual o a un intensivo y llevate algo hecho por vos. Escribinos y te guardamos un lugar.",
+    body: "Sumate a un taller mensual o a un workshop y llevate algo hecho por vos. Elegí el tuyo y reservá tu lugar desde la web.",
     primary: imageRef("home-catalog-weaving"),
     secondary: imageRef("home-catalog-looms"),
   },
   contactBand: {
     heading: "¿Querés sumarte?",
-    body: "Escribinos por WhatsApp o seguinos en Instagram y te contamos qué hay para vos.",
+    body: "Elegí tu taller o tu workshop y reservá tu lugar desde la web.",
     image: imageRef("home-band-hands"),
   },
 } as const satisfies HomePageContent;

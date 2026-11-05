@@ -143,14 +143,14 @@ describe("StatisticsScreen", () => {
   it("shows the main table from lg with the spreadsheet columns and a bold totals row", () => {
     render(<StatisticsScreen {...props} />);
 
-    const table = screen.getByRole("table", { name: "Por taller e intensivo" });
+    const table = screen.getByRole("table", { name: "Por taller y workshop" });
     expect(table.closest(".hidden.lg\\:block")).not.toBeNull();
     expect(
       within(table)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
     ).toEqual([
-      "Taller o intensivo",
+      "Taller o workshop",
       "Inscriptas",
       "Lugares",
       "Cobrado",
@@ -169,7 +169,7 @@ describe("StatisticsScreen", () => {
   it("shows the same rows as cards below lg", () => {
     render(<StatisticsScreen {...props} />);
 
-    const list = screen.getByRole("list", { name: "Por taller e intensivo" });
+    const list = screen.getByRole("list", { name: "Por taller y workshop" });
     expect(list.closest(".lg\\:hidden")).not.toBeNull();
     const cards = within(list).getAllByRole("listitem");
     expect(cards).toHaveLength(2);
@@ -201,7 +201,7 @@ describe("StatisticsScreen", () => {
     render(<StatisticsScreen {...props} activities={[]} teachers={[]} />);
 
     expect(
-      screen.queryByRole("table", { name: "Por taller e intensivo" }),
+      screen.queryByRole("table", { name: "Por taller y workshop" }),
     ).toBeNull();
     expect(
       screen.getAllByText("Todavía no hay datos para este mes").length,

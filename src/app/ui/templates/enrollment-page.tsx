@@ -16,7 +16,10 @@ export type EnrollmentPageProps =
       state: "open";
       offer: {
         workshopName: string;
+        /** The raw key, posted back with the form. */
         period: string;
+        /** The month in words, shown to the student. */
+        periodLabel: string;
         fee: string;
         materialsRequired: boolean;
         turnos: readonly { id: string; label: string }[];
@@ -41,7 +44,7 @@ export type EnrollmentPageProps =
 export function EnrollmentPage(props: EnrollmentPageProps) {
   if (props.state === "paused") {
     return (
-      <main className="flex flex-col gap-4 py-section">
+      <main className="flex flex-col gap-6 pt-page-top pb-section">
         <Heading level={1}>Inscripciones pausadas</Heading>
         <Text>Por ahora no estamos tomando nuevas inscripciones.</Text>
       </main>
@@ -69,7 +72,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     ] as const
   ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
+    <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
       {backHref ? (
         <ButtonLink href={backHref} variant="tertiary" className="self-start">
           <Icon name="chevron-left" aria-hidden="true" className="size-5" />
@@ -79,8 +82,10 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
       <StepIndicator steps={steps} current={1} />
       <header className="flex flex-col gap-2">
         <Heading level={1}>{offer.workshopName}</Heading>
-        <Text>{offer.period}</Text>
-        <Text className="font-semibold text-ink-900">{offer.fee}</Text>
+        <p className="font-display text-xl italic text-ink-900 first-letter:uppercase">
+          {offer.periodLabel}
+        </p>
+        <Text className="font-semibold tabular-nums">Cuota: {offer.fee}</Text>
         {offer.materialsRequired ? (
           <Text tone="accent">Materiales requeridos</Text>
         ) : null}
@@ -101,7 +106,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
           ) : null}
           <ErrorSummary title="Revisá estos datos" errors={summary} />
           <form
-            className="card-accent flex flex-col gap-5 rounded-md bg-surface p-5 pt-8 shadow-raised sm:p-8 sm:pt-10"
+            className="flex flex-col gap-5 rounded-md bg-surface p-5 shadow-raised sm:p-8"
             method="post"
           >
             <input name="period" type="hidden" value={offer.period} />
@@ -119,6 +124,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="fullName"
               label="Nombre completo"
+              icon="user"
               name="fullName"
               autoComplete="name"
               defaultValue={values.fullName}
@@ -128,6 +134,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="email"
               label="Email"
+              icon="mail"
               name="email"
               type="email"
               autoComplete="email"
@@ -138,6 +145,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicTextField
               id="phone"
               label="Teléfono argentino"
+              icon="phone"
               hint="Con código de área, por ejemplo 351 555 0101."
               name="phone"
               type="tel"
@@ -150,6 +158,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             <PublicSelectField
               id="turnoId"
               label="Turno"
+              icon="clock"
               name="turnoId"
               defaultValue={values.turnoId}
               options={[

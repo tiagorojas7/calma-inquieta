@@ -42,7 +42,7 @@ describe("ErrorPage", () => {
         screen.getByRole("link", { name: "Ver talleres" }),
       ).toHaveAttribute("href", "/talleres");
       expect(
-        screen.getByRole("link", { name: "Ver intensivos" }),
+        screen.getByRole("link", { name: "Ver workshops" }),
       ).toHaveAttribute("href", "/intensivos");
       expect(screen.getByRole("link", { name: "Contacto" })).toHaveAttribute(
         "href",
@@ -68,6 +68,20 @@ describe("ErrorPage", () => {
     renderError(404);
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
   });
+
+  it.each([404, 500])(
+    "accents the title and fills the width with the way home on a phone for %s",
+    (status) => {
+      renderError(status);
+
+      expect(
+        screen.getByRole("heading", { level: 1 }).querySelector("em"),
+      ).not.toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Volver al inicio" }),
+      ).toHaveClass("w-full", "sm:w-fit");
+    },
+  );
 
   it("keeps the decorative art out of the accessibility tree", () => {
     const { container } = renderError(404);

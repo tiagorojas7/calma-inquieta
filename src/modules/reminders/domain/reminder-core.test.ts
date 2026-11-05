@@ -120,7 +120,7 @@ describe("buildReminderMessage", () => {
         ana,
       ),
     ).toBe(
-      "Hola, Ana. Te recordamos que este sábado tenés reservado tu lugar en el intensivo de Acuarela.",
+      "Hola, Ana. Te recordamos que este sábado tenés reservado tu lugar en el workshop de Acuarela.",
     );
   });
   it("prefixes a free notice with the greeting", () => {

@@ -46,6 +46,10 @@ describe("formatTimeRange", () => {
     expect(formatTimeRange("10:00", "12:00")).toBe("10:00 a 12:00 h");
     expect(formatTimeRange("18:30", "20:15")).toBe("18:30 a 20:15 h");
   });
+
+  it("drops the seconds the database adds to a stored time", () => {
+    expect(formatTimeRange("14:00:00", "17:00:00")).toBe("14:00 a 17:00 h");
+  });
 });
 
 describe("formatDuration", () => {

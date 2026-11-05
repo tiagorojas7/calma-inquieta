@@ -12,6 +12,7 @@ const headingClasses: Record<string, string> = {
 };
 const textClasses: Record<string, string> = {
   default: "text-base text-ink-700",
+  strong: "text-base text-ink-900",
   muted: "text-base text-ink-600",
   accent: "text-base text-clay-800",
 };

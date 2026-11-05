@@ -54,7 +54,7 @@ describe("IntensiveRequestsScreen", () => {
     ])
       expect(screen.getByRole("heading", { name: title })).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Volver al intensivo" }),
+      screen.getByRole("link", { name: "Volver al workshop" }),
     ).toHaveAttribute(
       "href",
       "/admin/intensivos/0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01",
@@ -114,7 +114,7 @@ describe("IntensiveRequestsScreen", () => {
           requestId: "pending-1",
           intent: "confirm",
           formError: undefined,
-          errors: { amount: "Ingresá la seña completa del intensivo." },
+          errors: { amount: "Ingresá la seña completa del workshop." },
           values: { amount: "100", paidOn: "2026-10-27", note: "" },
         }}
       />,
@@ -153,7 +153,7 @@ describe("IntensiveRequestsScreen", () => {
     const crumbs = within(
       screen.getByRole("navigation", { name: "Migas de pan" }),
     );
-    expect(crumbs.getByRole("link", { name: "Intensivos" })).toHaveAttribute(
+    expect(crumbs.getByRole("link", { name: "Workshops" })).toHaveAttribute(
       "href",
       "/admin/intensivos",
     );

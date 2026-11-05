@@ -62,6 +62,10 @@
   /* Space (§3.3). */
   --spacing: 0.25rem;
   --spacing-section: clamp(3rem, 2rem + 4vw, 6rem);
+  /* The first block under the navbar: a title sits close to it (24 px on
+     phones, 48 px on desktop), while the space below a page keeps the
+     section rhythm. */
+  --spacing-page-top: clamp(1.5rem, 1rem + 2vw, 3rem);
   --spacing-module: clamp(1.5rem, 1rem + 2vw, 2.5rem);
   --scroll-offset-header: 5rem;
   --spacing-gutter: clamp(1.25rem, 0.75rem + 2vw, 2rem);

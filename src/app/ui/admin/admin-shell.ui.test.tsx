@@ -8,7 +8,7 @@ const MAIN = [
   ["Inicio", "/admin"],
   ["Inscripciones", "/admin/inscripciones"],
   ["Talleres", "/admin/talleres"],
-  ["Intensivos", "/admin/intensivos"],
+  ["Workshops", "/admin/intensivos"],
   ["Materiales", "/admin/inscripciones/materiales"],
   ["Asistencia", "/admin/asistencia"],
 ];

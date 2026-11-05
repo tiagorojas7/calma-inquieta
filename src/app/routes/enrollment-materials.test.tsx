@@ -71,6 +71,8 @@ describe("enrollment materials loader", () => {
     });
     expect(result).toMatchObject({
       offer: {
+        period: "2026-11",
+        periodLabel: "noviembre 2026",
         fee: "$ 58.000",
         feeCentavos: 5_800_000,
         materials: [

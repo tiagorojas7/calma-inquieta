@@ -3,6 +3,11 @@ import { Button, ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
 import { Text } from "../atoms/text";
+import {
+  PRIMARY_ACTION_ID,
+  stickyBarClasses,
+  usePrimaryActionOffScreen,
+} from "../molecules/off-screen";
 import { QuantityStepper } from "../molecules/quantity-stepper";
 import {
   MAX_QUANTITY,
@@ -69,6 +74,31 @@ function groupByCategory(materials: EnrollmentMaterialsPageProps["materials"]) {
   return [...groups.values()];
 }
 
+/**
+ * Mobile copy of the summary's submit: the list is long, so the total and
+ * Continuar stay in reach while the real one is off screen. Hidden from
+ * assistive technology and the keyboard; the summary keeps the real one.
+ */
+function StickyContinue({ total, label }: { total: string; label: string }) {
+  const shown = usePrimaryActionOffScreen();
+  return (
+    <div
+      data-sticky-action
+      data-shown={shown}
+      aria-hidden="true"
+      className={`glass sticky bottom-0 z-20 -mx-4 flex items-center gap-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-ink-900 lg:hidden ${stickyBarClasses(shown)}`}
+    >
+      <span className="flex flex-col">
+        <span className="text-sm">Total</span>
+        <strong className="font-display tabular-nums">{total}</strong>
+      </span>
+      <Button type="submit" tabIndex={-1} className="flex-1">
+        {label}
+      </Button>
+    </div>
+  );
+}
+
 /** Structural materials selector; the delivery route owns draft persistence and pricing. */
 export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -90,14 +120,16 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   const header = (
     <header className="flex flex-col gap-2">
       <Heading level={1}>{props.workshopName}</Heading>
-      <Text>{props.period}</Text>
-      <Text>Cuota: {props.fee}</Text>
+      <p className="font-display text-xl italic text-ink-900 first-letter:uppercase">
+        {props.period}
+      </p>
+      <Text className="font-semibold tabular-nums">Cuota: {props.fee}</Text>
       <Text tone="accent">{materialsLabel}</Text>
     </header>
   );
   if (props.draftState === "loading") {
     return (
-      <main className="flex flex-col gap-6 py-section">
+      <main className="flex flex-col gap-8 pt-page-top pb-section">
         {header}
         <Text>Cargando tu inscripción…</Text>
       </main>
@@ -105,7 +137,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   }
   if (props.draftState === "missing") {
     return (
-      <main className="flex flex-col gap-6 py-section">
+      <main className="flex flex-col gap-8 pt-page-top pb-section">
         {header}
         <Text>Volvé a completar tus datos para continuar.</Text>
         <ButtonLink href={props.recoveryHref ?? "/talleres"}>
@@ -116,7 +148,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
   }
 
   return (
-    <main className="flex flex-col gap-6 py-section">
+    <main className="flex flex-col gap-8 pt-page-top pb-section">
       {props.recoveryHref ? (
         <ButtonLink
           href={props.recoveryHref}
@@ -134,14 +166,17 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           {props.formError}
         </p>
       ) : null}
-      <form className="grid gap-6 lg:grid-cols-[1fr_20rem]" method="post">
+      <form
+        className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+        method="post"
+      >
         <input name="student" type="hidden" value={props.studentJson ?? ""} />
         <div className="flex flex-col gap-6">
           {groups.length > 1 && hydrated ? (
             <div
               role="group"
               aria-label="Filtrar por categoría"
-              className="flex flex-wrap gap-2"
+              className="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
             >
               {[ALL, ...groups.map((group) => group.category)].map(
                 (category) => (
@@ -152,7 +187,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                     onClick={() => {
                       setFilter(category);
                     }}
-                    className={`inline-flex min-h-11 items-center rounded-pill border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${filter === category ? "border-clay-600 bg-clay-600 text-white" : "border-clay-600 text-clay-800 hover:bg-sand-200"}`}
+                    className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-pill border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${filter === category ? "border-clay-600 bg-clay-600 text-white" : "border-clay-600 text-clay-800 hover:bg-sand-200"}`}
                   >
                     {category === ALL ? "Todas" : category}
                   </button>
@@ -217,24 +252,7 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                 </div>
               </section>
             ))}
-          {/* Mobile copy of the summary's submit: the list is long, so the
-              total and Continuar stay in reach. Hidden from assistive
-              technology and the keyboard; the summary keeps the real one. */}
-          <div
-            data-sticky-action
-            aria-hidden="true"
-            className="sticky bottom-0 z-20 -mx-4 flex items-center gap-4 bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-raised lg:hidden"
-          >
-            <span className="flex flex-col">
-              <span className="text-sm">Total</span>
-              <strong className="font-display tabular-nums">
-                {props.total}
-              </strong>
-            </span>
-            <Button type="submit" tabIndex={-1} className="flex-1">
-              {continueLabel}
-            </Button>
-          </div>
+          <StickyContinue total={props.total} label={continueLabel} />
         </div>
 
         <aside
@@ -258,12 +276,13 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
                   />
                   <button
                     type="button"
+                    aria-label={`Quitar ${line.label}`}
                     className="inline-flex min-h-11 items-center text-berry-600 underline underline-offset-4 hover:text-berry-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
                     onClick={() => {
                       props.onRemove(line.variantId);
                     }}
                   >
-                    {`Quitar ${line.label}`}
+                    Quitar
                   </button>
                 </div>
               </li>
@@ -289,7 +308,9 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
               })),
             )}
           />
-          <Button type="submit">{continueLabel}</Button>
+          <Button id={PRIMARY_ACTION_ID} type="submit">
+            {continueLabel}
+          </Button>
         </aside>
       </form>
     </main>

@@ -1,9 +1,9 @@
 import { BotanicalSprig } from "../atoms/botanical-sprig";
 import { ButtonLink } from "../atoms/button";
 import { Butterfly } from "../atoms/butterfly";
-import { Eyebrow } from "../atoms/eyebrow";
-import { Frame } from "../atoms/frame";
+import { EmphasizedLastWord } from "../atoms/emphasis";
 import { Heading } from "../atoms/heading";
+import { Icon } from "../atoms/icon";
 import { Image } from "../atoms/image";
 import { Text } from "../atoms/text";
 import { Reveal } from "./reveal";
@@ -17,32 +17,36 @@ type BandPhoto = {
   srcSet?: string;
 };
 
-type BandAction = { href: string; label: string };
+type BandAction = {
+  href: string;
+  label: string;
+  /** Leading glyph of the button; omitted for plain navigation. */
+  icon?: "whatsapp" | "instagram";
+};
 
-const PHOTO_SIZES = "(min-width: 64rem) 20rem, 64vw";
-
-const lightFocus =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canvas";
+const PHOTO_SIZES = "100vw";
 
 /**
- * Shared closing call to action (Inicio and Quiénes somos). A chocolate band
- * with a warm terracotta glow, a hairline stitched frame, the big butterfly
- * resting at one corner and a sprig climbing from the foot. The heading is
- * set at display size, the primary action is a cream pill with a drawn arrow
- * and the secondary actions are cream text links. An optional 4:5 photo sits
- * in a white frame beside the invitation. All pairs are AA on cocoa-900
- * (canvas 13.7, sand-200 10.5, apricot-300 8.2).
+ * Shared closing call to action (Inicio and Quiénes somos). The photo, when
+ * there is one, fills the whole band and the invitation sits on a liquid-glass
+ * panel over it, so no text ever sits on the photo itself and the photo stays
+ * the hero of the band. The panel is a 78 % canvas tint, so ink-900 text keeps
+ * about 9:1 over any part of the photo. Without a photo the panel sits on the
+ * flat cocoa band and uses the dense sheet, because the regular one leaves the
+ * clay-800 secondary label at 4.45:1 there. Phones get one column: the heading, the invitation and
+ * two full-width solid buttons, each with its glyph, with the photo showing
+ * above the panel. The butterfly and the sprig only appear from lg, beside the
+ * panel. A half-opaque solid cocoa veil (35 %, 55 % on hover or focus) deepens
+ * the photo so the panel stands out. The photo settles into place on its own
+ * scroll timeline (motifs.css).
  */
 export function ContactBand({
-  eyebrow,
   heading,
   body,
   primary,
   secondary = [],
   image,
 }: {
-  /** Short decorative signpost above the heading. */
-  eyebrow?: string;
   heading: string;
   body: string;
   primary: BandAction;
@@ -53,64 +57,82 @@ export function ContactBand({
     <Section
       bleed
       tone="cocoa"
-      spacing="lg"
-      grain
-      className="closing-band band-glow band-frame overflow-x-clip"
+      spacing="md"
+      className="closing-band group isolate overflow-x-clip"
     >
+      {image ? (
+        <div className="band-photo absolute inset-0 -z-10 overflow-hidden">
+          <Image
+            {...image}
+            intrinsicRatio={false}
+            sizes={PHOTO_SIZES}
+            className="size-full object-cover"
+          />
+          <div
+            aria-hidden="true"
+            data-band-veil
+            className="pointer-events-none absolute inset-0 bg-cocoa-900/35 transition-colors duration-500 ease-calm group-focus-within:bg-cocoa-900/55 group-hover:bg-cocoa-900/55 motion-reduce:transition-none"
+          />
+        </div>
+      ) : null}
       <Butterfly
         size="xl"
         className={
           image
-            ? "right-2 top-6 lg:right-120 lg:top-14"
-            : "right-2 top-6 lg:right-24 lg:top-1/2 lg:-translate-y-1/2"
+            ? "max-lg:hidden lg:right-24 lg:top-14"
+            : "max-lg:hidden lg:right-24 lg:top-1/2 lg:-translate-y-1/2"
         }
       />
       <BotanicalSprig
         size="lg"
         variant="olive"
         light
-        className="absolute -top-14 left-6 lg:top-auto lg:bottom-0 lg:left-auto lg:right-72"
+        className="absolute max-lg:hidden lg:bottom-0 lg:right-72"
       />
       <div
-        className={`grid items-center gap-12 ${image ? "lg:grid-cols-2 lg:gap-x-16" : ""}`}
+        className={
+          image ? "flex min-h-128 items-end lg:min-h-112 lg:items-center" : ""
+        }
       >
-        <Reveal className="flex max-w-prose flex-col items-start gap-5 max-lg:mt-28">
-          {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-          <Heading level={2} size="display">
-            {heading}
+        <Reveal
+          className={`glass ${image ? "" : "glass-dense"} flex w-full max-w-xl flex-col items-start gap-6 rounded-md p-6 text-ink-900 [--em-color:var(--color-terracotta-700)] sm:p-8`}
+        >
+          <Heading level={2}>
+            <EmphasizedLastWord text={heading} />
           </Heading>
-          <Text className="text-lead text-sand-200!">{body}</Text>
-          <div className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4">
-            <ButtonLink
-              href={primary.href}
-              className={`bg-canvas! text-cocoa-900! hover:bg-sand-200! ${lightFocus}`}
-            >
+          <Text tone="strong" className="text-lead">
+            {body}
+          </Text>
+          <div className="mt-2 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+            <ButtonLink href={primary.href} className="w-full gap-2 sm:w-auto">
+              {primary.icon ? (
+                <Icon
+                  name={primary.icon}
+                  aria-hidden="true"
+                  className="size-5"
+                />
+              ) : null}
               {primary.label}
             </ButtonLink>
             {secondary.map((action) => (
               <ButtonLink
                 key={action.href}
                 href={action.href}
-                variant="tertiary"
-                className={`text-canvas! ${lightFocus}`}
+                variant="secondary"
+                className="w-full gap-2 sm:w-auto"
               >
+                {action.icon ? (
+                  <Icon
+                    name={action.icon}
+                    aria-hidden="true"
+                    className="size-5"
+                  />
+                ) : null}
                 {action.label}
               </ButtonLink>
             ))}
           </div>
         </Reveal>
-        {image ? (
-          <Reveal index={1} className="contact-photo lg:justify-self-end">
-            <Frame tilt="right">
-              <Image
-                {...image}
-                intrinsicRatio={false}
-                sizes={PHOTO_SIZES}
-                className="aspect-4/5 h-auto w-full object-cover"
-              />
-            </Frame>
-          </Reveal>
-        ) : null}
       </div>
     </Section>
   );

@@ -361,20 +361,110 @@ describe("home organisms", () => {
       expect(container.querySelector("[data-variant]")).not.toBeNull();
     });
 
+    it("keeps the motifs and the stitched frame off the phone layout", () => {
+      const { container } = renderBand();
+      const band = container.querySelector("section");
+
+      expect(band).not.toHaveClass("band-frame");
+      expect(
+        container.querySelector('[data-size="xl"].motif-flight'),
+      ).toHaveClass("max-lg:hidden");
+      expect(container.querySelector("[data-variant]")).toHaveClass(
+        "max-lg:hidden",
+      );
+    });
+
+    it("is one flat solid colour: no glow, no grain overlay", () => {
+      const { container } = renderBand();
+      const band = container.querySelector("section");
+
+      expect(band).toHaveClass("bg-cocoa-900");
+      expect(band).not.toHaveClass("band-glow");
+      expect(band).not.toHaveClass("paper-grain");
+    });
+
+    it("puts the invitation on a liquid-glass panel in strong dark text, with the last heading word in the accent italic", () => {
+      render(
+        <MemoryRouter>
+          <ContactBand
+            heading="¿Querés sumarte?"
+            body="Estamos para acompañarte."
+            primary={{ href: "/talleres", label: "Ver talleres" }}
+          />
+        </MemoryRouter>,
+      );
+      const heading = screen.getByRole("heading", { level: 2 });
+      const panel = heading.closest(".glass");
+
+      expect(panel).not.toBeNull();
+      expect(panel).toHaveClass("text-ink-900", "rounded-md");
+      expect(panel).toContainElement(
+        screen.getByText("Estamos para acompañarte."),
+      );
+      expect(heading).toHaveTextContent("¿Querés sumarte?");
+      expect(heading.querySelector("em")).toHaveTextContent("sumarte?");
+    });
+
+    it("gives the secondary action a solid clay outline that fills on hover", () => {
+      renderBand();
+      const instagram = screen.getByRole("link", { name: /Instagram/ });
+
+      expect(instagram).toHaveClass(
+        "border-2",
+        "border-clay-600",
+        "hover:bg-clay-600",
+      );
+      expect(instagram.className).not.toMatch(/border-canvas|bg-canvas/);
+    });
+
+    it("stacks both actions as full-width pills on phones, each with its own icon", () => {
+      render(
+        <MemoryRouter>
+          <ContactBand
+            heading="Hablemos"
+            body="Estamos para acompañarte."
+            primary={{
+              href: "https://wa.me/5493510000000",
+              label: "Escribinos por WhatsApp",
+              icon: "whatsapp",
+            }}
+            secondary={[
+              {
+                href: "https://www.instagram.com/calma.inquieta/",
+                label: "Instagram",
+                icon: "instagram",
+              },
+            ]}
+          />
+        </MemoryRouter>,
+      );
+      const whatsapp = screen.getByRole("link", {
+        name: /Escribinos por WhatsApp/,
+      });
+      const instagram = screen.getByRole("link", { name: /Instagram/ });
+
+      expect(whatsapp).toHaveClass("w-full", "sm:w-auto");
+      expect(instagram).toHaveClass("w-full", "sm:w-auto", "border-2");
+      expect(whatsapp.querySelector("svg")).not.toBeNull();
+      expect(instagram.querySelector("svg")).not.toBeNull();
+      expect(whatsapp.parentElement).toBe(instagram.parentElement);
+      expect(whatsapp.parentElement).toHaveClass("flex-col", "sm:flex-row");
+    });
+
     it("marks itself as the page's closing band so the footer does not repeat the call to action", () => {
       const { container } = renderBand();
 
       expect(container.querySelector("section")).toHaveClass("closing-band");
     });
 
-    it("styles both calls to action for the dark band", async () => {
+    it("styles both calls to action for the glass panel", async () => {
       const { container } = renderBand();
 
       expect(
         screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
-      ).toHaveClass("bg-canvas!", "text-cocoa-900!");
+      ).toHaveClass("bg-clay-600");
       expect(screen.getByRole("link", { name: /Instagram/ })).toHaveClass(
-        "text-canvas!",
+        "text-clay-800",
       );
       await expectNoAxeViolations(container);
     });
@@ -405,18 +495,70 @@ describe("home organisms", () => {
         </MemoryRouter>,
       );
 
-    it("shows a lazy framed 4:5 photo beside the call to action", async () => {
+    it("fills the band with a lazy, sized photo behind the call to action", async () => {
       const { container } = renderWithPhoto();
       const photo = screen.getByAltText(hands.alt);
+      const layer = photo.closest(".band-photo");
 
-      expect(photo).toHaveClass("aspect-4/5");
+      expect(photo).toHaveClass("object-cover", "size-full");
       expect(photo).toHaveAttribute("loading", "lazy");
       expect(photo).toHaveAttribute("sizes");
-      expect(photo.closest(".bg-surface")).not.toBeNull();
+      expect(layer).toHaveClass("absolute", "inset-0", "-z-10");
+      expect(container.querySelector("section")).toHaveClass("isolate");
       expect(
         screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
       ).toBeInTheDocument();
       await expectNoAxeViolations(container);
+    });
+
+    it("darkens the photo with a half-opaque solid veil that deepens on hover and focus, and keeps the band compact", () => {
+      const { container } = renderWithPhoto();
+      const veil = container.querySelector("[data-band-veil]");
+      const panel = screen
+        .getByRole("heading", { name: "Hablemos" })
+        .closest(".glass");
+
+      expect(veil).not.toBeNull();
+      expect(veil).toHaveClass(
+        "bg-cocoa-900/35",
+        "group-hover:bg-cocoa-900/55",
+        "group-focus-within:bg-cocoa-900/55",
+        "pointer-events-none",
+      );
+      expect(veil?.className).not.toMatch(/gradient/);
+      expect(veil?.closest(".band-photo")).not.toBeNull();
+      expect(container.querySelector("section")).toHaveClass("group");
+      expect(panel?.parentElement).toHaveClass("min-h-128", "lg:min-h-112");
+    });
+
+    it("sets the body in ink-900, because ink-700 falls below AA on glass over a dark photo", () => {
+      const { container } = renderWithPhoto();
+      const panel = container.querySelector(".glass");
+
+      expect(panel?.querySelector("p")).toHaveClass("text-ink-900");
+      expect(panel?.querySelector("p")).not.toHaveClass("text-ink-700");
+    });
+
+    it("never prints text on the photo: the heading and the actions sit on the glass panel", () => {
+      renderWithPhoto();
+      const panel = screen
+        .getByRole("heading", { name: "Hablemos" })
+        .closest(".glass");
+
+      expect(panel).not.toBeNull();
+      expect(panel).toContainElement(
+        screen.getByRole("link", { name: /Escribinos por WhatsApp/ }),
+      );
+      expect(panel).not.toContainElement(screen.getByAltText(hands.alt));
+    });
+
+    it("uses the dense glass only on the flat band, where the regular sheet falls below AA", () => {
+      const { container, unmount } = renderWithPhoto();
+      expect(container.querySelector(".glass")).not.toHaveClass("glass-dense");
+      unmount();
+
+      const flat = renderWithPhoto({ image: undefined });
+      expect(flat.container.querySelector(".glass")).toHaveClass("glass-dense");
     });
 
     it("keeps the band whole without a photo", () => {

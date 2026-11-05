@@ -20,10 +20,10 @@ export function buildRequestWhatsAppLink(
   const url = buildWhatsAppUrl(
     profileWhatsApp,
     [
-      "Hola! Quiero reservar mi lugar en un intensivo",
+      "Hola! Ya envié mi solicitud para un workshop desde la web",
       `Solicitud: ${request.reference}`,
       `Nombre: ${request.studentName}`,
-      `Intensivo: ${request.intensivoName}`,
+      `Workshop: ${request.intensivoName}`,
       `Fecha: ${localDate(request.eventDate)}`,
       `Seña: ${formatPesos(request.deposit)}`,
     ].join("\n"),

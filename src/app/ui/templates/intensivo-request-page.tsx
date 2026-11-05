@@ -1,8 +1,13 @@
-import { Button } from "../atoms/button";
+import { Button, ButtonLink } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
-import { CheckboxField, FormError, TextField } from "../admin/form-fields";
+import { Icon } from "../atoms/icons";
 import { ConditionsNote } from "../molecules/conditions-note";
+import { ErrorSummary } from "../molecules/error-summary";
 import { PriceTag } from "../molecules/price-tag";
+import {
+  PublicCheckboxField,
+  PublicTextField,
+} from "../molecules/public-fields";
 
 type Field = "fullName" | "email" | "phone" | "policy";
 
@@ -17,7 +22,8 @@ export interface IntensivoRequestPageProps {
     | "phoneHint"
     | "policy"
     | "submit"
-    | "back",
+    | "back"
+    | "errorsTitle",
     string
   >;
   intensivo: { name: string; dateLine: string; deposit: string };
@@ -28,12 +34,12 @@ export interface IntensivoRequestPageProps {
   formError?: string | undefined;
 }
 
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
-
 /**
- * Public seat request form of an intensivo: plain structural props and a
- * native form post, so it works without JavaScript and keeps the typed values.
+ * Public seat request form of a workshop: plain structural props and a native
+ * form post, so it works without JavaScript and keeps the typed values. It
+ * shares the enrollment form's card and fields; the conditions sit by the
+ * checkbox that accepts them, and a failed submit lands on a linked summary,
+ * because the page reloads at the top and a phone would not see the field.
  */
 export function IntensivoRequestPage({
   copy,
@@ -44,21 +50,39 @@ export function IntensivoRequestPage({
   errors,
   formError,
 }: IntensivoRequestPageProps) {
+  const summary = (
+    [
+      ["fullName", errors.fullName],
+      ["email", errors.email],
+      ["phone", errors.phone],
+      ["policy", errors.policy],
+    ] as const
+  ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
   return (
-    <main className="flex max-w-prose flex-col gap-6 py-section">
+    <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
+      <ButtonLink href={backHref} variant="tertiary" className="self-start">
+        <Icon name="chevron-left" aria-hidden="true" className="size-5" />
+        {copy.back}
+      </ButtonLink>
       <header className="flex flex-col gap-2">
         <Heading level={1}>{copy.title}</Heading>
-        <Text>{`${intensivo.name} · ${intensivo.dateLine}`}</Text>
+        <p className="font-display text-xl italic text-ink-900">
+          {`${intensivo.name} · ${intensivo.dateLine}`}
+        </p>
         <Text>{copy.intro}</Text>
       </header>
       <PriceTag label={copy.deposit} amount={intensivo.deposit} />
-      <ConditionsNote {...conditions} level={2} />
+      {formError ? (
+        <p role="alert" className="font-semibold text-terracotta-700">
+          {formError}
+        </p>
+      ) : null}
+      <ErrorSummary title={copy.errorsTitle} errors={summary} />
       <form
         method="post"
         aria-label={copy.title}
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5 rounded-md bg-surface p-5 shadow-raised sm:p-8"
       >
-        <FormError message={formError} />
         <div className="sr-only" aria-hidden="true">
           <label htmlFor="honeypot">No completes este campo</label>
           <input
@@ -69,16 +93,20 @@ export function IntensivoRequestPage({
             type="text"
           />
         </div>
-        <TextField
+        <PublicTextField
+          id="fullName"
           label={copy.fullName}
+          icon="user"
           name="fullName"
           autoComplete="name"
           required
           defaultValue={values.fullName}
           error={errors.fullName}
         />
-        <TextField
+        <PublicTextField
+          id="email"
           label={copy.email}
+          icon="mail"
           name="email"
           type="email"
           autoComplete="email"
@@ -86,30 +114,34 @@ export function IntensivoRequestPage({
           defaultValue={values.email}
           error={errors.email}
         />
-        <TextField
+        <PublicTextField
+          id="phone"
           label={copy.phone}
+          icon="phone"
           hint={copy.phoneHint}
           name="phone"
           type="tel"
+          inputMode="tel"
           autoComplete="tel"
           required
           defaultValue={values.phone}
           error={errors.phone}
         />
-        <CheckboxField
+        <ConditionsNote {...conditions} level={2} />
+        <PublicCheckboxField
+          id="policy"
           label={copy.policy}
           name="policy"
           required
           error={errors.policy}
         />
-        <div className="flex flex-wrap items-center gap-4">
-          <Button type="submit" variant="success">
-            {copy.submit}
-          </Button>
-          <a href={backHref} className={linkClasses}>
-            {copy.back}
-          </a>
-        </div>
+        <Button
+          type="submit"
+          variant="success"
+          className="w-full sm:w-auto sm:self-start"
+        >
+          {copy.submit}
+        </Button>
       </form>
     </main>
   );

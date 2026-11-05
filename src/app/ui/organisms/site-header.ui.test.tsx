@@ -53,7 +53,7 @@ describe("SiteHeader scroll state", () => {
     );
 
     expect(html).toContain('data-solid="true"');
-    expect(html).toContain("bg-sand-200");
+    expect(html).toContain("glass");
     expect(html).not.toContain("bg-transparent");
   });
 
@@ -63,10 +63,10 @@ describe("SiteHeader scroll state", () => {
     const header = screen.getByRole("banner");
     expect(header).toHaveAttribute("data-solid", "false");
     expect(header).toHaveClass("bg-transparent");
-    expect(header).not.toHaveClass("shadow-header");
+    expect(header).not.toHaveClass("glass");
   });
 
-  it("becomes solid sand with a soft shadow after scrolling past 24 px", () => {
+  it("becomes liquid glass over the scrolling page after scrolling past 24 px", () => {
     renderHeader();
     const header = screen.getByRole("banner");
 
@@ -77,8 +77,8 @@ describe("SiteHeader scroll state", () => {
     setScrollY(25);
     fireEvent.scroll(window);
     expect(header).toHaveAttribute("data-solid", "true");
-    expect(header).toHaveClass("bg-sand-200", "shadow-header");
-    expect(header).not.toHaveClass("bg-transparent");
+    expect(header).toHaveClass("glass");
+    expect(header).not.toHaveClass("bg-transparent", "bg-sand-200");
 
     setScrollY(0);
     fireEvent.scroll(window);
@@ -107,7 +107,7 @@ describe("SiteHeader scroll state", () => {
       "top-0",
       "z-30",
       "site-header",
-      "transition-[background-color,box-shadow]",
+      "transition-[background-color,box-shadow,backdrop-filter]",
       "duration-300",
     );
     unmount();

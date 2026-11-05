@@ -13,7 +13,7 @@ function formOf(fields: Record<string, string>) {
   const data = new FormData();
   const base: Record<string, string> = {
     name: "Cerámica de sábado",
-    description: "Un intensivo para empezar de cero.",
+    description: "Un workshop para empezar de cero.",
     teacherId: "t1",
     eventDate: "2026-12-10",
     startsAt: "10:00",
@@ -34,7 +34,7 @@ describe("parseQuickIntensive", () => {
     expect(input.intent).toBe("publish");
     expect(input.draft).toMatchObject({
       slug: "",
-      summary: "Un intensivo para empezar de cero.",
+      summary: "Un workshop para empezar de cero.",
       minSeats: "1",
       policyText: DEFAULT_INTENSIVE_POLICY,
       materialsIncluded: false,

@@ -503,7 +503,7 @@ describe("admin intensive detail", () => {
       init: { status: 422 },
       data: {
         formError:
-          "No se puede guardar este intensivo porque falta: un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
+          "No se puede guardar este workshop porque falta: un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
       },
     });
   });

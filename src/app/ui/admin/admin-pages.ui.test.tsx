@@ -161,12 +161,7 @@ describe("AdminLanding", () => {
   });
 
   it("says everything is up to date when nothing is due", () => {
-    render(
-      <AdminLanding
-        email="agus@example.com"
-        summary={{ ...summary, tasks: [] }}
-      />,
-    );
+    render(<AdminLanding summary={{ ...summary, tasks: [] }} />);
     expect(
       screen.getByText("Todo al día. No hay nada pendiente para hoy."),
     ).toBeVisible();

@@ -5,6 +5,7 @@ import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { StatusChip } from "./status-chip";
+import { adminFilterClasses } from "./admin-sections";
 
 export interface ConsolidationSupplierView {
   readonly supplierId: string;
@@ -54,13 +55,6 @@ const deliver = copy.deliver;
 
 const sectionHref = (period: string, section: MaterialsSection) =>
   `/admin/inscripciones/materiales?mes=${period}&seccion=${section}`;
-
-const tabClasses = (active: boolean) =>
-  `inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${
-    active
-      ? "bg-clay-800 text-white shadow-card"
-      : "border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100"
-  }`;
 
 function CopySummary({ summary }: { summary: string }) {
   const [copied, setCopied] = useState(false);
@@ -159,7 +153,7 @@ function SectionLinks({
             <a
               href={sectionHref(period, key)}
               aria-current={key === section ? "page" : undefined}
-              className={tabClasses(key === section)}
+              className={adminFilterClasses(key === section)}
             >
               {copy.sections[key]} <span>{String(counts[key])}</span>
             </a>

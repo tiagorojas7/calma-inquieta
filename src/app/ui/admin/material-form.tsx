@@ -12,6 +12,7 @@ import {
 import { DEFAULT_SWATCH } from "./material-swatch";
 import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminMicrocopy } from "./microcopy";
+import { ADMIN_SHEET } from "./admin-sections";
 
 export interface MaterialFormVariant {
   readonly id?: string | undefined;
@@ -128,7 +129,7 @@ export function MaterialForm({
   }
 
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">

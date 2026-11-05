@@ -2,7 +2,11 @@ import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { ADMIN_TAP_CARD, AdminTapTarget } from "./admin-sections";
+import {
+  ADMIN_TAP_CARD,
+  adminFilterClasses,
+  AdminTapTarget,
+} from "./admin-sections";
 import { AdminEmptyState } from "./empty-state";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge, type AdminStatus } from "./status-badge";
@@ -74,13 +78,13 @@ export function WorkshopsList({
         />
       ) : null}
       <nav aria-label={copy.filterLabel}>
-        <ul className="flex flex-wrap gap-4">
+        <ul className="flex flex-wrap gap-2">
           {FILTER_KEYS.map((key) => (
             <li key={key}>
               <a
                 href={`/admin/talleres?estado=${key}`}
                 aria-current={key === filter ? "page" : undefined}
-                className={`${linkClasses} ${key === filter ? "font-semibold" : ""}`}
+                className={adminFilterClasses(key === filter)}
               >
                 {copy.filters[key]}
               </a>

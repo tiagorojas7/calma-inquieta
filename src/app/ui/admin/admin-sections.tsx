@@ -3,6 +3,18 @@ import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AdminEmptyState } from "./empty-state";
 
+/** A form or panel on its own raised sheet, wider than a text column. */
+export const ADMIN_SHEET =
+  "flex w-full max-w-3xl flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+
+/** A filter of a list: the active one is filled, so it never reads as a link. */
+export function adminFilterClasses(active: boolean): string {
+  const state = active
+    ? "bg-clay-800 text-white shadow-button"
+    : "border border-admin-line bg-surface text-clay-800 hover:bg-sand-100";
+  return `inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-sm font-semibold transition-colors duration-200 ease-calm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${state}`;
+}
+
 /** Class list for a card that is one big tap target (see `.admin-tap`). */
 export const ADMIN_TAP_CARD = "admin-tap relative pr-12";
 

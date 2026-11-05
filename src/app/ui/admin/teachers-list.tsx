@@ -1,7 +1,7 @@
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
+import { AdminCardList, adminFilterClasses } from "./admin-sections";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge } from "./status-badge";
 
@@ -56,13 +56,13 @@ export function TeachersList({
         <AdminFeedback tone="success" title={copy.feedback[feedback].title} />
       ) : null}
       <nav aria-label={copy.filterLabel}>
-        <ul className="flex flex-wrap gap-4">
+        <ul className="flex flex-wrap gap-2">
           {FILTER_KEYS.map((key) => (
             <li key={key}>
               <a
                 href={`/admin/profesores?estado=${key}`}
                 aria-current={key === filter ? "page" : undefined}
-                className={`${linkClasses} ${key === filter ? "font-semibold" : ""}`}
+                className={adminFilterClasses(key === filter)}
               >
                 {copy.filters[key]}
               </a>

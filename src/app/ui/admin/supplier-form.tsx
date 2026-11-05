@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { AdminDangerZone } from "./admin-sections";
+import { ADMIN_SHEET, AdminDangerZone } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -30,7 +30,7 @@ export function SupplierForm({
   cancelHref: string;
 }) {
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <TextField
@@ -80,7 +80,7 @@ export function SupplierForm({
 export function SupplierStatePanel({ error }: { error: string | undefined }) {
   const state = copy.state;
   return (
-    <section className="flex max-w-prose flex-col gap-3">
+    <section className={ADMIN_SHEET}>
       <Text>{state.archivedNotice}</Text>
       <Text tone="muted">{state.archivedHint}</Text>
       <FormError message={error} />

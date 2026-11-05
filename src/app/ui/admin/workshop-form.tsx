@@ -12,6 +12,7 @@ import {
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
 import { StatusBadge, type AdminStatus } from "./status-badge";
+import { ADMIN_SHEET } from "./admin-sections";
 
 export type WorkshopFormField =
   | "name"
@@ -69,7 +70,7 @@ export function WorkshopForm({
     })),
   ];
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <TextField
@@ -182,7 +183,7 @@ export function WorkshopStatePanel({
 }) {
   const state = copy.state;
   return (
-    <section className="flex max-w-prose flex-col gap-3">
+    <section className={ADMIN_SHEET}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-semibold text-ink-900">{state.status}</span>
         <StatusBadge status={status} />

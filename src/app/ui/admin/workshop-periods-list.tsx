@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
+import { ADMIN_SHEET, AdminCardList } from "./admin-sections";
 import { FormError, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -50,7 +50,7 @@ export function WorkshopPeriodsList({
         ]}
         back={{ href: workshopHref, label: copy.back }}
       />
-      <section className="flex max-w-prose flex-col gap-4">
+      <section className={ADMIN_SHEET}>
         <Heading level={2}>{copy.form.title}</Heading>
         <Text tone="muted">{copy.form.intro}</Text>
         <form method="post" noValidate className="flex flex-col gap-4">

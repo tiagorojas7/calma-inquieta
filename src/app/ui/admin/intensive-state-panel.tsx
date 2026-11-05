@@ -1,5 +1,5 @@
 import { AdminButton as Button } from "./admin-button";
-import { AdminDangerZone } from "./admin-sections";
+import { ADMIN_SHEET, AdminDangerZone } from "./admin-sections";
 import { Text } from "../atoms/heading";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError } from "./form-fields";
@@ -51,7 +51,7 @@ export function IntensiveStatePanel({
   error: string | undefined;
 }) {
   return (
-    <section className="flex max-w-prose flex-col gap-3">
+    <section className={ADMIN_SHEET}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-semibold text-ink-900">{copy.status}</span>
         <StatusBadge status={status} />

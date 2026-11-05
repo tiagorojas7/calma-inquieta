@@ -10,6 +10,7 @@ import {
   TextField,
 } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { ADMIN_SHEET } from "./admin-sections";
 
 const copy = adminMicrocopy.intensives;
 /** Image slots shown before the owner asks for more. */
@@ -145,7 +146,7 @@ export function IntensiveForm({
     );
   };
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-5">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       {mode === "edit" && <input type="hidden" name="intent" value="save" />}
       <FormError message={formError} />
       <TextField

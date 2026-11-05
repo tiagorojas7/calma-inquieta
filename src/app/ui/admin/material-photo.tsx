@@ -4,6 +4,7 @@ import { AdminPageHeader } from "./admin-page";
 import { FormError } from "./form-fields";
 import { ImageField, type ImageFieldUpload } from "./image-field";
 import { materialCatalogCopy } from "./material-catalog-copy";
+import { ADMIN_SHEET } from "./admin-sections";
 
 const copy = materialCatalogCopy.photo;
 const LIST = "/admin/materiales";
@@ -23,7 +24,7 @@ export function MaterialPhoto({
   formError?: string | undefined;
 }) {
   return (
-    <section className="flex max-w-prose flex-col gap-4">
+    <section className={ADMIN_SHEET}>
       <AdminPageHeader
         title={`${copy.title}: ${name}`}
         description={copy.intro}

@@ -3,7 +3,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { AdminCardList } from "./admin-sections";
+import { ADMIN_SHEET, AdminCardList } from "./admin-sections";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -186,7 +186,7 @@ export function TurnosScreen({
           action: { href: workshopHref, label: copy.back },
         }}
       />
-      <section className="flex max-w-prose flex-col gap-4">
+      <section className={ADMIN_SHEET}>
         <Heading level={2}>{editing ? f.editTitle : f.addTitle}</Heading>
         <form method="post" noValidate className="flex flex-col gap-4">
           <input type="hidden" name="intent" value="save" />

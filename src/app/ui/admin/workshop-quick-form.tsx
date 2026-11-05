@@ -11,6 +11,7 @@ import {
 import { PeriodMaterialsPicker } from "./workshop-period-materials";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
+import { ADMIN_SHEET } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
@@ -161,7 +162,7 @@ export function QuickWorkshopForm({
       turnoErrors[VISIBLE_ROWS + offset] !== undefined,
   );
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-5">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <FormError message={formError} />
       <TextField
         label={copy.form.name}

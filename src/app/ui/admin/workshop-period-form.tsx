@@ -10,6 +10,7 @@ import {
   PeriodMaterialsPicker,
   type PeriodMaterialOption,
 } from "./workshop-period-materials";
+import { ADMIN_SHEET } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 type Values = {
@@ -38,7 +39,7 @@ export function WorkshopPeriodForm({
   formError?: string | undefined;
 }) {
   return (
-    <form method="post" noValidate className="flex max-w-prose flex-col gap-4">
+    <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
       <TextField

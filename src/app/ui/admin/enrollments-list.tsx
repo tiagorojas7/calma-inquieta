@@ -2,7 +2,7 @@ import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
+import { AdminCardList, adminFilterClasses } from "./admin-sections";
 import { SelectField, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -120,13 +120,6 @@ function listHref(
 const summaryClasses =
   "inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-900";
 
-const tabClasses = (active: boolean) =>
-  `inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800 ${
-    active
-      ? "bg-clay-800 text-white shadow-card"
-      : "border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100"
-  }`;
-
 function Tabs({
   filter,
   tab,
@@ -140,7 +133,7 @@ function Tabs({
             <a
               href={listHref(filter, estado)}
               aria-current={key === tab ? "page" : undefined}
-              className={tabClasses(key === tab)}
+              className={adminFilterClasses(key === tab)}
             >
               {copy.tabs[key]} <span>{counts[key]}</span>
             </a>

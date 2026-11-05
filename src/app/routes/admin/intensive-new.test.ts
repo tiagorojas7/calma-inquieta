@@ -123,7 +123,7 @@ describe("admin intensive create", () => {
         slug: "ceramica-de-sabado",
         summary: "Un detalle",
         minSeats: "1",
-        policyText: "La seña asegura el lugar en el intensivo.",
+        policyText: "La seña asegura el lugar en el workshop.",
         materialsIncluded: true,
         images: [
           { assetId: "img-1", alt: "Una taza" },

@@ -81,7 +81,7 @@ describe("toPanelSummary", () => {
         href: "/admin/talleres",
       },
       {
-        text: "1 reserva de intensivo esperando seña",
+        text: "1 reserva de workshop esperando seña",
         action: "Ver reservas",
         href: "/admin/intensivos",
       },
@@ -290,7 +290,7 @@ describe("toStatisticsScreen", () => {
         "$ 0",
         "$ 20.000",
       ],
-      ["Torno (Intensivo)", "3", "8", "$ 30.000", "", "—", "$ 0", "$ 30.000"],
+      ["Torno (Workshop)", "3", "8", "$ 30.000", "", "—", "$ 0", "$ 30.000"],
       ["Total", "9", "23", "$ 96.000", "", "$ 12.000", "$ 6.000", "$ 78.000"],
     ]);
     expect(activities.at(-1)?.total).toBe(true);

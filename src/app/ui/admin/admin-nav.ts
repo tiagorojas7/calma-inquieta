@@ -31,7 +31,7 @@ export const ADMIN_NAV_MAIN: readonly AdminNavEntry[] = [
     icon: "workshops",
   },
   {
-    label: "Intensivos",
+    label: "Workshops",
     href: "/admin/intensivos",
     area: "intensives",
     icon: "intensives",

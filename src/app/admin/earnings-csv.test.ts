@@ -60,7 +60,7 @@ describe("earningsCsv", () => {
       .split("\r\n");
 
     expect(lines).toEqual([
-      "Taller o intensivo;Inscriptas;Lugares;Cobrado;Profesora;A pagar a la profesora;Materiales;Ganancia",
+      "Taller o workshop;Inscriptas;Lugares;Cobrado;Profesora;A pagar a la profesora;Materiales;Ganancia",
       "Cerámica;4;10;1234567;Ana (de terceros);370000;0;864567",
       "Total;4;10;1234567;;370000;0;864567",
       "",
@@ -78,7 +78,7 @@ describe("earningsCsv", () => {
       view([activity({ name: 'Torno; "nivel 2"', kind: "intensivo" })]),
     );
 
-    expect(csv).toContain('"Torno; ""nivel 2"" (Intensivo)"');
+    expect(csv).toContain('"Torno; ""nivel 2"" (Workshop)"');
   });
 
   it("defuses a name that Excel would run as a formula", () => {

@@ -35,7 +35,7 @@ const EMPTY = {
 };
 
 export function meta() {
-  return [{ title: "Nuevo intensivo | Panel | Calma Inquieta" }];
+  return [{ title: "Nuevo workshop | Panel | Calma Inquieta" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {

@@ -32,7 +32,7 @@ const ALL = [
   "Publicar",
   "Volver a publicar",
   "Pausar",
-  "Cancelar intensivo",
+  "Cancelar workshop",
   "Archivar",
   "Restaurar como borrador",
   "Eliminar borrador",
@@ -81,8 +81,8 @@ describe("IntensiveStatePanel", () => {
 describe("IntensiveOtherActions", () => {
   it.each([
     ["draft", ["Archivar", "Eliminar borrador"]],
-    ["published", ["Pausar", "Cancelar intensivo", "Archivar"]],
-    ["paused", ["Cancelar intensivo", "Archivar"]],
+    ["published", ["Pausar", "Cancelar workshop", "Archivar"]],
+    ["paused", ["Cancelar workshop", "Archivar"]],
     ["cancelled", ["Archivar"]],
     ["archived", []],
   ] as const)(
@@ -142,9 +142,9 @@ describe("IntensiveOtherActions", () => {
   });
 
   it.each([
-    ["published", "Pausar", "¿Pausar el intensivo?"],
-    ["published", "Cancelar intensivo", "¿Cancelar el intensivo?"],
-    ["published", "Archivar", "¿Archivar el intensivo?"],
+    ["published", "Pausar", "¿Pausar el workshop?"],
+    ["published", "Cancelar workshop", "¿Cancelar el workshop?"],
+    ["published", "Archivar", "¿Archivar el workshop?"],
     ["draft", "Eliminar borrador", "¿Eliminar el borrador?"],
   ] as const)(
     "confirms %s before %s posts, and cancellation does not post",

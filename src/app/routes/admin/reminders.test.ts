@@ -111,7 +111,7 @@ describe("admin reminders route", () => {
     expect(result.result).toBeNull();
     expect(result.errors).toEqual({
       cuando: "Escribí cuándo es.",
-      actividad: "Escribí el nombre del intensivo.",
+      actividad: "Escribí el nombre del workshop.",
     });
   });
 

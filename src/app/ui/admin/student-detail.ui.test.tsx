@@ -76,7 +76,7 @@ describe("StudentDetail", () => {
     expect(screen.getByText("5493515550000")).toBeVisible();
 
     const activities = screen.getByRole("region", {
-      name: "Talleres e intensivos",
+      name: "Talleres y workshops",
     });
     expect(within(activities).getByText("Martes 18:00 a 20:00")).toBeVisible();
 

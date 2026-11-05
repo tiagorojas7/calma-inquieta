@@ -15,7 +15,7 @@ describe("short admin navigation", () => {
       "Inicio",
       "Inscripciones",
       "Talleres",
-      "Intensivos",
+      "Workshops",
       "Materiales",
       "Asistencia",
     ]);

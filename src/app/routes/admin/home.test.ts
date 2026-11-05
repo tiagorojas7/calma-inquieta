@@ -45,7 +45,7 @@ describe("admin home route", () => {
     expect(result.summary.tasks.map((task) => task.text)).toEqual([
       "4 inscripciones por cobrar",
       "Abrir inscripciones de noviembre 2026 en Acuarela",
-      "2 reservas de intensivo esperando seña",
+      "2 reservas de workshop esperando seña",
       "3 consultas de evento privado sin responder",
     ]);
     expect(result.summary.figures.collected).toBe("$ 0");

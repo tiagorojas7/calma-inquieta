@@ -12,6 +12,19 @@ describe("AdminButton", () => {
     expect(button).toHaveAttribute("type", "submit");
   });
 
+  it.each(["primary", "secondary", "success", "danger"] as const)(
+    "gives the %s button depth and a lift on hover",
+    (variant) => {
+      render(<AdminButton variant={variant}>Guardar</AdminButton>);
+
+      expect(screen.getByRole("button", { name: "Guardar" })).toHaveClass(
+        "shadow-button",
+        "motion-safe:hover:-translate-y-0.5",
+        "hover:shadow-lift",
+      );
+    },
+  );
+
   it("treats outline as the secondary alias", () => {
     render(<AdminButton variant="outline">Volver</AdminButton>);
     expect(screen.getByRole("button", { name: "Volver" })).toHaveAttribute(

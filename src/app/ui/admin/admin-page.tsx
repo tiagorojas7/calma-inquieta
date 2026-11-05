@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Heading, Text } from "../atoms/heading";
+import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { useAdminArea, AreaChip } from "./admin-area";
 import { adminButtonClasses } from "./admin-button";
@@ -34,9 +34,10 @@ export function AdminBackButton({
 }
 
 /**
- * Page header: the back button first, then the title. Inside an area (the
- * shell provides it) the title carries the area's colored icon chip, so each
- * screen says where you are at a glance; the header itself stays unfilled.
+ * Page header: the back button first, then the title on a raised sheet with
+ * the page's actions beside it. Inside an area (the shell provides it) the
+ * title carries the area's colored icon chip, so each screen says where you
+ * are at a glance; the sheet itself stays white.
  */
 export function AdminPageHeader({
   title,
@@ -83,18 +84,21 @@ export function AdminPageHeader({
           </ol>
         </nav>
       ) : null}
-      <div className="flex items-center gap-3">
-        {area ? <AreaChip area={area} size={28} /> : null}
-        <Heading level={1}>{title}</Heading>
+      <div
+        data-title-sheet
+        className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:flex-row lg:items-center lg:justify-between lg:p-6"
+      >
+        <div className="flex min-w-0 items-center gap-4">
+          {area ? <AreaChip area={area} size={32} className="p-3" /> : null}
+          <div className="flex min-w-0 flex-col gap-1">
+            <Heading level={1}>{title}</Heading>
+            {description ? (
+              <p className="text-base text-ink-700">{description}</p>
+            ) : null}
+          </div>
+        </div>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
-      {description ? (
-        area ? (
-          <p className="text-base text-ink-700">{description}</p>
-        ) : (
-          <Text tone="muted">{description}</Text>
-        )
-      ) : null}
-      {actions ? <div>{actions}</div> : null}
     </header>
   );
 }

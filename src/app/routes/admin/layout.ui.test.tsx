@@ -44,7 +44,9 @@ function renderAdmin(childLoader: () => unknown) {
 describe("admin layout screens", () => {
   it("renders the landing inside the admin chrome", async () => {
     const { container } = renderAdmin(() => undefined);
-    expect(await screen.findByText("Hola, agus@example.com")).toBeVisible();
+    expect(
+      await screen.findByText("Lo que necesita tu atención hoy."),
+    ).toBeVisible();
     expect(screen.getByRole("link", { name: "Salir" })).toBeVisible();
     await expectNoAxeViolations(container, { page: true });
   });

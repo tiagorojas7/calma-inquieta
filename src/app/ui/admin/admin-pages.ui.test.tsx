@@ -77,11 +77,10 @@ const summary: AdminPanelSummary = {
 };
 
 describe("AdminLanding", () => {
-  it("greets by email and lists what is due today in order, each with one button", async () => {
-    const { container } = render(
-      <AdminLanding email="agus@example.com" summary={summary} />,
-    );
-    expect(screen.getByText("Hola, agus@example.com")).toBeInTheDocument();
+  it("lists what is due today in order, each with one button", async () => {
+    const { container } = render(<AdminLanding summary={summary} />);
+    expect(screen.getByText("Lo que necesita tu atención hoy.")).toBeVisible();
+    expect(screen.queryByText(/agus@example.com/)).toBeNull();
     const today = screen
       .getByRole("heading", { name: "Hoy tenés que…" })
       .closest("section") as HTMLElement;
@@ -104,8 +103,21 @@ describe("AdminLanding", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("groups today and the month on panels, and leaves the shortcuts to phones", () => {
+    render(<AdminLanding summary={summary} />);
+
+    expect(
+      screen
+        .getByRole("heading", { name: "Hoy tenés que…" })
+        .closest("section"),
+    ).toHaveClass("bg-surface", "shadow-card");
+    expect(
+      screen.getByRole("navigation", { name: "Áreas" }).closest("section"),
+    ).toHaveClass("lg:hidden");
+  });
+
   it("shows the four figures of the month and a link to the statistics", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    render(<AdminLanding summary={summary} />);
     expect(
       screen.getByRole("heading", { name: "Tu mes: octubre 2026" }),
     ).toBeVisible();
@@ -127,7 +139,7 @@ describe("AdminLanding", () => {
   });
 
   it("offers one large tile per main area, each with its icon and a chevron", () => {
-    render(<AdminLanding email="agus@example.com" summary={summary} />);
+    render(<AdminLanding summary={summary} />);
     const nav = screen.getByRole("navigation", { name: "Áreas" });
     const links = within(nav).getAllByRole("link");
     expect(

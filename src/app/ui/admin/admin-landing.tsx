@@ -1,8 +1,9 @@
-import { Heading, Text } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AreaChip } from "./admin-area";
 import { ADMIN_NAV_MAIN } from "./admin-nav";
 import { AdminButtonLink } from "./admin-button-link";
+import { AdminPageHeader } from "./admin-page";
+import { AdminSection } from "./admin-sections";
 import { adminMicrocopy } from "./microcopy";
 
 /** One thing due today: what it is and the single button that handles it. */
@@ -44,13 +45,13 @@ function Figure({
 }) {
   return (
     <li
-      className={`flex flex-col gap-1 rounded-md bg-surface p-5 shadow-card ${highlight ? "border-2 border-clay-800" : ""}`}
+      className={`flex flex-col gap-1 rounded-md p-4 ${highlight ? "bg-sand-200" : "bg-sand-100"}`}
     >
-      <p className="text-base font-semibold text-ink-700">{label}</p>
-      <p className="font-display text-h2 font-semibold tabular-nums text-ink-900">
+      <p className="text-sm font-semibold text-ink-700">{label}</p>
+      <p className="font-display text-3xl font-semibold tabular-nums text-ink-900">
         {value}
       </p>
-      {detail ? <p className="text-base text-ink-700">{detail}</p> : null}
+      {detail ? <p className="text-sm text-ink-700">{detail}</p> : null}
     </li>
   );
 }
@@ -60,65 +61,73 @@ function Figure({
  * one button, and the month's four figures. Plain anchors only: the Worker
  * gate refuses the `.data` requests a client navigation would make.
  */
-export function AdminLanding({
-  email,
-  summary,
-}: {
-  email: string;
-  summary: AdminPanelSummary;
-}) {
+export function AdminLanding({ summary }: { summary: AdminPanelSummary }) {
   const { figures } = summary;
   return (
-    <section className="flex flex-col gap-8">
-      <div className="flex items-center gap-3">
-        <AreaChip area="home" size={28} />
-        <div className="flex flex-col gap-1">
-          <Heading level={1}>{copy.title}</Heading>
-          <Text tone="muted">{copy.greeting(email)}</Text>
-        </div>
-      </div>
-      <section aria-labelledby="panel-today" className="flex flex-col gap-3">
-        <Heading level={2} size="h3" id="panel-today">
-          {copy.todayTitle}
-        </Heading>
-        {summary.tasks.length === 0 ? (
-          <p className="rounded-md bg-surface p-5 text-lg text-ink-900 shadow-card">
-            {copy.allDone}
-          </p>
-        ) : (
-          <ol className="flex flex-col gap-3">
-            {summary.tasks.map((task, index) => (
-              <li
-                key={task.key}
-                className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="text-lg text-ink-900">{task.text}</p>
-                <AdminButtonLink
-                  href={task.href}
-                  variant={index === 0 ? "primary" : "secondary"}
-                  ariaLabel={`${task.action}: ${task.hint}`}
-                  next
+    <section className="flex flex-col gap-6">
+      <AdminPageHeader title={copy.title} description={copy.subtitle} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <AdminSection title={copy.todayTitle}>
+          {summary.tasks.length === 0 ? (
+            <p className="text-lg text-ink-900">{copy.allDone}</p>
+          ) : (
+            <ol className="flex flex-col divide-y divide-admin-line">
+              {summary.tasks.map((task, index) => (
+                <li
+                  key={task.key}
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {task.action}
-                </AdminButtonLink>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-      <section aria-labelledby="panel-areas" className="flex flex-col gap-3">
-        <Heading level={2} size="h3" id="panel-areas">
-          {copy.areasTitle}
-        </Heading>
+                  <p className="text-lg text-ink-900">{task.text}</p>
+                  <AdminButtonLink
+                    href={task.href}
+                    variant={index === 0 ? "primary" : "secondary"}
+                    ariaLabel={`${task.action}: ${task.hint}`}
+                    next
+                  >
+                    {task.action}
+                  </AdminButtonLink>
+                </li>
+              ))}
+            </ol>
+          )}
+        </AdminSection>
+        <AdminSection
+          title={copy.monthTitle(summary.monthLabel)}
+          actions={
+            <AdminButtonLink
+              href={`/admin/estadisticas?mes=${summary.period}`}
+              variant="secondary"
+            >
+              {copy.seeStatistics}
+            </AdminButtonLink>
+          }
+        >
+          <ul className="grid gap-3 sm:grid-cols-2">
+            <Figure label={copy.figures.collected} value={figures.collected} />
+            <Figure
+              label={copy.figures.profit}
+              value={figures.profit}
+              highlight
+            />
+            <Figure
+              label={copy.figures.occupancy}
+              value={figures.occupancy}
+              detail={figures.occupancyDetail}
+            />
+            <Figure label={copy.figures.teachers} value={figures.teachers} />
+          </ul>
+        </AdminSection>
+      </div>
+      <AdminSection title={copy.areasTitle} className="lg:hidden">
         <nav aria-label={copy.areasLabel}>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {ADMIN_NAV_MAIN.filter((entry) => entry.area !== "home").map(
               (entry) => (
                 <li key={entry.href}>
                   <a
                     href={entry.href}
                     data-area={entry.area}
-                    className="flex min-h-16 items-center gap-4 rounded-md bg-surface p-3 text-lg font-bold text-ink-900 shadow-card hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+                    className="flex min-h-16 items-center gap-4 rounded-md border border-admin-line p-3 text-lg font-bold text-ink-900 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
                   >
                     <AreaChip area={entry.area} size={28} />
                     <span className="flex-1">{entry.label}</span>
@@ -134,34 +143,7 @@ export function AdminLanding({
             )}
           </ul>
         </nav>
-      </section>
-      <section aria-labelledby="panel-month" className="flex flex-col gap-3">
-        <Heading level={2} size="h3" id="panel-month">
-          {copy.monthTitle(summary.monthLabel)}
-        </Heading>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          <Figure label={copy.figures.collected} value={figures.collected} />
-          <Figure
-            label={copy.figures.profit}
-            value={figures.profit}
-            highlight
-          />
-          <Figure
-            label={copy.figures.occupancy}
-            value={figures.occupancy}
-            detail={figures.occupancyDetail}
-          />
-          <Figure label={copy.figures.teachers} value={figures.teachers} />
-        </ul>
-        <div>
-          <AdminButtonLink
-            href={`/admin/estadisticas?mes=${summary.period}`}
-            variant="secondary"
-          >
-            {copy.seeStatistics}
-          </AdminButtonLink>
-        </div>
-      </section>
+      </AdminSection>
     </section>
   );
 }

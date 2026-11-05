@@ -40,7 +40,6 @@ describe("admin home route", () => {
   it("greets the signed-in admin with what is due today and the month figures", async () => {
     const result = await load(true, 3).run();
 
-    expect(result.email).toBe("a@x.test");
     expect(result.summary.monthLabel).toBe("octubre 2026");
     expect(result.summary.tasks.map((task) => task.text)).toEqual([
       "4 inscripciones por cobrar",

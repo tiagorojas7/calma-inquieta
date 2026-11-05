@@ -427,7 +427,7 @@ export const adminMicrocopy = {
   },
   landing: {
     title: "Inicio",
-    greeting: (email: string) => `Hola, ${email}`,
+    subtitle: "Lo que necesita tu atención hoy.",
     todayTitle: "Hoy tenés que…",
     areasTitle: "Ir a…",
     areasLabel: "Áreas",

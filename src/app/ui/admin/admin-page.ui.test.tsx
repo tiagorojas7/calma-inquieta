@@ -101,6 +101,27 @@ describe("AdminPageHeader wayfinding", () => {
     expect(back.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("sets the title on a raised sheet, with the actions beside it", () => {
+    render(
+      <AdminPageHeader
+        title="Talleres"
+        description="Lo que está en marcha."
+        actions={<a href="/admin/talleres/nuevo">Nuevo taller</a>}
+      />,
+    );
+    const sheet = screen
+      .getByRole("heading", { level: 1 })
+      .closest("[data-title-sheet]");
+
+    expect(sheet).toHaveClass("bg-surface", "shadow-card", "lg:flex-row");
+    expect(sheet).toContainElement(
+      screen.getByRole("link", { name: "Nuevo taller" }),
+    );
+    expect(screen.getByText("Lo que está en marcha.")).toHaveClass(
+      "text-ink-700",
+    );
+  });
+
   it("keeps the header unfilled and carries the area color only on its icon chip", () => {
     render(
       <AdminAreaProvider area="workshops">

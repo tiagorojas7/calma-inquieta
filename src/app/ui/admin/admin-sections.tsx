@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AdminEmptyState } from "./empty-state";
@@ -69,6 +69,46 @@ export function AdminCardList<Row>({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * A section on its own raised panel: the title, an optional subtitle and action
+ * on one row, then the content. Sections read as separate surfaces on the page,
+ * so a screen is not one flat run of headings and rows.
+ */
+export function AdminSection({
+  title,
+  description,
+  actions,
+  className = "",
+  children,
+}: {
+  title: string;
+  description?: ReactNode | undefined;
+  actions?: ReactNode | undefined;
+  className?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section
+      aria-labelledby={id}
+      className={`flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6 ${className}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Heading level={2} id={id}>
+            {title}
+          </Heading>
+          {description ? (
+            <p className="text-sm text-ink-700">{description}</p>
+          ) : null}
+        </div>
+        {actions}
+      </div>
+      {children}
+    </section>
   );
 }
 

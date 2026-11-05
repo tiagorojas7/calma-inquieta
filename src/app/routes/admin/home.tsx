@@ -23,7 +23,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     panel.value.period,
   );
   return {
-    email: actor.email,
     summary: toPanelSummary(panel.value, {
       privateEventsUnanswered,
       emptyMonths,
@@ -32,6 +31,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export default function AdminHome() {
-  const { email, summary } = useLoaderData<typeof loader>();
-  return <AdminLanding email={email} summary={summary} />;
+  const { summary } = useLoaderData<typeof loader>();
+  return <AdminLanding summary={summary} />;
 }

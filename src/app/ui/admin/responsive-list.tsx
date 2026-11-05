@@ -14,6 +14,7 @@ export function ResponsiveList<Row>({
   columns,
   rows,
   rowKey,
+  rowClassName,
   card,
   empty,
 }: {
@@ -21,6 +22,8 @@ export function ResponsiveList<Row>({
   columns: readonly DataTableColumn<Row>[];
   rows: readonly Row[];
   rowKey: (row: Row) => string;
+  /** Sets one table row apart, such as a totals row. */
+  rowClassName?: ((row: Row) => string) | undefined;
   card: (row: Row) => ReactNode;
   empty: {
     title: string;
@@ -50,6 +53,7 @@ export function ResponsiveList<Row>({
           columns={columns}
           rows={rows}
           rowKey={rowKey}
+          rowClassName={rowClassName}
           empty={empty}
         />
       </div>

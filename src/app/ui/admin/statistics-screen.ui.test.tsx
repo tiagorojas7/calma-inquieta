@@ -13,21 +13,33 @@ const props: StatisticsScreenProps = {
   nextHref: "/admin/estadisticas?mes=2026-11",
   downloadHref: "/admin/estadisticas/planilla?mes=2026-10",
   figures: [
-    { key: "collected", label: "Cobrado", value: "$ 96.000" },
-    { key: "teachers", label: "A pagar a profesoras", value: "$ 12.000" },
-    { key: "materials", label: "Costo de materiales", value: "$ 6.000" },
+    { key: "collected", label: "Cobrado", value: "$ 96.000", tone: "income" },
+    {
+      key: "teachers",
+      label: "A pagar a profesoras",
+      value: "$ 12.000",
+      tone: "expense",
+    },
+    {
+      key: "materials",
+      label: "Costo de materiales",
+      value: "$ 6.000",
+      tone: "expense",
+    },
     {
       key: "profit",
       label: "Ganancia del estudio",
       value: "$ 78.000",
       highlight: true,
+      tone: "income",
     },
-    { key: "students", label: "Alumnas activas", value: "10" },
+    { key: "students", label: "Alumnas activas", value: "10", tone: "people" },
     {
       key: "occupancy",
       label: "Ocupación",
       value: "39 %",
       detail: "9 de 23 lugares",
+      tone: "people",
     },
   ],
   activities: [
@@ -115,6 +127,181 @@ describe("StatisticsScreen", () => {
       "Ocupación39 %9 de 23 lugares",
     ]);
     await expectNoAxeViolations(container);
+  });
+
+  it("colours each figure by what it means", () => {
+    render(
+      <StatisticsScreen
+        {...props}
+        figures={[
+          { key: "in", label: "Entra", value: "$ 1", tone: "income" },
+          { key: "out", label: "Sale", value: "$ 2", tone: "expense" },
+          { key: "who", label: "Personas", value: "37", tone: "people" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("$ 1")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 2")).toHaveClass("text-status-orange-fg");
+    expect(screen.getByText("37")).toHaveClass("text-status-blue-fg");
+  });
+
+  it("fills the profit figure with the colour of its result", () => {
+    const profit = {
+      key: "profit",
+      label: "Ganancia del estudio",
+      highlight: true,
+    };
+    const { rerender } = render(
+      <StatisticsScreen
+        {...props}
+        figures={[{ ...profit, value: "$ 9", tone: "income" }]}
+      />,
+    );
+    expect(screen.getByText("$ 9").closest("li")).toHaveClass(
+      "bg-status-green-bg",
+    );
+
+    rerender(
+      <StatisticsScreen
+        {...props}
+        figures={[{ ...profit, value: "$ -9", tone: "expense" }]}
+      />,
+    );
+    expect(screen.getByText("$ -9").closest("li")).toHaveClass(
+      "bg-status-orange-bg",
+    );
+  });
+
+  it("reads the four money figures as one row and the people as another", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const list = screen.getByRole("list", { name: "octubre 2026" });
+    expect(list).toHaveClass("lg:grid-cols-4");
+    expect(within(list).getByText("Alumnas activas").closest("li")).toHaveClass(
+      "lg:col-span-2",
+    );
+    expect(within(list).getByText("Ocupación").closest("li")).toHaveClass(
+      "lg:col-span-2",
+    );
+    expect(within(list).getByText("Cobrado").closest("li")).not.toHaveClass(
+      "lg:col-span-2",
+    );
+  });
+
+  it("gives the sections real titles, above the size of the table text", () => {
+    render(<StatisticsScreen {...props} />);
+
+    for (const name of ["Por taller y workshop", "Registro de materiales"]) {
+      expect(screen.getByRole("heading", { level: 2, name })).not.toHaveClass(
+        "text-h3",
+      );
+    }
+  });
+
+  it("tells money in from money out in the main table", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const table = screen.getByRole("table", { name: "Por taller y workshop" });
+    const cells = within(within(table).getAllByRole("row")[1] as HTMLElement)
+      .getAllByRole("cell")
+      .map((cell) => cell.firstElementChild);
+
+    expect(cells[0]).toHaveClass("font-semibold", "text-ink-900");
+    expect(cells[3]).toHaveClass("text-status-green-fg");
+    expect(cells[5]).toHaveClass("text-status-orange-fg");
+    expect(cells[6]).toHaveClass("text-status-orange-fg");
+    expect(cells[7]).toHaveClass("text-status-green-fg", "font-semibold");
+  });
+
+  it("marks a loss in the money-in columns as money out", () => {
+    render(
+      <StatisticsScreen
+        {...props}
+        activities={[
+          {
+            key: "a",
+            cells: ["Cerámica", "1", "2", "$ 5", "", "$ 7", "$ 0", "$ -2"],
+          },
+        ]}
+      />,
+    );
+
+    const table = screen.getByRole("table", { name: "Por taller y workshop" });
+    expect(within(table).getByText("$ -2")).toHaveClass(
+      "text-status-orange-fg",
+    );
+  });
+
+  it("does not colour a cell with nothing to settle", () => {
+    render(
+      <StatisticsScreen
+        {...props}
+        activities={[
+          {
+            key: "a",
+            cells: ["Cerámica", "1", "2", "$ 5", "", "—", "$ 0", "$ 5"],
+          },
+        ]}
+      />,
+    );
+
+    const table = screen.getByRole("table", { name: "Por taller y workshop" });
+    expect(within(table).getByText("—")).not.toHaveClass(
+      "text-status-orange-fg",
+    );
+  });
+
+  it("sets the totals row apart from the rows above it", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const table = screen.getByRole("table", { name: "Por taller y workshop" });
+    const rows = within(table).getAllByRole("row");
+
+    expect(rows[2]).toHaveClass("bg-sand-100");
+    expect(rows[1]).not.toHaveClass("bg-sand-100");
+  });
+
+  it("carries the same colours to the cards below lg", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const list = screen.getByRole("list", { name: "Por taller y workshop" });
+    const [card] = within(list).getAllByRole("listitem");
+
+    expect(within(card as HTMLElement).getByText("$ 46.000")).toHaveClass(
+      "text-status-green-fg",
+    );
+  });
+
+  it("keeps each subtitle against its title", () => {
+    render(<StatisticsScreen {...props} />);
+
+    const title = screen.getByRole("heading", {
+      level: 2,
+      name: "Por taller y workshop",
+    });
+
+    expect(title.parentElement).toHaveTextContent(
+      "Cada taller y workshop con movimiento en el mes.",
+    );
+    expect(title.parentElement).toHaveClass("gap-1");
+  });
+
+  it("does not set a closed table above the open sections", () => {
+    const { container } = render(<StatisticsScreen {...props} />);
+
+    for (const summary of container.querySelectorAll("summary")) {
+      expect(summary).toHaveClass("text-2xl");
+      expect(summary).not.toHaveClass("text-h3");
+    }
+  });
+
+  it("shows that the closed tables open", () => {
+    const { container } = render(<StatisticsScreen {...props} />);
+
+    for (const summary of container.querySelectorAll("summary")) {
+      expect(summary.querySelector("svg")).toHaveClass("group-open:rotate-90");
+    }
   });
 
   it("moves between months with plain links and keeps the month form", () => {

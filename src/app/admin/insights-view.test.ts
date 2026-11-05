@@ -266,6 +266,30 @@ describe("toStatisticsScreen", () => {
     );
   });
 
+  it("gives each figure the tone of what it means", () => {
+    const { figures } = toStatisticsScreen(earnings);
+
+    expect(figures.map(({ key, tone }) => [key, tone])).toEqual([
+      ["collected", "income"],
+      ["teachers", "expense"],
+      ["materials", "expense"],
+      ["profit", "income"],
+      ["students", "people"],
+      ["occupancy", "people"],
+    ]);
+  });
+
+  it("shows a month at a loss as money out", () => {
+    const loss = Money.fromCentavos(-100);
+    if (!loss.ok) throw new Error("fixture");
+    const { figures } = toStatisticsScreen({
+      ...earnings,
+      totals: { ...earnings.totals, profit: loss.value },
+    });
+
+    expect(figures.find(({ key }) => key === "profit")?.tone).toBe("expense");
+  });
+
   it("builds the main table with the teacher, her settlement and a bold totals row", () => {
     const { activities } = toStatisticsScreen(earnings);
 

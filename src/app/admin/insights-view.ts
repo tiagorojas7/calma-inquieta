@@ -185,16 +185,19 @@ export function toStatisticsScreen(
         label: figures.collected,
         value: formatPesos(totals.collected),
         detail: figures.collectedDetail,
+        tone: "income",
       },
       {
         key: "teachers",
         label: figures.teachers,
         value: formatPesos(totals.teacherPay),
+        tone: "expense",
       },
       {
         key: "materials",
         label: figures.materials,
         value: formatPesos(totals.materialsCost),
+        tone: "expense",
       },
       {
         key: "profit",
@@ -202,17 +205,20 @@ export function toStatisticsScreen(
         value: formatPesos(totals.profit),
         detail: figures.profitDetail,
         highlight: true,
+        tone: totals.profit.toCentavos() < 0 ? "expense" : "income",
       },
       {
         key: "students",
         label: figures.students,
         value: text(view.students.students),
+        tone: "people",
       },
       {
         key: "occupancy",
         label: figures.occupancy,
         value: percent(totals.occupancyPercent),
         detail: figures.occupancyDetail(totals.enrolled, totals.capacity),
+        tone: "people",
       },
     ],
     activities: withTotal(

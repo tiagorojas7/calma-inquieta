@@ -1,9 +1,9 @@
 import { Icon } from "../atoms/icons";
 import { VisuallyHidden } from "../atoms/visually-hidden";
 
-type StepState = "done" | "current" | "todo";
+export type StepState = "done" | "current" | "todo";
 
-const circleClasses: Record<StepState, string> = {
+export const stepCircleClasses: Record<StepState, string> = {
   done: "border-olive-800 bg-sage-200 text-olive-800",
   current: "border-clay-600 bg-clay-600 text-white shadow-button",
   todo: "border-clay-600 text-clay-800",
@@ -49,7 +49,7 @@ export function StepIndicator({
             >
               <span
                 aria-hidden="true"
-                className={`grid size-8 place-items-center rounded-full border-2 text-sm font-semibold ${circleClasses[state]}`}
+                className={`grid size-8 place-items-center rounded-full border-2 text-sm font-semibold ${stepCircleClasses[state]}`}
               >
                 {state === "done" ? (
                   <Icon name="check" className="size-4" />

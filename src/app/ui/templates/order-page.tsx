@@ -1,7 +1,10 @@
 import { ButtonLink } from "../atoms/button";
 import { Heading } from "../atoms/heading";
-import { Icon, type IconName } from "../atoms/icon";
+import { Icon } from "../atoms/icon";
 import { Text } from "../atoms/text";
+import { NumberedSteps } from "../molecules/numbered-steps";
+import { Receipt, ReceiptFact } from "../molecules/receipt";
+import { StatusBadge, type StatusTone } from "../molecules/status-badge";
 
 export interface OrderPageProps {
   number: string;
@@ -27,23 +30,23 @@ const PAYMENT_STEPS = [
 const SETTLED_STATUSES = ["paid", "materials_requested", "materials_received"];
 
 function statusPresentation(status: string): {
-  icon: IconName;
+  tone: StatusTone;
   next: string | null;
 } {
   if (status === "pending_confirmation") {
     return {
-      icon: "clock",
+      tone: "pending",
       next: "Enviá tu pedido por WhatsApp para recibir los datos de pago.",
     };
   }
   if (status === "cancelled") {
     return {
-      icon: "close",
+      tone: "cancelled",
       next: "Este pedido fue cancelado. Si fue un error, escribinos desde Contacto.",
     };
   }
   return {
-    icon: "heart",
+    tone: "done",
     next: "Tu pago está confirmado y tu lugar está reservado.",
   };
 }
@@ -61,104 +64,67 @@ function ContactFallback({ number }: { number: string }) {
   );
 }
 
-function PaymentSteps() {
-  return (
-    <ol aria-labelledby="payment-steps" className="flex flex-col gap-3">
-      {PAYMENT_STEPS.map((step, at) => {
-        const current = at === 0;
-        return (
-          <li
-            key={step}
-            {...(current ? { "aria-current": "step" as const } : {})}
-            className="flex items-start gap-3"
-          >
-            <span
-              aria-hidden="true"
-              className={`grid size-8 shrink-0 place-items-center rounded-full border text-sm font-semibold tabular-nums ${current ? "border-clay-600 bg-clay-600 text-white" : "border-clay-600 text-clay-800"}`}
-            >
-              {at + 1}
-            </span>
-            <span className="flex flex-col gap-1 pt-1">
-              {current ? (
-                <span className="text-sm font-semibold text-clay-800">
-                  Ahora
-                </span>
-              ) : null}
-              <span>{step}</span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /** Public order summary with plain structural props and no application dependencies. */
 export function OrderPage(props: OrderPageProps) {
   const pending = props.status === "pending_confirmation";
   const settled = SETTLED_STATUSES.includes(props.status);
-  const { icon, next } = statusPresentation(props.status);
+  const { tone, next } = statusPresentation(props.status);
 
   return (
-    <main className="flex flex-col gap-8 pt-page-top pb-section">
+    <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
       <header className="flex flex-col gap-3">
         <Heading level={1}>{`Pedido ${props.number}`}</Heading>
-        <p
-          data-status={props.status}
-          className="inline-flex w-fit items-center gap-2 rounded-pill bg-sand-200 px-3 py-1 text-sm font-semibold text-clay-800"
-        >
-          <Icon name={icon} size={18} />
-          <span>{props.statusLabel}</span>
-        </p>
+        <StatusBadge
+          status={props.status}
+          tone={tone}
+          label={props.statusLabel}
+        />
         {next ? <Text>{next}</Text> : null}
       </header>
 
-      <section
-        aria-labelledby="order-receipt"
-        className="flex flex-col gap-4 rounded-md bg-white p-6 shadow-card"
-      >
-        <Heading level={2} id="order-receipt">
-          Resumen del pedido
-        </Heading>
-        <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2">
-          <dt className="text-sm font-semibold text-ink-600">Taller</dt>
-          <dd className="text-right">{props.workshopName}</dd>
-          <dt className="text-sm font-semibold text-ink-600">Mes</dt>
-          <dd className="text-right">{props.month}</dd>
-          <dt className="text-sm font-semibold text-ink-600">Turno</dt>
-          <dd className="text-right">{props.turno}</dd>
-          <dt className="text-sm font-semibold text-ink-600">Cuota</dt>
-          <dd className="text-right tabular-nums">{props.fee}</dd>
-          {props.lines.length > 0 ? (
-            <>
-              {props.lines.map((line) => (
-                <ReceiptLine key={line.label} line={line} />
-              ))}
-              <dt className="text-sm font-semibold text-ink-600">Materiales</dt>
-              <dd className="text-right tabular-nums">
-                {props.materialsTotal}
-              </dd>
-            </>
-          ) : null}
-          <dt className="mt-2 border-t-2 border-clay-600 pt-3 text-base font-semibold text-ink-900">
-            Total
-          </dt>
-          <dd className="mt-2 border-t-2 border-clay-600 pt-3 text-right font-display text-h3 tabular-nums text-ink-900">
-            {props.total}
-          </dd>
-        </dl>
-      </section>
+      <Receipt id="order-receipt" heading="Resumen del pedido">
+        <ReceiptFact label="Taller">{props.workshopName}</ReceiptFact>
+        <ReceiptFact label="Mes">{props.month}</ReceiptFact>
+        <ReceiptFact label="Turno">{props.turno}</ReceiptFact>
+        <ReceiptFact label="Cuota" numeric>
+          {props.fee}
+        </ReceiptFact>
+        {props.lines.length > 0 ? (
+          <>
+            {props.lines.map((line) => (
+              <ReceiptLine key={line.label} line={line} />
+            ))}
+            <ReceiptFact label="Materiales" numeric>
+              {props.materialsTotal}
+            </ReceiptFact>
+          </>
+        ) : null}
+        <dt className="mt-2 border-t-2 border-clay-600 pt-3 text-base font-semibold text-ink-900">
+          Total
+        </dt>
+        <dd className="mt-2 border-t-2 border-clay-600 pt-3 text-right font-display text-h3 tabular-nums text-ink-900">
+          {props.total}
+        </dd>
+      </Receipt>
 
       {pending ? (
         <section className="flex flex-col gap-4">
           <Heading level={2} id="payment-steps">
             Cómo pagar
           </Heading>
-          <PaymentSteps />
+          <NumberedSteps
+            steps={PAYMENT_STEPS}
+            current={0}
+            currentLabel="Ahora"
+            labelledBy="payment-steps"
+          />
           {props.whatsappHref === null ? (
             <ContactFallback number={props.number} />
           ) : (
-            <ButtonLink href={props.whatsappHref} className="gap-2">
+            <ButtonLink
+              href={props.whatsappHref}
+              className="w-full gap-2 sm:w-fit"
+            >
               <Icon name="whatsapp" size={20} />
               Enviar pedido por WhatsApp
             </ButtonLink>

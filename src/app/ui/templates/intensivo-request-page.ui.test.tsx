@@ -112,6 +112,7 @@ const summary: IntensivoRequestSummaryProps = {
     fields: intensiveRequestCopy.summary.fields,
     stepsTitle: intensiveRequestCopy.summary.stepsTitle,
     steps: intensiveRequestCopy.summary.steps,
+    currentStep: intensiveRequestCopy.summary.currentStep,
     whatsapp: intensiveRequestCopy.summary.whatsapp,
     confirmed: intensiveRequestCopy.summary.confirmed,
     cancelled: intensiveRequestCopy.summary.cancelled,
@@ -143,6 +144,37 @@ describe("IntensivoRequestSummaryPage", () => {
       screen.getByRole("link", { name: /Enviar resumen por WhatsApp/ }),
     ).toHaveAttribute("href", "https://wa.me/5493515550100?text=Hola");
     await expectNoAxeViolations(container);
+  });
+
+  it("groups the facts in a receipt and tones the status", () => {
+    render(<IntensivoRequestSummaryPage {...summary} />);
+
+    const receipt = screen.getByRole("region", { name: "Tu solicitud" });
+    expect(within(receipt).getByText("Workshop").tagName).toBe("DT");
+    expect(
+      within(receipt).getByText("Workshop").nextElementSibling,
+    ).toHaveTextContent("Intensivo de cerámica");
+    expect(
+      within(receipt).getByText("Seña").nextElementSibling,
+    ).toHaveTextContent("$ 15.000");
+    const badge = screen
+      .getByText("Pendiente de seña")
+      .closest("[data-status]");
+    expect(badge).toHaveAttribute("data-status", "pending_confirmation");
+    expect(badge).toHaveClass("bg-sand-200");
+  });
+
+  it("shows the registered step as done and the WhatsApp one as current", () => {
+    const { container } = render(<IntensivoRequestSummaryPage {...summary} />);
+
+    const items = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(items[0]).toHaveAttribute("data-state", "done");
+    expect(items[1]).toHaveAttribute("aria-current", "step");
+    expect(items[1]).toHaveTextContent("Ahora");
+    expect(container.querySelectorAll("[data-step-rule]")).toHaveLength(3);
+    expect(
+      screen.getByRole("link", { name: /Enviar resumen por WhatsApp/ }),
+    ).toHaveClass("w-full", "sm:w-fit");
   });
 
   it("omits the link when the business number is unusable", () => {

@@ -49,6 +49,7 @@ export const intensiveRequestCopy = {
       "Te pasamos los datos para abonar la seña.",
       "Cuando registramos el pago, tu lugar queda confirmado.",
     ],
+    currentStep: "Ahora",
     whatsapp: "Enviar resumen por WhatsApp",
     confirmed:
       "¡Gracias! Registramos tu seña y tu lugar está confirmado. Te esperamos.",

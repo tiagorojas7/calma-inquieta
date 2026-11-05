@@ -1,5 +1,18 @@
 import { ButtonLink } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
+import { Icon } from "../atoms/icon";
+import { NumberedSteps } from "../molecules/numbered-steps";
+import { Receipt, ReceiptFact } from "../molecules/receipt";
+import { StatusBadge, type StatusTone } from "../molecules/status-badge";
+
+/** The first step is already done when the page opens: the request exists. */
+const CURRENT_STEP = 1;
+
+const TONES: Record<IntensivoRequestSummaryProps["status"], StatusTone> = {
+  pending_confirmation: "pending",
+  confirmed: "done",
+  cancelled: "cancelled",
+};
 
 export interface IntensivoRequestSummaryProps {
   copy: {
@@ -8,6 +21,7 @@ export interface IntensivoRequestSummaryProps {
     fields: Record<"intensivo" | "date" | "time" | "deposit", string>;
     stepsTitle: string;
     steps: readonly string[];
+    currentStep: string;
     whatsapp: string;
     confirmed: string;
     cancelled: string;
@@ -38,35 +52,39 @@ export function IntensivoRequestSummaryPage({
   workshopsHref,
 }: IntensivoRequestSummaryProps) {
   return (
-    <main className="flex max-w-prose flex-col gap-8 pt-page-top pb-section">
-      <header className="flex flex-col gap-2">
+    <main className="mx-auto flex w-full max-w-prose flex-col gap-8 pt-page-top pb-section">
+      <header className="flex flex-col gap-3">
         <Heading level={1}>{`${copy.reference} ${reference}`}</Heading>
-        <Text tone="accent">{statusLabel}</Text>
+        <StatusBadge status={status} tone={TONES[status]} label={statusLabel} />
       </header>
 
-      <dl className="grid gap-2">
-        <dt>{copy.fields.intensivo}</dt>
-        <dd>{intensivoName}</dd>
-        <dt>{copy.fields.date}</dt>
-        <dd>{date}</dd>
-        <dt>{copy.fields.time}</dt>
-        <dd>{time}</dd>
-        <dt>{copy.fields.deposit}</dt>
-        <dd>{deposit}</dd>
-      </dl>
+      <Receipt id="request-receipt" heading={copy.title}>
+        <ReceiptFact label={copy.fields.intensivo}>{intensivoName}</ReceiptFact>
+        <ReceiptFact label={copy.fields.date}>{date}</ReceiptFact>
+        <ReceiptFact label={copy.fields.time} numeric>
+          {time}
+        </ReceiptFact>
+        <ReceiptFact label={copy.fields.deposit} numeric>
+          {deposit}
+        </ReceiptFact>
+      </Receipt>
 
       {status === "pending_confirmation" ? (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <Heading level={2} id="request-steps">
             {copy.stepsTitle}
           </Heading>
-          <ol aria-labelledby="request-steps" className="list-decimal pl-6">
-            {copy.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
+          <NumberedSteps
+            steps={copy.steps}
+            current={CURRENT_STEP}
+            currentLabel={copy.currentStep}
+            labelledBy="request-steps"
+          />
           {whatsappHref === null ? null : (
-            <ButtonLink href={whatsappHref}>{copy.whatsapp}</ButtonLink>
+            <ButtonLink href={whatsappHref} className="w-full gap-2 sm:w-fit">
+              <Icon name="whatsapp" size={20} />
+              {copy.whatsapp}
+            </ButtonLink>
           )}
         </section>
       ) : null}

@@ -15,6 +15,12 @@
     0 12px 32px color-mix(in srgb, var(--color-ink-900) 16%, transparent);
 }
 
+/* For a sheet with small clay labels over a dark backdrop: at 86 % clay-800
+   stays AA even over black. Declared before the fallbacks so they still win. */
+.glass-dense {
+  background-color: color-mix(in srgb, var(--color-canvas) 86%, transparent);
+}
+
 /* Without backdrop blur the sheet would show the photo as is: make it nearly
    opaque so the text keeps its contrast. */
 @supports not (

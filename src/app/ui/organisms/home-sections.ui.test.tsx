@@ -552,6 +552,15 @@ describe("home organisms", () => {
       expect(panel).not.toContainElement(screen.getByAltText(hands.alt));
     });
 
+    it("uses the dense glass only on the flat band, where the regular sheet falls below AA", () => {
+      const { container, unmount } = renderWithPhoto();
+      expect(container.querySelector(".glass")).not.toHaveClass("glass-dense");
+      unmount();
+
+      const flat = renderWithPhoto({ image: undefined });
+      expect(flat.container.querySelector(".glass")).toHaveClass("glass-dense");
+    });
+
     it("keeps the band whole without a photo", () => {
       const { container } = renderWithPhoto({ image: undefined });
 

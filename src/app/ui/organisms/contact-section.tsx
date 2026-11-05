@@ -129,7 +129,7 @@ export function ContactSection({
           </div>
         ) : null}
         {photo && place ? (
-          <div className="glass relative z-10 mx-4 -mt-16 flex flex-col items-start gap-4 rounded-md p-5 lg:absolute lg:bottom-12 lg:right-8 lg:mx-0 lg:mt-0 lg:w-96">
+          <div className="glass glass-dense relative z-10 mx-4 -mt-16 flex flex-col items-start gap-4 rounded-md p-5 lg:absolute lg:bottom-12 lg:right-8 lg:mx-0 lg:mt-0 lg:w-96">
             <div className="flex items-start gap-4">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sage-200 text-olive-800">
                 <Icon name={place.icon} aria-hidden="true" />

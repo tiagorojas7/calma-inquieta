@@ -111,7 +111,7 @@ describe("ContactSection", () => {
     const bleed = container.querySelector("[data-photo-bleed]");
 
     expect(card).not.toBeNull();
-    expect(card).toHaveClass("-mt-16", "rounded-md");
+    expect(card).toHaveClass("-mt-16", "rounded-md", "glass-dense");
     expect(card).toContainElement(
       screen.getByRole("link", { name: /Cómo llegar/ }),
     );

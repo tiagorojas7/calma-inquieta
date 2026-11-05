@@ -31,8 +31,9 @@ const PHOTO_SIZES = "100vw";
  * there is one, fills the whole band and the invitation sits on a liquid-glass
  * panel over it, so no text ever sits on the photo itself and the photo stays
  * the hero of the band. The panel is a 78 % canvas tint, so ink-900 text keeps
- * about 9:1 over any part of the photo. Without a photo the same panel sits on
- * the flat cocoa band. Phones get one column: the heading, the invitation and
+ * about 9:1 over any part of the photo. Without a photo the panel sits on the
+ * flat cocoa band and uses the dense sheet, because the regular one leaves the
+ * clay-800 secondary label at 4.45:1 there. Phones get one column: the heading, the invitation and
  * two full-width solid buttons, each with its glyph, with the photo showing
  * above the panel. The butterfly and the sprig only appear from lg, beside the
  * panel. A half-opaque solid cocoa veil (35 %, 55 % on hover or focus) deepens
@@ -93,7 +94,9 @@ export function ContactBand({
           image ? "flex min-h-128 items-end lg:min-h-112 lg:items-center" : ""
         }
       >
-        <Reveal className="glass flex w-full max-w-xl flex-col items-start gap-6 rounded-md p-6 text-ink-900 [--em-color:var(--color-terracotta-700)] sm:p-8">
+        <Reveal
+          className={`glass ${image ? "" : "glass-dense"} flex w-full max-w-xl flex-col items-start gap-6 rounded-md p-6 text-ink-900 [--em-color:var(--color-terracotta-700)] sm:p-8`}
+        >
           <Heading level={2}>
             <EmphasizedLastWord text={heading} />
           </Heading>

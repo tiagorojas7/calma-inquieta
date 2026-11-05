@@ -23,6 +23,21 @@ describe("liquid glass stylesheet", () => {
     expect(Number(tint?.[1])).toBeGreaterThanOrEqual(70);
   });
 
+  it("offers a denser sheet that keeps clay-800 labels AA even over black", () => {
+    const tint = glassCss.match(
+      /\.glass-dense\s*\{[^}]*background-color:\s*color-mix\(in srgb,\s*var\(--color-canvas\)\s*(\d+)%/,
+    );
+
+    expect(tint).not.toBeNull();
+    expect(Number(tint?.[1])).toBeGreaterThanOrEqual(86);
+  });
+
+  it("lets the fallbacks win over the denser sheet", () => {
+    expect(glassCss.indexOf(".glass-dense")).toBeLessThan(
+      glassCss.indexOf("@supports not"),
+    );
+  });
+
   it("falls back to a near-opaque sheet without backdrop blur and a solid one on request", () => {
     expect(glassCss).toMatch(/@supports not \(\s*\(backdrop-filter:/);
     expect(glassCss).toMatch(

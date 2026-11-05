@@ -41,7 +41,7 @@ export function NumberedSteps({
               <span
                 aria-hidden="true"
                 data-step-rule
-                className={`absolute bottom-0 left-[0.9375rem] top-8 w-0.5 ${state === "done" ? "bg-clay-600" : "bg-tan-400"}`}
+                className={`absolute bottom-0 left-4 top-8 w-0.5 -translate-x-1/2 ${state === "done" ? "bg-clay-600" : "bg-tan-400"}`}
               />
             ) : null}
             <span

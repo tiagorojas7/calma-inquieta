@@ -112,6 +112,8 @@ export const adminMicrocopy = {
     consolidationLink: "Materiales a pedir",
     consolidation: {
       title: (month: string) => `Materiales: ${month}`,
+      subtitle: "Qué pedirle a cada proveedor y qué entregarle a cada alumna.",
+      crumb: "Materiales",
       sectionsLabel: "Secciones de materiales",
       sections: { pedir: "Para pedir", entregar: "Para entregar" },
       quantity: (count: number) => `Cantidad: ${String(count)}`,
@@ -136,10 +138,18 @@ export const adminMicrocopy = {
           ? "1 pedido marcado como recibido."
           : `${String(count)} pedidos marcados como recibidos.`,
       columns: { material: "Material", quantity: "Cantidad", total: "Total" },
+      itemsTitle: "Qué pedir",
+      stepsLabel: (supplier: string) => `Pasos para pedir a ${supplier}`,
+      steps: {
+        copy: "Copiá el pedido y mandalo por WhatsApp",
+        done: "Cuando lo mandes, marcalo como pedido",
+      },
+      suppliers: (count: number) =>
+        count === 1 ? "1 proveedor" : `${String(count)} proveedores`,
       supplierTotal: "Total del proveedor",
       grandTotal: "Total general",
       summaryLabel: (supplier: string) => `Pedido para ${supplier}`,
-      copy: "Copiar pedido por WhatsApp",
+      copy: "Copiar pedido",
       copied: "Pedido copiado.",
       markRequested: "Ya lo pedí",
       empty: "No hay materiales para pedir este mes",

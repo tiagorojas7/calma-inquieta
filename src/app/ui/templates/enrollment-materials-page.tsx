@@ -166,7 +166,10 @@ export function EnrollmentMaterialsPage(props: EnrollmentMaterialsPageProps) {
           {props.formError}
         </p>
       ) : null}
-      <form className="grid gap-6 lg:grid-cols-[1fr_20rem]" method="post">
+      <form
+        className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+        method="post"
+      >
         <input name="student" type="hidden" value={props.studentJson ?? ""} />
         <div className="flex flex-col gap-6">
           {groups.length > 1 && hydrated ? (

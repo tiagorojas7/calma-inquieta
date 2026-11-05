@@ -288,6 +288,15 @@ describe("EnrollmentMaterialsPage on a phone", () => {
     expect(bar).toHaveAttribute("data-shown", "false");
   });
 
+  it("holds the list column to the screen, so the filter scrolls instead of widening the page", () => {
+    const { container } = setup();
+
+    expect(container.querySelector("form")).toHaveClass("grid-cols-1");
+    expect(container.querySelector("form")?.className).toContain(
+      "lg:grid-cols-[minmax(0,1fr)_20rem]",
+    );
+  });
+
   it("keeps the remove button to one word, with the material in its name", () => {
     setup();
 

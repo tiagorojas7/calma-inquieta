@@ -175,7 +175,7 @@ describe("tallerToDetail", () => {
     expect(detail.breadcrumb).toEqual({
       label: "Ruta de navegación",
       items: [
-        { label: "Talleres", href: "/talleres" },
+        { label: "Talleres mensuales", href: "/talleres" },
         { label: "Técnica de demostración" },
         { label: "Taller Demo" },
       ],

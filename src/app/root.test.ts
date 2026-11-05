@@ -28,6 +28,9 @@ const render = (error: unknown) =>
     ),
   );
 
+/** The title accents its last word, so the words sit in separate tags. */
+const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
+
 describe("root error boundary", () => {
   it("renders a not-found page for a 404 response", () => {
     const html = render({
@@ -37,14 +40,14 @@ describe("root error boundary", () => {
       data: null,
     });
 
-    expect(html).toContain("Página no encontrada");
-    expect(html).not.toContain("Algo salió mal");
+    expect(textOf(html)).toContain("Página no encontrada");
+    expect(textOf(html)).not.toContain("Algo salió mal");
   });
 
   it("renders a generic page for any other error without its message", () => {
     const html = render(new Error("connect ECONNREFUSED secret-host:5432"));
 
-    expect(html).toContain("Algo salió mal");
+    expect(textOf(html)).toContain("Algo salió mal");
     expect(html).not.toContain("secret-host");
     expect(html).not.toContain("ECONNREFUSED");
   });
@@ -57,7 +60,7 @@ describe("root error boundary", () => {
       data: "secret detail",
     });
 
-    expect(html).toContain("Algo salió mal");
+    expect(textOf(html)).toContain("Algo salió mal");
     expect(html).not.toContain("secret detail");
   });
 });

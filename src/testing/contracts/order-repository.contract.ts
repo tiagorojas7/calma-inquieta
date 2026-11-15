@@ -35,11 +35,19 @@ const orderDraft = (...args: Parameters<typeof rawOrderDraft>) => {
   };
 };
 
-const other = (email: string) => ({
-  fullName: "Otra Persona",
-  email,
-  phoneDigits: "5493515551234",
-});
+const other = (email: string) => {
+  const numbered = email.match(/\d+/)?.[0];
+  let emailCodeUnitSum = 0;
+  for (let index = 0; index < email.length; index += 1)
+    emailCodeUnitSum += email.charCodeAt(index);
+  const suffix =
+    numbered === undefined ? emailCodeUnitSum : 1_000_000 + Number(numbered);
+  return {
+    fullName: "Otra Persona",
+    email,
+    phoneDigits: `549351${String(suffix).padStart(7, "0")}`,
+  };
+};
 
 export interface OrderRepositoryContractHarness {
   readonly repository: OrderRepository;
@@ -130,7 +138,7 @@ export function runOrderRepositoryContract(
       expect(next.ok && next.value.number).toBe("CI-2026-0002");
     });
 
-    it("enforces the partial active duplicate rule and lets a cancelled order be replaced", async () => {
+    it("allows only one record per student and month, including cancelled history", async () => {
       const { repository: repo } = await create();
       const first = await repo.create(orderDraft());
       if (!first.ok) throw new Error("fixture");
@@ -164,7 +172,19 @@ export function runOrderRepositoryContract(
       const replacement = await repo.create(
         orderDraft({ publicId: "E".repeat(22) }),
       );
-      expect(replacement.ok && replacement.value.number).toBe("CI-2026-0004");
+      expect(replacement).toEqual({
+        ok: false,
+        error: { kind: "duplicate-order" },
+      });
+      const next = await repo.create(
+        orderDraft({
+          publicId: "F".repeat(22),
+          periodId: "p-3",
+          period: "2026-12",
+          student: other("cai@example.com"),
+        }),
+      );
+      expect(next.ok && next.value.number).toBe("CI-2026-0004");
     });
 
     it("round-trips by public id and never by order number", async () => {

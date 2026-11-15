@@ -27,6 +27,7 @@ export interface StudentSourceOrder {
   readonly workshopName: string;
   readonly period: string;
   readonly turnoLabel: string;
+  readonly weekday: number;
   readonly studentName: string;
   readonly studentEmail: string;
   readonly studentPhoneDigits: string;
@@ -74,6 +75,30 @@ export interface StudentQuery {
 }
 
 export const STUDENT_PAGE_SIZE = 50;
+
+export type StudentIdentityResolution =
+  | { readonly kind: "create" }
+  | { readonly kind: "reuse"; readonly studentId: string }
+  | { readonly kind: "conflict" };
+
+/** Resolves normalized contact matches without ever merging two profiles. */
+export function resolveStudentIdentity(
+  emailStudentId: string | null,
+  phoneStudentId: string | null,
+): StudentIdentityResolution {
+  if (emailStudentId === null && phoneStudentId === null)
+    return { kind: "create" };
+  if (
+    emailStudentId !== null &&
+    phoneStudentId !== null &&
+    emailStudentId !== phoneStudentId
+  )
+    return { kind: "conflict" };
+  return {
+    kind: "reuse",
+    studentId: emailStudentId ?? (phoneStudentId as string),
+  };
+}
 
 /** The identity of a student: the email, trimmed and lower-cased. */
 export function normalizeStudentEmail(email: string): string {

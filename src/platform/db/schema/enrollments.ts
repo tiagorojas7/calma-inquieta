@@ -9,14 +9,17 @@ import {
   time,
   timestamp,
   unique,
-  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { student } from "./students";
 
 export const enrollmentOrder = pgTable(
   "enrollment_order",
   {
     id: uuid("id").primaryKey(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => student.id),
     publicId: text("public_id").notNull(),
     number: text("number").notNull(),
     status: text("status").notNull(),
@@ -51,9 +54,10 @@ export const enrollmentOrder = pgTable(
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
     unique("enrollment_order_number_unique").on(table.number),
-    uniqueIndex("enrollment_order_active_duplicate_unique")
-      .on(table.studentEmail, table.workshopId, table.periodId)
-      .where(sql`${table.status} <> 'cancelled'`),
+    unique("enrollment_order_student_period_unique").on(
+      table.studentId,
+      table.period,
+    ),
     check(
       "enrollment_order_status_check",
       sql`${table.status} IN ('pending_confirmation', 'paid', 'materials_requested', 'materials_received', 'cancelled')`,

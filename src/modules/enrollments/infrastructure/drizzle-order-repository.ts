@@ -7,6 +7,7 @@ import {
   orderLine,
   orderNumberSequence,
 } from "~/platform/db/schema/enrollments";
+import { student } from "~/platform/db/schema/students";
 import {
   formatOrderNumber,
   transition,
@@ -154,6 +155,62 @@ export function createDrizzleOrderRepository(
       withSession(async (db) => {
         try {
           return await db.transaction(async (tx) => {
+            const identityKeys = [
+              `email:${draft.student.email}`,
+              `phone:${draft.student.phoneDigits}`,
+            ].sort();
+            for (const identityKey of identityKeys) {
+              await tx.execute(
+                sql`select pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))`,
+              );
+            }
+            const matchedStudents = await tx
+              .select()
+              .from(student)
+              .where(
+                or(
+                  eq(student.email, draft.student.email),
+                  eq(student.phoneDigits, draft.student.phoneDigits),
+                ),
+              )
+              .for("update");
+            const emailStudent =
+              matchedStudents.find(
+                (candidate) => candidate.email === draft.student.email,
+              ) ?? null;
+            const phoneStudent =
+              matchedStudents.find(
+                (candidate) =>
+                  candidate.phoneDigits === draft.student.phoneDigits,
+              ) ?? null;
+            if (
+              emailStudent !== null &&
+              phoneStudent !== null &&
+              emailStudent.id !== phoneStudent.id
+            )
+              return err({ kind: "duplicate-order" as const });
+            const matchedStudent = emailStudent ?? phoneStudent;
+            const studentId = matchedStudent?.id ?? crypto.randomUUID();
+            if (matchedStudent === null) {
+              await tx.insert(student).values({
+                id: studentId,
+                fullName: draft.student.fullName,
+                email: draft.student.email,
+                phoneDigits: draft.student.phoneDigits,
+                createdAt: draft.requestedAt,
+                updatedAt: draft.requestedAt,
+              });
+            } else {
+              await tx
+                .update(student)
+                .set({
+                  fullName: draft.student.fullName,
+                  email: draft.student.email,
+                  phoneDigits: draft.student.phoneDigits,
+                  updatedAt: draft.requestedAt,
+                })
+                .where(eq(student.id, studentId));
+            }
             const sequence = await tx
               .insert(orderNumberSequence)
               .values({ year: draft.year, last: 1 })
@@ -169,6 +226,7 @@ export function createDrizzleOrderRepository(
             const number = formatOrderNumber(draft.year, last);
             await tx.insert(enrollmentOrder).values({
               id,
+              studentId,
               publicId: draft.publicId,
               number,
               status: "pending_confirmation",
@@ -230,7 +288,11 @@ export function createDrizzleOrderRepository(
             return ok(toOrder(persisted, persistedLines));
           });
         } catch (error) {
-          if (hasConstraint(error, "enrollment_order_active_duplicate_unique"))
+          if (
+            hasConstraint(error, "enrollment_order_student_period_unique") ||
+            hasConstraint(error, "student_email_unique") ||
+            hasConstraint(error, "student_phone_digits_unique")
+          )
             return err({ kind: "duplicate-order" });
           throw error;
         }

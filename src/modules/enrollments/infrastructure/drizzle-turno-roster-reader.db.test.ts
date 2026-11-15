@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { enrollmentOrder } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { student } from "~/platform/db/schema/students";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -30,8 +31,22 @@ describe("createDrizzleTurnoRosterReader", () => {
     ) => {
       n += 1;
       const status = overrides.status ?? "paid";
+      const studentId = `00000000-0000-4000-8003-${String(n).padStart(12, "0")}`;
+      const studentName = overrides.studentName ?? "Ana Pérez";
+      const studentEmail = overrides.studentEmail ?? "ana@example.com";
+      const studentPhoneDigits =
+        overrides.studentPhoneDigits ?? `549351${String(n).padStart(7, "0")}`;
+      await session.db.insert(student).values({
+        id: studentId,
+        fullName: studentName,
+        email: studentEmail.trim().toLowerCase(),
+        phoneDigits: studentPhoneDigits,
+        createdAt: new Date("2026-10-01T12:00:00Z"),
+        updatedAt: new Date("2026-10-01T12:00:00Z"),
+      });
       await session.db.insert(enrollmentOrder).values({
         id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+        studentId,
         publicId: `order-${String(n).padStart(17, "0")}`,
         number: `CI-2026-${String(n).padStart(4, "0")}`,
         status,
@@ -45,9 +60,9 @@ describe("createDrizzleTurnoRosterReader", () => {
         weekday: 1,
         startsAt: "18:00",
         endsAt: "20:00",
-        studentName: "Ana Pérez",
-        studentEmail: "ana@example.com",
-        studentPhoneDigits: "5493515550101",
+        studentName,
+        studentEmail,
+        studentPhoneDigits,
         feeCentavos: 5_000_000,
         materialsCentavos: 0,
         totalCentavos: 5_000_000,

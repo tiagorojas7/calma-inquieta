@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { enrollmentOrder } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { student } from "~/platform/db/schema/students";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -26,8 +27,20 @@ async function setup() {
     next += 1;
     const session = await openSession();
     try {
+      const studentId = `00000000-0000-4000-8001-${String(next).padStart(12, "0")}`;
+      const studentEmail = `ana${String(next)}@example.com`;
+      const studentPhoneDigits = `549351${String(next).padStart(7, "0")}`;
+      await session.db.insert(student).values({
+        id: studentId,
+        fullName: "Ana Pérez",
+        email: studentEmail,
+        phoneDigits: studentPhoneDigits,
+        createdAt: new Date("2026-10-30T12:00:00.000Z"),
+        updatedAt: new Date("2026-10-30T12:00:00.000Z"),
+      });
       await session.db.insert(enrollmentOrder).values({
         id: `00000000-0000-4000-8000-${String(next).padStart(12, "0")}`,
+        studentId,
         publicId: `order-${String(next).padStart(17, "0")}`,
         number: `CI-2026-${String(next).padStart(4, "0")}`,
         status: "paid",
@@ -42,8 +55,8 @@ async function setup() {
         startsAt: "17:30",
         endsAt: "19:30",
         studentName: "Ana Pérez",
-        studentEmail: `ana${String(next)}@example.com`,
-        studentPhoneDigits: "5493511234567",
+        studentEmail,
+        studentPhoneDigits,
         feeCentavos: 5_800_000,
         materialsCentavos: 0,
         totalCentavos: 5_800_000,

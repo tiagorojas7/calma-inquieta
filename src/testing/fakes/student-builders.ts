@@ -22,6 +22,7 @@ export const studentOrder = (
   workshopName: "Cerámica inicial",
   period: "2026-10",
   turnoLabel: "Martes 18:00 a 20:00",
+  weekday: 2,
   studentName: `Student ${String(index)}`,
   studentEmail: `student-${String(index)}@example.com`,
   studentPhoneDigits: `549351555${String(index).padStart(4, "0")}`,

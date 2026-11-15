@@ -1,6 +1,7 @@
 import { afterAll } from "vitest";
 import { enrollmentOrder } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { student } from "~/platform/db/schema/students";
 import { runStudentOrderSourceContract } from "~/testing/contracts/student-order-source.contract";
 import { studentOrder } from "~/testing/fakes/student-builders";
 import {
@@ -28,8 +29,18 @@ runStudentOrderSourceContract(async () => {
       const order = studentOrder(next, overrides);
       const session = await openSession();
       try {
+        const studentId = `00000000-0000-4000-8002-${String(next).padStart(12, "0")}`;
+        await session.db.insert(student).values({
+          id: studentId,
+          fullName: order.studentName,
+          email: order.studentEmail,
+          phoneDigits: order.studentPhoneDigits,
+          createdAt: order.requestedAt,
+          updatedAt: order.requestedAt,
+        });
         await session.db.insert(enrollmentOrder).values({
           id: order.id,
+          studentId,
           publicId: `order-${String(next).padStart(17, "0")}`,
           number: order.number,
           status: order.status,

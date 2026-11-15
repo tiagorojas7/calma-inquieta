@@ -13,6 +13,7 @@ export interface OrderHistoryRow {
   readonly workshopName: string;
   readonly period: string;
   readonly turnoLabel: string;
+  readonly weekday: number;
   readonly studentName: string;
   readonly studentEmail: string;
   readonly studentPhoneDigits: string;

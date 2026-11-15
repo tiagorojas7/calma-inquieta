@@ -5,6 +5,7 @@ import {
   turnoSeatCounter,
 } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { student } from "~/platform/db/schema/students";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -35,6 +36,10 @@ async function fixture() {
     connectionString: database.url,
   });
   let next = 100;
+  const students = new Map<
+    string,
+    { readonly id: string; readonly phoneDigits: string }
+  >();
   async function add(
     overrides: Partial<Order> & { materials?: number } = {},
   ): Promise<string> {
@@ -43,8 +48,15 @@ async function fixture() {
     const status = rest.status ?? "paid";
     const paid = status !== "pending_confirmation" ? new Date() : null;
     const total = 10_000_00 + materials;
+    const studentEmail = rest.studentEmail ?? `s${String(next)}@example.com`;
+    const normalizedEmail = studentEmail.trim().toLowerCase();
+    const existingStudent = students.get(normalizedEmail);
+    const studentId = existingStudent?.id ?? uuid(next + 5_000);
+    const studentPhoneDigits =
+      existingStudent?.phoneDigits ?? `351${String(next).padStart(7, "0")}`;
     const row: Order = {
       id: uuid(next),
+      studentId,
       publicId: `order-${String(next).padStart(17, "0")}`,
       number: `CI-2026-${String(next).padStart(5, "0")}`,
       status,
@@ -59,8 +71,8 @@ async function fixture() {
       startsAt: "18:00",
       endsAt: "20:00",
       studentName: "Ana",
-      studentEmail: `s${String(next)}@example.com`,
-      studentPhoneDigits: "3510000000",
+      studentEmail,
+      studentPhoneDigits,
       feeCentavos: 10_000_00,
       materialsCentavos: materials,
       totalCentavos: total,
@@ -72,6 +84,20 @@ async function fixture() {
     };
     const session = await openSession();
     try {
+      if (existingStudent === undefined) {
+        await session.db.insert(student).values({
+          id: row.studentId,
+          fullName: row.studentName,
+          email: normalizedEmail,
+          phoneDigits: row.studentPhoneDigits,
+          createdAt: row.requestedAt,
+          updatedAt: row.requestedAt,
+        });
+        students.set(normalizedEmail, {
+          id: row.studentId,
+          phoneDigits: row.studentPhoneDigits,
+        });
+      }
       await session.db.insert(enrollmentOrder).values(row);
       if (materials > 0) {
         await session.db.insert(orderLine).values({
@@ -251,7 +277,6 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
   it("totals the fee income and distinct normalized students of each period's paid orders", async () => {
     const { add, reader } = await fixture();
     await add({ studentEmail: "Ana@Example.com ", materials: 4_000_00 });
-    await add({ studentEmail: "ana@example.com" });
     await add({ studentEmail: "bea@example.com" });
     await add({
       status: "pending_confirmation",
@@ -265,8 +290,8 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       periodId: PERIOD_A,
-      orders: 3,
-      feeCentavos: 30_000_00,
+      orders: 2,
+      feeCentavos: 20_000_00,
     });
     expect([...(rows[0]?.studentEmails ?? [])].sort()).toEqual([
       "ana@example.com",

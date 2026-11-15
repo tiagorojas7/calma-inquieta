@@ -4,6 +4,7 @@ import {
   deriveStudents,
   filterStudents,
   normalizeStudentEmail,
+  resolveStudentIdentity,
   NOTE_MAX,
   validateNote,
 } from "./student-core";
@@ -11,6 +12,27 @@ import {
 describe("normalizeStudentEmail", () => {
   it("trims and lower-cases", () => {
     expect(normalizeStudentEmail("  Ana@Example.COM ")).toBe("ana@example.com");
+  });
+});
+
+describe("resolveStudentIdentity", () => {
+  it("creates, reuses, or rejects a profile without merging two people", () => {
+    expect(resolveStudentIdentity(null, null)).toEqual({ kind: "create" });
+    expect(resolveStudentIdentity("student-a", null)).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity(null, "student-a")).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity("student-a", "student-a")).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity("student-a", "student-b")).toEqual({
+      kind: "conflict",
+    });
   });
 });
 

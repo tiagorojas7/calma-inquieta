@@ -24,6 +24,7 @@ function toSource(row: Row): OrderHistoryRow {
     workshopName: row.workshopName,
     period: row.period,
     turnoLabel: row.turnoLabel,
+    weekday: row.weekday,
     studentName: row.studentName,
     studentEmail: row.studentEmail,
     studentPhoneDigits: row.studentPhoneDigits,

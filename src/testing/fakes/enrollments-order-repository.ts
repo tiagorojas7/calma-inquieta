@@ -1,5 +1,12 @@
-import { err, ok, type NotFound, type Result } from "~/modules/_shared";
 import {
+  err,
+  ok,
+  type Money,
+  type NotFound,
+  type Result,
+} from "~/modules/_shared";
+import {
+  snapshotOf,
   unavailable,
   type AdminEnrollmentDetail,
   type AdminEnrollmentPeriodLookup,
@@ -7,9 +14,12 @@ import {
   type AdminEnrollmentStoreError,
   type AdminListQuery,
   type Cancelled,
+  type Corrected,
+  type CorrectionTarget,
   type ConsolidationLine,
   type DeliveryOrder,
   type Confirmed,
+  type OrderCorrection,
 } from "~/modules/enrollments/application/admin-enrollment-store";
 import type {
   AuditEntry,
@@ -33,13 +43,63 @@ import {
   type OrderStatus,
   type TurnoFull,
 } from "~/modules/enrollments/domain/order-core";
+import { planCorrection } from "~/modules/enrollments/domain/order-correction";
 import { periodAcceptsOrders } from "~/modules/enrollments/domain/period-window";
 import { InMemorySeatLedger } from "./enrollments-seat-ledger";
 
 interface Row {
   order: StoredOrder;
   audit: AuditEntry[];
+  corrections: OrderCorrection[];
 }
+
+/** What a correction writes to the order row, decided by the store. */
+export interface OrderCorrectionChange {
+  readonly target?: CorrectionTarget;
+  readonly fee: Money;
+  readonly total: Money;
+  readonly status: OrderStatus;
+  /** `clear` drops the payment (back to pending); `repay` keeps it at the new total. */
+  readonly payment: "keep" | "clear" | "repay";
+  readonly audit?: AuditEntry;
+  readonly correction: OrderCorrection;
+}
+
+/**
+ * The extra capability the in-memory order repository gives its admin store so
+ * a correction is one atomic write, as in the Drizzle transaction. Test-only:
+ * the production `OrderRepository` port does not have it.
+ */
+export interface CorrectableOrders {
+  /** True when the order's student already holds an active order in `period`. */
+  holdsMonth(orderId: string, period: string): boolean;
+  applyCorrection(
+    orderId: string,
+    change: OrderCorrectionChange,
+  ): Result<StoredOrder, DuplicateOrder | NotFound>;
+  corrections(orderId: string): Promise<readonly OrderCorrection[]>;
+}
+
+const PAYMENT_KEYS = new Set([
+  "paidAt",
+  "paidAmount",
+  "confirmedBy",
+  "paymentNote",
+]);
+
+/** The order as if it had never been paid: the payment fields are dropped. */
+const withoutPayment = (order: StoredOrder): StoredOrder =>
+  Object.fromEntries(
+    Object.entries(order).filter(([key]) => !PAYMENT_KEYS.has(key)),
+  ) as unknown as StoredOrder;
+
+const isCorrectable = (
+  orders: OrderRepository,
+): orders is OrderRepository & CorrectableOrders =>
+  "applyCorrection" in orders &&
+  typeof orders.applyCorrection === "function" &&
+  "holdsMonth" in orders &&
+  "corrections" in orders;
 
 const cordobaDate = (instant: Date): string => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -59,7 +119,9 @@ const cordobaDate = (instant: Date): string => {
 };
 
 /** In-memory order aggregate driven by the same transition table as production. */
-export class InMemoryOrderRepository implements OrderRepository {
+export class InMemoryOrderRepository
+  implements OrderRepository, CorrectableOrders
+{
   private readonly rows: Row[] = [];
   /** Durable profiles keyed like production: unique email and unique phone. */
   private readonly students: {
@@ -171,8 +233,48 @@ export class InMemoryOrderRepository implements OrderRepository {
           note: null,
         },
       ],
+      corrections: [],
     });
     return ok(order);
+  }
+  holdsMonth(orderId: string, period: string): boolean {
+    const studentId = this.studentOf.get(orderId);
+    return this.rows.some(
+      ({ order }) =>
+        order.id !== orderId &&
+        this.studentOf.get(order.id) === studentId &&
+        order.period === period &&
+        order.status !== "cancelled",
+    );
+  }
+  applyCorrection(
+    orderId: string,
+    change: OrderCorrectionChange,
+  ): Result<StoredOrder, DuplicateOrder | NotFound> {
+    const row = this.rows.find(({ order }) => order.id === orderId);
+    if (!row) return err({ kind: "not-found" });
+    const period = change.target?.period ?? row.order.period;
+    if (this.holdsMonth(orderId, period))
+      return err({ kind: "duplicate-order" });
+    const base =
+      change.payment === "clear" ? withoutPayment(row.order) : row.order;
+    row.order = {
+      ...base,
+      ...change.target,
+      fee: change.fee,
+      total: change.total,
+      status: change.status,
+      ...(change.payment === "repay" ? { paidAmount: change.total } : {}),
+    };
+    if (change.audit) row.audit.push(change.audit);
+    row.corrections.push(change.correction);
+    return ok(row.order);
+  }
+  corrections(orderId: string): Promise<readonly OrderCorrection[]> {
+    return Promise.resolve([
+      ...(this.rows.find(({ order }) => order.id === orderId)?.corrections ??
+        []),
+    ]);
   }
   findByPublicId(publicId: string): Promise<StoredOrder | null> {
     this.reads += 1;
@@ -431,6 +533,172 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
       }
     });
   }
+  async correct(
+    input: Parameters<AdminEnrollmentStore["correct"]>[0],
+  ): Promise<Result<Corrected, AdminEnrollmentStoreError>> {
+    return this.atomic(`order:${input.orderId}`, async () => {
+      try {
+        const orders = this.orders;
+        if (!isCorrectable(orders)) return unavailable();
+        const order = await orders.findForAdmin(input.orderId);
+        if (!order) return err({ kind: "not-found" });
+        const target = input.target;
+        const retargeted =
+          target !== undefined &&
+          (target.workshopId !== order.workshopId ||
+            target.periodId !== order.periodId ||
+            target.period !== order.period ||
+            target.turnoId !== order.turnoId);
+        const moved =
+          target !== undefined &&
+          (target.periodId !== order.periodId ||
+            target.turnoId !== order.turnoId);
+        const refund = input.refund;
+        const plan = planCorrection(
+          {
+            status: order.status,
+            materialsTotal: order.materialsTotal,
+            total: order.total,
+            ...(order.paidAmount === undefined
+              ? {}
+              : { paidAmount: order.paidAmount }),
+            ...(order.paidAt === undefined
+              ? {}
+              : { paidOn: cordobaDateOf(order.paidAt) }),
+          },
+          {
+            fee: input.fee,
+            moved,
+            ...(refund === undefined
+              ? {}
+              : { refund: { amount: refund.amount, on: refund.refundedOn } }),
+          },
+          cordobaDateOf(input.now),
+        );
+        if (!plan.ok) return plan;
+        const { value: decided } = plan;
+        let capacity = 0;
+        if (target !== undefined && retargeted) {
+          if (
+            target.period !== order.period &&
+            orders.holdsMonth(order.id, target.period)
+          )
+            return err({ kind: "duplicate-order" });
+          if (moved) {
+            const period = await this.periods.find(
+              target.periodId,
+              target.turnoId,
+            );
+            if (!period) return err({ kind: "period-closed" });
+            const open = periodAcceptsOrders(
+              { status: period.status, period: target.period },
+              input.now,
+            );
+            if (!open.ok) return open;
+            capacity = period.capacity;
+          }
+        }
+        const correction: OrderCorrection = {
+          id: crypto.randomUUID(),
+          at: input.now,
+          actor: input.actor.email,
+          note: input.note ?? null,
+          before: snapshotOf(order),
+          after: {
+            ...snapshotOf(order),
+            ...(retargeted ? target : {}),
+            fee: input.fee,
+            total: decided.total,
+            status: decided.status,
+          },
+          previousPayment:
+            decided.outcome === "returned-to-pending" &&
+            order.paidAt !== undefined
+              ? {
+                  amount: order.paidAmount ?? order.total,
+                  paidAt: order.paidAt,
+                  confirmedBy: order.confirmedBy ?? null,
+                }
+              : null,
+          refund:
+            decided.refund === undefined
+              ? null
+              : {
+                  amount: decided.refund.amount,
+                  refundedAt: cordobaDayStart(decided.refund.on),
+                  note: refund?.note ?? null,
+                },
+        };
+        const change = {
+          ...(retargeted ? { target } : {}),
+          fee: input.fee,
+          total: decided.total,
+          status: decided.status,
+          payment:
+            decided.outcome === "returned-to-pending"
+              ? ("clear" as const)
+              : decided.outcome === "lowered"
+                ? ("repay" as const)
+                : ("keep" as const),
+          ...(decided.status === order.status
+            ? {}
+            : {
+                audit: {
+                  at: input.now,
+                  actor: input.actor.email,
+                  from: order.status,
+                  to: decided.status,
+                  note: input.note ?? null,
+                },
+              }),
+          correction,
+        };
+        const oldKey = `seat:${order.periodId}:${order.turnoId}`;
+        const newKey =
+          target === undefined
+            ? oldKey
+            : `seat:${target.periodId}:${target.turnoId}`;
+        const keys = [...new Set([oldKey, newKey])].sort();
+        const locked = (
+          index: number,
+          work: () => Promise<Corrected | AdminEnrollmentStoreError>,
+        ): Promise<Corrected | AdminEnrollmentStoreError> => {
+          const key = keys[index];
+          return key === undefined
+            ? work()
+            : this.atomic(key, () => locked(index + 1, work));
+        };
+        const outcome = await locked(0, async () => {
+          if (decided.seat === "move" && target !== undefined) {
+            const claimed = await this.seats.claim(
+              target.periodId,
+              target.turnoId,
+              capacity,
+            );
+            if (!claimed.ok) return claimed.error;
+          }
+          try {
+            const applied = orders.applyCorrection(order.id, change);
+            if (!applied.ok) {
+              if (decided.seat === "move" && target !== undefined)
+                await this.seats.release(target.periodId, target.turnoId);
+              return applied.error;
+            }
+          } catch (error) {
+            if (decided.seat === "move" && target !== undefined)
+              await this.seats.release(target.periodId, target.turnoId);
+            throw error;
+          }
+          if (decided.seat !== "none")
+            await this.seats.release(order.periodId, order.turnoId);
+          return { kind: "corrected" as const, outcome: decided.outcome };
+        });
+        return "outcome" in outcome ? ok(outcome) : err(outcome);
+      } catch {
+        return unavailable();
+      }
+    });
+  }
   async markMaterials(
     input: Parameters<AdminEnrollmentStore["markMaterials"]>[0],
   ): Promise<Result<void, AdminEnrollmentStoreError>> {
@@ -564,6 +832,9 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
           capacity: period.capacity,
         },
         audit: await this.orders.auditTrail(orderId),
+        corrections: isCorrectable(this.orders)
+          ? await this.orders.corrections(orderId)
+          : [],
       });
     } catch {
       return unavailable();

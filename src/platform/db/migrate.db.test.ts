@@ -124,6 +124,7 @@ describe("runMigrations", () => {
       { table_name: "media_asset" },
       { table_name: "monthly_workshop" },
       { table_name: "order_audit" },
+      { table_name: "order_correction" },
       { table_name: "order_line" },
       { table_name: "order_number_sequence" },
       { table_name: "period_material_offer" },
@@ -191,6 +192,7 @@ describe("runMigrations", () => {
         expect.arrayContaining([
           { table_name: "enrollment_order" },
           { table_name: "order_audit" },
+          { table_name: "order_correction" },
           { table_name: "order_line" },
           { table_name: "order_number_sequence" },
           { table_name: "turno_seat_counter" },

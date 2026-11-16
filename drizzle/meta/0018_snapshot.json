@@ -695,6 +695,280 @@
                                                                    },
                                               "isRLSEnabled":  false
                                           },
+                   "public.order_correction":  {
+                                                   "name":  "order_correction",
+                                                   "schema":  "",
+                                                   "columns":  {
+                                                                   "id":  {
+                                                                              "name":  "id",
+                                                                              "type":  "uuid",
+                                                                              "primaryKey":  true,
+                                                                              "notNull":  true
+                                                                          },
+                                                                   "order_id":  {
+                                                                                    "name":  "order_id",
+                                                                                    "type":  "uuid",
+                                                                                    "primaryKey":  false,
+                                                                                    "notNull":  true
+                                                                                },
+                                                                   "at":  {
+                                                                              "name":  "at",
+                                                                              "type":  "timestamp with time zone",
+                                                                              "primaryKey":  false,
+                                                                              "notNull":  true
+                                                                          },
+                                                                   "actor":  {
+                                                                                 "name":  "actor",
+                                                                                 "type":  "text",
+                                                                                 "primaryKey":  false,
+                                                                                 "notNull":  true
+                                                                             },
+                                                                   "note":  {
+                                                                                "name":  "note",
+                                                                                "type":  "text",
+                                                                                "primaryKey":  false,
+                                                                                "notNull":  false
+                                                                            },
+                                                                   "before_workshop_id":  {
+                                                                                              "name":  "before_workshop_id",
+                                                                                              "type":  "uuid",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                   "before_workshop_name":  {
+                                                                                                "name":  "before_workshop_name",
+                                                                                                "type":  "text",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                   "before_period_id":  {
+                                                                                            "name":  "before_period_id",
+                                                                                            "type":  "uuid",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  true
+                                                                                        },
+                                                                   "before_period":  {
+                                                                                         "name":  "before_period",
+                                                                                         "type":  "text",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  true
+                                                                                     },
+                                                                   "before_turno_id":  {
+                                                                                           "name":  "before_turno_id",
+                                                                                           "type":  "uuid",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  true
+                                                                                       },
+                                                                   "before_turno_label":  {
+                                                                                              "name":  "before_turno_label",
+                                                                                              "type":  "text",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                   "before_weekday":  {
+                                                                                          "name":  "before_weekday",
+                                                                                          "type":  "integer",
+                                                                                          "primaryKey":  false,
+                                                                                          "notNull":  true
+                                                                                      },
+                                                                   "before_starts_at":  {
+                                                                                            "name":  "before_starts_at",
+                                                                                            "type":  "time",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  true
+                                                                                        },
+                                                                   "before_ends_at":  {
+                                                                                          "name":  "before_ends_at",
+                                                                                          "type":  "time",
+                                                                                          "primaryKey":  false,
+                                                                                          "notNull":  true
+                                                                                      },
+                                                                   "before_fee_centavos":  {
+                                                                                               "name":  "before_fee_centavos",
+                                                                                               "type":  "bigint",
+                                                                                               "primaryKey":  false,
+                                                                                               "notNull":  true
+                                                                                           },
+                                                                   "before_total_centavos":  {
+                                                                                                 "name":  "before_total_centavos",
+                                                                                                 "type":  "bigint",
+                                                                                                 "primaryKey":  false,
+                                                                                                 "notNull":  true
+                                                                                             },
+                                                                   "before_status":  {
+                                                                                         "name":  "before_status",
+                                                                                         "type":  "text",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  true
+                                                                                     },
+                                                                   "after_workshop_id":  {
+                                                                                             "name":  "after_workshop_id",
+                                                                                             "type":  "uuid",
+                                                                                             "primaryKey":  false,
+                                                                                             "notNull":  true
+                                                                                         },
+                                                                   "after_workshop_name":  {
+                                                                                               "name":  "after_workshop_name",
+                                                                                               "type":  "text",
+                                                                                               "primaryKey":  false,
+                                                                                               "notNull":  true
+                                                                                           },
+                                                                   "after_period_id":  {
+                                                                                           "name":  "after_period_id",
+                                                                                           "type":  "uuid",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  true
+                                                                                       },
+                                                                   "after_period":  {
+                                                                                        "name":  "after_period",
+                                                                                        "type":  "text",
+                                                                                        "primaryKey":  false,
+                                                                                        "notNull":  true
+                                                                                    },
+                                                                   "after_turno_id":  {
+                                                                                          "name":  "after_turno_id",
+                                                                                          "type":  "uuid",
+                                                                                          "primaryKey":  false,
+                                                                                          "notNull":  true
+                                                                                      },
+                                                                   "after_turno_label":  {
+                                                                                             "name":  "after_turno_label",
+                                                                                             "type":  "text",
+                                                                                             "primaryKey":  false,
+                                                                                             "notNull":  true
+                                                                                         },
+                                                                   "after_weekday":  {
+                                                                                         "name":  "after_weekday",
+                                                                                         "type":  "integer",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  true
+                                                                                     },
+                                                                   "after_starts_at":  {
+                                                                                           "name":  "after_starts_at",
+                                                                                           "type":  "time",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  true
+                                                                                       },
+                                                                   "after_ends_at":  {
+                                                                                         "name":  "after_ends_at",
+                                                                                         "type":  "time",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  true
+                                                                                     },
+                                                                   "after_fee_centavos":  {
+                                                                                              "name":  "after_fee_centavos",
+                                                                                              "type":  "bigint",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                   "after_total_centavos":  {
+                                                                                                "name":  "after_total_centavos",
+                                                                                                "type":  "bigint",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                   "after_status":  {
+                                                                                        "name":  "after_status",
+                                                                                        "type":  "text",
+                                                                                        "primaryKey":  false,
+                                                                                        "notNull":  true
+                                                                                    },
+                                                                   "previous_paid_amount_centavos":  {
+                                                                                                         "name":  "previous_paid_amount_centavos",
+                                                                                                         "type":  "bigint",
+                                                                                                         "primaryKey":  false,
+                                                                                                         "notNull":  false
+                                                                                                     },
+                                                                   "previous_paid_at":  {
+                                                                                            "name":  "previous_paid_at",
+                                                                                            "type":  "timestamp with time zone",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                                        },
+                                                                   "previous_confirmed_by":  {
+                                                                                                 "name":  "previous_confirmed_by",
+                                                                                                 "type":  "text",
+                                                                                                 "primaryKey":  false,
+                                                                                                 "notNull":  false
+                                                                                             },
+                                                                   "refunded_amount_centavos":  {
+                                                                                                    "name":  "refunded_amount_centavos",
+                                                                                                    "type":  "bigint",
+                                                                                                    "primaryKey":  false,
+                                                                                                    "notNull":  false
+                                                                                                },
+                                                                   "refunded_at":  {
+                                                                                       "name":  "refunded_at",
+                                                                                       "type":  "timestamp with time zone",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  false
+                                                                                   },
+                                                                   "refund_note":  {
+                                                                                       "name":  "refund_note",
+                                                                                       "type":  "text",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  false
+                                                                                   }
+                                                               },
+                                                   "indexes":  {
+
+                                                               },
+                                                   "foreignKeys":  {
+                                                                       "order_correction_order_id_enrollment_order_id_fk":  {
+                                                                                                                                "name":  "order_correction_order_id_enrollment_order_id_fk",
+                                                                                                                                "tableFrom":  "order_correction",
+                                                                                                                                "tableTo":  "enrollment_order",
+                                                                                                                                "columnsFrom":  [
+                                                                                                                                                    "order_id"
+                                                                                                                                                ],
+                                                                                                                                "columnsTo":  [
+                                                                                                                                                  "id"
+                                                                                                                                              ],
+                                                                                                                                "onDelete":  "cascade",
+                                                                                                                                "onUpdate":  "no action"
+                                                                                                                            }
+                                                                   },
+                                                   "compositePrimaryKeys":  {
+
+                                                                            },
+                                                   "uniqueConstraints":  {
+
+                                                                         },
+                                                   "policies":  {
+
+                                                                },
+                                                   "checkConstraints":  {
+                                                                            "order_correction_status_check":  {
+                                                                                                                  "name":  "order_correction_status_check",
+                                                                                                                  "value":  "\"order_correction\".\"before_status\" IN (\u0027pending_confirmation\u0027, \u0027paid\u0027, \u0027materials_requested\u0027, \u0027materials_received\u0027) AND \"order_correction\".\"after_status\" IN (\u0027pending_confirmation\u0027, \u0027paid\u0027, \u0027materials_requested\u0027, \u0027materials_received\u0027)"
+                                                                                                              },
+                                                                            "order_correction_weekday_check":  {
+                                                                                                                   "name":  "order_correction_weekday_check",
+                                                                                                                   "value":  "\"order_correction\".\"before_weekday\" BETWEEN 1 AND 7 AND \"order_correction\".\"after_weekday\" BETWEEN 1 AND 7"
+                                                                                                               },
+                                                                            "order_correction_time_range_check":  {
+                                                                                                                      "name":  "order_correction_time_range_check",
+                                                                                                                      "value":  "\"order_correction\".\"before_ends_at\" \u003e \"order_correction\".\"before_starts_at\" AND \"order_correction\".\"after_ends_at\" \u003e \"order_correction\".\"after_starts_at\""
+                                                                                                                  },
+                                                                            "order_correction_amounts_check":  {
+                                                                                                                   "name":  "order_correction_amounts_check",
+                                                                                                                   "value":  "\"order_correction\".\"before_fee_centavos\" \u003e= 0\n          AND \"order_correction\".\"after_fee_centavos\" \u003e= 0\n          AND \"order_correction\".\"before_total_centavos\" \u003e= \"order_correction\".\"before_fee_centavos\"\n          AND \"order_correction\".\"after_total_centavos\" \u003e= \"order_correction\".\"after_fee_centavos\"\n          AND \"order_correction\".\"before_fee_centavos\" % 100 = 0\n          AND \"order_correction\".\"after_fee_centavos\" % 100 = 0\n          AND \"order_correction\".\"before_total_centavos\" % 100 = 0\n          AND \"order_correction\".\"after_total_centavos\" % 100 = 0\n          AND \"order_correction\".\"after_total_centavos\" - \"order_correction\".\"after_fee_centavos\" = \"order_correction\".\"before_total_centavos\" - \"order_correction\".\"before_fee_centavos\""
+                                                                                                               },
+                                                                            "order_correction_outcome_check":  {
+                                                                                                                   "name":  "order_correction_outcome_check",
+                                                                                                                   "value":  "(\"order_correction\".\"before_status\" = \u0027pending_confirmation\u0027\n            AND \"order_correction\".\"after_status\" = \u0027pending_confirmation\u0027)\n          OR (\"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n            AND \"order_correction\".\"after_total_centavos\" \u003e \"order_correction\".\"before_total_centavos\"\n            AND \"order_correction\".\"after_status\" = \u0027pending_confirmation\u0027)\n          OR (\"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n            AND \"order_correction\".\"after_total_centavos\" \u003c= \"order_correction\".\"before_total_centavos\"\n            AND \"order_correction\".\"after_status\" = \"order_correction\".\"before_status\")"
+                                                                                                               },
+                                                                            "order_correction_previous_payment_check":  {
+                                                                                                                            "name":  "order_correction_previous_payment_check",
+                                                                                                                            "value":  "(\"order_correction\".\"previous_paid_amount_centavos\" IS NULL\n            AND \"order_correction\".\"previous_paid_at\" IS NULL\n            AND \"order_correction\".\"previous_confirmed_by\" IS NULL\n            AND NOT (\"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n              AND \"order_correction\".\"after_status\" = \u0027pending_confirmation\u0027))\n          OR (\"order_correction\".\"previous_paid_amount_centavos\" = \"order_correction\".\"before_total_centavos\"\n            AND \"order_correction\".\"previous_paid_at\" IS NOT NULL\n            AND \"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n            AND \"order_correction\".\"after_status\" = \u0027pending_confirmation\u0027)"
+                                                                                                                        },
+                                                                            "order_correction_refund_check":  {
+                                                                                                                  "name":  "order_correction_refund_check",
+                                                                                                                  "value":  "(\"order_correction\".\"refunded_amount_centavos\" IS NULL\n            AND \"order_correction\".\"refunded_at\" IS NULL\n            AND \"order_correction\".\"refund_note\" IS NULL\n            AND NOT (\"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n              AND \"order_correction\".\"after_total_centavos\" \u003c \"order_correction\".\"before_total_centavos\"))\n          OR (\"order_correction\".\"refunded_amount_centavos\" IS NOT NULL\n            AND \"order_correction\".\"refunded_at\" IS NOT NULL\n            AND \"order_correction\".\"before_status\" \u003c\u003e \u0027pending_confirmation\u0027\n            AND \"order_correction\".\"after_total_centavos\" \u003c \"order_correction\".\"before_total_centavos\"\n            AND \"order_correction\".\"refunded_amount_centavos\" \u003e= 0\n            AND \"order_correction\".\"refunded_amount_centavos\" % 100 = 0\n            AND \"order_correction\".\"refunded_amount_centavos\" \u003c= \"order_correction\".\"before_total_centavos\" - \"order_correction\".\"after_total_centavos\")"
+                                                                                                              }
+                                                                        },
+                                                   "isRLSEnabled":  false
+                                               },
                    "public.order_line":  {
                                              "name":  "order_line",
                                              "schema":  "",

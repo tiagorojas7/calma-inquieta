@@ -110,14 +110,15 @@ describe("enrollment schema", () => {
     return client.query(INSERT_ORDER, order);
   };
 
-  it("creates the six enrollment-owned tables", async () => {
+  it("creates the seven enrollment-owned tables", async () => {
     const { rows } = await client.query<{ table_name: string }>(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
         AND table_name IN (
           'enrollment_order', 'order_line', 'order_audit',
-          'turno_seat_counter', 'order_number_sequence', 'student'
+          'order_correction', 'turno_seat_counter',
+          'order_number_sequence', 'student'
         )
       ORDER BY table_name
     `);
@@ -125,6 +126,7 @@ describe("enrollment schema", () => {
     expect(rows).toEqual([
       { table_name: "enrollment_order" },
       { table_name: "order_audit" },
+      { table_name: "order_correction" },
       { table_name: "order_line" },
       { table_name: "order_number_sequence" },
       { table_name: "student" },
@@ -489,6 +491,272 @@ describe("enrollment schema", () => {
     });
   });
 
+  describe("order corrections", () => {
+    const paidAt = new Date("2026-10-21T12:00:00.000Z");
+    const at = new Date("2026-10-28T12:00:00.000Z");
+    const PAID = 5800000;
+    let sequence = 0;
+
+    const paidOrder = async () => {
+      sequence += 1;
+      const id = `00000000-0000-4000-8000-0000000008${String(sequence).padStart(2, "0")}`;
+      await insertOrder({
+        id,
+        status: "paid",
+        paidAt,
+        paidAmountCentavos: PAID,
+      });
+      return id;
+    };
+
+    /** A lowered paid order: fee 58000 down to 50000 with 8000 given back. */
+    const base = (orderId: string): Record<string, unknown> => ({
+      id: crypto.randomUUID(),
+      order_id: orderId,
+      at,
+      actor: "admin@example.com",
+      note: null,
+      before_workshop_id: ids.workshop,
+      before_workshop_name: "Ceramica",
+      before_period_id: ids.period,
+      before_period: "2026-10",
+      before_turno_id: ids.turno,
+      before_turno_label: "Monday morning",
+      before_weekday: 1,
+      before_starts_at: "10:00",
+      before_ends_at: "12:00",
+      before_fee_centavos: PAID,
+      before_total_centavos: PAID,
+      before_status: "paid",
+      after_workshop_id: ids.workshop,
+      after_workshop_name: "Ceramica",
+      after_period_id: ids.period,
+      after_period: "2026-10",
+      after_turno_id: ids.turno,
+      after_turno_label: "Monday morning",
+      after_weekday: 1,
+      after_starts_at: "10:00",
+      after_ends_at: "12:00",
+      after_fee_centavos: 5000000,
+      after_total_centavos: 5000000,
+      after_status: "paid",
+      previous_paid_amount_centavos: null,
+      previous_paid_at: null,
+      previous_confirmed_by: null,
+      refunded_amount_centavos: 800000,
+      refunded_at: new Date("2026-10-28T03:00:00.000Z"),
+      refund_note: null,
+    });
+    const insertCorrection = (values: Record<string, unknown>) => {
+      const columns = Object.keys(values);
+      return client.query(
+        `INSERT INTO order_correction (${columns.join(", ")})
+         VALUES (${columns.map((_, index) => `$${String(index + 1)}`).join(", ")})`,
+        Object.values(values),
+      );
+    };
+    /** A raised total: fee 58000 up to 60000, back to pending with the old payment kept. */
+    const raised = (orderId: string): Record<string, unknown> => ({
+      ...base(orderId),
+      after_fee_centavos: 6000000,
+      after_total_centavos: 6000000,
+      after_status: "pending_confirmation",
+      previous_paid_amount_centavos: PAID,
+      previous_paid_at: paidAt,
+      previous_confirmed_by: "admin@example.com",
+      refunded_amount_centavos: null,
+      refunded_at: null,
+    });
+    const rejected = (constraint: string) => ({ code: "23514", constraint });
+
+    it.each([
+      ["a lowered paid order with the refunded difference", base],
+      ["a raised total with the previous payment kept", raised],
+      [
+        "a pending order that stays pending",
+        (orderId: string) => ({
+          ...base(orderId),
+          before_status: "pending_confirmation",
+          after_status: "pending_confirmation",
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ],
+      [
+        "a paid order whose total is unchanged",
+        (orderId: string) => ({
+          ...base(orderId),
+          after_fee_centavos: PAID,
+          after_total_centavos: PAID,
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ],
+    ])("accepts %s", async (_label, build) => {
+      await expect(insertCorrection(build(await paidOrder()))).resolves.toEqual(
+        expect.objectContaining({ rowCount: 1 }),
+      );
+    });
+
+    it.each([
+      ["nothing", 0],
+      ["the whole difference", 800000],
+    ])("accepts a refunded difference of %s", async (_label, cents) => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          refunded_amount_centavos: cents,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ rowCount: 1 }));
+    });
+
+    it.each([
+      ["above the difference", { refunded_amount_centavos: 800100 }],
+      ["negative", { refunded_amount_centavos: -100 }],
+      ["with cents", { refunded_amount_centavos: 5050 }],
+      ["without a date", { refunded_amount_centavos: 100, refunded_at: null }],
+    ])("rejects a refunded difference %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a lowered paid order that records no refund", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a refund when the total did not drop", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          refunded_amount_centavos: 100,
+          refunded_at: at,
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a raised total that keeps no previous payment", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          previous_paid_amount_centavos: null,
+          previous_paid_at: null,
+          previous_confirmed_by: null,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it("rejects a previous payment that is not what was paid", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          previous_paid_amount_centavos: PAID - 100,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it("rejects a previous payment on a correction that never left paid", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          previous_paid_amount_centavos: PAID,
+          previous_paid_at: paidAt,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it.each([
+      [
+        "a paid order that goes pending without a higher total",
+        { after_status: "pending_confirmation" },
+      ],
+      [
+        "a higher total that stays paid",
+        {
+          after_fee_centavos: 6000000,
+          after_total_centavos: 6000000,
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        },
+      ],
+      [
+        "a pending order that becomes paid",
+        {
+          before_status: "pending_confirmation",
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        },
+      ],
+      [
+        "a paid order that changes paid state",
+        { after_status: "materials_received" },
+      ],
+    ])("rejects %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("rejects a cancelled order on either side", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          before_status: "cancelled",
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          after_status: "cancelled",
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it.each([
+      ["a fee with cents", { after_fee_centavos: 5000050 }],
+      ["a negative fee", { after_fee_centavos: -100 }],
+      [
+        "changed materials",
+        { after_fee_centavos: 5000000, after_total_centavos: 5100000 },
+      ],
+    ])("rejects %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject(rejected("order_correction_amounts_check"));
+    });
+
+    it("rejects a weekday or a time range that is not valid", async () => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), after_weekday: 8 }),
+      ).rejects.toMatchObject(rejected("order_correction_weekday_check"));
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          after_starts_at: "12:00",
+          after_ends_at: "10:00",
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_time_range_check"));
+    });
+
+    it("rejects a correction of an order that does not exist", async () => {
+      await expect(
+        insertCorrection(base("00000000-0000-4000-8000-0000000009ff")),
+      ).rejects.toMatchObject({ code: "23503" });
+    });
+  });
+
   it("contains no foreign keys to other module tables", async () => {
     const { rows } = await client.query<{ foreign_table_name: string }>(`
       SELECT ccu.table_name AS foreign_table_name
@@ -498,12 +766,16 @@ describe("enrollment schema", () => {
         AND tc.constraint_schema = ccu.constraint_schema
       WHERE tc.constraint_type = 'FOREIGN KEY'
         AND tc.table_schema = 'public'
-        AND tc.table_name IN ('enrollment_order', 'order_line', 'order_audit')
+        AND tc.table_name IN (
+          'enrollment_order', 'order_line', 'order_audit',
+          'order_correction'
+        )
       ORDER BY tc.table_name, ccu.table_name
     `);
 
     expect(rows).toEqual([
       { foreign_table_name: "student" },
+      { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },
     ]);

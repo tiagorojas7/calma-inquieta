@@ -1,12 +1,17 @@
 import { err, type Money, type Result } from "~/modules/_shared";
 import type {
+  CorrectionOutcome,
+  CorrectionRefusal,
+} from "../domain/order-correction";
+import type {
   IllegalTransition,
-  InvalidRefund,
+  OrderStatus,
   TurnoFull,
 } from "../domain/order-core";
 import type { PeriodClosed, PeriodStatus } from "../domain/period-window";
 import type {
   AuditEntry,
+  DuplicateOrder,
   OrderRepositoryListQuery,
   StoredOrder,
 } from "./enrollment-repository";
@@ -18,13 +23,18 @@ export type AdminEnrollmentStoreError =
   | PeriodClosed
   | TurnoFull
   | IllegalTransition
-  | InvalidRefund;
+  | DuplicateOrder
+  | CorrectionRefusal;
 
 export type AdminEnrollmentActor = { readonly email: string };
 export type Confirmed =
   { readonly kind: "confirmed" } | { readonly kind: "already-confirmed" };
 export type Cancelled =
   { readonly kind: "cancelled" } | { readonly kind: "already-cancelled" };
+export type Corrected = {
+  readonly kind: "corrected";
+  readonly outcome: CorrectionOutcome;
+};
 export type AdminListQuery = OrderRepositoryListQuery;
 export type AdminListItem = Pick<
   StoredOrder,
@@ -45,7 +55,71 @@ export type AdminEnrollmentDetail = StoredOrder & {
   readonly phoneDigits: string;
   readonly seat: { readonly confirmed: number; readonly capacity: number };
   readonly audit: readonly AuditEntry[];
+  /** Every correction of the order, oldest first. */
+  readonly corrections: readonly OrderCorrection[];
 };
+
+/** Where an order sits: the workshop, month and turno of one record. */
+export interface CorrectionTarget {
+  readonly workshopId: string;
+  readonly workshopName: string;
+  readonly periodId: string;
+  /** `YYYY-MM`. */
+  readonly period: string;
+  readonly turnoId: string;
+  readonly turnoLabel: string;
+  readonly weekday: number;
+  readonly startsAt: string;
+  readonly endsAt: string;
+}
+
+/** An order as it stood before or after a correction. */
+export interface CorrectionSnapshot extends CorrectionTarget {
+  readonly fee: Money;
+  readonly total: Money;
+  readonly status: OrderStatus;
+}
+
+/** The audit record of one correction; corrections are never edited or removed. */
+export interface OrderCorrection {
+  readonly id: string;
+  readonly at: Date;
+  readonly actor: string;
+  readonly note: string | null;
+  readonly before: CorrectionSnapshot;
+  readonly after: CorrectionSnapshot;
+  /** The payment a raised total sent back to pending; it stays as history. */
+  readonly previousPayment: {
+    readonly amount: Money;
+    readonly paidAt: Date;
+    readonly confirmedBy: string | null;
+  } | null;
+  /** What the owner gave back when the total dropped. */
+  readonly refund: {
+    readonly amount: Money;
+    /** The Córdoba day of the refund, stored at its local midnight. */
+    readonly refundedAt: Date;
+    readonly note: string | null;
+  } | null;
+}
+
+/** The snapshot of an order as stored, for the correction record. */
+export function snapshotOf(order: StoredOrder): CorrectionSnapshot {
+  return {
+    workshopId: order.workshopId,
+    workshopName: order.workshopName,
+    periodId: order.periodId,
+    period: order.period,
+    turnoId: order.turnoId,
+    turnoLabel: order.turnoLabel,
+    weekday: order.weekday,
+    startsAt: order.startsAt,
+    endsAt: order.endsAt,
+    fee: order.fee,
+    total: order.total,
+    status: order.status,
+  };
+}
 
 /** One order line that counts toward what the owner must buy for a month. */
 export interface ConsolidationLine {
@@ -105,6 +179,32 @@ export interface AdminEnrollmentStore {
     readonly actor: AdminEnrollmentActor;
     readonly now: Date;
   }): Promise<Result<Cancelled, AdminEnrollmentStoreError>>;
+  /**
+   * Corrects an active order (workshop, month, turno and fee; the materials
+   * stay). A paid order whose total is unchanged stays paid; a higher total
+   * returns it to pending (the seat is released and the previous payment is
+   * kept in the record); a lower one keeps it paid and records the refunded
+   * difference. A paid order that changes month or turno releases its old seat
+   * and claims the new one in the same transaction; a full target refuses
+   * everything. Every correction appends an immutable record.
+   */
+  correct(input: {
+    readonly orderId: string;
+    /** Absent keeps the current workshop, month and turno. */
+    readonly target?: CorrectionTarget;
+    /** The new fee in whole pesos; $0 is allowed. */
+    readonly fee: Money;
+    /** Required exactly when a paid order's total drops. */
+    readonly refund?: {
+      readonly amount: Money;
+      /** Córdoba `YYYY-MM-DD`. */
+      readonly refundedOn: string;
+      readonly note?: string;
+    };
+    readonly note?: string;
+    readonly actor: AdminEnrollmentActor;
+    readonly now: Date;
+  }): Promise<Result<Corrected, AdminEnrollmentStoreError>>;
   markMaterials(input: {
     readonly orderId: string;
     readonly to: "materials_requested" | "materials_received";

@@ -14,6 +14,7 @@ import type { DbSessionFactory } from "~/platform/db/session";
 import {
   enrollmentOrder,
   orderAudit,
+  orderCorrection,
   orderLine,
   turnoSeatCounter,
 } from "~/platform/db/schema/enrollments";
@@ -27,6 +28,7 @@ import {
   transition,
   type OrderStatus,
 } from "../domain/order-core";
+import { planCorrection } from "../domain/order-correction";
 import { periodAcceptsOrders } from "../domain/period-window";
 import type {
   AdminEnrollmentDetail,
@@ -38,7 +40,11 @@ import type {
   Cancelled,
   Confirmed,
   ConsolidationLine,
+  Corrected,
+  CorrectionSnapshot,
+  CorrectionTarget,
   DeliveryOrder,
+  OrderCorrection,
 } from "../application/admin-enrollment-store";
 import type {
   AuditEntry,
@@ -50,6 +56,127 @@ type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type OrderRow = typeof enrollmentOrder.$inferSelect;
 type LineRow = typeof orderLine.$inferSelect;
 type AuditRow = typeof orderAudit.$inferSelect;
+type CorrectionRow = typeof orderCorrection.$inferSelect;
+
+/** Thrown inside the correction transaction to roll it back with a refusal. */
+class CorrectionRollback extends Error {
+  readonly refusal: AdminEnrollmentStoreError;
+  constructor(refusal: AdminEnrollmentStoreError) {
+    super("correction refused");
+    this.refusal = refusal;
+  }
+}
+
+function hasConstraint(error: unknown, constraint: string): boolean {
+  const visited = new Set<object>();
+  let current = error;
+  while (typeof current === "object" && current !== null) {
+    if (visited.has(current)) return false;
+    visited.add(current);
+    const candidate = current as {
+      readonly code?: unknown;
+      readonly constraint?: unknown;
+      readonly cause?: unknown;
+    };
+    if (candidate.code === "23505" && candidate.constraint === constraint)
+      return true;
+    current = candidate.cause;
+  }
+  return false;
+}
+
+/** Releases one seat of a turno inside the caller's transaction; a missing counter aborts it. */
+async function releaseSeat(
+  tx: Db,
+  turno: { readonly periodId: string; readonly turnoId: string },
+): Promise<void> {
+  const released = await tx
+    .update(turnoSeatCounter)
+    .set({
+      confirmedSeats: sql`${turnoSeatCounter.confirmedSeats} - 1`,
+    })
+    .where(
+      and(
+        eq(turnoSeatCounter.periodId, turno.periodId),
+        eq(turnoSeatCounter.turnoId, turno.turnoId),
+        sql`${turnoSeatCounter.confirmedSeats} > 0`,
+      ),
+    )
+    .returning({ confirmedSeats: turnoSeatCounter.confirmedSeats });
+  if (released.length === 0) throw new Error("seat counter unavailable");
+}
+
+function toCorrection(row: CorrectionRow): OrderCorrection {
+  const before: CorrectionSnapshot = {
+    workshopId: row.beforeWorkshopId,
+    workshopName: row.beforeWorkshopName,
+    periodId: row.beforePeriodId,
+    period: row.beforePeriod,
+    turnoId: row.beforeTurnoId,
+    turnoLabel: row.beforeTurnoLabel,
+    weekday: row.beforeWeekday,
+    startsAt: row.beforeStartsAt,
+    endsAt: row.beforeEndsAt,
+    fee: money(row.beforeFeeCentavos),
+    total: money(row.beforeTotalCentavos),
+    status: row.beforeStatus as OrderStatus,
+  };
+  const after: CorrectionSnapshot = {
+    workshopId: row.afterWorkshopId,
+    workshopName: row.afterWorkshopName,
+    periodId: row.afterPeriodId,
+    period: row.afterPeriod,
+    turnoId: row.afterTurnoId,
+    turnoLabel: row.afterTurnoLabel,
+    weekday: row.afterWeekday,
+    startsAt: row.afterStartsAt,
+    endsAt: row.afterEndsAt,
+    fee: money(row.afterFeeCentavos),
+    total: money(row.afterTotalCentavos),
+    status: row.afterStatus as OrderStatus,
+  };
+  return {
+    id: row.id,
+    at: row.at,
+    actor: row.actor,
+    note: row.note,
+    before,
+    after,
+    previousPayment:
+      row.previousPaidAmountCentavos === null || row.previousPaidAt === null
+        ? null
+        : {
+            amount: money(row.previousPaidAmountCentavos),
+            paidAt: row.previousPaidAt,
+            confirmedBy: row.previousConfirmedBy,
+          },
+    refund:
+      row.refundedAmountCentavos === null || row.refundedAt === null
+        ? null
+        : {
+            amount: money(row.refundedAmountCentavos),
+            refundedAt: row.refundedAt,
+            note: row.refundNote,
+          },
+  };
+}
+
+function snapshotOfRow(row: OrderRow): CorrectionSnapshot {
+  return {
+    workshopId: row.workshopId,
+    workshopName: row.workshopName,
+    periodId: row.periodId,
+    period: row.period,
+    turnoId: row.turnoId,
+    turnoLabel: row.turnoLabel,
+    weekday: row.weekday,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    fee: money(row.feeCentavos),
+    total: money(row.totalCentavos),
+    status: row.status as OrderStatus,
+  };
+}
 
 function money(centavos: number): Money {
   const value = Money.fromCentavos(centavos);
@@ -293,21 +420,7 @@ export function createDrizzleAdminEnrollmentStore(
             if (!checked.ok) return checked;
 
             if (outcome === "cancel-release") {
-              const released = await tx
-                .update(turnoSeatCounter)
-                .set({
-                  confirmedSeats: sql`${turnoSeatCounter.confirmedSeats} - 1`,
-                })
-                .where(
-                  and(
-                    eq(turnoSeatCounter.periodId, order.periodId),
-                    eq(turnoSeatCounter.turnoId, order.turnoId),
-                    sql`${turnoSeatCounter.confirmedSeats} > 0`,
-                  ),
-                )
-                .returning({ confirmedSeats: turnoSeatCounter.confirmedSeats });
-              if (released.length === 0)
-                throw new Error("seat counter unavailable");
+              await releaseSeat(tx, order);
             }
 
             await tx
@@ -339,6 +452,233 @@ export function createDrizzleAdminEnrollmentStore(
           }),
         );
       } catch {
+        return err({ kind: "unavailable" });
+      }
+    },
+
+    async correct(
+      input,
+    ): Promise<Result<Corrected, AdminEnrollmentStoreError>> {
+      try {
+        return await withSession(async (db) =>
+          db.transaction(async (tx) => {
+            const rows = await tx
+              .select()
+              .from(enrollmentOrder)
+              .where(eq(enrollmentOrder.id, input.orderId))
+              .for("update");
+            const order = rows[0];
+            if (!order) return err({ kind: "not-found" });
+            const status = order.status as OrderStatus;
+            const target: CorrectionTarget | undefined = input.target;
+            const retargeted =
+              target !== undefined &&
+              (target.workshopId !== order.workshopId ||
+                target.periodId !== order.periodId ||
+                target.period !== order.period ||
+                target.turnoId !== order.turnoId);
+            const moved =
+              target !== undefined &&
+              (target.periodId !== order.periodId ||
+                target.turnoId !== order.turnoId);
+            const refund = input.refund;
+            const plan = planCorrection(
+              {
+                status,
+                materialsTotal: money(order.materialsCentavos),
+                total: money(order.totalCentavos),
+                ...(order.paidAmountCentavos === null
+                  ? {}
+                  : { paidAmount: money(order.paidAmountCentavos) }),
+                ...(order.paidAt === null
+                  ? {}
+                  : { paidOn: cordobaDateOf(order.paidAt) }),
+              },
+              {
+                fee: input.fee,
+                moved,
+                ...(refund === undefined
+                  ? {}
+                  : {
+                      refund: { amount: refund.amount, on: refund.refundedOn },
+                    }),
+              },
+              cordobaDateOf(input.now),
+            );
+            if (!plan.ok) return plan;
+            const decided = plan.value;
+
+            let capacity = 0;
+            if (target !== undefined && retargeted) {
+              if (target.period !== order.period) {
+                const held = await tx
+                  .select({ id: enrollmentOrder.id })
+                  .from(enrollmentOrder)
+                  .where(
+                    and(
+                      eq(enrollmentOrder.studentId, order.studentId),
+                      eq(enrollmentOrder.period, target.period),
+                      sql`${enrollmentOrder.status} <> 'cancelled'`,
+                      sql`${enrollmentOrder.id} <> ${order.id}`,
+                    ),
+                  )
+                  .limit(1);
+                if (held.length > 0) return err({ kind: "duplicate-order" });
+              }
+              if (moved) {
+                const period = await periods.find(
+                  target.periodId,
+                  target.turnoId,
+                );
+                if (!period) return err({ kind: "period-closed" });
+                const open = periodAcceptsOrders(
+                  { status: period.status, period: target.period },
+                  input.now,
+                );
+                if (!open.ok) return open;
+                capacity = period.capacity;
+              }
+            }
+
+            // Counter rows are touched in key order so two opposite moves
+            // never wait on each other; a full target rolls everything back.
+            const steps: { key: string; run: () => Promise<void> }[] = [];
+            if (decided.seat !== "none")
+              steps.push({
+                key: `${order.periodId}:${order.turnoId}`,
+                run: () => releaseSeat(tx, order),
+              });
+            if (decided.seat === "move" && target !== undefined)
+              steps.push({
+                key: `${target.periodId}:${target.turnoId}`,
+                run: async () => {
+                  const claimed = await claimSeat(tx, {
+                    periodId: target.periodId,
+                    turnoId: target.turnoId,
+                    capacity,
+                  });
+                  if (!claimed)
+                    throw new CorrectionRollback({ kind: "turno-full" });
+                },
+              });
+            steps.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+            for (const step of steps) await step.run();
+
+            const location = retargeted ? target : undefined;
+            await tx
+              .update(enrollmentOrder)
+              .set({
+                ...(location === undefined
+                  ? {}
+                  : {
+                      workshopId: location.workshopId,
+                      workshopName: location.workshopName,
+                      periodId: location.periodId,
+                      period: location.period,
+                      turnoId: location.turnoId,
+                      turnoLabel: location.turnoLabel,
+                      weekday: location.weekday,
+                      startsAt: location.startsAt,
+                      endsAt: location.endsAt,
+                    }),
+                feeCentavos: input.fee.toCentavos(),
+                totalCentavos: decided.total.toCentavos(),
+                status: decided.status,
+                ...(decided.outcome === "returned-to-pending"
+                  ? {
+                      paidAt: null,
+                      paidAmountCentavos: null,
+                      confirmedBy: null,
+                      paymentNote: null,
+                    }
+                  : {}),
+                ...(decided.outcome === "lowered"
+                  ? { paidAmountCentavos: decided.total.toCentavos() }
+                  : {}),
+              })
+              .where(eq(enrollmentOrder.id, order.id));
+
+            const before = snapshotOfRow(order);
+            const after = {
+              ...before,
+              ...(location ?? {}),
+              fee: input.fee,
+              total: decided.total,
+              status: decided.status,
+            };
+            const previous =
+              decided.outcome === "returned-to-pending" && order.paidAt !== null
+                ? {
+                    previousPaidAmountCentavos:
+                      order.paidAmountCentavos ?? order.totalCentavos,
+                    previousPaidAt: order.paidAt,
+                    previousConfirmedBy: order.confirmedBy,
+                  }
+                : {
+                    previousPaidAmountCentavos: null,
+                    previousPaidAt: null,
+                    previousConfirmedBy: null,
+                  };
+            await tx.insert(orderCorrection).values({
+              id: crypto.randomUUID(),
+              orderId: order.id,
+              at: input.now,
+              actor: input.actor.email,
+              note: input.note ?? null,
+              beforeWorkshopId: before.workshopId,
+              beforeWorkshopName: before.workshopName,
+              beforePeriodId: before.periodId,
+              beforePeriod: before.period,
+              beforeTurnoId: before.turnoId,
+              beforeTurnoLabel: before.turnoLabel,
+              beforeWeekday: before.weekday,
+              beforeStartsAt: before.startsAt,
+              beforeEndsAt: before.endsAt,
+              beforeFeeCentavos: before.fee.toCentavos(),
+              beforeTotalCentavos: before.total.toCentavos(),
+              beforeStatus: before.status,
+              afterWorkshopId: after.workshopId,
+              afterWorkshopName: after.workshopName,
+              afterPeriodId: after.periodId,
+              afterPeriod: after.period,
+              afterTurnoId: after.turnoId,
+              afterTurnoLabel: after.turnoLabel,
+              afterWeekday: after.weekday,
+              afterStartsAt: after.startsAt,
+              afterEndsAt: after.endsAt,
+              afterFeeCentavos: after.fee.toCentavos(),
+              afterTotalCentavos: after.total.toCentavos(),
+              afterStatus: after.status,
+              ...previous,
+              refundedAmountCentavos:
+                decided.refund === undefined
+                  ? null
+                  : decided.refund.amount.toCentavos(),
+              refundedAt:
+                decided.refund === undefined
+                  ? null
+                  : cordobaDayStart(decided.refund.on),
+              refundNote:
+                decided.refund === undefined ? null : (refund?.note ?? null),
+            });
+            if (decided.status !== status)
+              await appendAudit(tx, {
+                orderId: order.id,
+                at: input.now,
+                actor: input.actor.email,
+                from: status,
+                to: decided.status,
+                ...(input.note === undefined ? {} : { note: input.note }),
+              });
+            return ok({ kind: "corrected", outcome: decided.outcome });
+          }),
+        );
+      } catch (error) {
+        if (error instanceof CorrectionRollback) return err(error.refusal);
+        if (
+          hasConstraint(error, "enrollment_order_student_period_active_unique")
+        )
+          return err({ kind: "duplicate-order" });
         return err({ kind: "unavailable" });
       }
     },
@@ -547,6 +887,11 @@ export function createDrizzleAdminEnrollmentStore(
             .from(orderAudit)
             .where(eq(orderAudit.orderId, order.id))
             .orderBy(orderAudit.at, orderAudit.id);
+          const corrections = await db
+            .select()
+            .from(orderCorrection)
+            .where(eq(orderCorrection.orderId, order.id))
+            .orderBy(orderCorrection.at, orderCorrection.id);
           const counter = await db
             .select({ confirmed: turnoSeatCounter.confirmedSeats })
             .from(turnoSeatCounter)
@@ -566,6 +911,7 @@ export function createDrizzleAdminEnrollmentStore(
               capacity: period.capacity,
             },
             audit: audits.map(toAudit),
+            corrections: corrections.map(toCorrection),
           });
         });
       } catch {

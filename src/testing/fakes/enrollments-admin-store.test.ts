@@ -1,4 +1,5 @@
 import type { OrderRepository } from "~/modules/enrollments/application/enrollment-repository";
+import { runAdminEnrollmentCorrectionContract } from "~/testing/contracts/admin-enrollment-correction.contract";
 import { runAdminEnrollmentStoreContract } from "~/testing/contracts/admin-enrollment-store.contract";
 import { orderDraft } from "./enrollments-builders";
 import {
@@ -13,7 +14,7 @@ const periods = {
   find: () => Promise.resolve({ status: "open" as const, capacity }),
 };
 
-runAdminEnrollmentStoreContract(() => {
+const setup = () => {
   const orders = new InMemoryOrderRepository();
   const seats = new InMemorySeatLedger();
   let nextOrder = 0;
@@ -60,4 +61,7 @@ runAdminEnrollmentStoreContract(() => {
   });
 
   return harness();
-});
+};
+
+runAdminEnrollmentStoreContract(setup);
+runAdminEnrollmentCorrectionContract(setup);

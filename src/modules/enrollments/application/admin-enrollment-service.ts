@@ -18,7 +18,10 @@ import type {
   AdminListQuery,
   Cancelled,
   Confirmed,
+  Corrected,
+  CorrectionTarget,
 } from "./admin-enrollment-store";
+import type { EnrollmentOfferLookup } from "./offer-lookup";
 import type {
   PublicOrderView,
   RequestEnrollmentError,
@@ -34,7 +37,11 @@ type Invalid = {
   }[];
 };
 export type AdminEnrollmentError =
-  AdminEnrollmentStoreError | Invalid | { readonly kind: "denied" };
+  | AdminEnrollmentStoreError
+  | Invalid
+  | { readonly kind: "denied" }
+  | { readonly kind: "enrollments-paused" }
+  | { readonly kind: "turno-not-offered" };
 /** What only an admin may decide when enrolling a student by hand. */
 export interface CreatePendingOptions {
   /** The student's fee in whole pesos, replacing the period fee; $0 is a scholarship. */
@@ -55,6 +62,8 @@ export interface AdminEnrollmentServiceDeps {
   readonly store: AdminEnrollmentStore;
   readonly clock: Clock;
   readonly createPending: CreatePendingEnrollment;
+  /** Where a correction finds the workshop, month and turno an owner picks. */
+  readonly offers: EnrollmentOfferLookup;
 }
 export interface ConfirmPaymentInput {
   readonly orderId: string;
@@ -75,6 +84,24 @@ export interface CancelEnrollmentInput {
   readonly reason: string;
   /** Required for an order in a paid state, absent for a pending one. */
   readonly refund?: CancelRefundInput;
+}
+
+/** What a correction changes, as the form typed it. */
+export interface CorrectEnrollmentInput {
+  readonly orderId: string;
+  /** Absent keeps the current workshop, month and turno. */
+  readonly target?: {
+    readonly slug: string;
+    /** `YYYY-MM`. */
+    readonly period: string;
+    readonly turnoId: string;
+  };
+  /** The new fee in whole pesos; 0 is allowed. */
+  readonly fee: string;
+  /** Required exactly when a paid order's total drops: what was given back. */
+  readonly refund?: CancelRefundInput;
+  /** Optional reason for the audit trail (up to 300 characters). */
+  readonly note?: string;
 }
 
 const REFUND_NOTE_MAX = 300;
@@ -100,6 +127,16 @@ export interface AdminEnrollmentUseCases {
     actor: Actor,
     input: CancelEnrollmentInput,
   ): Promise<Result<Cancelled, AdminEnrollmentError>>;
+  /**
+   * Corrects an active order: workshop, month, turno and fee (the materials
+   * stay). A higher total sends a paid order back to pending, a lower one
+   * keeps it paid and records the refunded difference; every correction
+   * keeps an audit record.
+   */
+  correct(
+    actor: Actor,
+    input: CorrectEnrollmentInput,
+  ): Promise<Result<Corrected, AdminEnrollmentError>>;
   markMaterialsRequested(
     actor: Actor,
     orderId: string,
@@ -171,6 +208,43 @@ function parseRefund(
   };
 }
 
+/** The workshop, month and turno an owner picked, as the order will store them. */
+async function resolveTarget(
+  offers: EnrollmentOfferLookup,
+  picked: NonNullable<CorrectEnrollmentInput["target"]>,
+): Promise<Result<CorrectionTarget, AdminEnrollmentError>> {
+  let offer;
+  try {
+    offer = await offers.findOffer({
+      slug: picked.slug,
+      period: picked.period,
+    });
+  } catch {
+    return err({ kind: "unavailable" });
+  }
+  // Not "not-found": that kind means the order itself is missing.
+  if (offer === null || !offer.workshop.published)
+    return err({ kind: "turno-not-offered" });
+  if (offer.workshop.paused) return err({ kind: "enrollments-paused" });
+  if (offer.period === null) return err({ kind: "period-closed" });
+  const turno = offer.turnos.find((item) => item.id === picked.turnoId);
+  if (turno === undefined) return err({ kind: "turno-not-offered" });
+  return {
+    ok: true,
+    value: {
+      workshopId: offer.workshop.id,
+      workshopName: offer.workshop.name,
+      periodId: offer.period.id,
+      period: offer.period.period,
+      turnoId: turno.id,
+      turnoLabel: turno.label,
+      weekday: turno.weekday,
+      startsAt: turno.startsAt,
+      endsAt: turno.endsAt,
+    },
+  };
+}
+
 export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCases {
   const unavailableFor = (
     actor: Actor,
@@ -187,6 +261,7 @@ export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCas
     createPending: fail,
     confirmPayment: fail,
     cancel: fail,
+    correct: fail,
     markMaterialsRequested: fail,
     markMaterialsReceived: fail,
     markMaterialsRequestedBulk: unavailableBulk,
@@ -285,6 +360,32 @@ export function createAdminEnrollmentService(
         orderId: input.orderId,
         reason,
         ...(refund === undefined ? {} : { refund: refund.value }),
+        actor: admin.value,
+        now: deps.clock.now(),
+      });
+    },
+    async correct(actor, input) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const fee = parseWholePesos(input.fee);
+      if (!fee.ok) return err({ kind: "invalid-fee" });
+      const note = input.note?.trim() ?? "";
+      if (note.length > 300) return invalid("reason", "too-long");
+      const refund =
+        input.refund === undefined ? undefined : parseRefund(input.refund);
+      if (refund !== undefined && !refund.ok) return refund;
+      let target: CorrectionTarget | undefined;
+      if (input.target !== undefined) {
+        const resolved = await resolveTarget(deps.offers, input.target);
+        if (!resolved.ok) return resolved;
+        target = resolved.value;
+      }
+      return deps.store.correct({
+        orderId: input.orderId,
+        ...(target === undefined ? {} : { target }),
+        fee: fee.value,
+        ...(refund === undefined ? {} : { refund: refund.value }),
+        ...(note === "" ? {} : { note }),
         actor: admin.value,
         now: deps.clock.now(),
       });

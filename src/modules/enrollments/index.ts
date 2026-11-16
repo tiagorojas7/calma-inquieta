@@ -1,5 +1,6 @@
 export * from "./domain/cart-core";
 export * from "./domain/order-core";
+export * from "./domain/order-correction";
 export * from "./domain/period-window";
 export * from "./domain/student-input";
 export * from "./domain/whatsapp-message";
@@ -16,6 +17,7 @@ export {
   type ConfirmPaymentInput,
   type CancelEnrollmentInput,
   type CancelRefundInput,
+  type CorrectEnrollmentInput,
 } from "./application/admin-enrollment-service";
 export type {
   AdminEnrollmentDetail,
@@ -25,6 +27,10 @@ export type {
   ConsolidationLine,
   DeliveryOrder,
   AdminListQuery,
+  Corrected,
+  CorrectionSnapshot,
+  CorrectionTarget,
+  OrderCorrection,
 } from "./application/admin-enrollment-store";
 export {
   createSupplierConsolidationService,

@@ -84,6 +84,7 @@ export type RefundIssueCode =
   | "negative"
   | "not-whole-pesos"
   | "above-paid"
+  | "above-difference"
   | "not-refundable"
   | "future-date"
   | "before-payment";

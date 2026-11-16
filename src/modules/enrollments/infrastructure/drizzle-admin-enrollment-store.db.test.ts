@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { Money } from "~/modules/_shared";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { turnoSeatCounter } from "~/platform/db/schema/enrollments";
+import { runAdminEnrollmentCorrectionContract } from "~/testing/contracts/admin-enrollment-correction.contract";
 import { runAdminEnrollmentStoreContract } from "~/testing/contracts/admin-enrollment-store.contract";
 import {
   createTestDatabase,
@@ -26,6 +27,7 @@ const ids = {
   material: "00000000-0000-4000-8000-000000000005",
   variant: "00000000-0000-4000-8000-000000000006",
   supplier: "00000000-0000-4000-8000-000000000007",
+  otherPeriod: "00000000-0000-4000-8000-000000000008",
 };
 
 const pesos = (value: number) => {
@@ -121,6 +123,7 @@ async function freshHarness(failAudit = false, capacity = 2) {
       const normalized = {
         ...overrides,
         ...(overrides.turnoId === "t-2" ? { turnoId: ids.otherTurno } : {}),
+        ...(overrides.periodId === "p-2" ? { periodId: ids.otherPeriod } : {}),
         ...(overrides.lines
           ? {
               lines: overrides.lines.map((line) => ({
@@ -162,6 +165,7 @@ afterEach(async () => {
 });
 
 runAdminEnrollmentStoreContract(freshHarness);
+runAdminEnrollmentCorrectionContract(freshHarness);
 
 const actor = { email: "admin@example.com" };
 const paymentAt = new Date("2026-10-30T15:00:00Z");
@@ -455,5 +459,80 @@ describe("DrizzleAdminEnrollmentStore PostgreSQL probes", () => {
       error: { kind: "turno-full" },
     });
     await expect(harness.seatCount(first)).resolves.toBe(6);
+  });
+
+  it("lets two opposite turno moves commit together without waiting on each other", async () => {
+    const harness = await freshHarness(false, 2);
+    const first = await harness.createOrder();
+    const second = await harness.createOrder({ turnoId: "t-2" });
+    await confirm(harness.store, first);
+    await confirm(harness.store, second);
+    const target = (order: StoredOrder) => ({
+      workshopId: order.workshopId,
+      workshopName: order.workshopName,
+      periodId: order.periodId,
+      period: order.period,
+      turnoId: order.turnoId,
+      turnoLabel: order.turnoLabel,
+      weekday: order.weekday,
+      startsAt: order.startsAt,
+      endsAt: order.endsAt,
+    });
+
+    await expect(
+      Promise.all([
+        harness.store.correct({
+          orderId: first.id,
+          target: target(second),
+          fee: first.fee,
+          actor,
+          now,
+        }),
+        harness.store.correct({
+          orderId: second.id,
+          target: target(first),
+          fee: second.fee,
+          actor,
+          now,
+        }),
+      ]),
+    ).resolves.toEqual([
+      { ok: true, value: { kind: "corrected", outcome: "kept-paid" } },
+      { ok: true, value: { kind: "corrected", outcome: "kept-paid" } },
+    ]);
+    await expect(harness.seatCount(first)).resolves.toBe(1);
+    await expect(harness.seatCount(second)).resolves.toBe(1);
+  });
+
+  it("refuses a move into a month that is no longer open and changes nothing", async () => {
+    const harness = await freshHarness(false, 2);
+    const order = await harness.createOrder();
+    const other = await harness.createOrder({ turnoId: "t-2" });
+    await confirm(harness.store, order);
+    const before = await harness.store.detail(order.id);
+    harness.setPeriodStatus("closed");
+
+    await expect(
+      harness.store.correct({
+        orderId: order.id,
+        target: {
+          workshopId: other.workshopId,
+          workshopName: other.workshopName,
+          periodId: other.periodId,
+          period: other.period,
+          turnoId: other.turnoId,
+          turnoLabel: other.turnoLabel,
+          weekday: other.weekday,
+          startsAt: other.startsAt,
+          endsAt: other.endsAt,
+        },
+        fee: order.fee,
+        actor,
+        now,
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind: "period-closed" } });
+    await expect(harness.store.detail(order.id)).resolves.toEqual(before);
+    await expect(harness.seatCount(order)).resolves.toBe(1);
+    await expect(harness.seatCount(other)).resolves.toBe(0);
   });
 });

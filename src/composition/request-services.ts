@@ -262,15 +262,16 @@ export function createRequestServices(
       return turno ? { status: period.status, capacity: turno.capacity } : null;
     },
   });
+  const enrollmentOffers = createEnrollmentOfferAdapter(
+    createWorkshopEnrollmentOfferLookup({
+      workshops: workshopRepository,
+      periods: periodRepository,
+      clock: systemClock,
+    }),
+  );
   const publicEnrollments = seats
     ? createPublicEnrollmentService({
-        offers: createEnrollmentOfferAdapter(
-          createWorkshopEnrollmentOfferLookup({
-            workshops: workshopRepository,
-            periods: periodRepository,
-            clock: systemClock,
-          }),
-        ),
+        offers: enrollmentOffers,
         // Monthly periods offer no materials, so a public request refuses any line.
         materials: { listForPeriod: () => Promise.resolve([]) },
         // Only an owner enrolling a student by hand may add catalog materials.
@@ -292,6 +293,8 @@ export function createRequestServices(
         enrollments: createAdminEnrollmentService({
           store: adminEnrollmentStore,
           clock: systemClock,
+          // A correction picks its new workshop, month and turno here too.
+          offers: enrollmentOffers,
           // Unwrapped on purpose: the manual-order emails are sent by
           // `withManualEnrollmentEmails`, by case (pending or free).
           createPending: (input, actorEmail, options) =>

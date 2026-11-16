@@ -1,4 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { Money } from "~/modules/_shared";
+import { cordobaDateOf } from "../domain/order-core";
+import { createDrizzleAdminEnrollmentStore } from "./drizzle-admin-enrollment-store";
 import {
   enrollmentOrder,
   orderLine,
@@ -326,5 +329,60 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
       "ana@example.com",
       "bea@example.com",
     ]);
+  });
+
+  it("counts a corrected order once with its current fee, and not while it awaits the new total", async () => {
+    const { add, openSession, reader } = await fixture();
+    const kept = await add({ studentEmail: "kept@example.com" });
+    const corrected = await add({ studentEmail: "corrected@example.com" });
+    const session = await openSession();
+    try {
+      await session.db.insert(turnoSeatCounter).values({
+        periodId: PERIOD_A,
+        turnoId: TURNO_A,
+        confirmedSeats: 2,
+        capacity: 8,
+      });
+    } finally {
+      await session.close();
+    }
+    const store = createDrizzleAdminEnrollmentStore(openSession, {
+      find: () => Promise.resolve({ status: "open", capacity: 8 }),
+    });
+    const pesos = (amount: number) => {
+      const money = Money.fromCentavos(amount * 100);
+      if (!money.ok) throw new Error("fixture money");
+      return money.value;
+    };
+    const now = new Date();
+    const actor = { email: "admin@example.com" };
+
+    await expect(
+      store.correct({
+        orderId: corrected,
+        fee: pesos(8_000),
+        refund: { amount: pesos(2_000), refundedOn: cordobaDateOf(now) },
+        actor,
+        now,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(await reader.income({ period: "2026-11" })).toEqual([
+      expect.objectContaining({ orders: 2, feeCentavos: 10_000_00 + 8_000_00 }),
+    ]);
+
+    await expect(
+      store.correct({ orderId: corrected, fee: pesos(12_000), actor, now }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { outcome: "returned-to-pending" },
+    });
+    expect(await reader.income({ period: "2026-11" })).toEqual([
+      expect.objectContaining({ orders: 1, feeCentavos: 10_000_00 }),
+    ]);
+    expect((await reader.pendingSummary(new Date())).total).toBe(1);
+    expect(await reader.confirmedSeats([PERIOD_A])).toEqual([
+      { periodId: PERIOD_A, turnoId: TURNO_A, confirmedSeats: 1 },
+    ]);
+    expect(kept).not.toBe(corrected);
   });
 });

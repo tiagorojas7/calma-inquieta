@@ -231,6 +231,139 @@ export const orderAudit = pgTable(
   ],
 );
 
+const ACTIVE_STATUSES = sql`('pending_confirmation', 'paid', 'materials_requested', 'materials_received')`;
+
+/**
+ * One correction of an active order (workshop, month, turno or fee), with the
+ * order as it stood before and after. Append-only history: a raised total keeps
+ * the payment it sent back to pending here, a lowered one keeps the difference
+ * the owner gave back.
+ */
+export const orderCorrection = pgTable(
+  "order_correction",
+  {
+    id: uuid("id").primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => enrollmentOrder.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    actor: text("actor").notNull(),
+    note: text("note"),
+    beforeWorkshopId: uuid("before_workshop_id").notNull(),
+    beforeWorkshopName: text("before_workshop_name").notNull(),
+    beforePeriodId: uuid("before_period_id").notNull(),
+    beforePeriod: text("before_period").notNull(),
+    beforeTurnoId: uuid("before_turno_id").notNull(),
+    beforeTurnoLabel: text("before_turno_label").notNull(),
+    beforeWeekday: integer("before_weekday").notNull(),
+    beforeStartsAt: time("before_starts_at").notNull(),
+    beforeEndsAt: time("before_ends_at").notNull(),
+    beforeFeeCentavos: bigint("before_fee_centavos", {
+      mode: "number",
+    }).notNull(),
+    beforeTotalCentavos: bigint("before_total_centavos", {
+      mode: "number",
+    }).notNull(),
+    beforeStatus: text("before_status").notNull(),
+    afterWorkshopId: uuid("after_workshop_id").notNull(),
+    afterWorkshopName: text("after_workshop_name").notNull(),
+    afterPeriodId: uuid("after_period_id").notNull(),
+    afterPeriod: text("after_period").notNull(),
+    afterTurnoId: uuid("after_turno_id").notNull(),
+    afterTurnoLabel: text("after_turno_label").notNull(),
+    afterWeekday: integer("after_weekday").notNull(),
+    afterStartsAt: time("after_starts_at").notNull(),
+    afterEndsAt: time("after_ends_at").notNull(),
+    afterFeeCentavos: bigint("after_fee_centavos", {
+      mode: "number",
+    }).notNull(),
+    afterTotalCentavos: bigint("after_total_centavos", {
+      mode: "number",
+    }).notNull(),
+    afterStatus: text("after_status").notNull(),
+    // The payment a raised total sent back to pending.
+    previousPaidAmountCentavos: bigint("previous_paid_amount_centavos", {
+      mode: "number",
+    }),
+    previousPaidAt: timestamp("previous_paid_at", { withTimezone: true }),
+    previousConfirmedBy: text("previous_confirmed_by"),
+    // What the owner gave back when a paid order's total dropped.
+    refundedAmountCentavos: bigint("refunded_amount_centavos", {
+      mode: "number",
+    }),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundNote: text("refund_note"),
+  },
+  (table) => [
+    check(
+      "order_correction_status_check",
+      sql`${table.beforeStatus} IN ${ACTIVE_STATUSES} AND ${table.afterStatus} IN ${ACTIVE_STATUSES}`,
+    ),
+    check(
+      "order_correction_weekday_check",
+      sql`${table.beforeWeekday} BETWEEN 1 AND 7 AND ${table.afterWeekday} BETWEEN 1 AND 7`,
+    ),
+    check(
+      "order_correction_time_range_check",
+      sql`${table.beforeEndsAt} > ${table.beforeStartsAt} AND ${table.afterEndsAt} > ${table.afterStartsAt}`,
+    ),
+    check(
+      "order_correction_amounts_check",
+      sql`${table.beforeFeeCentavos} >= 0
+          AND ${table.afterFeeCentavos} >= 0
+          AND ${table.beforeTotalCentavos} >= ${table.beforeFeeCentavos}
+          AND ${table.afterTotalCentavos} >= ${table.afterFeeCentavos}
+          AND ${table.beforeFeeCentavos} % 100 = 0
+          AND ${table.afterFeeCentavos} % 100 = 0
+          AND ${table.beforeTotalCentavos} % 100 = 0
+          AND ${table.afterTotalCentavos} % 100 = 0
+          AND ${table.afterTotalCentavos} - ${table.afterFeeCentavos} = ${table.beforeTotalCentavos} - ${table.beforeFeeCentavos}`,
+    ),
+    // A pending order stays pending; a paid one returns to pending only when
+    // its total rose, and otherwise keeps its paid state.
+    check(
+      "order_correction_outcome_check",
+      sql`(${table.beforeStatus} = 'pending_confirmation'
+            AND ${table.afterStatus} = 'pending_confirmation')
+          OR (${table.beforeStatus} <> 'pending_confirmation'
+            AND ${table.afterTotalCentavos} > ${table.beforeTotalCentavos}
+            AND ${table.afterStatus} = 'pending_confirmation')
+          OR (${table.beforeStatus} <> 'pending_confirmation'
+            AND ${table.afterTotalCentavos} <= ${table.beforeTotalCentavos}
+            AND ${table.afterStatus} = ${table.beforeStatus})`,
+    ),
+    // The previous payment is kept exactly when the order went back to pending.
+    check(
+      "order_correction_previous_payment_check",
+      sql`(${table.previousPaidAmountCentavos} IS NULL
+            AND ${table.previousPaidAt} IS NULL
+            AND ${table.previousConfirmedBy} IS NULL
+            AND NOT (${table.beforeStatus} <> 'pending_confirmation'
+              AND ${table.afterStatus} = 'pending_confirmation'))
+          OR (${table.previousPaidAmountCentavos} = ${table.beforeTotalCentavos}
+            AND ${table.previousPaidAt} IS NOT NULL
+            AND ${table.beforeStatus} <> 'pending_confirmation'
+            AND ${table.afterStatus} = 'pending_confirmation')`,
+    ),
+    // The refunded difference is recorded exactly when a paid order's total dropped.
+    check(
+      "order_correction_refund_check",
+      sql`(${table.refundedAmountCentavos} IS NULL
+            AND ${table.refundedAt} IS NULL
+            AND ${table.refundNote} IS NULL
+            AND NOT (${table.beforeStatus} <> 'pending_confirmation'
+              AND ${table.afterTotalCentavos} < ${table.beforeTotalCentavos}))
+          OR (${table.refundedAmountCentavos} IS NOT NULL
+            AND ${table.refundedAt} IS NOT NULL
+            AND ${table.beforeStatus} <> 'pending_confirmation'
+            AND ${table.afterTotalCentavos} < ${table.beforeTotalCentavos}
+            AND ${table.refundedAmountCentavos} >= 0
+            AND ${table.refundedAmountCentavos} % 100 = 0
+            AND ${table.refundedAmountCentavos} <= ${table.beforeTotalCentavos} - ${table.afterTotalCentavos})`,
+    ),
+  ],
+);
+
 export const turnoSeatCounter = pgTable(
   "turno_seat_counter",
   {

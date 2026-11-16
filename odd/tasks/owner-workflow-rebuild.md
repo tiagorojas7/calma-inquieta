@@ -180,3 +180,11 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Parent checks: scope inside the surfaces, typecheck exit 0, spot check 28/28.
   - Named risks: item 3 (attendance port changed) and item 4 (the make-up-booked check is not atomic with the write).
   - An independent verifier runs in an isolated worktree, while unit R1 (refunds) is delegated to a writer in the main tree. A single seam run will cover A1 and R1.
+- L52 (2026-11-16): independent verifier for `0f9d449`: items 1-4 PASS.
+  - Pending students are marked and get make-ups.
+  - The own turno, another workshop's turno and bad dates are refused.
+  - A full target warns and still books.
+  - Re-saving keeps the marks of students who left the roster. Absent to present with a make-up is refused with nothing changed.
+  - Concurrency: three parallel bookings for one absence produce one make-up.
+  - ADVISORY, not a regression: a save that flips the absence to present can race with a make-up booking and leave a make-up without its absence. The baseline allowed this state even sequentially. Follow-up: do the check and the upsert atomically.
+  - Boundary note: the warning fires when roster plus booked make-ups, including the new one, exceed capacity.

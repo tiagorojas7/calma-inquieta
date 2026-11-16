@@ -116,3 +116,12 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - a $0 manual order is created already paid, with its seat claimed, in one transaction (fixes R3-001);
   - manual-order emails follow the owner's decision;
   - the "Cuota" error copy matches what `parseWholePesos` accepts (R3-003).
+- L41 (2026-11-16): atomic $0 orders and manual-order emails committed in `8f764d4` (a delegated writer, resumed after the session restart).
+  - Correction to L36/L40: at the baseline, manual orders sent no email at all (`request-services.ts` wired them unwrapped "on purpose"), not the web email. The owner's L40 rule still applies as written.
+  - What changed:
+    - `OrderDraft.paidOnCreation` makes the create transaction store a paid order with one audit row and claim the seat through the shared `claimSeat` (`seat-claim.ts`). A full turno rolls everything back with `turno-full`.
+    - The new decorator `withManualEnrollmentEmails` sends "Recibimos tu inscripción" for pending orders and the new "Confirmamos tu lugar" for $0 orders.
+    - The "Cuota" error now reads "Ingresá la cuota en pesos enteros, sin centavos; los puntos de miles se aceptan. Por ejemplo: 58000 o 58.000."
+  - Writer evidence: RED then GREEN per rule. DB: order repository 18, admin store 22, request services 14, audience reader 3. Typecheck, eslint and prettier clean.
+  - Parent seam run at `8f764d4`: `--project unit` 290 files / 3301 passed; `--project ui` 122 files / 1023 passed.
+  - Independent verifier launched (items 1 and 4).

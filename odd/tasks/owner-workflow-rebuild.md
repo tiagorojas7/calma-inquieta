@@ -248,3 +248,12 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - P1: student deactivate and reactivate, no migration.
     - A2: a "missed" make-up state, folded into 0018.
 - L60 (2026-11-16, owner, verbatim, answering what happens when an own-stock variant lacks units at payment): "Siempre se va a ofrecer lo que haya en stock, si no hay nada no se ofrece y se ofrece productos del proveedor, eso se habla todo personalmente o por WhatsApp externo del software, por eso buscamos algo sencillo, sin tantas complicaciones". Consequence for T2: keep the stock model minimal. Admin searches offer own-stock variants only while on-hand > 0, and otherwise the supplier-orderable ones. A paid sale decrements on-hand and never goes below zero. No partial-fulfillment or fallback logic. Negotiation happens outside the software.
+- L61 (2026-11-16): unit A2 (missed make-up) committed in `146f654`.
+  - What it does:
+    - A pending make-up can be marked done or missed ("No vino"), recording who and when in `done_by`/`done_at`. Both outcomes are terminal (`make-up-closed`), and repeating the same action is idempotent.
+    - A used make-up, done or missed, refuses a rebooking with `make-up-used`.
+    - 0018 re-adds `attendance_make_up_status_check` and `attendance_make_up_done_check` to allow `missed`; the snapshot changes two check strings.
+  - Writer evidence: RED 13 unit/ui and 3 fake-contract cases. Then unit/ui 10 files / 133 passed (architecture included), DB attendance repository 14/14, `drizzle-kit generate` with no changes, and typecheck, eslint and prettier clean.
+  - Surface note: the writer also edited `src/app/ui/admin/make-ups-list.tsx` and its test. It is attendance UI outside the listed globs and conflicts with no other unit, so the parent accepted it.
+  - Gap: the student summary still counts only pending and done make-ups.
+  - One independent verifier will cover A2 and P1 together after P1 lands.

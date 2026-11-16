@@ -13,12 +13,14 @@ export interface StudentRow {
   readonly workshops: string;
   readonly orders: number;
   readonly lastRequest: string;
+  readonly active: boolean;
 }
 
 export interface StudentsFilter {
   readonly q: string;
   readonly taller: string;
   readonly estado: string;
+  readonly mostrar: "activas" | "inactivas" | "todas";
   readonly page: number;
 }
 
@@ -36,6 +38,9 @@ const linkClasses =
   "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 const cols = copy.columns;
+
+const stateLabel = (row: StudentRow) =>
+  row.active ? copy.state.active : copy.state.inactive;
 
 const columns = [
   {
@@ -67,6 +72,11 @@ const columns = [
     header: cols.lastRequest,
     cell: (row: StudentRow) => row.lastRequest,
   },
+  {
+    key: "state",
+    header: cols.state,
+    cell: (row: StudentRow) => stateLabel(row),
+  },
 ] as const;
 
 function pageHref(filter: StudentsFilter, page: number): string {
@@ -74,6 +84,7 @@ function pageHref(filter: StudentsFilter, page: number): string {
   if (filter.q) params.set("q", filter.q);
   if (filter.taller) params.set("taller", filter.taller);
   if (filter.estado) params.set("estado", filter.estado);
+  if (filter.mostrar !== "activas") params.set("mostrar", filter.mostrar);
   params.set("page", String(page));
   return `/admin/alumnas?${params.toString()}`;
 }
@@ -90,7 +101,9 @@ export function StudentsList({
   statuses,
   hasNext,
 }: StudentsListProps) {
-  const filtered = Boolean(filter.q || filter.taller || filter.estado);
+  const filtered = Boolean(
+    filter.q || filter.taller || filter.estado || filter.mostrar !== "activas",
+  );
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
@@ -137,6 +150,16 @@ export function StudentsList({
               ...statuses,
             ]}
           />
+          <SelectField
+            label={copy.filters.show}
+            name="mostrar"
+            defaultValue={filter.mostrar}
+            options={[
+              { value: "activas", label: copy.filters.showActive },
+              { value: "inactivas", label: copy.filters.showInactive },
+              { value: "todas", label: copy.filters.showAll },
+            ]}
+          />
           <div>
             <button
               type="submit"
@@ -148,6 +171,16 @@ export function StudentsList({
         </form>
       </details>
       <Text tone="muted">{copy.count(rows.length)}</Text>
+      <a
+        href={
+          filter.mostrar === "activas"
+            ? "/admin/alumnas?mostrar=inactivas"
+            : "/admin/alumnas"
+        }
+        className={linkClasses}
+      >
+        {filter.mostrar === "activas" ? copy.viewInactive : copy.viewActive}
+      </a>
       <ResponsiveList
         label={copy.title}
         columns={columns}
@@ -173,6 +206,10 @@ export function StudentsList({
               <div className="flex flex-wrap gap-x-2">
                 <dt className="font-semibold">{copy.cardLabels.orders}</dt>
                 <dd>{String(row.orders)}</dd>
+              </div>
+              <div className="flex flex-wrap gap-x-2">
+                <dt className="font-semibold">{copy.cardLabels.state}</dt>
+                <dd>{stateLabel(row)}</dd>
               </div>
             </dl>
             <Text tone="muted">{row.workshops}</Text>

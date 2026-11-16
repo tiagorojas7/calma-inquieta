@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
+import { InMemoryStudentActivityStore } from "~/testing/fakes/enrollments-student-activity-store";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { InMemoryStudentNoteRepository } from "~/testing/fakes/in-memory-student-note-repository";
 import { InMemoryStudentOrderSource } from "~/testing/fakes/in-memory-student-order-source";
@@ -14,12 +15,14 @@ const now = new Date("2026-10-30T15:00:00Z");
 function setup() {
   const orders = new InMemoryStudentOrderSource();
   const notes = new InMemoryStudentNoteRepository();
+  const activity = new InMemoryStudentActivityStore();
   const service = createStudentsService({
     orders,
     notes,
+    activity,
     clock: fixedClock(now),
   });
-  return { orders, notes, service };
+  return { orders, notes, activity, service };
 }
 
 describe("students service", () => {
@@ -29,6 +32,9 @@ describe("students service", () => {
     await expect(service.list(null)).resolves.toEqual(denied);
     await expect(service.detail(undefined, "a@b.co")).resolves.toEqual(denied);
     await expect(service.saveNote(null, "a@b.co", "x")).resolves.toEqual(
+      denied,
+    );
+    await expect(service.setActive(null, "a@b.co", false)).resolves.toEqual(
       denied,
     );
   });
@@ -122,12 +128,147 @@ describe("students service", () => {
     expect(notes.notes.size).toBe(0);
   });
 
+  describe("student activity", () => {
+    const emailsOf = (
+      page: Awaited<ReturnType<ReturnType<typeof setup>["service"]["list"]>>,
+    ) => (page.ok ? page.value.items.map((s) => s.email) : []);
+
+    function twoStudents() {
+      const fixture = setup();
+      fixture.orders.orders.push(
+        studentOrder(1, { studentEmail: "ana@example.com", status: "paid" }),
+        studentOrder(2, { studentEmail: "bea@example.com" }),
+      );
+      fixture.activity.enrolled("ana@example.com", "bea@example.com");
+      return fixture;
+    }
+
+    it("deactivates and reactivates a student without touching her history or note", async () => {
+      const { service, notes } = twoStudents();
+      await service.saveNote(testAdminActor(), "ana@example.com", "Zurda.");
+      const before = await service.detail(testAdminActor(), "ana@example.com");
+
+      const off = await service.setActive(
+        testAdminActor(),
+        " Ana@Example.com ",
+        false,
+      );
+      const inactive = await service.detail(
+        testAdminActor(),
+        "ana@example.com",
+      );
+      const on = await service.setActive(
+        testAdminActor(),
+        "ana@example.com",
+        true,
+      );
+      const after = await service.detail(testAdminActor(), "ana@example.com");
+
+      expect(off).toEqual({
+        ok: true,
+        value: { email: "ana@example.com", active: false },
+      });
+      expect(on).toEqual({
+        ok: true,
+        value: { email: "ana@example.com", active: true },
+      });
+      expect(inactive.ok && inactive.value.active).toBe(false);
+      expect(after.ok && after.value.active).toBe(true);
+      expect(inactive.ok && inactive.value.orders).toEqual(
+        before.ok && before.value.orders,
+      );
+      expect(after.ok && after.value).toEqual(before.ok && before.value);
+      expect(notes.notes.get("ana@example.com")?.text).toBe("Zurda.");
+    });
+
+    it("lists the active students by default and filters inactive or all, with the state on each", async () => {
+      const { service } = twoStudents();
+      await service.setActive(testAdminActor(), "ana@example.com", false);
+
+      const byDefault = await service.list(testAdminActor());
+      const inactive = await service.list(testAdminActor(), {
+        activity: "inactive",
+      });
+      const all = await service.list(testAdminActor(), { activity: "all" });
+
+      expect(emailsOf(byDefault)).toEqual(["bea@example.com"]);
+      expect(byDefault.ok && byDefault.value.items[0]?.active).toBe(true);
+      expect(emailsOf(inactive)).toEqual(["ana@example.com"]);
+      expect(inactive.ok && inactive.value.items[0]?.active).toBe(false);
+      expect(all.ok && all.value.items.map((s) => [s.email, s.active])).toEqual(
+        [
+          ["bea@example.com", true],
+          ["ana@example.com", false],
+        ],
+      );
+    });
+
+    it("keeps search and paging working inside the chosen view", async () => {
+      const { service, orders, activity } = setup();
+      orders.orders.push(
+        ...Array.from({ length: 52 }, (_, i) => studentOrder(i + 1)),
+      );
+      activity.enrolled(...orders.orders.map((order) => order.studentEmail));
+      await service.setActive(testAdminActor(), "student-7@example.com", false);
+
+      const first = await service.list(testAdminActor());
+      const found = await service.list(testAdminActor(), {
+        text: "student-7@",
+        activity: "inactive",
+      });
+      const hidden = await service.list(testAdminActor(), {
+        text: "student-7@",
+      });
+
+      expect(first).toMatchObject({
+        ok: true,
+        value: { page: 1, hasNext: true },
+      });
+      expect(first.ok && first.value.items).toHaveLength(50);
+      expect(emailsOf(found)).toEqual(["student-7@example.com"]);
+      expect(emailsOf(hidden)).toEqual([]);
+    });
+
+    it("counts a student without a profile row as active and cannot deactivate her", async () => {
+      const { service, orders } = setup();
+      orders.orders.push(studentOrder(1, { studentEmail: "ana@example.com" }));
+
+      const listedOnly = await service.list(testAdminActor());
+      const off = await service.setActive(
+        testAdminActor(),
+        "ana@example.com",
+        false,
+      );
+      const on = await service.setActive(
+        testAdminActor(),
+        "ana@example.com",
+        true,
+      );
+      const unknown = await service.setActive(
+        testAdminActor(),
+        "no@example.com",
+        true,
+      );
+
+      expect(listedOnly.ok && listedOnly.value.items[0]?.active).toBe(true);
+      expect(off).toEqual({ ok: false, error: { kind: "not-found" } });
+      expect(on).toEqual({
+        ok: true,
+        value: { email: "ana@example.com", active: true },
+      });
+      expect(unknown).toEqual({ ok: false, error: { kind: "not-found" } });
+    });
+  });
+
   it("fails closed as unavailable for an admin, denied otherwise", async () => {
     const unavailable = createUnavailableStudentsService();
     await expect(unavailable.list(testAdminActor())).resolves.toEqual({
       ok: false,
       error: { kind: "unavailable" },
     });
+    await expect(
+      unavailable.setActive(testAdminActor(), "a@b.co", false),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     await expect(unavailable.list(null)).resolves.toEqual({
       ok: false,
       error: { kind: "denied" },

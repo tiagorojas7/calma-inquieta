@@ -31,6 +31,7 @@ function setup() {
       status: "cancelled",
     }),
   );
+  fixture.activity.enrolled("ana@example.com");
   const context = adminContext({ students: fixture.service });
   return { ...fixture, context };
 }
@@ -167,6 +168,77 @@ describe("admin student detail route", () => {
           params: { email: "ana@example.com" },
           context,
         } as never),
+      ),
+    ).toBe(400);
+  });
+});
+
+describe("admin student detail activity", () => {
+  const intentArgs = (context: unknown, email: string, intent: string) =>
+    ({
+      request: postRequest(path(email), { intent }),
+      params: { email },
+      context,
+    }) as never;
+
+  it("reports whether she is active", async () => {
+    const { context } = setup();
+    const result = await loader(loadArgs(context, "ana@example.com"));
+    expect(result.active).toBe(true);
+  });
+
+  it("deactivates and reactivates her, keeping her history and note", async () => {
+    const { context, notes } = setup();
+    await action(actionArgs(context, "ana@example.com", "Zurda."));
+
+    const off = (await action(
+      intentArgs(context, "ana@example.com", "deactivate"),
+    )) as Response;
+    const inactive = await loader(loadArgs(context, "ana@example.com"));
+    const on = (await action(
+      intentArgs(context, "ana@example.com", "reactivate"),
+    )) as Response;
+    const active = await loader(loadArgs(context, "ana@example.com"));
+
+    expect(off.status).toBe(302);
+    expect(off.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=deactivated",
+    );
+    expect(on.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=reactivated",
+    );
+    expect(inactive.active).toBe(false);
+    expect(active.active).toBe(true);
+    expect(inactive.orders).toEqual(active.orders);
+    expect(inactive.orders).toHaveLength(2);
+    expect(inactive.note.text).toBe("Zurda.");
+    expect(notes.notes.get("ana@example.com")?.text).toBe("Zurda.");
+  });
+
+  it("refuses a request that is not an admin and changes nothing", async () => {
+    const { service, orders, activity } = studentsFixture();
+    orders.orders.push(studentOrder(1, { studentEmail: "ana@example.com" }));
+    activity.enrolled("ana@example.com");
+    const context = adminContext({ students: service }, { admin: false });
+
+    expect(
+      await thrownStatus(() =>
+        action(intentArgs(context, "ana@example.com", "deactivate")),
+      ),
+    ).toBe(403);
+    expect([...(await activity.inactiveEmails())]).toEqual([]);
+  });
+
+  it("answers 404 for an unknown student and 400 for an unknown intent", async () => {
+    const { context } = setup();
+    expect(
+      await thrownStatus(() =>
+        action(intentArgs(context, "no@example.com", "deactivate")),
+      ),
+    ).toBe(404);
+    expect(
+      await thrownStatus(() =>
+        action(intentArgs(context, "ana@example.com", "delete")),
       ),
     ).toBe(400);
   });

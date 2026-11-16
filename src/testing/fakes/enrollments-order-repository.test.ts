@@ -3,12 +3,15 @@ import { runOrderRepositoryContract } from "~/testing/contracts/order-repository
 import { orderDraft } from "./enrollments-builders";
 import { InMemoryOrderRepository } from "./enrollments-order-repository";
 import { InMemorySeatLedger } from "./enrollments-seat-ledger";
+import { InMemoryStudentActivityStore } from "./enrollments-student-activity-store";
 
 runOrderRepositoryContract(() => {
   const seats = new InMemorySeatLedger();
-  const repository = new InMemoryOrderRepository(seats);
+  const activity = new InMemoryStudentActivityStore();
+  const repository = new InMemoryOrderRepository(seats, activity);
   return {
     repository,
+    activity,
     confirmedSeats: (periodId, turnoId) =>
       seats.confirmedSeats(periodId, turnoId),
     failCreateAfterNumbering: async (draft) => {

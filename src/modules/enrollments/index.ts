@@ -78,6 +78,7 @@ export type {
   OrderHistoryRow,
 } from "./application/order-history";
 export type { RandomBytes } from "./application/random-bytes";
+export type { StudentActivityStore } from "./application/student-activity";
 export type { SeatLedger } from "./application/seat-ledger";
 export {
   rosterFeePaid,

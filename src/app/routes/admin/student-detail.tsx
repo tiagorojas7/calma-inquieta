@@ -21,7 +21,8 @@ export function meta() {
 
 const CORDOBA_OFFSET_MS = 10_800_000;
 const copy = adminMicrocopy.students.detail;
-const FEEDBACK = ["note-saved"] as const;
+const FEEDBACK = ["note-saved", "deactivated", "reactivated"] as const;
+const ACTIVITY_INTENTS = { deactivate: false, reactivate: true } as const;
 
 /** The email in the path, or a 404 for anything that cannot be one. */
 function emailParam(value: string | undefined): string {
@@ -45,6 +46,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     name: student.fullName,
     email: student.email,
     phone: student.phoneDigits,
+    active: student.active,
     activities: student.activities.map((activity) => ({
       workshop: activity.workshopName,
       month: monthLabel(activity.period),
@@ -93,6 +95,22 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const email = emailParam(params.email);
   const form = await request.formData().catch(() => null);
+  const intent = form?.get("intent");
+  if (intent !== null && intent !== undefined) {
+    if (typeof intent !== "string" || !(intent in ACTIVITY_INTENTS))
+      throw data(null, { status: 400 });
+    const active = ACTIVITY_INTENTS[intent as keyof typeof ACTIVITY_INTENTS];
+    const changed = await context
+      .get(servicesContext)
+      .students.setActive(actor, email, active);
+    if (!changed.ok) throw enrollmentFailureResponse(changed.error);
+    return redirect(
+      withFeedback(
+        `/admin/alumnas/${encodeURIComponent(email)}`,
+        active ? "reactivated" : "deactivated",
+      ),
+    );
+  }
   const note = form?.get("note");
   if (typeof note !== "string") throw data(null, { status: 400 });
   const saved = await context

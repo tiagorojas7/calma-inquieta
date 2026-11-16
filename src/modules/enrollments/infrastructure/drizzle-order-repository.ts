@@ -224,6 +224,8 @@ export function createDrizzleOrderRepository(
                   fullName: draft.student.fullName,
                   email: draft.student.email,
                   phoneDigits: draft.student.phoneDigits,
+                  // A new enrollment brings an inactive profile back.
+                  active: true,
                   updatedAt: draft.requestedAt,
                 })
                 .where(eq(student.id, studentId));

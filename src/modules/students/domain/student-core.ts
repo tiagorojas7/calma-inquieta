@@ -65,10 +65,19 @@ export interface StudentProfile {
   /** Every order, cancelled included, newest first. */
   readonly orders: readonly StudentOrderEntry[];
   readonly lastRequestedAt: Date;
+  /**
+   * False only for a profile the owner deactivated. It organizes the list and
+   * blocks nothing; a student without a profile row counts as active.
+   */
+  readonly active: boolean;
 }
+
+/** Which students the list shows: the active ones unless asked otherwise. */
+export type StudentActivityFilter = "active" | "inactive" | "all";
 
 export interface StudentQuery {
   readonly text?: string;
+  readonly activity?: StudentActivityFilter;
   readonly workshopId?: string;
   readonly status?: StudentOrderStatus;
   readonly page?: number;
@@ -112,9 +121,11 @@ const newestFirst = (a: StudentSourceOrder, b: StudentSourceOrder) =>
 /**
  * Groups orders by normalized email into one profile each. The latest order
  * supplies the name and phone, so a corrected spelling wins over an old one.
+ * Emails in `inactive` mark their profile inactive; every other one is active.
  */
 export function deriveStudents(
   orders: readonly StudentSourceOrder[],
+  inactive: ReadonlySet<string> = new Set(),
 ): readonly StudentProfile[] {
   const groups = new Map<string, StudentSourceOrder[]>();
   for (const order of orders) {
@@ -154,6 +165,7 @@ export function deriveStudents(
         paidAt: order.paidAt,
       })),
       lastRequestedAt: latest.requestedAt,
+      active: !inactive.has(email),
     };
   });
 }
@@ -168,7 +180,8 @@ const digits = (value: string) =>
  * Search and activity filters over derived profiles, most recent activity
  * first. `text` matches name, email or phone digits; `workshopId` and `status`
  * look at the student's own orders (a cancelled order still counts for
- * `status: "cancelled"`).
+ * `status: "cancelled"`); `activity` keeps the active profiles unless it asks
+ * for the inactive ones or all.
  */
 export function filterStudents(
   profiles: readonly StudentProfile[],
@@ -176,8 +189,11 @@ export function filterStudents(
 ): readonly StudentProfile[] {
   const text = fold(query.text ?? "");
   const textDigits = digits(text);
+  const activity = query.activity ?? "active";
   return profiles
     .filter((profile) => {
+      if (activity === "active" && !profile.active) return false;
+      if (activity === "inactive" && profile.active) return false;
       if (
         (query.workshopId !== undefined || query.status !== undefined) &&
         !profile.orders.some(

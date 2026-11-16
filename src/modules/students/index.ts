@@ -1,5 +1,6 @@
 export * from "./domain/student-core";
 export type {
+  StudentActivityState,
   StudentDetail,
   StudentsPage,
   StudentsService,

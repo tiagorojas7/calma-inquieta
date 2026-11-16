@@ -7,6 +7,7 @@ const student: StudentDetailProps["student"] = {
   name: "Ana Pérez",
   email: "ana@example.com",
   phone: "5493515550000",
+  active: true,
   activities: [
     {
       workshop: "Cerámica",
@@ -64,6 +65,44 @@ describe("StudentDetail", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Observaciones guardadas",
     );
+  });
+
+  it("shows she is active and offers to deactivate her with a post form", () => {
+    render(<StudentDetail student={student} />);
+
+    const state = screen.getByRole("form", { name: "Estado de la alumna" });
+    expect(state).toHaveAttribute("method", "post");
+    expect(within(state).getByText("Activa")).toBeVisible();
+    expect(within(state).getByText(/no bloquea nada/)).toBeVisible();
+    expect(
+      within(state).getByRole("button", { name: "Marcar como inactiva" }),
+    ).toBeVisible();
+    expect(state.querySelector("input[name=intent]")).toHaveValue("deactivate");
+  });
+
+  it("shows she is inactive and offers to reactivate her", () => {
+    render(<StudentDetail student={{ ...student, active: false }} />);
+
+    const state = screen.getByRole("form", { name: "Estado de la alumna" });
+    expect(within(state).getByText("Inactiva")).toBeVisible();
+    expect(
+      within(state).getByRole("button", { name: "Reactivar alumna" }),
+    ).toBeVisible();
+    expect(state.querySelector("input[name=intent]")).toHaveValue("reactivate");
+    expect(
+      screen.queryByRole("button", { name: "Marcar como inactiva" }),
+    ).toBeNull();
+  });
+
+  it("confirms a change of state with a status message", () => {
+    const { rerender } = render(
+      <StudentDetail student={student} feedback="deactivated" />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Alumna marcada como inactiva",
+    );
+    rerender(<StudentDetail student={student} feedback="reactivated" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Alumna reactivada");
   });
 
   it("shows her data, activities and order history with links to each order", async () => {

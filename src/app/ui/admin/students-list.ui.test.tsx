@@ -12,9 +12,10 @@ const props: StudentsListProps = {
       workshops: "Cerámica, Acuarela",
       orders: 2,
       lastRequest: "31/10/2026",
+      active: true,
     },
   ],
-  filter: { q: "", taller: "", estado: "", page: 1 },
+  filter: { q: "", taller: "", estado: "", mostrar: "activas", page: 1 },
   workshops: [{ id: "w1", name: "Cerámica" }],
   statuses: [{ value: "paid", label: "Cobrado" }],
   hasNext: true,
@@ -42,7 +43,13 @@ describe("StudentsList", () => {
     rerender(
       <StudentsList
         {...props}
-        filter={{ q: "ana", taller: "", estado: "", page: 1 }}
+        filter={{
+          q: "ana",
+          taller: "",
+          estado: "",
+          mostrar: "activas",
+          page: 1,
+        }}
       />,
     );
     expect(
@@ -91,6 +98,7 @@ describe("StudentsList", () => {
       "Talleres",
       "Pedidos",
       "Última solicitud",
+      "Estado",
     ]);
     const row = within(table).getAllByRole("row")[1] as HTMLElement;
     expect(
@@ -102,6 +110,7 @@ describe("StudentsList", () => {
       "Cerámica, Acuarela",
       "2",
       "31/10/2026",
+      "Activa",
     ])
       expect(within(row).getByText(cell)).toBeInTheDocument();
   });
@@ -110,7 +119,13 @@ describe("StudentsList", () => {
     render(
       <StudentsList
         {...props}
-        filter={{ q: "ana", taller: "w1", estado: "paid", page: 1 }}
+        filter={{
+          q: "ana",
+          taller: "w1",
+          estado: "paid",
+          mostrar: "activas",
+          page: 1,
+        }}
       />,
     );
 
@@ -128,7 +143,13 @@ describe("StudentsList", () => {
     render(
       <StudentsList
         {...props}
-        filter={{ q: "ana", taller: "", estado: "", page: 2 }}
+        filter={{
+          q: "ana",
+          taller: "",
+          estado: "",
+          mostrar: "activas",
+          page: 2,
+        }}
       />,
     );
 
@@ -140,6 +161,65 @@ describe("StudentsList", () => {
       "href",
       "/admin/alumnas?q=ana&page=1",
     );
+  });
+
+  it("shows each student's state, in the card and in the table", () => {
+    const [ana] = props.rows;
+    if (!ana) throw new Error("fixture");
+    const rows = [
+      ana,
+      { ...ana, email: "bea@example.com", name: "Bea", active: false },
+    ];
+    render(<StudentsList {...props} rows={rows} />);
+
+    const cards = within(screen.getByRole("list", { name: "Alumnas" }));
+    const [anaCard, beaCard] = cards.getAllByRole("listitem") as [
+      HTMLElement,
+      HTMLElement,
+    ];
+    expect(within(anaCard).getByText("Activa")).toBeVisible();
+    expect(within(beaCard).getByText("Inactiva")).toBeVisible();
+    const table = within(screen.getByRole("table", { name: "Alumnas" }));
+    expect(table.getByText("Activa")).toBeInTheDocument();
+    expect(table.getByText("Inactiva")).toBeInTheDocument();
+  });
+
+  it("shows the active students by default with a way to see the inactive ones", () => {
+    render(<StudentsList {...props} />);
+
+    expect(
+      screen.getByRole("link", { name: "Ver alumnas inactivas" }),
+    ).toHaveAttribute("href", "/admin/alumnas?mostrar=inactivas");
+    expect(
+      screen.queryByRole("link", { name: "Ver alumnas activas" }),
+    ).toBeNull();
+    const form = screen.getByRole("search", { name: "Filtrar alumnas" });
+    expect(within(form).getByLabelText("Mostrar")).toHaveValue("activas");
+    expect(
+      within(within(form).getByLabelText("Mostrar"))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Activas", "Inactivas", "Todas"]);
+  });
+
+  it("offers the way back while the inactive view is open and keeps it when paging", () => {
+    render(
+      <StudentsList
+        {...props}
+        filter={{ ...props.filter, mostrar: "inactivas", page: 2 }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Ver alumnas activas" }),
+    ).toHaveAttribute("href", "/admin/alumnas");
+    expect(screen.getByLabelText("Mostrar")).toHaveValue("inactivas");
+    expect(
+      within(screen.getByRole("navigation", { name: "Paginación" })).getByRole(
+        "link",
+        { name: "Siguiente" },
+      ),
+    ).toHaveAttribute("href", "/admin/alumnas?mostrar=inactivas&page=3");
   });
 
   it("shows the empty state when nothing matches", () => {

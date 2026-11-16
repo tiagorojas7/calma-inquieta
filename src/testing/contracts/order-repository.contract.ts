@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OrderRepository } from "~/modules/enrollments/application/enrollment-repository";
+import type { StudentActivityStore } from "~/modules/enrollments/application/student-activity";
 import {
   orderDraft as rawOrderDraft,
   pesos,
@@ -51,6 +52,8 @@ const other = (email: string) => {
 
 export interface OrderRepositoryContractHarness {
   readonly repository: OrderRepository;
+  /** Reads and writes the `active` flag of the profiles the repository creates. */
+  readonly activity: StudentActivityStore;
   /** Confirmed seats of a turno, read from the same store the repository claims from. */
   readonly confirmedSeats: (
     periodId: string,
@@ -556,5 +559,115 @@ export function runOrderRepositoryContract(
         );
       },
     );
+
+    describe("student profile activity", () => {
+      const at = new Date("2026-10-25T15:00:00Z");
+
+      it("deactivates and reactivates a profile without touching its history", async () => {
+        const { repository: repo, activity } = await create();
+        const first = await repo.create(orderDraft());
+        if (!first.ok) throw new Error("fixture");
+        await expect(activity.inactiveEmails()).resolves.toEqual(new Set());
+
+        await expect(
+          activity.setActive("  Ana@Example.com ", false, at),
+        ).resolves.toBe(true);
+        await expect(activity.inactiveEmails()).resolves.toEqual(
+          new Set(["ana@example.com"]),
+        );
+        expect(await repo.findForAdmin(first.value.id)).toEqual(first.value);
+
+        await expect(
+          activity.setActive("ana@example.com", true, at),
+        ).resolves.toBe(true);
+        await expect(activity.inactiveEmails()).resolves.toEqual(new Set());
+        expect(await repo.findForAdmin(first.value.id)).toEqual(first.value);
+      });
+
+      it("counts a student without a profile as active and changes nothing for her", async () => {
+        const { repository: repo, activity } = await create();
+        await repo.create(orderDraft());
+
+        await expect(
+          activity.setActive("nobody@example.com", false, at),
+        ).resolves.toBe(false);
+        await expect(activity.inactiveEmails()).resolves.toEqual(new Set());
+      });
+
+      it("keeps the other students as they were when one is deactivated", async () => {
+        const { repository: repo, activity } = await create();
+        await repo.create(orderDraft());
+        await repo.create(
+          orderDraft({
+            publicId: "B".repeat(22),
+            student: other("bea@example.com"),
+          }),
+        );
+
+        await activity.setActive("bea@example.com", false, at);
+
+        await expect(activity.inactiveEmails()).resolves.toEqual(
+          new Set(["bea@example.com"]),
+        );
+      });
+
+      it("reactivates an inactive profile when a new public enrollment arrives", async () => {
+        const { repository: repo, activity } = await create();
+        await repo.create(orderDraft());
+        await activity.setActive("ana@example.com", false, at);
+
+        const next = await repo.create(
+          orderDraft({
+            publicId: "B".repeat(22),
+            periodId: "p-2",
+            period: "2026-11",
+          }),
+        );
+
+        expect(next.ok).toBe(true);
+        await expect(activity.inactiveEmails()).resolves.toEqual(new Set());
+      });
+
+      it("reactivates an inactive profile when an admin enrolls her by phone with a new email", async () => {
+        const { repository: repo, activity } = await create();
+        await repo.create(orderDraft());
+        await activity.setActive("ana@example.com", false, at);
+
+        const next = await repo.create(
+          orderDraft({
+            publicId: "B".repeat(22),
+            periodId: "p-2",
+            period: "2026-11",
+            createdBy: "admin@example.com",
+            student: {
+              fullName: "Ana Pérez",
+              email: "ana.nueva@example.com",
+              phoneDigits: "5493515551234",
+            },
+          }),
+        );
+
+        expect(next.ok).toBe(true);
+        await expect(activity.inactiveEmails()).resolves.toEqual(new Set());
+      });
+
+      it("leaves the profile inactive when the enrollment is refused", async () => {
+        const { repository: repo, activity } = await create();
+        await repo.create(orderDraft());
+        await activity.setActive("ana@example.com", false, at);
+
+        const refused = await repo.create(
+          orderDraft({ publicId: "B".repeat(22), turnoId: "t-2" }),
+        );
+
+        expect(refused).toEqual({
+          ok: false,
+          error: { kind: "duplicate-order" },
+        });
+        await expect(activity.inactiveEmails()).resolves.toEqual(
+          new Set(["ana@example.com"]),
+        );
+      });
+    });
   });
 }

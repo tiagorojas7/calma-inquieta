@@ -8,14 +8,19 @@ import {
   thrownStatus,
   withOverrides,
 } from "~/testing/admin/route-kit";
+import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { studentsFixture } from "~/testing/admin/student-kit";
 import { studentOrder } from "~/testing/fakes/student-builders";
 import { loader } from "./students";
 
 const WORKSHOP = "00000000-0000-4000-8000-000000000002";
 
-function load(path = "/admin/alumnas", admin = true) {
-  const { orders, service } = studentsFixture();
+async function load(
+  path = "/admin/alumnas",
+  admin = true,
+  inactive: readonly string[] = [],
+) {
+  const { orders, activity, service } = studentsFixture();
   orders.orders.push(
     studentOrder(1, {
       studentEmail: "ana@example.com",
@@ -30,6 +35,9 @@ function load(path = "/admin/alumnas", admin = true) {
     }),
     studentOrder(3, { studentEmail: "bea@example.com", studentName: "Bea" }),
   );
+  activity.enrolled(...orders.orders.map((order) => order.studentEmail));
+  for (const email of inactive)
+    await service.setActive(testAdminActor(), email, false);
   return loader({
     request: getRequest(path),
     params: {},
@@ -75,6 +83,37 @@ describe("admin students list route", () => {
     expect(result.hasNext).toBe(false);
   });
 
+  it("shows each row's state and hides the inactive students by default", async () => {
+    const byDefault = await load("/admin/alumnas", true, ["bea@example.com"]);
+
+    expect(byDefault.rows.map((row) => [row.email, row.active])).toEqual([
+      ["ana@example.com", true],
+    ]);
+    expect(byDefault.filter.mostrar).toBe("activas");
+  });
+
+  it("lists only the inactive or every student when asked", async () => {
+    const inactive = await load("/admin/alumnas?mostrar=inactivas", true, [
+      "bea@example.com",
+    ]);
+    const all = await load("/admin/alumnas?mostrar=todas", true, [
+      "bea@example.com",
+    ]);
+    const unknown = await load("/admin/alumnas?mostrar=nope", true, [
+      "bea@example.com",
+    ]);
+
+    expect(inactive.rows.map((row) => [row.email, row.active])).toEqual([
+      ["bea@example.com", false],
+    ]);
+    expect(inactive.filter.mostrar).toBe("inactivas");
+    expect(all.rows.map((row) => [row.email, row.active])).toEqual([
+      ["bea@example.com", false],
+      ["ana@example.com", true],
+    ]);
+    expect(unknown.rows.map((row) => row.email)).toEqual(["ana@example.com"]);
+  });
+
   it("searches and filters by workshop from the query string", async () => {
     const byText = await load("/admin/alumnas?q=bea%40");
     expect(byText.rows.map((row) => row.email)).toEqual(["bea@example.com"]);
@@ -104,6 +143,7 @@ describe("admin students list route", () => {
         list: unavailable,
         detail: unavailable,
         saveNote: unavailable,
+        setActive: unavailable,
       },
     });
     expect(

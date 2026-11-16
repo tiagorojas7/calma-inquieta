@@ -84,6 +84,7 @@ import {
   type InsightsUseCases,
 } from "~/modules/insights";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
+import { createDrizzleStudentActivityStore } from "~/modules/enrollments/infrastructure/drizzle-student-activity-store";
 import {
   createPrivateEventService,
   type PrivateEventUseCases,
@@ -403,6 +404,7 @@ export function createRequestServices(
     students: createStudentsService({
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
+      activity: createDrizzleStudentActivityStore(openSession),
       clock: systemClock,
     }),
     attendance: createAttendanceService({

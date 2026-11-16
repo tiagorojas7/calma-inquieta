@@ -46,6 +46,7 @@ import {
 import { planCorrection } from "~/modules/enrollments/domain/order-correction";
 import { periodAcceptsOrders } from "~/modules/enrollments/domain/period-window";
 import { InMemorySeatLedger } from "./enrollments-seat-ledger";
+import { InMemoryStudentActivityStore } from "./enrollments-student-activity-store";
 
 interface Row {
   order: StoredOrder;
@@ -134,9 +135,15 @@ export class InMemoryOrderRepository
   private failNext = false;
   private reads = 0;
   private readonly seats: SeatLedger;
+  /** Every enrollment, public or manual, leaves its profile active, like the transaction. */
+  private readonly activity: InMemoryStudentActivityStore;
   /** A free order created paid claims its seat from the same ledger the services read. */
-  constructor(seats: SeatLedger = new InMemorySeatLedger()) {
+  constructor(
+    seats: SeatLedger = new InMemorySeatLedger(),
+    activity: InMemoryStudentActivityStore = new InMemoryStudentActivityStore(),
+  ) {
     this.seats = seats;
+    this.activity = activity;
   }
   failNextCreateAfterNumbering(): void {
     this.failNext = true;
@@ -206,6 +213,7 @@ export class InMemoryOrderRepository
       phoneDigits: draft.student.phoneDigits,
     };
     if (!known) this.students.push(profile);
+    this.activity.enrolled(profile.email, draft.student.email);
     profile.email = draft.student.email;
     profile.phoneDigits = draft.student.phoneDigits;
     const order: StoredOrder = {

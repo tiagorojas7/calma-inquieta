@@ -216,3 +216,28 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - R3-001: a detail page loaded while the order was pending posts a cancel without refund fields. If the order was paid in between, the cancel is refused with "amount required"; reload and retry.
     - R3-003: any malformed refund amount containing a dot or comma gets the "sin centavos" message.
 - L56 (2026-11-16, owner, verbatim, answering what happens when a correction lowers the amount of a paid order): "Sigue pagada (Recommended)" (option text: "Si el monto baja, la inscripción queda pagada y cargás la diferencia que le devolviste. Solo vuelve a pendiente si el monto sube, y entonces confirmás el pago del nuevo total."). This applies to unit C1 (corrections).
+- L57 (2026-11-16): unit C1 (corrections) committed as `53f84a9` (domain, store and `order_correction` folded into 0018) and `8035633` (detail form and history). One delegated writer did both.
+  - Rules:
+    - A pending correction stays pending.
+    - A paid correction with an unchanged total stays paid.
+    - A raised total returns to pending, keeps the previous payment on the correction, and releases the seat.
+    - A lowered total stays paid with the new `paid_amount` and records the refunded difference.
+    - Turno and period moves swap seats in one transaction, in key order.
+    - A full target or an already-held month refuses everything.
+    - Cancelled orders are `not-correctable`.
+  - Writer gaps:
+    - RED was not observed for the schema checks, the store or the service tests. The schema checks were proven by mutation instead.
+    - A no-change correction is still recorded.
+    - The note is optional.
+    - `loadCorrectionOptions` copies the manual-creation loader.
+    - `createAdminEnrollmentService` now requires `offers`.
+  - Seam run at `8035633`: `--project unit` 295 files / 3527 passed; `--project ui` 124 files / 1060 passed.
+  - Independent verifier, all six items PASS:
+    - A raise clears payment, keeps history and re-confirms.
+    - Lowered-refund bounds hold, and refusals leave the full dump byte-identical.
+    - Full or duplicate targets are refused. Opposite concurrent moves do not deadlock, and 8 moves into 3 seats give 3 successes.
+    - 0018 runs on legacy data, `order_correction` checks reject bad rows, and the snapshot differs only by the new table.
+    - Confirm, cancel and refund are unchanged.
+  - Advisories:
+    - A full swap between two full turnos is refused both ways.
+    - The 0018 student backfill (baseline behaviour) fails when two legacy emails share one phone; the L25 query counts exactly this.

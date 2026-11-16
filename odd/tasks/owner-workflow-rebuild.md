@@ -168,3 +168,15 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - R3-003: the client running total strips every dot, so "5.8" shows as 58; this is display only, and the server stays authoritative.
 - L49 (2026-11-16, owner, verbatim, answering how a refund of a paid monthly order is recorded): "Total o parcial (Recommended)". Option text: "Cancelás la inscripción y cargás cuánto le devolviste (todo o una parte), la fecha y una nota. Se libera el lugar y queda el registro del pago y de la devolución." This applies to unit R1.
 - L50 (2026-11-16, owner, verbatim, answering whether orders whose materials were requested or received can be cancelled): "Se puede cancelar (Recommended)" (option text: "Se puede cancelar y devolver en cualquier estado. Si los materiales ya se pidieron, vos decidís cuánto devolvés (por ejemplo, solo la cuota) y queda registrado."). For R1: cancel and refund are allowed from `paid`, `materials_requested` and `materials_received`; the refund amount is any whole-peso amount from $0 up to the paid amount.
+- L51 (2026-11-16): unit A1 (attendance) committed in `0f9d449` (one delegated writer).
+  - What changed:
+    - Pending students are marked like paid ones, and the note still shows.
+    - A make-up target must be another `turnoId` of the same workshop, on a date in the target period and on its weekday. The writer's assumption is that the own turno is refused in every month.
+    - A full target warns (`?ok=makeup-full`, info tone, after confirming) and still books.
+    - `replaceSession` became `upsertMarks`, so marks are never deleted.
+    - Absent to present with a booked make-up is refused (`make-up-booked`).
+    - New copy lives in `src/app/attendance/copy.ts` (same pattern as the intensive-requests and private-events copy); the parent removed the stale `adminMicrocopy.attendance.sheet.pendingNote`.
+  - Writer evidence: RED for the service (12), UI (4) and route (9); the domain and contract tests have no separate RED. Unit/ui 13 files / 121 passed (architecture test included); DB attendance repository 10/10; typecheck, eslint and prettier clean.
+  - Parent checks: scope inside the surfaces, typecheck exit 0, spot check 28/28.
+  - Named risks: item 3 (attendance port changed) and item 4 (the make-up-booked check is not atomic with the write).
+  - An independent verifier runs in an isolated worktree, while unit R1 (refunds) is delegated to a writer in the main tree. A single seam run will cover A1 and R1.

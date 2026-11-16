@@ -241,3 +241,4 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Advisories:
     - A full swap between two full turnos is refused both ways.
     - The 0018 student backfill (baseline behaviour) fails when two legacy emails share one phone; the L25 query counts exactly this.
+- L58 (2026-11-16): the native review START of `2c295ae..6cc7d75` (4867 lines) stopped with `lens_context_budget_exceeded`, and no authority was created. The owner was asked whether to split it into 4-5 reviewed slices or skip; verbatim answer: "Saltar esta revisión". Corrections stand on the writer checks, the seam run and the independent verifier (L57). The next review candidate starts at base `6cc7d75`.

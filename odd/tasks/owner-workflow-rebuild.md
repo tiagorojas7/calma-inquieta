@@ -188,3 +188,8 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Concurrency: three parallel bookings for one absence produce one make-up.
   - ADVISORY, not a regression: a save that flips the absence to present can race with a make-up booking and leave a make-up without its absence. The baseline allowed this state even sequentially. Follow-up: do the check and the upsert atomically.
   - Boundary note: the warning fires when roster plus booked make-ups, including the new one, exceed capacity.
+- L53 (2026-11-16): native review over `80800ec..f61c69c` (owner consent, lenses risk, resilience and reliability): approved, and the acknowledgement burned the authority.
+  - Fixed inline in a follow-up commit: R4-001/R3-002. The occupancy read ran after the make-up was stored, so a failure threw. It now degrades to `targetFull: false`: RED `Error: occupancy read failed`, GREEN 27/27.
+  - Open follow-ups:
+    - R1-001/R4-002/R3-001: the make-up-booked check and the mark upsert are not atomic (same advisory as L52).
+    - R3-003: every not-selectable make-up issue now shows the in-month text, even for a plain weekday mismatch.

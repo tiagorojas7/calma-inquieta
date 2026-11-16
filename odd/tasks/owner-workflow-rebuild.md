@@ -193,3 +193,20 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Open follow-ups:
     - R1-001/R4-002/R3-001: the make-up-booked check and the mark upsert are not atomic (same advisory as L52).
     - R3-003: every not-selectable make-up issue now shows the in-month text, even for a plain weekday mismatch.
+- L54 (2026-11-16): unit R1 (refunds) committed in `056069f` (one delegated writer).
+  - What changed:
+    - Cancel is allowed from every paid state and releases the seat once.
+    - A paid cancel records the refunded amount ($0 up to the paid amount), the Córdoba date (from the payment day to today), an optional note and the admin. A pending cancel records no refund.
+    - Refusals return `invalid-refund`, and nothing is stored.
+    - 0018 gains four refund columns and three checks, with a hand-edited snapshot.
+    - New `enrollment-cancel-form-data.ts`; the detail screen asks for and shows the refund.
+  - Writer gaps:
+    - The audit row keeps the cancel reason, and the refund lives on the order row.
+    - The list route still offers cancel only for pending orders.
+  - Seam run at `056069f` (covers A1, its fix and R1): `--project unit` 293 files / 3425 passed (552 s, alongside the verifier); `--project ui` 123 files / 1048 passed.
+  - Independent verifier, all five items PASS:
+    - The seat is released once from each paid state.
+    - Refund bounds hold, and every refusal leaves the full snapshot unchanged.
+    - 0018 on legacy data leaves NULL refund fields, and its checks reject inconsistent rows.
+    - The snapshot differs only by the new columns and checks.
+    - Insights exclude cancelled orders, refunded or not.

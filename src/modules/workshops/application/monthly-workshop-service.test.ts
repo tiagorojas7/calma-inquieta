@@ -655,14 +655,19 @@ describe("monthly workshop turno mutations", () => {
     );
     expect(await subject.get(actor, created.value.id)).toMatchObject({
       ok: true,
-      value: { turnos: [{ label: "Early" }, { label: "Late" }] },
+      value: {
+        turnos: [
+          { label: "Lunes 10:00 a 11:00" },
+          { label: "Martes 11:00 a 12:00" },
+        ],
+      },
     });
     expect(await subject.list(actor, { status: "live" })).toMatchObject({
       ok: true,
       value: [{ activeTurnos: 2 }],
     });
   });
-  it("validates, maps label races, and stamps only successful mutations", async () => {
+  it("validates, maps same-schedule races, and stamps only successful mutations", async () => {
     const { subject, repository, turnos } = turnoService();
     const created = await subject.create(actor, draft());
     if (!created.ok) throw new Error("fixture");
@@ -671,7 +676,7 @@ describe("monthly workshop turno mutations", () => {
       await subject.addTurno(
         actor,
         created.value.id,
-        turnoDraft({ label: "" }),
+        turnoDraft({ endsAt: "08:00" }),
       ),
     ).toMatchObject({ ok: false, error: { kind: "invalid" } });
     expect(await repository.findById(created.value.id)).toEqual(before);
@@ -681,12 +686,15 @@ describe("monthly workshop turno mutations", () => {
       turnoDraft({ label: "Ñandú" }),
     );
     if (!added.ok) throw new Error("fixture");
+    expect(added.value.turnos).toMatchObject([
+      { label: "Martes 09:00 a 10:00" },
+    ]);
     turnos.listForWorkshop = () => Promise.resolve([]);
     expect(
       await subject.addTurno(
         actor,
         created.value.id,
-        turnoDraft({ label: "ñANDÚ" }),
+        turnoDraft({ label: "Otro nombre" }),
       ),
     ).toEqual({
       ok: false,

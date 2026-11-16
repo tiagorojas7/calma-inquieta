@@ -19,8 +19,8 @@ import { action, loader } from "./turnos";
 
 type Fixture = ReturnType<typeof workshopsFixture>;
 
+const MORNING_LABEL = "Martes 10:00 a 12:00";
 const MORNING = {
-  label: "Mañana",
   weekday: "2",
   startsAt: "10:00",
   endsAt: "12:00",
@@ -65,13 +65,19 @@ function publish(fixture: Fixture, id: string) {
   } as never);
 }
 
-async function addTurno(fixture: Fixture, id: string, label = "Mañana") {
-  const added = await fixture.service.addTurno(testAdminActor(), id, {
-    ...MORNING,
-    label,
-  });
+async function addTurno(
+  fixture: Fixture,
+  id: string,
+  patch: Partial<typeof MORNING> = {},
+) {
+  const draft = { label: "", ...MORNING, ...patch };
+  const added = await fixture.service.addTurno(testAdminActor(), id, draft);
   if (!added.ok) throw new Error("turno seed failed");
-  const turno = added.value.turnos.find((item) => item.label === label);
+  const turno = added.value.turnos.find(
+    (item) =>
+      item.weekday === Number(draft.weekday) &&
+      item.startsAt === draft.startsAt,
+  );
   if (!turno) throw new Error("turno missing");
   return turno.id;
 }
@@ -95,7 +101,7 @@ describe("admin turnos loader", () => {
       turnos: [
         {
           id: turnoId,
-          label: "Mañana",
+          label: MORNING_LABEL,
           day: "Martes",
           range: "10:00 a 12:00",
           capacity: 8,
@@ -112,7 +118,7 @@ describe("admin turnos loader", () => {
     const id = await seedWorkshop(fixture);
     const turnoId = await addTurno(fixture, id);
     expect(await load(fixture, id, `?editar=${turnoId}`)).toMatchObject({
-      editing: { turnoId, values: MORNING },
+      editing: { turnoId, values: { ...MORNING, label: MORNING_LABEL } },
     });
   });
 
@@ -163,7 +169,7 @@ describe("admin turnos action", () => {
     expect([...fixture.turnos.items.values()]).toMatchObject([
       {
         workshopId: id,
-        label: "Mañana",
+        label: MORNING_LABEL,
         weekday: 2,
         startsAt: "10:00",
         endsAt: "12:00",
@@ -229,7 +235,6 @@ describe("admin turnos action", () => {
       "weekday",
       "Elegí un día de la semana.",
     ],
-    ["missing label", { label: "" }, "label", "Completá este campo."],
   ])(
     "returns 422 naming the field for %s and stores nothing",
     async (_name, patch, field, message) => {
@@ -239,29 +244,59 @@ describe("admin turnos action", () => {
       const result = await submit(fixture, id, { intent: "save", ...fields });
       expect(result).toMatchObject({
         init: { status: 422 },
-        data: { values: fields, errors: { [field]: message }, turnoId: "" },
+        data: {
+          values: { ...fields, label: "" },
+          errors: { [field]: message },
+          turnoId: "",
+        },
       });
       expect(fixture.turnos.items.size).toBe(0);
     },
   );
 
-  it("refuses a duplicate label ignoring case, but allows it in another workshop", async () => {
+  it("ignores a typed label and stores the one generated from weekday and time", async () => {
+    const fixture = workshopsFixture();
+    const id = await seedWorkshop(fixture);
+    await submit(fixture, id, { intent: "save", ...MORNING, label: "Mañana" });
+    expect([...fixture.turnos.items.values()]).toMatchObject([
+      { label: MORNING_LABEL },
+    ]);
+  });
+
+  it("regenerates the label when an update changes the schedule", async () => {
+    const fixture = workshopsFixture();
+    const id = await seedWorkshop(fixture);
+    const turnoId = await addTurno(fixture, id);
+    await submit(fixture, id, {
+      intent: "save",
+      turnoId,
+      ...MORNING,
+      weekday: "3",
+      endsAt: "13:00",
+    });
+    expect(turnoOf(fixture, turnoId)).toMatchObject({
+      label: "Miércoles 10:00 a 13:00",
+    });
+  });
+
+  it("refuses the same weekday and time in a workshop, but allows it in another workshop", async () => {
     const fixture = workshopsFixture();
     const id = await seedWorkshop(fixture);
     const other = await seedWorkshop(fixture, { name: "Bordado" });
-    await addTurno(fixture, id, "Tarde");
+    await addTurno(fixture, id);
     expect(
-      await submit(fixture, id, { intent: "save", ...MORNING, label: "tarde" }),
+      await submit(fixture, id, { intent: "save", ...MORNING }),
     ).toMatchObject({
       init: { status: 422 },
       data: {
-        errors: { label: "Ya hay un turno con ese nombre en este taller." },
+        errors: {
+          label: "Ya hay un turno ese día y en ese horario en este taller.",
+        },
       },
     });
     const allowed = await submit(fixture, other, {
       intent: "save",
       ...MORNING,
-      label: "tarde",
     });
     expect((allowed as Response).headers.get("Location")).toBe(
       `/admin/talleres/${other}/turnos?ok=added`,
@@ -316,13 +351,16 @@ describe("admin turnos action", () => {
   it("reactivates a retired turno without reusing its label", async () => {
     const fixture = workshopsFixture();
     const id = await seedWorkshop(fixture);
-    const turnoId = await addTurno(fixture, id, "Tarde");
+    const turnoId = await addTurno(fixture, id, {
+      startsAt: "14:00",
+      endsAt: "16:00",
+    });
     await submit(fixture, id, { intent: "retire", turnoId });
     expect(turnoOf(fixture, turnoId).active).toBe(false);
 
     await submit(fixture, id, { intent: "reactivate", turnoId });
     expect(turnoOf(fixture, turnoId)).toMatchObject({
-      label: "Tarde",
+      label: "Martes 14:00 a 16:00",
       active: true,
     });
   });

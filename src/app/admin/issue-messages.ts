@@ -169,7 +169,9 @@ export function transitionRefusedMessage(
 
 /** Turno fields whose generic text would mislead. */
 export const TURNO_FIELD_MESSAGES = {
-  label: { duplicate: "Ya hay un turno con ese nombre en este taller." },
+  label: {
+    duplicate: "Ya hay un turno ese día y en ese horario en este taller.",
+  },
   weekday: {
     "invalid-format": "Elegí un día de la semana.",
     "out-of-range": "Elegí un día de la semana.",

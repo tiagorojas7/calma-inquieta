@@ -69,7 +69,7 @@ describe("publishQuickWorkshop", () => {
       ok: true,
       value: {
         status: "open",
-        turnos: [{ label: "Martes 10:00", capacity: 8 }],
+        turnos: [{ label: "Martes 10:00 a 12:00", capacity: 8 }],
       },
     });
   });
@@ -127,7 +127,7 @@ describe("publishQuickWorkshop", () => {
     await run(flow, input({ teacherId, intent: "draft" }));
     expect(await flow.service.get(actor, "w1")).toMatchObject({
       ok: true,
-      value: { turnos: [{ label: "Martes 10:00" }] },
+      value: { turnos: [{ label: "Martes 10:00 a 12:00" }] },
     });
   });
 

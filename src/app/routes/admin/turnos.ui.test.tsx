@@ -152,7 +152,10 @@ describe("turnos admin screen", () => {
     );
     const form = required(addSection.querySelector("form"), "add turno form");
     expect(form).toHaveAttribute("method", "post");
-    expect(within(form).getByLabelText("Nombre del turno")).toBeVisible();
+    expect(
+      within(form).queryByLabelText("Nombre del turno"),
+    ).not.toBeInTheDocument();
+    expect(form.querySelector('[name="label"]')).toBeNull();
     expect(within(form).getByLabelText("Día de la semana")).toBeVisible();
     expect(within(form).getByLabelText("Desde")).toBeVisible();
     expect(within(form).getByLabelText("Hasta")).toBeVisible();
@@ -192,9 +195,6 @@ describe("turnos admin screen", () => {
       "edit turno section",
     );
     const form = required(editSection.querySelector("form"), "edit turno form");
-    expect(within(form).getByLabelText("Nombre del turno")).toHaveValue(
-      "Tarde",
-    );
     expect(within(form).getByLabelText("Día de la semana")).toHaveValue("4");
     expect(within(form).getByLabelText("Hasta")).toHaveValue("17:30");
     expect(form.querySelector('input[name="turnoId"]')).toHaveValue("t2");
@@ -277,6 +277,22 @@ describe("turnos admin screen", () => {
     ]);
   });
 
+  it("shows a duplicate schedule refusal on the weekday field", async () => {
+    render(
+      stub({
+        actionData: {
+          values: EMPTY_VALUES,
+          errors: { label: "Ya hay un turno con ese horario en este taller." },
+          formError: "Revisá los campos marcados e intentá de nuevo.",
+          turnoId: "",
+        },
+      }),
+    );
+    expect(
+      await screen.findByLabelText("Día de la semana"),
+    ).toHaveAccessibleDescription(/Ya hay un turno con ese horario/);
+  });
+
   it("shows a rejected form with its typed values and field messages", async () => {
     render(
       stub({
@@ -288,9 +304,7 @@ describe("turnos admin screen", () => {
         },
       }),
     );
-    expect(await screen.findByLabelText("Nombre del turno")).toHaveValue(
-      "Mañana",
-    );
+    expect(await screen.findByLabelText("Desde")).toBeVisible();
     expect(
       screen.getByLabelText("Capacidad por defecto"),
     ).toHaveAccessibleDescription(/Ingresá un número entero de 1 a 500/);

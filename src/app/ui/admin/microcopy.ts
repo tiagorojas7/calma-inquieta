@@ -903,8 +903,6 @@ export const adminMicrocopy = {
       form: {
         addTitle: "Agregar turno",
         editTitle: "Editar turno",
-        label: "Nombre del turno",
-        labelHint: "Por ejemplo: Mañana, Tarde o Noche.",
         weekday: "Día de la semana",
         startsAt: "Desde",
         endsAt: "Hasta",

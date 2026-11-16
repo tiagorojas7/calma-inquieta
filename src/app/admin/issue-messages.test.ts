@@ -208,7 +208,7 @@ describe("turno messages", () => {
         TURNO_FIELD_MESSAGES,
       ),
     ).toEqual({
-      label: "Ya hay un turno con ese nombre en este taller.",
+      label: "Ya hay un turno ese día y en ese horario en este taller.",
       weekday: "Elegí un día de la semana.",
       timeRange:
         "Ingresá los horarios con el formato HH:MM, por ejemplo 10:00.",

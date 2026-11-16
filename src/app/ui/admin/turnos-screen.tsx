@@ -194,20 +194,12 @@ export function TurnosScreen({
             <input type="hidden" name="turnoId" value={form.turnoId} />
           )}
           <FormError message={form.formError} />
-          <TextField
-            label={f.label}
-            hint={f.labelHint}
-            name="label"
-            defaultValue={form.values.label}
-            error={form.errors.label}
-            autoComplete="off"
-          />
           <SelectField
             label={f.weekday}
             name="weekday"
             options={form.weekdays}
             defaultValue={form.values.weekday}
-            error={form.errors.weekday}
+            error={form.errors.weekday ?? form.errors.label}
           />
           <div className="grid grid-cols-2 gap-4">
             <TextField

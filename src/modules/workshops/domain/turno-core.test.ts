@@ -1,31 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { compareTurnos, turnoLabelKey, validateTurnoCore } from "./turno-core";
+import {
+  compareTurnos,
+  turnoDisplayName,
+  turnoLabelKey,
+  validateTurnoCore,
+} from "./turno-core";
 
 describe("turno core", () => {
-  it("trims and NFC-normalizes labels and derives a Spanish case-insensitive key", () => {
+  it("generates the label from weekday and time range, ignoring any typed label", () => {
     const result = validateTurnoCore({
-      label: "  Man\u0303ana  ",
+      label: "  Mañana  ",
       weekday: "2",
-      startsAt: "09:00",
-      endsAt: "10:30",
+      startsAt: "18:00",
+      endsAt: "20:00",
       defaultCapacity: "8",
     });
     expect(result).toEqual({
       ok: true,
       value: {
-        label: "Mañana",
-        labelKey: "mañana",
+        label: "Martes 18:00 a 20:00",
+        labelKey: "martes 18:00 a 20:00",
         weekday: 2,
-        startsAt: "09:00",
-        endsAt: "10:30",
+        startsAt: "18:00",
+        endsAt: "20:00",
         defaultCapacity: 8,
       },
     });
-    expect(turnoLabelKey("Ñandú")).toBe(turnoLabelKey("ñANDÚ"));
-    expect(turnoLabelKey("Lucía")).toBe(turnoLabelKey("Lucía"));
+    expect(turnoDisplayName(7, "09:00", "10:30")).toBe("Domingo 09:00 a 10:30");
   });
 
-  it("aggregates label, weekday, time range, and capacity failures", () => {
+  it("keeps a Spanish case-insensitive label key", () => {
+    expect(turnoLabelKey("Ñandú")).toBe(turnoLabelKey("ñANDÚ"));
+    expect(turnoLabelKey("Lucía")).toBe(turnoLabelKey("Lucía"));
+  });
+
+  it("aggregates weekday, time range, and capacity failures", () => {
     expect(
       validateTurnoCore({
         label: " ",
@@ -39,7 +48,6 @@ describe("turno core", () => {
       error: {
         kind: "invalid",
         issues: [
-          { field: "label", code: "required" },
           { field: "weekday", code: "invalid-format" },
           { field: "timeRange", code: "invalid-format" },
           { field: "defaultCapacity", code: "invalid-format" },
@@ -96,19 +104,7 @@ describe("turno core", () => {
       });
   });
 
-  it("enforces the label length and deterministic weekday, time, id order", () => {
-    expect(
-      validateTurnoCore({
-        label: "x".repeat(41),
-        weekday: "1",
-        startsAt: "09:00",
-        endsAt: "10:00",
-        defaultCapacity: "1",
-      }),
-    ).toMatchObject({
-      ok: false,
-      error: { issues: [{ field: "label", code: "too-long" }] },
-    });
+  it("orders by deterministic weekday, time, id", () => {
     const turnos = [
       { id: "z", weekday: 2 as const, startsAt: "09:00" },
       { id: "b", weekday: 1 as const, startsAt: "10:00" },

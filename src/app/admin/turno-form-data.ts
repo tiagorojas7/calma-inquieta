@@ -11,7 +11,8 @@ function text(form: FormData, key: string): string {
  */
 export function parseTurnoDraft(form: FormData): TurnoDraft {
   return {
-    label: text(form, "label"),
+    // The label is generated from weekday and time, never typed.
+    label: "",
     weekday: text(form, "weekday"),
     startsAt: text(form, "startsAt"),
     endsAt: text(form, "endsAt"),

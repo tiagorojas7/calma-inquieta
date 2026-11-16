@@ -28,7 +28,7 @@ import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollments";
 
 const PAGE_SIZE = 50;
-const FEEDBACK = ["paid", "cancelled"] as const;
+const FEEDBACK = ["paid", "cancelled", "created"] as const;
 const ALL_STATUSES = ENROLLMENT_TABS.flatMap((tab) => TAB_STATUSES[tab]);
 
 export function meta() {

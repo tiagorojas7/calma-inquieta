@@ -232,6 +232,15 @@ describe("admin enrollments list route", () => {
     expect(result.feedback).toEqual({ kind: "paid", name: null });
   });
 
+  it("confirms an enrollment created by hand", async () => {
+    const result = await load(
+      listBy({}),
+      "/admin/inscripciones?estado=pending_confirmation&ok=created",
+    );
+
+    expect(result.feedback).toEqual({ kind: "created", name: null });
+  });
+
   it("ignores an unknown banner code", async () => {
     const result = await load(
       listBy({}),

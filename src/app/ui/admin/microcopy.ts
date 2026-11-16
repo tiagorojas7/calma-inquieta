@@ -69,6 +69,10 @@ export const adminMicrocopy = {
         name === null
           ? "Inscripción cancelada"
           : `Inscripción de ${name} cancelada`,
+      created: (name: string | null) =>
+        name === null
+          ? "Inscripción creada. Queda pendiente de pago."
+          : `Inscripción de ${name} creada. Queda pendiente de pago.`,
     },
     filters: {
       month: "Mes",

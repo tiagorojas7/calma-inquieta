@@ -24,6 +24,7 @@ export default [
     route("intensivos/:id", "routes/admin/intensive-detail.tsx"),
     route("intensivos/:id/reservas", "routes/admin/intensive-requests.tsx"),
     route("inscripciones", "routes/admin/enrollments.tsx"),
+    route("inscripciones/nueva", "routes/admin/enrollment-new.tsx"),
     route(
       "inscripciones/materiales",
       "routes/admin/enrollment-consolidation.tsx",

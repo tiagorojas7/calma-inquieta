@@ -30,7 +30,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 
 ## Tasks
 
-- [ ] T1 (S1–S3, S7): durable student/monthly lifecycle and financial rules; one active order per student and month, cancelled orders excluded (L32-L33); fee override with $0 scholarships (L35-L37); delegated foundation implemented durable identity and one-student/month persistence, then corrected inline after independent verification; RED/GREEN evidence recorded in L5; commits `6c2c7bb` and generated snapshot `cbc5242`; manual creation use case `34d8547` (inline) and screen `907674e` (U-D, delegated); material search, monthly administration, financial corrections/refunds, attendance and make-ups remain; high risk items 1/3/4.
+- [ ] T1 (S1–S3, S7): durable student/monthly lifecycle and financial rules; one active order per student and month, cancelled orders excluded (L32-L33); fee override with $0 scholarships (L35-L43); optional catalog materials in manual orders (L44-L45); delegated foundation implemented durable identity and one-student/month persistence, then corrected inline after independent verification; RED/GREEN evidence recorded in L5; commits `6c2c7bb` and generated snapshot `cbc5242`; manual creation use case `34d8547` (inline) and screen `907674e` (U-D, delegated); monthly administration, financial corrections/refunds, attendance and make-ups remain; high risk items 1/3/4.
 - [ ] T2 (S4–S5): catalog stock, immutable sale valuation, supplier ordering and receiving; route inline unless independent disjoint units can run in parallel; high risk items 1/3/4; commit pending.
 - [ ] T3 (S6): selectable workshop projects, deposit/balance and material allocation; route inline; high risk items 1/3/4; commit pending.
 - [ ] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop deposit settlement and material margin wait for T2/T3; high risk items 1/3.
@@ -132,3 +132,12 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Only the admin manual form gets an optional catalog search. The materials snapshot into order lines, and total = fee + materials.
   - Only a $0 total counts as free.
   - Delegated to one writer.
+- L45 (2026-11-16): optional catalog materials in manual enrollments committed in `6c2c187` (one delegated writer).
+  - What it does:
+    - The form has a "Materiales (opcional)" search over active, available, priced variants (new `MaterialsService.listSaleVariants`), with quantities and a running total.
+    - Only a request with `createdBy` resolves lines through the catalog-backed lookup (`sale-catalog-adapter.ts`); the public path still refuses lines.
+    - Only a $0 total is created paid.
+  - Writer evidence: RED then GREEN for (a)-(d) and the pending case of (f). The public refusal (e), the still-paid $0 total and the no-materials manual path were pinned as existing behaviour, with no RED. Focused unit/ui 191 passed (architecture test included), DB `request-services` 15 and `drizzle-order-repository` 18; typecheck, eslint and prettier clean.
+  - Parent checks: scope inside the allowed surfaces; spot check 16/16. Seam run at `6c2c187`: `--project unit` 292 files / 3340 passed (198 s); `--project ui` 123 files / 1040 passed (107 s).
+  - Follow-up: the form hardcodes quantities 1-20, while the server uses `MAX_LINE_QUANTITY`.
+  - Independent verifier launched for item 3, the public path differential.

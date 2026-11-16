@@ -44,6 +44,7 @@ import {
 } from "~/modules/workshops";
 import {
   createMaterialsService,
+  createSaleCatalogReader,
   createSuppliersService,
   type SuppliersService,
   type MaterialsService,
@@ -104,6 +105,7 @@ import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructu
 import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrastructure/drizzle-order-line-usage-lookup";
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
+import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
@@ -269,8 +271,12 @@ export function createRequestServices(
             clock: systemClock,
           }),
         ),
-        // Monthly periods offer no materials; the owners' catalog material search will replace this.
+        // Monthly periods offer no materials, so a public request refuses any line.
         materials: { listForPeriod: () => Promise.resolve([]) },
+        // Only an owner enrolling a student by hand may add catalog materials.
+        adminMaterials: createSaleCatalogAdapter(
+          createSaleCatalogReader({ materials: materialRepository }),
+        ),
         orders: createDrizzleOrderRepository(openSession),
         seats,
         clock: systemClock,

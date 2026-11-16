@@ -5,6 +5,7 @@ import {
   type AdminEnrollmentUseCases,
   type PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
+import type { MaterialsService } from "~/modules/materials";
 import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
@@ -36,8 +37,32 @@ function pesos(value: number): Money {
   return money.value;
 }
 
-function services(createPending: CreatePending = vi.fn()) {
+const saleVariants = [
+  {
+    materialId: "m-1",
+    variantId: "v-1",
+    materialName: "Arcilla",
+    variantLabel: "1 kg",
+    unitPrice: pesos(4000),
+  },
+  {
+    materialId: "m-2",
+    variantId: "v-2",
+    materialName: "Pincel",
+    variantLabel: "Chico",
+    unitPrice: pesos(12500),
+  },
+];
+
+function services(
+  createPending: CreatePending = vi.fn(),
+  listSaleVariants: MaterialsService["listSaleVariants"] = () =>
+    Promise.resolve(ok(saleVariants)),
+) {
   return {
+    materials: withOverrides(createUnavailableService<MaterialsService>(), {
+      listSaleVariants,
+    }),
     enrollments: withOverrides(createUnavailableAdminEnrollmentService(), {
       createPending,
     }),
@@ -93,12 +118,16 @@ function services(createPending: CreatePending = vi.fn()) {
 }
 
 function submit(
-  fields: Record<string, string>,
+  fields: Record<string, string> | URLSearchParams,
   createPending?: CreatePending,
   options: { admin?: boolean; headers?: Record<string, string> } = {},
 ) {
   return action({
-    request: postRequest("/admin/inscripciones/nueva", fields, options.headers),
+    request: postRequest(
+      "/admin/inscripciones/nueva",
+      fields as Record<string, string>,
+      options.headers,
+    ),
     params: {},
     context: adminContext(services(createPending), options),
   } as never);
@@ -126,7 +155,50 @@ describe("admin enrollment-new loader", () => {
           fee: "58000",
         },
       ],
+      materials: [
+        {
+          materialId: "m-1",
+          variantId: "v-1",
+          name: "Arcilla",
+          label: "1 kg",
+          unitPrice: 4000,
+          priceLabel: "$ 4.000",
+        },
+        {
+          materialId: "m-2",
+          variantId: "v-2",
+          name: "Pincel",
+          label: "Chico",
+          unitPrice: 12500,
+          priceLabel: "$ 12.500",
+        },
+      ],
     });
+  });
+
+  it("offers only what the materials service lists as sellable, and nothing when none is", async () => {
+    const result = await loader({
+      request: getRequest("/admin/inscripciones/nueva"),
+      params: {},
+      context: adminContext(services(vi.fn(), () => Promise.resolve(ok([])))),
+    } as never);
+    expect(result).toMatchObject({ materials: [] });
+  });
+
+  it("answers 503 when the catalog cannot be read", async () => {
+    expect(
+      await thrownStatus(() =>
+        loader({
+          request: getRequest("/admin/inscripciones/nueva"),
+          params: {},
+          context: adminContext(
+            services(vi.fn(), () =>
+              Promise.resolve(err({ kind: "unavailable" }) as never),
+            ),
+          ),
+        } as never),
+      ),
+    ).toBe(503);
   });
 
   it("is denied for a non-admin", async () => {
@@ -266,6 +338,107 @@ describe("admin enrollment-new action", () => {
     expect(
       (result as { data: { formError: string } }).data.formError,
     ).toContain(message);
+  });
+
+  it("hands the chosen variants and quantities to the service as lines, with the chosen fee", async () => {
+    const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
+    const fields = new URLSearchParams(VALID);
+    fields.append("line:m-1:v-1", "2");
+    fields.append("line:m-2:v-2", " 1 ");
+    const response = (await submit(fields, createPending)) as Response;
+    expect(response.status).toBe(302);
+    expect(createPending).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        lines: [
+          { materialId: "m-1", variantId: "v-1", quantity: 2 },
+          { materialId: "m-2", variantId: "v-2", quantity: 1 },
+        ],
+      }),
+      { fee: pesos(40000) },
+    );
+  });
+
+  it("sends no lines when no material was chosen, exactly as before", async () => {
+    const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
+    await submit(VALID, createPending);
+    expect(createPending.mock.calls[0]?.[1].lines).toEqual([]);
+    expect(createPending.mock.calls[0]?.[2]).toEqual({ fee: pesos(40000) });
+  });
+
+  it("refuses an unreadable quantity as a materials field error and stores nothing", async () => {
+    const createPending = vi
+      .fn<CreatePending>()
+      .mockResolvedValue(
+        err({ kind: "invalid-quantity", variantId: "v-1" }) as never,
+      );
+    const fields = new URLSearchParams(VALID);
+    fields.append("line:m-1:v-1", "0");
+    const result = await submit(fields, createPending);
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          materials: "Cada material lleva entre 1 y 20 unidades enteras.",
+        },
+        lines: [{ materialId: "m-1", variantId: "v-1", quantity: "0" }],
+        formError: "Revisá los campos marcados e intentá de nuevo.",
+      },
+    });
+  });
+
+  it.each([
+    [
+      { kind: "material-not-offered", materialId: "m-1" },
+      "Algún material ya no está disponible o no tiene precio. Quitalo y probá de nuevo.",
+    ],
+    [
+      { kind: "material-unavailable", materialId: "m-1" },
+      "Algún material ya no está disponible o no tiene precio. Quitalo y probá de nuevo.",
+    ],
+    [
+      { kind: "invalid-price", variantId: "v-1" },
+      "Algún material ya no está disponible o no tiene precio. Quitalo y probá de nuevo.",
+    ],
+    [
+      { kind: "invalid-quantity", variantId: "v-1" },
+      "Cada material lleva entre 1 y 20 unidades enteras.",
+    ],
+    [{ kind: "too-many-lines" }, "Elegí hasta 30 materiales distintos."],
+    [
+      { kind: "invalid-total" },
+      "El total es demasiado grande. Revisá la cuota y los materiales.",
+    ],
+  ])("maps the refusal %j to the materials field", async (error, message) => {
+    const createPending = vi
+      .fn<CreatePending>()
+      .mockResolvedValue(err(error) as never);
+    const fields = new URLSearchParams(VALID);
+    fields.append("line:m-1:v-1", "1");
+    expect(await submit(fields, createPending)).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: { materials: message },
+        values: { fullName: "Ana Pérez" },
+        lines: [{ materialId: "m-1", variantId: "v-1", quantity: "1" }],
+      },
+    });
+  });
+
+  it("calls nothing when a line field is malformed", async () => {
+    const createPending = vi.fn<CreatePending>();
+    const fields = new URLSearchParams(VALID);
+    fields.append("line:m-1", "1");
+    expect(await submit(fields, createPending)).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          materials:
+            "Algún material ya no está disponible o no tiene precio. Quitalo y probá de nuevo.",
+        },
+      },
+    });
+    expect(createPending).not.toHaveBeenCalled();
   });
 
   it("is denied for a non-admin and for a cross-site post", async () => {

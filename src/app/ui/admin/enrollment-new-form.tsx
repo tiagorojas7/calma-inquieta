@@ -3,9 +3,16 @@ import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import {
+  EnrollmentNewMaterials,
+  type EnrollmentMaterialChoice,
+  type EnrollmentMaterialLine,
+} from "./enrollment-new-materials";
 import { FormError, SelectField, TextField } from "./form-fields";
 
-type EnrollmentNewFormField = "offer" | "fullName" | "email" | "phone" | "fee";
+type EnrollmentNewFormValueField =
+  "offer" | "fullName" | "email" | "phone" | "fee";
+type EnrollmentNewFormField = EnrollmentNewFormValueField | "materials";
 
 export interface EnrollmentNewOption {
   readonly value: string;
@@ -38,19 +45,26 @@ const copy = enrollmentNewCopy;
 /**
  * Hand-made monthly enrollment. A native `<form method="post">`, never a router
  * `Form` or fetcher: the Worker gate denies `/admin/**.data`, so the submit
- * must be a document request. Materials are chosen in person, so none here.
+ * must be a document request. Materials are optional: the owner may add priced
+ * catalog variants, each posted as a `line:<material>:<variant>` quantity.
  */
 export function EnrollmentNewForm({
   values,
   errors,
   formError,
   options,
+  materials = [],
+  lines = [],
   cancelHref,
 }: {
-  values: Readonly<Record<EnrollmentNewFormField, string>>;
+  values: Readonly<Record<EnrollmentNewFormValueField, string>>;
   errors: Readonly<Partial<Record<EnrollmentNewFormField, string>>>;
   formError?: string | undefined;
   options: readonly EnrollmentNewOption[];
+  /** Orderable catalog variants; empty or absent shows no choice. */
+  materials?: readonly EnrollmentMaterialChoice[];
+  /** The lines of a refused submit, shown again. */
+  lines?: readonly EnrollmentMaterialLine[];
   cancelHref: string;
 }) {
   const feeOf = (offer: string) =>
@@ -134,6 +148,12 @@ export function EnrollmentNewForm({
           error={errors.phone}
         />
       </AdminFieldPair>
+      <EnrollmentNewMaterials
+        choices={materials}
+        initialLines={lines}
+        fee={fee}
+        error={errors.materials}
+      />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.submit}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

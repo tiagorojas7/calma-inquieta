@@ -177,6 +177,27 @@ describe("withManualEnrollmentEmails", () => {
     expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
   });
 
+  it("emails the total of fee plus materials for a pending manual order with catalog materials", async () => {
+    const fee = Money.fromCentavos(4_000_000);
+    const materials = Money.fromCentavos(800_000);
+    const sum = Money.fromCentavos(4_800_000);
+    if (!fee.ok || !materials.ok || !sum.ok) throw new Error("bad money");
+    const withMaterials = {
+      ...view,
+      fee: fee.value,
+      materialsTotal: materials.value,
+      total: sum.value,
+    };
+    const { service, n, d } = setup(ok(withMaterials));
+    await service.createPending(actor, request);
+    await d.settle();
+    expect(n.enrollmentReceived).toHaveBeenCalledWith({
+      ...expectedNotice,
+      total: sum.value,
+    });
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
   it("sends only the confirmed-place email for a free manual order", async () => {
     const free = {
       ...view,

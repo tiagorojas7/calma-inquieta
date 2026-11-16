@@ -132,4 +132,119 @@ describe("EnrollmentNewForm", () => {
       screen.queryByRole("button", { name: "Crear inscripción" }),
     ).toBeNull();
   });
+
+  describe("materials", () => {
+    const materials = [
+      {
+        materialId: "m-1",
+        variantId: "v-1",
+        name: "Arcilla blanca",
+        label: "1 kg",
+        unitPrice: 4000,
+        priceLabel: "$ 4.000",
+      },
+      {
+        materialId: "m-2",
+        variantId: "v-2",
+        name: "Pincel",
+        label: "Número 4",
+        unitPrice: 1500,
+        priceLabel: "$ 1.500",
+      },
+    ];
+    const postedOf = (container: HTMLElement) =>
+      Object.fromEntries(
+        new FormData(
+          container.querySelector("form") as HTMLFormElement,
+        ).entries(),
+      );
+
+    it("filters the catalog by text and posts the chosen variants with their quantities", async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <EnrollmentNewForm
+          values={{ ...values, offer: "ceramica|2026-11|t1", fee: "58000" }}
+          errors={{}}
+          options={options}
+          materials={materials}
+          cancelHref="/admin/inscripciones"
+        />,
+      );
+      await user.type(screen.getByRole("searchbox"), "pince");
+      expect(screen.getAllByRole("button", { name: /^Agregar/ })).toHaveLength(
+        1,
+      );
+      await user.click(screen.getByRole("button", { name: /^Agregar Pincel/ }));
+      const quantity = screen.getByRole("spinbutton", {
+        name: /Pincel Número 4/,
+      });
+      await user.clear(quantity);
+      await user.type(quantity, "3");
+      expect(postedOf(container)).toMatchObject({
+        offer: "ceramica|2026-11|t1",
+        fee: "58000",
+        "line:m-2:v-2": "3",
+      });
+      expect(screen.getByRole("group", { name: "Resumen" })).toHaveTextContent(
+        "Total$ 62.500",
+      );
+    });
+
+    it("follows the fee the owner types in the total", async () => {
+      const user = userEvent.setup();
+      render(
+        <EnrollmentNewForm
+          values={{ ...values, fee: "58000" }}
+          errors={{}}
+          options={options}
+          materials={materials}
+          lines={[{ materialId: "m-2", variantId: "v-2", quantity: "2" }]}
+          cancelHref="/admin/inscripciones"
+        />,
+      );
+      const fee = screen.getByLabelText("Cuota");
+      await user.clear(fee);
+      await user.type(fee, "0");
+      expect(screen.getByRole("group", { name: "Resumen" })).toHaveTextContent(
+        "Total$ 3.000",
+      );
+    });
+
+    it("shows the materials error and the lines of a refused submit", async () => {
+      const { container } = render(
+        <EnrollmentNewForm
+          values={{ ...values, fee: "58000" }}
+          errors={{ materials: "Elegí hasta 30 materiales distintos." }}
+          options={options}
+          materials={materials}
+          lines={[{ materialId: "m-1", variantId: "v-1", quantity: "0" }]}
+          cancelHref="/admin/inscripciones"
+        />,
+      );
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Elegí hasta 30 materiales distintos.",
+      );
+      expect(
+        screen.getByRole("spinbutton", { name: /Arcilla blanca 1 kg/ }),
+      ).toHaveValue(0);
+      await expectNoAxeViolations(container);
+    });
+
+    it("posts no line when none was chosen, as before", () => {
+      const { container } = render(
+        <EnrollmentNewForm
+          values={{ ...values, fee: "58000" }}
+          errors={{}}
+          options={options}
+          materials={materials}
+          cancelHref="/admin/inscripciones"
+        />,
+      );
+      expect(
+        Object.keys(postedOf(container)).filter((name) =>
+          name.startsWith("line:"),
+        ),
+      ).toEqual([]);
+    });
+  });
 });

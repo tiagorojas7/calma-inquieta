@@ -2,8 +2,10 @@ import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import {
   FEE_INVALID,
+  materialsRefusal,
   parseEnrollmentNewForm,
   type EnrollmentNewField,
+  type EnrollmentNewLineValue,
   type EnrollmentNewValues,
   encodeOffer,
 } from "~/app/admin/enrollment-new-form-data";
@@ -19,6 +21,8 @@ import {
   enrollmentNewCopy as copy,
   type EnrollmentNewOption,
 } from "~/app/ui/admin/enrollment-new-form";
+import type { EnrollmentMaterialChoice } from "~/app/ui/admin/enrollment-new-materials";
+import { formatPesos } from "~/modules/enrollments";
 import type { AppServices } from "~/composition/request-services";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-new";
@@ -82,9 +86,30 @@ async function loadOptions(services: AppServices, actor: Actor) {
   return options;
 }
 
+/** Active, available catalog variants that have a price: the only ones an owner may add. */
+async function loadMaterials(
+  services: AppServices,
+  actor: Actor,
+): Promise<EnrollmentMaterialChoice[]> {
+  const variants = await services.materials.listSaleVariants(actor);
+  if (!variants.ok) throw enrollmentFailureResponse(variants.error);
+  return variants.value.map((variant) => ({
+    materialId: variant.materialId,
+    variantId: variant.variantId,
+    name: variant.materialName,
+    label: variant.variantLabel,
+    unitPrice: variant.unitPrice.toCentavos() / 100,
+    priceLabel: formatPesos(variant.unitPrice),
+  }));
+}
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
-  return { options: await loadOptions(context.get(servicesContext), actor) };
+  const services = context.get(servicesContext);
+  return {
+    options: await loadOptions(services, actor),
+    materials: await loadMaterials(services, actor),
+  };
 }
 
 function rejection(
@@ -92,8 +117,9 @@ function rejection(
   errors: Partial<Record<EnrollmentNewField, string>>,
   formError: string,
   status: 409 | 422,
+  lines: readonly EnrollmentNewLineValue[] = [],
 ) {
-  return data({ values, errors, formError }, { status });
+  return data({ values, errors, formError, lines }, { status });
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -104,7 +130,13 @@ export async function action({ request, context }: Route.ActionArgs) {
     parsed.fee === null ||
     Object.keys(parsed.errors).length > 0
   )
-    return rejection(parsed.values, parsed.errors, copy.saveFailed, 422);
+    return rejection(
+      parsed.values,
+      parsed.errors,
+      copy.saveFailed,
+      422,
+      parsed.lines,
+    );
   const { fullName, email, phone } = parsed.values;
   const created = await context.get(servicesContext).enrollments.createPending(
     actor,
@@ -117,13 +149,28 @@ export async function action({ request, context }: Route.ActionArgs) {
         policyAccepted: true,
         honeypot: "",
       },
-      lines: [],
+      lines: parsed.cartLines,
     },
     { fee: parsed.fee },
   );
   if (created.ok) return redirect(withFeedback(AFTER_CREATE, "created"));
   if (created.error.kind === "invalid-fee")
-    return rejection(parsed.values, { fee: FEE_INVALID }, copy.saveFailed, 422);
+    return rejection(
+      parsed.values,
+      { fee: FEE_INVALID },
+      copy.saveFailed,
+      422,
+      parsed.lines,
+    );
+  const materials = materialsRefusal(created.error);
+  if (materials !== null)
+    return rejection(
+      parsed.values,
+      { materials },
+      copy.saveFailed,
+      422,
+      parsed.lines,
+    );
   if (created.error.kind === "invalid") {
     const errors: Partial<Record<EnrollmentNewField, string>> = {};
     for (const issue of created.error.issues) {
@@ -131,15 +178,16 @@ export async function action({ request, context }: Route.ActionArgs) {
       if (message !== undefined && issue.field in parsed.values)
         errors[issue.field as EnrollmentNewField] ??= message;
     }
-    return rejection(parsed.values, errors, copy.saveFailed, 422);
+    return rejection(parsed.values, errors, copy.saveFailed, 422, parsed.lines);
   }
   const refusal = enrollmentCreateRefusal(created.error);
-  if (refusal !== null) return rejection(parsed.values, {}, refusal, 409);
+  if (refusal !== null)
+    return rejection(parsed.values, {}, refusal, 409, parsed.lines);
   throw enrollmentFailureResponse(created.error);
 }
 
 export default function AdminEnrollmentNew() {
-  const { options } = useLoaderData<typeof loader>();
+  const { options, materials } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
     <section className="flex flex-col gap-4">
@@ -157,6 +205,8 @@ export default function AdminEnrollmentNew() {
         errors={rejected?.errors ?? {}}
         formError={rejected?.formError}
         options={options}
+        materials={materials}
+        lines={rejected?.lines ?? []}
         cancelHref={LIST}
       />
     </section>

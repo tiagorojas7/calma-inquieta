@@ -18,6 +18,8 @@ export {
   createMaterialLookup,
   createMaterialsService,
 } from "./application/material-service";
+export { createSaleCatalogReader } from "./application/sale-catalog";
+export type { SaleCatalogReaderDeps } from "./application/sale-catalog";
 export {
   createOfferedMaterialSnapshotsLookup,
   type OfferedMaterialSnapshotsLookupDeps,

@@ -29,6 +29,7 @@ import {
   type MaterialRepository,
 } from "./material-repository";
 import { createCatalogTools } from "./catalog-tools";
+import { saleVariantsOf } from "./sale-catalog";
 import type { SupplierRepository } from "./supplier-repository";
 
 type MaybeActor = AdminActor | null | undefined;
@@ -276,6 +277,12 @@ export function createMaterialsService(
       if (!authorized.ok) return authorized;
       const active = await repository.list({ state: "active" });
       return ok(active.filter((material) => material.available).map(summary));
+    },
+
+    async listSaleVariants(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return ok(saleVariantsOf(await repository.list({ state: "active" })));
     },
 
     async get(actor, id) {

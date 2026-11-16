@@ -346,6 +346,172 @@ describe("createRequestServices", () => {
     expect(pending.ok && pending.value.items).toEqual([]);
   });
 
+  it("stores catalog materials on a manual enrollment, and never on a public one", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                capacities: [{ turnoId: turno.id, capacity: 10 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+    const actor = testAdminActor();
+    const supplier = await services.suppliers.create(actor, {
+      name: "Casa Pincel",
+      phone: "",
+      email: "",
+      notes: "",
+    });
+    if (!supplier.ok) throw new Error("supplier fixture");
+    const material = await services.materials.create(actor, {
+      name: "Arcilla",
+      description: "Arcilla blanca",
+      category: "Arcillas",
+      supplierId: supplier.value.id,
+      available: true,
+      image: null,
+      variants: [
+        { label: "1 kg", price: "4000", available: true, swatch: "" },
+        {
+          label: "5 kg",
+          price: "",
+          priceOnRequest: true,
+          available: true,
+          swatch: "",
+        },
+      ],
+    });
+    if (!material.ok) throw new Error("material fixture");
+    const [priced, unpriced] = material.value.variants;
+    if (!priced || !unpriced) throw new Error("variant fixture");
+    const manual = (
+      n: number,
+      lines: readonly {
+        materialId: string;
+        variantId: string;
+        quantity: number;
+      }[],
+    ) => ({
+      slug: "ceramica",
+      period: "2099-01",
+      turnoId: turno.id,
+      student: {
+        fullName: `Alumna ${String(n)}`,
+        email: `alumna${String(n)}@example.com`,
+        phone: `351 555-200${String(n)}`,
+        policyAccepted: true,
+        honeypot: "",
+      },
+      lines,
+    });
+    const chosen = (quantity: number) => ({
+      materialId: material.value.id,
+      variantId: priced.id,
+      quantity,
+    });
+    const pending = async () => {
+      const listed = await services.enrollments.list(actor, {});
+      return listed.ok ? listed.value.items.length : -1;
+    };
+    const fee = Money.fromCentavos(4_000_000);
+    if (!fee.ok) throw new Error("fee fixture");
+
+    const created = await services.enrollments.createPending(
+      actor,
+      manual(1, [chosen(2)]),
+      { fee: fee.value },
+    );
+    if (!created.ok) throw new Error(JSON.stringify(created.error));
+    expect(created.value).toMatchObject({
+      status: "pending_confirmation",
+      lines: [
+        {
+          materialName: "Arcilla",
+          variantLabel: "1 kg",
+          quantity: 2,
+        },
+      ],
+    });
+    expect(created.value.materialsTotal.toCentavos()).toBe(800_000);
+    expect(created.value.total.toCentavos()).toBe(4_800_000);
+    const reread = await services.publicEnrollments.getOrderByPublicId(
+      created.value.publicId,
+    );
+    expect(reread).toMatchObject({
+      ok: true,
+      value: { total: created.value.total },
+    });
+
+    const free = Money.zero();
+    const freeWithMaterials = await services.enrollments.createPending(
+      actor,
+      manual(2, [chosen(1)]),
+      { fee: free },
+    );
+    expect(freeWithMaterials).toMatchObject({
+      ok: true,
+      value: { status: "pending_confirmation" },
+    });
+    expect(
+      freeWithMaterials.ok && freeWithMaterials.value.total.toCentavos(),
+    ).toBe(400_000);
+    expect(
+      await services.enrollments.createPending(actor, manual(3, []), {
+        fee: free,
+      }),
+    ).toMatchObject({ ok: true, value: { status: "paid" } });
+    expect(await pending()).toBe(2);
+
+    const refused = [
+      [
+        manual(4, [{ ...chosen(1), variantId: "unknown-variant" }]),
+        "material-not-offered",
+      ],
+      [
+        manual(5, [{ ...chosen(1), variantId: unpriced.id }]),
+        "material-unavailable",
+      ],
+      [manual(6, [chosen(0)]), "invalid-quantity"],
+      [manual(7, [chosen(1.5)]), "invalid-quantity"],
+    ] as const;
+    for (const [input, kind] of refused)
+      expect(
+        await services.enrollments.createPending(actor, input, {
+          fee: fee.value,
+        }),
+      ).toMatchObject({ ok: false, error: { kind } });
+    await services.materials.deactivate(actor, material.value.id);
+    expect(
+      await services.enrollments.createPending(actor, manual(8, [chosen(1)]), {
+        fee: fee.value,
+      }),
+    ).toMatchObject({ ok: false, error: { kind: "material-unavailable" } });
+    expect(
+      await services.publicEnrollments.requestEnrollment(
+        manual(9, [chosen(1)]),
+      ),
+    ).toMatchObject({ ok: false, error: { kind: "material-not-offered" } });
+    expect(await pending()).toBe(2);
+  });
+
   it("lets the admin save a taller with an uploaded photo", async () => {
     const database = await newDatabase();
     await seedCatalog(

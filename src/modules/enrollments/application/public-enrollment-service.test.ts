@@ -25,6 +25,7 @@ function setup(
     offer?: EnrollmentOffer;
     clock?: Clock;
     materials?: OfferedMaterialsLookup;
+    adminMaterials?: OfferedMaterialsLookup;
   } = {},
 ) {
   const offers = new InMemoryOfferLookup([options.offer ?? offerFixture()]);
@@ -38,6 +39,9 @@ function setup(
   const service = createPublicEnrollmentService({
     offers,
     materials,
+    ...(options.adminMaterials === undefined
+      ? {}
+      : { adminMaterials: options.adminMaterials }),
     seats,
     orders,
     clock: options.clock ?? fixedClock(NOW),
@@ -665,6 +669,190 @@ describe("requestEnrollment materials", () => {
       error: { kind: "invalid-price", variantId: "v-1" },
     });
   });
+});
+
+describe("requestEnrollment catalog materials of a hand-made enrollment", () => {
+  const owner = { createdBy: "owner@example.com" };
+  // The catalog lookup ignores the period it is asked for.
+  const catalogLookup = (
+    materials: readonly ReturnType<typeof materialFixture>[],
+  ): OfferedMaterialsLookup => ({
+    listForPeriod: () => Promise.resolve(materials),
+  });
+  const catalogSetup = (
+    overrides: Parameters<typeof materialFixture>[0] = {},
+  ) =>
+    setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture(overrides)]),
+    });
+
+  it("stores catalog lines with their snapshots and totals fee plus materials", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(
+      request({ lines: [line("v-1", 2), line("v-2", 1)] }),
+      { ...owner, fee: pesos(40000) },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(40000))).toBe(true);
+    expect(result.value.materialsTotal.equals(pesos(29000))).toBe(true);
+    expect(result.value.total.equals(pesos(69000))).toBe(true);
+    expect(result.value.status).toBe("pending_confirmation");
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(
+      stored?.lines.map((l) => [
+        l.materialId,
+        l.variantId,
+        l.materialName,
+        l.variantLabel,
+        l.unitPrice.toCentavos() / 100,
+        l.quantity,
+        l.supplierId,
+        l.supplierName,
+      ]),
+    ).toEqual([
+      ["m-1", "v-1", "Arcilla", "Grande", 12500, 2, "s-1", "Proveedor Uno"],
+      ["m-1", "v-2", "Arcilla", "Chico", 4000, 1, "s-1", "Proveedor Uno"],
+    ]);
+    expect(stored?.total.equals(pesos(69000))).toBe(true);
+  });
+
+  it("keeps a zero fee with materials pending for the materials amount", async () => {
+    const { service, orders, seats } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(
+      request({ lines: [line("v-2", 3)] }),
+      {
+        ...owner,
+        fee: pesos(0),
+        paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+      },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect(result.value.total.equals(pesos(12000))).toBe(true);
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored).toMatchObject({ status: "pending_confirmation" });
+    expect(stored?.paidAt ?? null).toBeNull();
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(0);
+  });
+
+  it("still stores a zero total paid when no material is chosen", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(request(), {
+      ...owner,
+      fee: pesos(0),
+      paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("paid");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "paid",
+    );
+  });
+
+  it("refuses every line on the public path, whatever the catalog holds", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    expect(
+      await service.requestEnrollment(request({ lines: [line("v-1")] })),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-1" },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("refuses a variant the catalog does not know and stores nothing", async () => {
+    const { service, orders } = catalogSetup();
+    expect(
+      await service.requestEnrollment(request({ lines: [line("v-9")] }), owner),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-1" },
+    });
+    expect(
+      await service.requestEnrollment(
+        request({ lines: [line("v-1", 1, "m-9")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-9" },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("refuses an archived material and an unavailable or unpriced variant, storing nothing", async () => {
+    const archived = catalogSetup({ active: false });
+    expect(
+      await archived.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    const variants = materialFixture().variants;
+    const unavailable = catalogSetup({
+      variants: variants.map((v) =>
+        v.variantId === "v-1" ? { ...v, available: false } : v,
+      ),
+    });
+    expect(
+      await unavailable.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    const unpriced = catalogSetup({
+      variants: variants.map((v) =>
+        v.variantId === "v-1" ? { ...v, unitPrice: null } : v,
+      ),
+    });
+    expect(
+      await unpriced.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    for (const { orders } of [archived, unavailable, unpriced])
+      expect(orders.size()).toBe(0);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, 21])(
+    "refuses the quantity %s and stores nothing",
+    async (quantity) => {
+      const { service, orders } = catalogSetup();
+      expect(
+        await service.requestEnrollment(
+          request({ lines: [line("v-1", quantity)] }),
+          owner,
+        ),
+      ).toEqual({
+        ok: false,
+        error: { kind: "invalid-quantity", variantId: "v-1" },
+      });
+      expect(orders.size()).toBe(0);
+    },
+  );
 });
 
 describe("getOrderByPublicId", () => {

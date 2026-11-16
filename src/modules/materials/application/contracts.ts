@@ -173,6 +173,34 @@ export interface OfferedMaterialSnapshotsLookup {
     materialIds: readonly string[],
   ): Promise<ReadonlyMap<string, OfferedMaterialSnapshot>>;
 }
+/** One orderable catalog variant an owner may add to a hand-made enrollment. */
+export interface SaleVariantOption {
+  readonly materialId: string;
+  readonly variantId: string;
+  readonly materialName: string;
+  readonly variantLabel: string;
+  readonly unitPrice: import("~/modules/_shared").Money;
+}
+/** A material with the sale facts a hand-made enrollment snapshots. */
+export interface SaleCatalogMaterial {
+  readonly materialId: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly available: boolean;
+  readonly supplierId: string;
+  readonly supplierName: string;
+  readonly variants: readonly {
+    readonly variantId: string;
+    readonly label: string;
+    /** Null means "consultar precio": never orderable. */
+    readonly unitPrice: import("~/modules/_shared").Money | null;
+    readonly available: boolean;
+  }[];
+}
+/** Actorless read of the whole sale catalog, archived and unavailable included. */
+export interface SaleCatalogReader {
+  listSaleCatalog(): Promise<readonly SaleCatalogMaterial[]>;
+}
 export interface MaterialsService {
   list(
     a: AdminActor,
@@ -186,6 +214,10 @@ export interface MaterialsService {
   listSelectable(
     a: AdminActor,
   ): Promise<Result<readonly MaterialSummary[], AdminFailure>>;
+  /** Active, available variants with a price, for hand-made enrollments. */
+  listSaleVariants(
+    a: AdminActor,
+  ): Promise<Result<readonly SaleVariantOption[], AdminFailure>>;
   get(
     a: AdminActor,
     id: string,

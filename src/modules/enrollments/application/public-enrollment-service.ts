@@ -116,7 +116,14 @@ export type PublicOrderLookupError = NotFound | DependencyUnavailable;
 
 export interface PublicEnrollmentServiceDeps {
   readonly offers: EnrollmentOfferLookup;
+  /** Materials a public request may order; monthly periods offer none. */
   readonly materials: OfferedMaterialsLookup;
+  /**
+   * The catalog an owner picks from when enrolling a student by hand. Only a
+   * request carrying `createdBy` resolves its lines here; a public request
+   * never does. Without it, an admin request uses `materials` like a public one.
+   */
+  readonly adminMaterials?: OfferedMaterialsLookup;
   readonly seats: SeatLedger;
   readonly orders: OrderRepository;
   readonly clock: Clock;
@@ -313,8 +320,12 @@ export function createPublicEnrollmentService(
 
       const cart = buildCart(input.lines);
       if (!cart.ok) return cart;
+      const catalog =
+        options.createdBy === undefined
+          ? deps.materials
+          : (deps.adminMaterials ?? deps.materials);
       const foundMaterials = await unavailableOnReject(
-        deps.materials.listForPeriod(period.id),
+        catalog.listForPeriod(period.id),
       );
       if (!foundMaterials.ok) return foundMaterials;
       const lines = resolveLines(cart.value, foundMaterials.value);

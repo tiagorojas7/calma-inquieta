@@ -12,13 +12,24 @@ const options = [
   },
 ];
 
+const materials = [
+  {
+    materialId: "m-1",
+    variantId: "v-1",
+    name: "Arcilla blanca",
+    label: "1 kg",
+    unitPrice: 4000,
+    priceLabel: "$ 4.000",
+  },
+];
+
 describe("admin enrollment-new screen", () => {
   it("shows breadcrumbs, a back button and the form", async () => {
     const Stub = createRoutesStub([
       {
         path: "/admin/inscripciones/nueva",
         Component: AdminEnrollmentNew,
-        loader: () => ({ options }),
+        loader: () => ({ options, materials }),
       },
     ]);
     const { container } = render(
@@ -36,6 +47,12 @@ describe("admin enrollment-new screen", () => {
     ).toHaveAttribute("href", "/admin/inscripciones");
     expect(screen.getByLabelText("Taller, mes y turno")).toBeInTheDocument();
     expect(screen.getByLabelText("Cuota")).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Materiales (opcional)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("searchbox", { name: "Buscar material" }),
+    ).toBeInTheDocument();
     await expectNoAxeViolations(container);
   });
 

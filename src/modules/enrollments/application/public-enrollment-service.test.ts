@@ -33,7 +33,7 @@ function setup(
   });
   const materials = options.materials ?? defaultMaterials;
   const seats = new InMemorySeatLedger();
-  const orders = new InMemoryOrderRepository();
+  const orders = new InMemoryOrderRepository(seats);
   let counter = 0;
   const service = createPublicEnrollmentService({
     offers,
@@ -143,6 +143,62 @@ describe("requestEnrollment happy path", () => {
     const stored = await orders.findByPublicId(result.value.publicId);
     expect(stored?.fee.isZero()).toBe(true);
     expect(stored?.total.isZero()).toBe(true);
+  });
+
+  const settle = {
+    createdBy: "owner@example.com",
+    fee: pesos(0),
+    paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+  };
+
+  it("stores a free manual order already paid and claims its seat in the same creation", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request(), settle);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("paid");
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored).toMatchObject({
+      status: "paid",
+      paidAt: settle.paidAtIfFree,
+      confirmedBy: "owner@example.com",
+    });
+    expect(stored?.paidAmount?.isZero()).toBe(true);
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(1);
+  });
+
+  it("stores nothing and returns turno-full for a free manual order on a full turno", async () => {
+    const { service, orders, seats } = setup();
+    seats.setConfirmed("p-1", "t-1", 8);
+    await expect(service.requestEnrollment(request(), settle)).resolves.toEqual(
+      { ok: false, error: { kind: "turno-full" } },
+    );
+    expect(orders.size()).toBe(0);
+    expect(seats.snapshot()).toEqual([["p-1|t-1", 8]]);
+  });
+
+  it("keeps a priced manual order pending even when a paid-if-free date is given", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request(), {
+      ...settle,
+      fee: pesos(40000),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "pending_confirmation",
+    );
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(0);
+  });
+
+  it("never settles a public enrollment: it stays pending and claims no seat", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request());
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "pending_confirmation",
+    );
+    expect(seats.snapshot()).toEqual([]);
   });
 
   it("refuses an admin-set fee that is negative or not whole pesos", async () => {

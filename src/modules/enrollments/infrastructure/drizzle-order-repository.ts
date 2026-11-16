@@ -19,6 +19,7 @@ import type {
   OrderRepository,
   StoredOrder,
 } from "../application/enrollment-repository";
+import { claimSeat } from "./seat-claim";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type OrderRow = typeof enrollmentOrder.$inferSelect;
@@ -137,6 +138,9 @@ function toAudit(row: AuditRow): AuditEntry {
   };
 }
 
+/** Thrown inside the create transaction to roll everything back when the turno is full. */
+class TurnoFullRollback extends Error {}
+
 /** Short-lived PostgreSQL sessions with atomic order creation and transitions. */
 export function createDrizzleOrderRepository(
   openSession: DbSessionFactory,
@@ -153,6 +157,7 @@ export function createDrizzleOrderRepository(
   return {
     create: (draft) =>
       withSession(async (db) => {
+        const paid = draft.paidOnCreation;
         try {
           return await db.transaction(async (tx) => {
             const identityKeys = [
@@ -229,7 +234,7 @@ export function createDrizzleOrderRepository(
               studentId,
               publicId: draft.publicId,
               number,
-              status: "pending_confirmation",
+              status: paid ? "paid" : "pending_confirmation",
               source: "public",
               workshopId: draft.workshopId,
               workshopName: draft.workshopName,
@@ -248,6 +253,13 @@ export function createDrizzleOrderRepository(
               totalCentavos: draft.total.toCentavos(),
               policyVersion: draft.policyVersion,
               requestedAt: draft.requestedAt,
+              ...(paid
+                ? {
+                    paidAt: paid.paidAt,
+                    paidAmountCentavos: draft.total.toCentavos(),
+                    confirmedBy: paid.confirmedBy,
+                  }
+                : {}),
             });
             if (draft.lines.length > 0) {
               await tx.insert(orderLine).values(
@@ -265,13 +277,24 @@ export function createDrizzleOrderRepository(
                 })),
               );
             }
+            // Last write before the audit row: a full turno rolls back the student,
+            // the number and the order with it.
+            if (
+              paid &&
+              !(await claimSeat(tx, {
+                periodId: draft.periodId,
+                turnoId: draft.turnoId,
+                capacity: paid.capacity,
+              }))
+            )
+              throw new TurnoFullRollback();
             await tx.insert(orderAudit).values({
               id: crypto.randomUUID(),
               orderId: id,
               at: draft.requestedAt,
-              actor: draft.createdBy ?? "public",
+              actor: paid?.confirmedBy ?? draft.createdBy ?? "public",
               from: null,
-              to: "pending_confirmation",
+              to: paid ? "paid" : "pending_confirmation",
               note: null,
             });
             const persistedRows = await tx
@@ -288,6 +311,8 @@ export function createDrizzleOrderRepository(
             return ok(toOrder(persisted, persistedLines));
           });
         } catch (error) {
+          if (error instanceof TurnoFullRollback)
+            return err({ kind: "turno-full" as const });
           if (
             hasConstraint(
               error,

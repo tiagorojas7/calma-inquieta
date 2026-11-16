@@ -104,45 +104,6 @@ async function fixture(
   return { service, orders, seats, pendingCalls, order: created.value };
 }
 
-/** Stands in for the public flow: stores a free order the way an admin-set $0 fee does. */
-const storeFreeOrder =
-  (orders: InMemoryOrderRepository): CreatePendingEnrollment =>
-  async (input, actorEmail) => {
-    const stored = await orders.create(
-      orderDraft({
-        publicId: "F".repeat(22),
-        fee: pesos(0),
-        total: pesos(0),
-        createdBy: actorEmail,
-        student: {
-          fullName: input.student.fullName,
-          email: "free@example.com",
-          phoneDigits: "5493515551000",
-        },
-      }),
-    );
-    if (!stored.ok) throw new Error("fixture order");
-    return {
-      ok: true,
-      value: {
-        publicId: stored.value.publicId,
-        number: stored.value.number,
-        status: "pending_confirmation" as const,
-        studentName: input.student.fullName,
-        workshopName: "Ceramica",
-        period: input.period,
-        turnoLabel: "Lunes 18:00",
-        weekday: 1,
-        startsAt: "18:00",
-        endsAt: "20:00",
-        lines: [],
-        fee: pesos(0),
-        materialsTotal: pesos(0),
-        total: pesos(0),
-      },
-    };
-  };
-
 async function createOrder(
   orders: InMemoryOrderRepository,
   index: number,
@@ -197,42 +158,60 @@ describe("admin enrollment service", () => {
     expect(seats.snapshot()).toEqual(before);
   });
 
-  it("confirms a free enrollment as paid with $0 on the Córdoba creation date and moves the seat counter", async () => {
-    const { service, orders, seats } = await fixture({
-      createPending: storeFreeOrder,
+  it("hands a $0 fee to the creation with the Córdoba creation date and returns its paid order without a second step", async () => {
+    const paid = {
+      ok: true as const,
+      value: {
+        publicId: "F".repeat(22),
+        number: "CI-2026-0003",
+        status: "paid" as const,
+        studentName: "Ana Perez",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        turnoLabel: "Lunes 18:00",
+        weekday: 1,
+        startsAt: "18:00",
+        endsAt: "20:00",
+        lines: [],
+        fee: pesos(0),
+        materialsTotal: pesos(0),
+        total: pesos(0),
+      },
+    };
+    const calls: unknown[] = [];
+    const { service, seats } = await fixture({
+      createPending: () => (input, actorEmail, options) => {
+        calls.push({ input, actorEmail, options });
+        return Promise.resolve(paid);
+      },
     });
-    const seatsBefore = await seats.confirmedSeats("p-1", "t-1");
+    const before = seats.snapshot();
 
-    const created = await service.createPending(admin, pendingInput, {
-      fee: pesos(0),
-    });
-
-    expect(created).toMatchObject({
-      ok: true,
-      value: { status: "paid", total: pesos(0) },
-    });
-    const stored = await orders.findByPublicId("F".repeat(22));
-    expect(stored).toMatchObject({
-      status: "paid",
-      paidAt: new Date("2026-10-31T03:00:00.000Z"),
-      confirmedBy: "admin@example.com",
-    });
-    expect(stored?.paidAmount?.isZero()).toBe(true);
-    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(seatsBefore + 1);
+    await expect(
+      service.createPending(admin, pendingInput, { fee: pesos(0) }),
+    ).resolves.toEqual(paid);
+    expect(calls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: {
+          fee: pesos(0),
+          paidAtIfFree: new Date("2026-10-31T03:00:00.000Z"),
+        },
+      },
+    ]);
+    expect(seats.snapshot()).toEqual(before);
   });
 
-  it("returns the existing turno-full error when a free enrollment finds no seat", async () => {
-    const { service, orders } = await fixture({
-      capacity: 0,
-      createPending: storeFreeOrder,
+  it("returns the turno-full refusal of a free enrollment untouched", async () => {
+    const { service } = await fixture({
+      createPending: () => () =>
+        Promise.resolve({ ok: false, error: { kind: "turno-full" } }),
     });
 
     await expect(
       service.createPending(admin, pendingInput, { fee: pesos(0) }),
     ).resolves.toEqual({ ok: false, error: { kind: "turno-full" } });
-    expect((await orders.findByPublicId("F".repeat(22)))?.status).toBe(
-      "pending_confirmation",
-    );
   });
 
   it("creates a pending monthly enrollment as the authorized admin", async () => {

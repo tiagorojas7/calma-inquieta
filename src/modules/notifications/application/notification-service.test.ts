@@ -135,6 +135,18 @@ describe("notification service", () => {
     expect(sent[0]?.text).toContain("noviembre 2026");
   });
 
+  it("emails the student that the place is confirmed, with the order link and no amounts", async () => {
+    const { service, sent } = setup();
+    await service.enrollmentConfirmed(notice);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: "ana@example.com",
+      subject: "Confirmamos tu lugar",
+    });
+    expect(sent[0]?.text).toContain(`${SITE}/pedido/abc123`);
+    expect(sent[0]?.text).not.toContain("$");
+  });
+
   it("emails the student when the payment is confirmed", async () => {
     const { service, sent } = setup();
     await service.paymentConfirmed(notice);
@@ -179,6 +191,7 @@ describe("notification service", () => {
       enabled: false,
     });
     await service.enrollmentReceived(notice);
+    await service.enrollmentConfirmed(notice);
     await service.paymentConfirmed(notice);
     await expect(service.runDailyReminders()).resolves.toEqual({
       classes: 0,

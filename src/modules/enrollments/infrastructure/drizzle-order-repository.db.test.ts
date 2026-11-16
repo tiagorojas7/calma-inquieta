@@ -7,6 +7,7 @@ import {
   type TestDatabase,
 } from "~/testing/db/test-database";
 import { createDrizzleOrderRepository } from "./drizzle-order-repository";
+import { createDrizzleSeatLedger } from "./drizzle-seat-ledger";
 import { orderDraft } from "~/testing/fakes/enrollments-builders";
 
 const created: TestDatabase[] = [];
@@ -21,13 +22,20 @@ async function freshRepository() {
   const openSession = createDbSessionFactory({
     connectionString: database.url,
   });
-  return { openSession, repository: createDrizzleOrderRepository(openSession) };
+  const seats = createDrizzleSeatLedger(openSession);
+  return {
+    openSession,
+    repository: createDrizzleOrderRepository(openSession),
+    confirmedSeats: (periodId: string, turnoId: string) =>
+      seats.confirmedSeats(periodId, turnoId),
+  };
 }
 
 runOrderRepositoryContract(async () => {
-  const { openSession, repository } = await freshRepository();
+  const { openSession, repository, confirmedSeats } = await freshRepository();
   return {
     repository,
+    confirmedSeats,
     failCreateAfterNumbering: async (draft) => {
       const session = await openSession();
       try {

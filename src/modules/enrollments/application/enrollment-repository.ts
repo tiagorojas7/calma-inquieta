@@ -1,5 +1,9 @@
 import type { Money, NotFound, Result } from "~/modules/_shared";
-import type { IllegalTransition, OrderStatus } from "../domain/order-core";
+import type {
+  IllegalTransition,
+  OrderStatus,
+  TurnoFull,
+} from "../domain/order-core";
 import type { StudentContact } from "../domain/student-input";
 
 export interface OrderLineDraft {
@@ -36,9 +40,25 @@ export interface OrderDraft {
   readonly lines: readonly OrderLineDraft[];
   /** Admin email when an owner enrolls a student by hand; absent for the public form. */
   readonly createdBy?: string;
+  /**
+   * A free order an admin creates is stored already paid: the paid state, its
+   * $0 payment and the turno seat claim happen in the creation transaction.
+   */
+  readonly paidOnCreation?: PaidOnCreation;
 }
 
-export interface StoredOrder extends Omit<OrderDraft, "year" | "createdBy"> {
+export interface PaidOnCreation {
+  readonly paidAt: Date;
+  /** Admin email recorded as the confirmer and the audit actor. */
+  readonly confirmedBy: string;
+  /** Capacity of the turno the seat is claimed against. */
+  readonly capacity: number;
+}
+
+export interface StoredOrder extends Omit<
+  OrderDraft,
+  "year" | "createdBy" | "paidOnCreation"
+> {
   readonly id: string;
   /** `CI-YYYY-NNNN`, assigned by the repository inside the create transaction. */
   readonly number: string;
@@ -79,12 +99,15 @@ export interface TransitionContext {
 
 /**
  * Order aggregate port. `create` is one transaction: duplicate check, number
- * from the yearly sequence, order, lines and the creation audit row; a failure
- * leaves nothing behind and the number is reused. The seat-effecting
+ * from the yearly sequence, order, lines, the seat claim of a paid-on-creation
+ * order and the creation audit row; a failure (a full turno included) leaves
+ * nothing behind and the number is reused. The seat-effecting
  * transitions (confirm, cancel of a paid order) are added by slice E3.
  */
 export interface OrderRepository {
-  create(draft: OrderDraft): Promise<Result<StoredOrder, DuplicateOrder>>;
+  create(
+    draft: OrderDraft,
+  ): Promise<Result<StoredOrder, DuplicateOrder | TurnoFull>>;
   /** The only public lookup key; an order number never matches. */
   findByPublicId(publicId: string): Promise<StoredOrder | null>;
   /** Admin-only lookup; implementations later lock this row with its transition. */

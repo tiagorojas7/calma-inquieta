@@ -41,6 +41,7 @@ import type {
   AuditEntry,
   StoredOrder,
 } from "../application/enrollment-repository";
+import { claimSeat } from "./seat-claim";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type OrderRow = typeof enrollmentOrder.$inferSelect;
@@ -212,30 +213,12 @@ export function createDrizzleAdminEnrollmentStore(
             );
             if (!open.ok) return open;
 
-            await tx
-              .insert(turnoSeatCounter)
-              .values({
-                periodId: order.periodId,
-                turnoId: order.turnoId,
-                confirmedSeats: 0,
-                capacity: period.capacity,
-              })
-              .onConflictDoNothing();
-            const claimed = await tx
-              .update(turnoSeatCounter)
-              .set({
-                confirmedSeats: sql`${turnoSeatCounter.confirmedSeats} + 1`,
-                capacity: period.capacity,
-              })
-              .where(
-                and(
-                  eq(turnoSeatCounter.periodId, order.periodId),
-                  eq(turnoSeatCounter.turnoId, order.turnoId),
-                  sql`${turnoSeatCounter.confirmedSeats} < ${period.capacity}`,
-                ),
-              )
-              .returning({ confirmedSeats: turnoSeatCounter.confirmedSeats });
-            if (claimed.length === 0) return err({ kind: "turno-full" });
+            const claimed = await claimSeat(tx, {
+              periodId: order.periodId,
+              turnoId: order.turnoId,
+              capacity: period.capacity,
+            });
+            if (!claimed) return err({ kind: "turno-full" });
 
             await tx
               .update(enrollmentOrder)

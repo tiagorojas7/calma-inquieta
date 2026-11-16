@@ -21,7 +21,7 @@ export interface EnrollmentTarget {
 
 export const OFFER_REQUIRED = "Elegí el taller, el mes y el turno.";
 export const FEE_INVALID =
-  "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.";
+  "Ingresá la cuota en pesos enteros, sin centavos; los puntos de miles se aceptan. Por ejemplo: 58000 o 58.000.";
 const REQUIRED = "Completá este campo.";
 const SEPARATOR = "|";
 

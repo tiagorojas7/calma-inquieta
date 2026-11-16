@@ -14,6 +14,8 @@ import {
   SEED_ASSET_ID,
 } from "~/testing/fakes/catalog-seed";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { testAdminActor } from "~/testing/fakes/admin-actor";
+import { Money } from "~/modules/_shared";
 import { createIsolateState, createRequestServices } from "./request-services";
 
 const UNREACHABLE_URL = "postgres://postgres@127.0.0.1:1/none";
@@ -282,6 +284,66 @@ describe("createRequestServices", () => {
     expect(await services.publicCatalog.talleres.listSlugs()).toEqual([
       "ceramica",
     ]);
+  });
+
+  it("stores a free manual enrollment paid with its seat, and refuses one on a full turno without storing it", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                capacities: [{ turnoId: turno.id, capacity: 1 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+    const actor = testAdminActor();
+    const manual = (n: number) => ({
+      slug: "ceramica",
+      period: "2099-01",
+      turnoId: turno.id,
+      student: {
+        fullName: `Alumna ${String(n)}`,
+        email: `alumna${String(n)}@example.com`,
+        phone: `351 555-100${String(n)}`,
+        policyAccepted: true,
+        honeypot: "",
+      },
+      lines: [],
+    });
+    const free = Money.zero();
+
+    const first = await services.enrollments.createPending(actor, manual(1), {
+      fee: free,
+    });
+    const second = await services.enrollments.createPending(actor, manual(2), {
+      fee: free,
+    });
+
+    expect(first).toMatchObject({ ok: true, value: { status: "paid" } });
+    expect(second).toEqual({ ok: false, error: { kind: "turno-full" } });
+    const listed = await services.enrollments.list(actor, { status: "paid" });
+    expect(
+      listed.ok && listed.value.items.map((item) => item.studentName),
+    ).toEqual(["Alumna 1"]);
+    const pending = await services.enrollments.list(actor, {});
+    expect(pending.ok && pending.value.items).toEqual([]);
   });
 
   it("lets the admin save a taller with an uploaded photo", async () => {

@@ -77,7 +77,7 @@ describe("parseEnrollmentNewForm", () => {
         }),
       );
       expect(parsed.errors).toEqual({
-        fee: "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.",
+        fee: "Ingresá la cuota en pesos enteros, sin centavos; los puntos de miles se aceptan. Por ejemplo: 58000 o 58.000.",
       });
       expect(parsed.fee).toBeNull();
     },

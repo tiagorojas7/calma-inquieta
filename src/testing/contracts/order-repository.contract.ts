@@ -51,6 +51,11 @@ const other = (email: string) => {
 
 export interface OrderRepositoryContractHarness {
   readonly repository: OrderRepository;
+  /** Confirmed seats of a turno, read from the same store the repository claims from. */
+  readonly confirmedSeats: (
+    periodId: string,
+    turnoId: string,
+  ) => Promise<number>;
   /** Performs a create that fails after allocating its number. */
   readonly failCreateAfterNumbering: (
     draft: ReturnType<typeof orderDraft>,
@@ -90,6 +95,65 @@ export function runOrderRepositoryContract(
       expect(discounted.value.total.equals(pesos(40000))).toBe(true);
       const found = await repo.findByPublicId("D".repeat(22));
       expect(found?.total.equals(pesos(40000))).toBe(true);
+    });
+
+    it("creates a free admin order already paid and claims its seat in the same transaction", async () => {
+      const { repository: repo, confirmedSeats } = await create();
+      const paidAt = new Date("2026-10-19T03:00:00.000Z");
+      const draft = orderDraft({
+        fee: pesos(0),
+        total: pesos(0),
+        createdBy: "admin@example.com",
+        paidOnCreation: {
+          paidAt,
+          confirmedBy: "admin@example.com",
+          capacity: 8,
+        },
+      });
+
+      const created = await repo.create(draft);
+
+      if (!created.ok) throw new Error("expected ok");
+      expect(created.value).toMatchObject({
+        status: "paid",
+        paidAt,
+        confirmedBy: "admin@example.com",
+      });
+      expect(created.value.paidAmount?.isZero()).toBe(true);
+      expect(await confirmedSeats(draft.periodId, draft.turnoId)).toBe(1);
+      expect((await repo.findForAdmin(created.value.id))?.status).toBe("paid");
+      expect(await repo.auditTrail(created.value.id)).toEqual([
+        {
+          at: draft.requestedAt,
+          actor: "admin@example.com",
+          from: null,
+          to: "paid",
+          note: null,
+        },
+      ]);
+    });
+
+    it("stores nothing, burns no number and claims no seat when a free paid order finds the turno full", async () => {
+      const { repository: repo, confirmedSeats } = await create();
+      const paidOnCreation = {
+        paidAt: new Date("2026-10-19T03:00:00.000Z"),
+        confirmedBy: "admin@example.com",
+        capacity: 1,
+      };
+      const free = { fee: pesos(0), total: pesos(0), paidOnCreation };
+      const first = await repo.create(orderDraft(free));
+      const second = createDraft(2, {
+        ...free,
+        createdBy: "admin@example.com",
+      });
+      const refused = await repo.create(second);
+      const retry = await repo.create(createDraft(3));
+
+      expect(first.ok && first.value.number).toBe("CI-2026-0001");
+      expect(refused).toEqual({ ok: false, error: { kind: "turno-full" } });
+      expect(await repo.findByPublicId(second.publicId)).toBeNull();
+      expect(await confirmedSeats(second.periodId, second.turnoId)).toBe(1);
+      expect(retry.ok && retry.value.number).toBe("CI-2026-0002");
     });
 
     it("creates a pending order with consecutive numbers per Córdoba year", async () => {

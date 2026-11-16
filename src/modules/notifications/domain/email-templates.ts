@@ -99,6 +99,18 @@ export function enrollmentReceivedEmail(input: OrderEmailInput): EmailContent {
   ]);
 }
 
+/** A free enrollment (a scholarship): the place is confirmed and payment is never mentioned. */
+export function enrollmentConfirmedEmail(input: OrderEmailInput): EmailContent {
+  return compose("Confirmamos tu lugar", [
+    greeting(input.studentName),
+    {
+      text: `Confirmamos tu lugar en ${input.workshopName} (${input.periodLabel}, ${input.turnoLabel}). Tu número de inscripción es ${input.number}.`,
+    },
+    { text: "Podés ver el detalle acá:", link: input.orderUrl },
+    SIGNATURE,
+  ]);
+}
+
 export function paymentConfirmedEmail(input: OrderEmailInput): EmailContent {
   return compose("Confirmamos tu pago", [
     greeting(input.studentName),

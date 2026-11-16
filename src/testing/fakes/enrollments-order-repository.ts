@@ -28,8 +28,10 @@ import {
   transition,
   type IllegalTransition,
   type OrderStatus,
+  type TurnoFull,
 } from "~/modules/enrollments/domain/order-core";
 import { periodAcceptsOrders } from "~/modules/enrollments/domain/period-window";
+import { InMemorySeatLedger } from "./enrollments-seat-ledger";
 
 interface Row {
   order: StoredOrder;
@@ -66,6 +68,11 @@ export class InMemoryOrderRepository implements OrderRepository {
   private readonly sequences = new Map<number, number>();
   private failNext = false;
   private reads = 0;
+  private readonly seats: SeatLedger;
+  /** A free order created paid claims its seat from the same ledger the services read. */
+  constructor(seats: SeatLedger = new InMemorySeatLedger()) {
+    this.seats = seats;
+  }
   failNextCreateAfterNumbering(): void {
     this.failNext = true;
   }
@@ -75,13 +82,41 @@ export class InMemoryOrderRepository implements OrderRepository {
   readCount(): number {
     return this.reads;
   }
-  create(draft: OrderDraft): Promise<Result<StoredOrder, DuplicateOrder>> {
+  /**
+   * The seat is claimed first and released again when the rest of the creation
+   * fails, so a refused or failed order leaves no trace, like the transaction.
+   */
+  async create(
+    draft: OrderDraft,
+  ): Promise<Result<StoredOrder, DuplicateOrder | TurnoFull>> {
+    const { paidOnCreation } = draft;
+    if (paidOnCreation) {
+      const claimed = await this.seats.claim(
+        draft.periodId,
+        draft.turnoId,
+        paidOnCreation.capacity,
+      );
+      if (!claimed.ok) return claimed;
+    }
+    let stored: Result<StoredOrder, DuplicateOrder>;
+    try {
+      stored = this.insert(draft);
+    } catch (error) {
+      if (paidOnCreation)
+        await this.seats.release(draft.periodId, draft.turnoId);
+      throw error;
+    }
+    if (!stored.ok && paidOnCreation)
+      await this.seats.release(draft.periodId, draft.turnoId);
+    return stored;
+  }
+  private insert(draft: OrderDraft): Result<StoredOrder, DuplicateOrder> {
     const byEmail = this.students.find((s) => s.email === draft.student.email);
     const byPhone = this.students.find(
       (s) => s.phoneDigits === draft.student.phoneDigits,
     );
     if (byEmail && byPhone && byEmail.id !== byPhone.id)
-      return Promise.resolve(err({ kind: "duplicate-order" }));
+      return err({ kind: "duplicate-order" });
     const known = byEmail ?? byPhone;
     // One active record per student and month; a cancelled one frees it.
     const taken =
@@ -92,12 +127,13 @@ export class InMemoryOrderRepository implements OrderRepository {
           order.period === draft.period &&
           order.status !== "cancelled",
       );
-    if (taken) return Promise.resolve(err({ kind: "duplicate-order" }));
+    if (taken) return err({ kind: "duplicate-order" });
     const sequence = (this.sequences.get(draft.year) ?? 0) + 1;
     if (this.failNext) {
       this.failNext = false;
-      return Promise.reject(new Error("injected failure after numbering"));
+      throw new Error("injected failure after numbering");
     }
+    const { year, createdBy, paidOnCreation, ...fields } = draft;
     this.sequences.set(draft.year, sequence);
     const profile = known ?? {
       id: `student-${String(this.students.length + 1)}`,
@@ -107,12 +143,18 @@ export class InMemoryOrderRepository implements OrderRepository {
     if (!known) this.students.push(profile);
     profile.email = draft.student.email;
     profile.phoneDigits = draft.student.phoneDigits;
-    const { year, createdBy, ...fields } = draft;
     const order: StoredOrder = {
       ...fields,
       id: `order-${String(this.rows.length + 1)}`,
       number: `CI-${String(year)}-${String(sequence).padStart(4, "0")}`,
-      status: "pending_confirmation",
+      status: paidOnCreation ? "paid" : "pending_confirmation",
+      ...(paidOnCreation
+        ? {
+            paidAt: paidOnCreation.paidAt,
+            paidAmount: draft.total,
+            confirmedBy: paidOnCreation.confirmedBy,
+          }
+        : {}),
     };
     this.studentOf.set(order.id, profile.id);
     this.rows.push({
@@ -120,14 +162,14 @@ export class InMemoryOrderRepository implements OrderRepository {
       audit: [
         {
           at: draft.requestedAt,
-          actor: createdBy ?? "public",
+          actor: paidOnCreation?.confirmedBy ?? createdBy ?? "public",
           from: null,
-          to: "pending_confirmation",
+          to: order.status,
           note: null,
         },
       ],
     });
-    return Promise.resolve(ok(order));
+    return ok(order);
   }
   findByPublicId(publicId: string): Promise<StoredOrder | null> {
     this.reads += 1;

@@ -5,7 +5,10 @@ import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
+import { Money } from "~/modules/_shared";
+import { orderDraft } from "~/testing/fakes/enrollments-builders";
 import { createDrizzleOrderAudienceReader } from "./drizzle-order-audience-reader";
+import { createDrizzleOrderRepository } from "./drizzle-order-repository";
 
 const created: TestDatabase[] = [];
 afterAll(async () => {
@@ -113,5 +116,45 @@ describe("drizzle order audience reader", () => {
     );
 
     expect(rows).toHaveLength(2);
+  });
+
+  it("never selects a free order created paid as a fee reminder, only as a class reminder", async () => {
+    const database = await createTestDatabase();
+    created.push(database);
+    const openSession = createDbSessionFactory({
+      connectionString: database.url,
+    });
+    const repository = createDrizzleOrderRepository(openSession);
+    const reader = createDrizzleOrderAudienceReader(openSession);
+    const requestedAt = new Date("2026-10-30T12:00:00.000Z");
+    const free = Money.zero();
+    const stored = await repository.create(
+      orderDraft({
+        workshopId: "00000000-0000-4000-8000-000000000001",
+        periodId: "00000000-0000-4000-8000-000000000003",
+        turnoId: "00000000-0000-4000-8000-000000000004",
+        period: "2026-11",
+        weekday: 2,
+        requestedAt,
+        fee: free,
+        total: free,
+        createdBy: "admin@example.com",
+        paidOnCreation: {
+          paidAt: new Date("2026-10-30T03:00:00.000Z"),
+          confirmedBy: "admin@example.com",
+          capacity: 8,
+        },
+      }),
+    );
+    expect(stored.ok && stored.value.status).toBe("paid");
+
+    const fees = await reader.pendingRequestedBetween(
+      new Date("2026-10-30T00:00:00.000Z"),
+      new Date("2026-10-31T00:00:00.000Z"),
+    );
+    const classes = await reader.classesOn(2, "2026-11");
+
+    expect(fees).toEqual([]);
+    expect(classes).toHaveLength(1);
   });
 });

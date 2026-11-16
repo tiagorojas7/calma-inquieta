@@ -49,6 +49,42 @@ export function withEnrollmentEmails(
   };
 }
 
+/**
+ * A manual enrollment emails the student by case: a pending order gets "Recibimos
+ * tu inscripción", a free one (created already paid) gets "Confirmamos tu lugar".
+ */
+export function withManualEnrollmentEmails(
+  inner: AdminEnrollmentUseCases,
+  notifier: NotificationService,
+  defer: Defer,
+): AdminEnrollmentUseCases {
+  return {
+    ...inner,
+    async createPending(actor, input, options) {
+      const result = await inner.createPending(actor, input, options);
+      if (result.ok && result.value.number !== "") {
+        const order = result.value;
+        const notice = {
+          studentEmail: input.student.email.trim(),
+          studentName: order.studentName,
+          number: order.number,
+          publicId: order.publicId,
+          workshopName: order.workshopName,
+          period: order.period,
+          turnoLabel: order.turnoLabel,
+          total: order.total,
+        };
+        schedule(defer, () =>
+          order.status === "paid"
+            ? notifier.enrollmentConfirmed(notice)
+            : notifier.enrollmentReceived(notice),
+        );
+      }
+      return result;
+    },
+  };
+}
+
 export function withPaymentEmails(
   inner: AdminEnrollmentUseCases,
   notifier: NotificationService,

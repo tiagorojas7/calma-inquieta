@@ -196,7 +196,7 @@ describe("admin enrollment-new action", () => {
       init: { status: 422 },
       data: {
         errors: {
-          fee: "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.",
+          fee: "Ingresá la cuota en pesos enteros, sin centavos; los puntos de miles se aceptan. Por ejemplo: 58000 o 58.000.",
         },
       },
     });
@@ -211,7 +211,7 @@ describe("admin enrollment-new action", () => {
       init: { status: 422 },
       data: {
         errors: {
-          fee: "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.",
+          fee: "Ingresá la cuota en pesos enteros, sin centavos; los puntos de miles se aceptan. Por ejemplo: 58000 o 58.000.",
         },
       },
     });

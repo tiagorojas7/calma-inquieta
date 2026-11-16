@@ -116,6 +116,7 @@ import { createDrizzleOrderAudienceReader } from "~/modules/enrollments/infrastr
 import { createResendSender } from "~/platform/resend-email";
 import {
   withEnrollmentEmails,
+  withManualEnrollmentEmails,
   withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
@@ -285,11 +286,15 @@ export function createRequestServices(
         enrollments: createAdminEnrollmentService({
           store: adminEnrollmentStore,
           clock: systemClock,
-          // Unwrapped on purpose: a hand-made enrollment sends no automatic email.
+          // Unwrapped on purpose: the manual-order emails are sent by
+          // `withManualEnrollmentEmails`, by case (pending or free).
           createPending: (input, actorEmail, options) =>
             publicEnrollments.requestEnrollment(input, {
               createdBy: actorEmail,
               ...(options?.fee === undefined ? {} : { fee: options.fee }),
+              ...(options?.paidAtIfFree === undefined
+                ? {}
+                : { paidAtIfFree: options.paidAtIfFree }),
             }),
         }),
         consolidation: createSupplierConsolidationService({
@@ -379,8 +384,8 @@ export function createRequestServices(
       notifications,
       defer,
     ),
-    enrollments: withPaymentEmails(
-      enrollmentServices.enrollments,
+    enrollments: withManualEnrollmentEmails(
+      withPaymentEmails(enrollmentServices.enrollments, notifications, defer),
       notifications,
       defer,
     ),

@@ -2,6 +2,7 @@ import { ok, type Clock, type Money } from "~/modules/_shared";
 import { formatPesos, monthLabel } from "~/modules/enrollments";
 import {
   classTomorrowEmail,
+  enrollmentConfirmedEmail,
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
@@ -92,6 +93,8 @@ export interface ReminderRunSummary {
  */
 export interface NotificationService {
   enrollmentReceived(order: OrderNotice): Promise<void>;
+  /** A free enrollment is confirmed at creation; the email never mentions payment. */
+  enrollmentConfirmed(order: OrderNotice): Promise<void>;
   paymentConfirmed(order: OrderNotice): Promise<void>;
   privateEventReceived(inquiry: EventInquiryInput): Promise<void>;
   intensiveRequestReceived(notice: ReservationNotice): Promise<void>;
@@ -191,6 +194,14 @@ export function createNotificationService(
       await deliver(
         order.studentEmail,
         enrollmentReceivedEmail(orderInput(order)),
+      );
+    },
+
+    async enrollmentConfirmed(order) {
+      if (!deps.enabled) return;
+      await deliver(
+        order.studentEmail,
+        enrollmentConfirmedEmail(orderInput(order)),
       );
     },
 

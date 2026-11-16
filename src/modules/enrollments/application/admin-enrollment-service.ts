@@ -1,6 +1,5 @@
 import {
   err,
-  ok,
   parseWholePesos,
   type Clock,
   type Money,
@@ -36,11 +35,16 @@ export interface CreatePendingOptions {
   /** The student's fee in whole pesos, replacing the period fee; $0 is a scholarship. */
   readonly fee?: Money;
 }
-/** Creates a pending enrollment on behalf of a student, attributed to the admin. */
+/** What the service hands to the creation: the admin's choices plus the date a free order is paid. */
+export interface CreatePendingRequest extends CreatePendingOptions {
+  /** Córdoba creation date; a $0 order is stored already paid on it. */
+  readonly paidAtIfFree?: Date;
+}
+/** Creates an enrollment on behalf of a student, attributed to the admin; a free one is created paid. */
 export type CreatePendingEnrollment = (
   input: RequestEnrollmentInput,
   actorEmail: string,
-  options?: CreatePendingOptions,
+  options?: CreatePendingRequest,
 ) => Promise<Result<PublicOrderView, RequestEnrollmentError>>;
 export interface AdminEnrollmentServiceDeps {
   readonly store: AdminEnrollmentStore;
@@ -181,46 +185,22 @@ export function createAdminEnrollmentService(
       })),
     );
   };
-  /** The internal id of a just-created pending order; the public view never carries it. */
-  const orderIdOf = async (
-    number: string,
-  ): Promise<Result<string, AdminEnrollmentError>> => {
-    try {
-      const page = await deps.store.list({
-        status: "pending_confirmation",
-        text: number,
-      });
-      const found = page.items.find((item) => item.number === number);
-      return found ? ok(found.id) : err({ kind: "not-found" });
-    } catch {
-      return err({ kind: "unavailable" });
-    }
-  };
   return {
     async createPending(actor, input, options) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;
-      const created = await (options === undefined
+      // A $0 order has nothing to collect, so the creation itself stores it
+      // paid (dated the Córdoba creation day) and claims the seat atomically.
+      const request =
+        options?.fee?.isZero() === true
+          ? {
+              ...options,
+              paidAtIfFree: paidAt(cordobaDate(deps.clock.now())),
+            }
+          : options;
+      return request === undefined
         ? deps.createPending(input, admin.value.email)
-        : deps.createPending(input, admin.value.email, options));
-      if (!created.ok || !created.value.total.isZero()) return created;
-      // Assumption (owner decision pending): an order that costs $0 has nothing
-      // to collect, so it is confirmed as paid right away with $0, dated the
-      // Córdoba creation day. It goes through the same confirmation as the
-      // "Confirmar pago" action, so the turno seat counter moves like any other.
-      const now = deps.clock.now();
-      const orderId = await orderIdOf(created.value.number);
-      if (!orderId.ok) return orderId;
-      const confirmed = await deps.store.confirm({
-        orderId: orderId.value,
-        amount: created.value.total,
-        paidAt: paidAt(cordobaDate(now)),
-        actor: admin.value,
-        now,
-      });
-      return confirmed.ok
-        ? ok({ ...created.value, status: "paid" as const })
-        : confirmed;
+        : deps.createPending(input, admin.value.email, request);
     },
     async confirmPayment(actor, input) {
       const admin = requireAdminActor(actor);

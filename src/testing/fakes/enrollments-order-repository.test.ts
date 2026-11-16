@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { runOrderRepositoryContract } from "~/testing/contracts/order-repository.contract";
 import { orderDraft } from "./enrollments-builders";
 import { InMemoryOrderRepository } from "./enrollments-order-repository";
+import { InMemorySeatLedger } from "./enrollments-seat-ledger";
 
 runOrderRepositoryContract(() => {
-  const repository = new InMemoryOrderRepository();
+  const seats = new InMemorySeatLedger();
+  const repository = new InMemoryOrderRepository(seats);
   return {
     repository,
+    confirmedSeats: (periodId, turnoId) =>
+      seats.confirmedSeats(periodId, turnoId),
     failCreateAfterNumbering: async (draft) => {
       repository.failNextCreateAfterNumbering();
       return repository.create(draft);

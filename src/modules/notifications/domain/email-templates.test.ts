@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classTomorrowEmail,
+  enrollmentConfirmedEmail,
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
@@ -37,6 +38,22 @@ describe("email templates", () => {
     expect(email.subject).toBe("Confirmamos tu pago");
     expect(email.text).toContain("Bordado");
     expect(email.text).toContain("Martes a la tarde");
+  });
+
+  it("confirms the place of a free enrollment without any word about payment or amounts", () => {
+    const email = enrollmentConfirmedEmail(order);
+    expect(email.subject).toBe("Confirmamos tu lugar");
+    expect(email.text).toContain("Hola, Ana.");
+    expect(email.text).toContain("Bordado");
+    expect(email.text).toContain("noviembre 2026");
+    expect(email.text).toContain("Martes a la tarde");
+    expect(email.text).toContain("CI-2026-0007");
+    expect(email.text).toContain("https://calma.example.test/pedido/abc123");
+    expect(email.html).toContain(
+      'href="https://calma.example.test/pedido/abc123"',
+    );
+    for (const text of [email.subject, email.text, email.html])
+      expect(text).not.toMatch(/pag|cuota|total|\$|monto|abon|comprobante/i);
   });
 
   it("reminds tomorrow's class", () => {

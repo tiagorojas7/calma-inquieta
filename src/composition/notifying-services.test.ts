@@ -12,6 +12,7 @@ import type { NotificationService } from "~/modules/notifications";
 import type { PrivateEventUseCases } from "~/modules/private-events";
 import {
   withEnrollmentEmails,
+  withManualEnrollmentEmails,
   withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
@@ -23,6 +24,9 @@ if (!total.ok) throw new Error("bad money");
 function notifier() {
   return {
     enrollmentReceived: vi.fn<(order: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+    enrollmentConfirmed: vi.fn<(order: unknown) => Promise<void>>(() =>
       Promise.resolve(),
     ),
     paymentConfirmed: vi.fn<(order: unknown) => Promise<void>>(() =>
@@ -142,6 +146,77 @@ describe("withEnrollmentEmails", () => {
     const { service, getOffer } = setup(ok(view));
     // eslint-disable-next-line @typescript-eslint/unbound-method -- identity check only
     expect(service.getOffer).toBe(getOffer);
+  });
+});
+
+describe("withManualEnrollmentEmails", () => {
+  const actor = { email: "owner@example.test" };
+  function setup(
+    result: Awaited<ReturnType<AdminEnrollmentUseCases["createPending"]>>,
+  ) {
+    const createPending = vi.fn(() => Promise.resolve(result));
+    const list = vi.fn();
+    const inner = { createPending, list } as unknown as AdminEnrollmentUseCases;
+    const n = notifier();
+    const d = deferred();
+    return {
+      service: withManualEnrollmentEmails(inner, n, d.defer),
+      n,
+      d,
+      list,
+    };
+  }
+
+  it("sends only the received email for a pending manual order and returns the result untouched", async () => {
+    const { service, n, d } = setup(ok(view));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(view),
+    );
+    await d.settle();
+    expect(n.enrollmentReceived).toHaveBeenCalledWith(expectedNotice);
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("sends only the confirmed-place email for a free manual order", async () => {
+    const free = {
+      ...view,
+      status: "paid" as const,
+      fee: Money.zero(),
+      total: Money.zero(),
+    };
+    const { service, n, d } = setup(ok(free));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(free),
+    );
+    await d.settle();
+    expect(n.enrollmentConfirmed).toHaveBeenCalledWith({
+      ...expectedNotice,
+      total: Money.zero(),
+    });
+    expect(n.enrollmentReceived).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing for a refused manual order", async () => {
+    const { service, n, d } = setup(err({ kind: "turno-full" }));
+    await service.createPending(actor, request);
+    expect(d.pending).toHaveLength(0);
+    expect(n.enrollmentReceived).not.toHaveBeenCalled();
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("never fails the flow when the notifier rejects", async () => {
+    const { service, n, d } = setup(ok(view));
+    n.enrollmentReceived.mockRejectedValueOnce(new Error("boom"));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(view),
+    );
+    await expect(d.settle()).resolves.toBeDefined();
+  });
+
+  it("passes the other use cases through", () => {
+    const { service, list } = setup(ok(view));
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- identity check only
+    expect(service.list).toBe(list);
   });
 });
 

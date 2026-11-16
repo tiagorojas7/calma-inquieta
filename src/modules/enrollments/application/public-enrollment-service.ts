@@ -133,6 +133,12 @@ export interface RequestEnrollmentOptions {
    * period fee. Only the admin path passes it; the public form has no such input.
    */
   readonly fee?: Money;
+  /**
+   * With `createdBy`: a manual order whose total is $0 is stored already paid
+   * on this date, with its seat claimed in the same transaction. A priced
+   * order ignores it and stays pending. The public form never passes it.
+   */
+  readonly paidAtIfFree?: Date;
 }
 
 export interface PublicEnrollmentUseCases {
@@ -353,6 +359,17 @@ export function createPublicEnrollmentService(
           ...(options.createdBy === undefined
             ? {}
             : { createdBy: options.createdBy }),
+          ...(options.createdBy !== undefined &&
+          options.paidAtIfFree !== undefined &&
+          priced.value.total.isZero()
+            ? {
+                paidOnCreation: {
+                  paidAt: options.paidAtIfFree,
+                  confirmedBy: options.createdBy,
+                  capacity: turno.capacity,
+                },
+              }
+            : {}),
         }),
       );
       if (!created.ok) return created;

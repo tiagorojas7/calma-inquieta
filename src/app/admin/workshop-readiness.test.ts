@@ -25,8 +25,6 @@ const periodOf = (
 ): NonNullable<ReadinessInput["period"]> => ({
   status: "draft",
   totalCapacity: 8,
-  materialsRequired: false,
-  materialsCount: 0,
   ...overrides,
 });
 
@@ -50,7 +48,6 @@ describe("workshopReadiness", () => {
       "publish:false",
       "month:false",
       "seats:false",
-      "materials:false",
       "open:false",
     ]);
   });
@@ -70,7 +67,7 @@ describe("workshopReadiness", () => {
     });
   });
 
-  it("points seats and materials at the month detail", () => {
+  it("points seats at the month detail", () => {
     const seats = workshopReadiness({
       ...published,
       period: periodOf({ totalCapacity: 0 }),
@@ -79,23 +76,12 @@ describe("workshopReadiness", () => {
       key: "seats",
       href: "/admin/talleres/w1/periodos/2026-10",
     });
-    const materials = workshopReadiness({
-      ...published,
-      period: periodOf({ materialsRequired: true }),
-    });
-    expect(materials.next?.key).toBe("materials");
   });
 
-  it("treats materials as done when not required or unknown", () => {
-    expect(
-      workshopReadiness({ ...published, period: periodOf({}) }).next?.key,
-    ).toBe("open");
-    expect(
-      workshopReadiness({
-        ...published,
-        period: periodOf({ materialsRequired: true, materialsCount: null }),
-      }).next?.key,
-    ).toBe("open");
+  it("treats a month with seats as ready to publish, with no material step", () => {
+    const ready = workshopReadiness({ ...published, period: periodOf({}) });
+    expect(ready.next?.key).toBe("open");
+    expect(ready.steps.map((step) => step.key)).not.toContain("materials");
   });
 
   it("is complete when the published workshop has an open month", () => {

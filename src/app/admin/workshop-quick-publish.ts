@@ -6,7 +6,6 @@ import {
   type MonthlyWorkshopsService,
   type WorkshopPeriodsService,
 } from "~/modules/workshops";
-import { formatPercentage, formatWholePesos } from "./workshop-form-data";
 import type { QuickWorkshopInput } from "./workshop-quick-form";
 
 export interface QuickServices {
@@ -15,7 +14,7 @@ export interface QuickServices {
 }
 
 /** The step that stopped the one-click flow once the taller already existed. */
-export type QuickStep = "turnos" | "publish" | "month" | "materials" | "enroll";
+export type QuickStep = "turnos" | "publish" | "month" | "enroll";
 
 type Failure = { readonly kind: "denied" | "unavailable" | "not-found" };
 
@@ -93,7 +92,7 @@ async function createWithUniqueSlug(
  * The one-page "Nuevo taller" flow over the existing services, so every domain
  * rule still applies: create, add the turnos, and for the publish intent
  * publish the taller, open the current Córdoba month (which copies the turno
- * capacities and the fee), set the chosen materials and publish the month.
+ * capacities and the fee) and publish the month.
  * Nothing is rolled back: once the taller exists, a failing step stops the
  * flow and is named, and what was saved stays saved (a draft taller, or a
  * published one with a draft month).
@@ -134,27 +133,6 @@ export async function publishQuickWorkshop(
   const opened = await services.workshopPeriods.openMonth(actor, id, month);
   if (!opened.ok) return partial("month");
 
-  if (input.materialIds.length > 0) {
-    const period = opened.value;
-    const updated = await services.workshopPeriods.update(actor, period.id, {
-      fee: formatWholePesos(period.fee),
-      materialsRequired: true,
-      projectTitle: period.project.title,
-      projectDescription: period.project.description,
-      projectImages: [],
-      capacities: period.turnos.map((turno) => ({
-        turnoId: turno.turnoId,
-        capacity: String(turno.capacity),
-      })),
-      snapshotPercentage:
-        period.snapshot.modality === "third_party"
-          ? formatPercentage(period.snapshot.percentage)
-          : "",
-      materialIds: input.materialIds,
-    });
-    if (!updated.ok) return partial("materials");
-  }
-
   const live = await services.workshopPeriods.publish(actor, opened.value.id);
   if (!live.ok) return partial("enroll");
   return { kind: "published", id };
@@ -169,7 +147,7 @@ export type OpenNextOutcome =
 
 /**
  * "Abrir <mes>": opens the month, which copies the previous one (fee,
- * materials, project and capacities), and publishes it in the same click.
+ * project and capacities), and publishes it in the same click.
  */
 export async function openNextMonth(
   services: QuickServices,

@@ -3,13 +3,7 @@
  * `?fallo=<step>` query parameter on the redirect to the taller. Only steps
  * the screen declares are honored, so the page never renders text from the URL.
  */
-export const FAILURE_STEPS = [
-  "turnos",
-  "publish",
-  "month",
-  "materials",
-  "enroll",
-] as const;
+export const FAILURE_STEPS = ["turnos", "publish", "month", "enroll"] as const;
 
 export type FailureStep = (typeof FAILURE_STEPS)[number];
 

@@ -2,12 +2,6 @@
  * Admin primitive strings (es-AR, voseo). F0a extends this file with the
  * layout and navigation copy; the same copy rule scans both.
  */
-function materialAvailability(active: boolean, available: boolean): string {
-  const state = active ? "activo" : "inactivo";
-  const availability = available ? "disponible" : "no disponible";
-  return `${state}, ${availability}`;
-}
-
 export const adminMicrocopy = {
   status: {
     draft: "Borrador",
@@ -773,7 +767,7 @@ export const adminMicrocopy = {
       form: {
         title: "Abrir inscripciones",
         intro:
-          "Al abrir un mes se crea con los cupos de tus turnos activos. Después elegís los materiales y lo publicás: recién ahí el sitio acepta inscripciones.",
+          "Al abrir un mes se crea con los cupos de tus turnos activos. Después lo publicás: recién ahí el sitio acepta inscripciones.",
         period: "Mes",
         hint: (months: string) =>
           months
@@ -788,7 +782,7 @@ export const adminMicrocopy = {
         title: (period: string) => `Período ${period}`,
         backToMonths: "Volver a inscripciones del taller",
         feedback: {
-          opened: "Mes abierto. Ahora definí cupos y materiales.",
+          opened: "Mes abierto. Ahora revisá los cupos.",
           saved: "Cambios guardados",
           published: "Mes publicado: ya acepta inscripciones",
           closed: "Mes cerrado",
@@ -797,7 +791,7 @@ export const adminMicrocopy = {
           draft: {
             title: "Todavía no acepta inscripciones",
             message: (month: string, seats: number) =>
-              `${month} está en borrador con ${String(seats)} cupos. Publicalo cuando los cupos y los materiales estén listos.`,
+              `${month} está en borrador con ${String(seats)} cupos. Publicalo cuando los cupos estén listos.`,
           },
           open: {
             title: "Acepta inscripciones",
@@ -811,9 +805,6 @@ export const adminMicrocopy = {
         },
         status: "Estado",
         fee: "Arancel mensual",
-        materialsRequired: "Requiere materiales",
-        yes: "Sí",
-        no: "No",
         project: "Proyecto",
         projectTitle: "Título",
         projectDescription: "Descripción",
@@ -844,26 +835,8 @@ export const adminMicrocopy = {
         capacityFloor: "No bajes el cupo debajo de los lugares confirmados.",
         updatedBy: "Actualizado por",
         updatedAt: "Última actualización",
-        materials: "Materiales",
-        historicalMaterials: "Materiales históricos",
-        duplicateMaterial: "No repitas materiales en el período.",
-        materialOption: (item: {
-          name: string;
-          active: boolean;
-          available: boolean;
-          historical: boolean;
-        }) =>
-          item.historical
-            ? `${item.name} (histórico: ${materialAvailability(item.active, item.available)})`
-            : item.name,
         images: "Imágenes históricas",
         notApplicable: "No corresponde",
-        material: (item: {
-          name: string;
-          active: boolean;
-          available: boolean;
-        }) =>
-          `${item.name} (${materialAvailability(item.active, item.available)})`,
       },
     },
 
@@ -968,9 +941,6 @@ export const adminMicrocopy = {
         "Revisá este turno: elegí el día, un horario válido (desde antes que hasta) y cupos de 1 a 500.",
       rowDuplicate: "Ya cargaste un turno con el mismo día y horario.",
       turnosRequired: "Agregá al menos un turno para poder publicar.",
-      sectionMaterials: "Materiales (opcional)",
-      materialsHint: "Marcá los materiales que las alumnas pueden sumar.",
-      noMaterials: "Todavía no hay materiales en el catálogo.",
       percentageDetails: "Profesor de terceros: porcentaje acordado",
       percentageSummary: "Porcentaje (solo profesores de terceros)",
       publish: "Publicar y abrir inscripciones",
@@ -986,8 +956,6 @@ export const adminMicrocopy = {
         "El taller quedó como borrador porque no se pudo publicar. Revisá los datos del taller.",
       month:
         "El taller está publicado, pero no se pudo abrir el mes. Abrilo desde la lista de meses.",
-      materials:
-        "El taller está publicado y el mes abierto, pero no se pudieron guardar los materiales. Elegilos en el mes.",
       enroll:
         "El mes quedó abierto en borrador y todavía no acepta inscripciones. Publicalo desde el mes.",
     },

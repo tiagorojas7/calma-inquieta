@@ -37,7 +37,6 @@ const EMPTY: QuickValues = {
     endsAt: "",
     capacity: "",
   })),
-  materialIds: [],
 };
 
 const FORM_FIELDS = [
@@ -58,16 +57,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const teachers = await loadTeacherOptions(services.teachers, actor, null);
   if (!teachers.ok) throw failureResponse(teachers.error);
-  const materials = await services.materials.listSelectable(actor);
-  if (!materials.ok) throw failureResponse(materials.error);
-  return {
-    teachers: teachers.value,
-    materials: materials.value.map(({ id, name, category }) => ({
-      id,
-      name,
-      category,
-    })),
-  };
+  return { teachers: teachers.value };
 }
 
 function rejection(
@@ -126,7 +116,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function AdminWorkshopNew() {
-  const { teachers, materials } = useLoaderData<typeof loader>();
+  const { teachers } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
     <section className="flex flex-col gap-4">
@@ -146,7 +136,6 @@ export default function AdminWorkshopNew() {
         turnosError={rejected?.turnosError}
         formError={rejected?.formError}
         teachers={teachers}
-        materials={materials}
         cancelHref={LIST}
       />
     </section>

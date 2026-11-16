@@ -19,8 +19,7 @@ export function monthName(period: string): string {
   return MONTHS[index] ?? period;
 }
 
-export type ReadinessStepKey =
-  "shift" | "publish" | "month" | "seats" | "materials" | "open";
+export type ReadinessStepKey = "shift" | "publish" | "month" | "seats" | "open";
 
 export interface ReadinessInput {
   readonly workshopId: string;
@@ -32,9 +31,6 @@ export interface ReadinessInput {
   readonly period: {
     readonly status: "draft" | "open" | "closed";
     readonly totalCapacity: number;
-    readonly materialsRequired: boolean;
-    /** `null` when the caller does not know (list views). */
-    readonly materialsCount: number | null;
   } | null;
 }
 
@@ -59,7 +55,6 @@ const SUMMARIES: Record<ReadinessStepKey, (month: string) => string> = {
   publish: () => "Falta publicar el taller",
   month: (month) => `Falta abrir ${month}`,
   seats: (month) => `Faltan los cupos de ${month}`,
-  materials: (month) => `Faltan los materiales de ${month}`,
   open: (month) => `Falta publicar ${month}`,
 };
 
@@ -100,17 +95,6 @@ export function workshopReadiness(input: ReadinessInput): Readiness {
       label: `Definiste los cupos de ${name}`,
       done: period !== null && period.totalCapacity > 0,
       cta: "Definir los cupos",
-      href: monthHref,
-    },
-    {
-      key: "materials",
-      label: "Los materiales están configurados",
-      done:
-        period !== null &&
-        (!period.materialsRequired ||
-          period.materialsCount === null ||
-          period.materialsCount > 0),
-      cta: "Elegir los materiales",
       href: monthHref,
     },
     {

@@ -144,13 +144,13 @@ describe("parseQuickWorkshop", () => {
     expect(parsed.turnoErrors[0]).toBeUndefined();
   });
 
-  it("collects the chosen materials and echoes every row for re-rendering", () => {
+  it("ignores posted materials and echoes every row for re-rendering", () => {
     const parsed = parseQuickWorkshop(
       form({ ...BASE, ...EMPTY_ROWS, materialIds: ["m1", "m2"] }),
     );
-    expect(parsed.materialIds).toEqual(["m1", "m2"]);
     expect(parsed.values.rows).toHaveLength(QUICK_TURNO_ROWS);
-    expect(parsed.values.materialIds).toEqual(["m1", "m2"]);
+    expect(Object.keys(parsed)).not.toContain("materialIds");
+    expect(Object.keys(parsed.values)).not.toContain("materialIds");
   });
 
   it("reads the submit intent, defaulting to a draft", () => {

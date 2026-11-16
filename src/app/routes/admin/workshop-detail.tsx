@@ -72,8 +72,6 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       ? {
           status: current.status,
           totalCapacity: current.totalCapacity,
-          materialsRequired: false,
-          materialsCount: null,
         }
       : null,
   });

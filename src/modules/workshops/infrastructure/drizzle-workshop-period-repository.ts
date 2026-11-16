@@ -1,8 +1,6 @@
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { err, Money, ok } from "~/modules/_shared";
 import {
-  material,
-  periodMaterialOffer,
   periodTurno,
   teacher,
   workshopPeriod,
@@ -40,7 +38,9 @@ function values(value: StoredWorkshopPeriod) {
     workshopId: value.workshopId,
     period: value.period,
     feeCentavos: value.fee.toCentavos(),
-    materialsRequired: value.materialsRequired,
+    // Dormant: the column stays until a later migration drops it, as does the
+    // period_material_offer table. Monthly periods carry no materials.
+    materialsRequired: false,
     projectTitle: value.project.title || null,
     projectDescription: value.project.description || null,
     snapshotTeacherId: value.snapshot.teacher.id,
@@ -95,20 +95,6 @@ async function insertTurnos(
   );
 }
 
-async function insertMaterialOffers(
-  db: Db,
-  value: StoredWorkshopPeriod,
-): Promise<void> {
-  if (!value.materials.length) return;
-  await db.insert(periodMaterialOffer).values(
-    value.materials.map((material, index) => ({
-      periodId: value.id,
-      materialId: material.id,
-      position: index,
-    })),
-  );
-}
-
 async function load(
   db: Db,
   root: PeriodRow,
@@ -125,21 +111,11 @@ async function load(
       asc(workshopTurno.id),
     );
 
-  const materialOffers = await db
-    .select({
-      material: material,
-    })
-    .from(periodMaterialOffer)
-    .innerJoin(material, eq(periodMaterialOffer.materialId, material.id))
-    .where(eq(periodMaterialOffer.periodId, root.id))
-    .orderBy(asc(periodMaterialOffer.position));
-
   return {
     id: root.id,
     workshopId: root.workshopId,
     period: root.period,
     fee: storedMoney(root.feeCentavos),
-    materialsRequired: root.materialsRequired,
     status: status(root.status),
     project: {
       title: root.projectTitle ?? "",
@@ -155,12 +131,6 @@ async function load(
       endsAt: turno.endsAt.slice(0, 5),
       turnoActive: turno.active,
       capacity: period.capacity,
-    })),
-    materials: materialOffers.map(({ material }) => ({
-      id: material.id,
-      name: material.name,
-      active: material.active,
-      available: material.available,
     })),
     snapshot: {
       teacher: {
@@ -216,7 +186,6 @@ export function createDrizzleWorkshopPeriodRepository(
               .insert(workshopPeriod)
               .values({ id: value.id, ...values(value) });
             await insertTurnos(tx, value);
-            await insertMaterialOffers(tx, value);
             return ok(undefined);
           });
         } catch (error) {
@@ -245,11 +214,7 @@ export function createDrizzleWorkshopPeriodRepository(
           await tx
             .delete(periodTurno)
             .where(eq(periodTurno.periodId, value.id));
-          await tx
-            .delete(periodMaterialOffer)
-            .where(eq(periodMaterialOffer.periodId, value.id));
           await insertTurnos(tx, value);
-          await insertMaterialOffers(tx, value);
           return ok(undefined);
         });
       }),

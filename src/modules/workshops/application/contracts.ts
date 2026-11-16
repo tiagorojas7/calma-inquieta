@@ -248,12 +248,6 @@ export interface PeriodTurno {
   readonly turnoActive: boolean;
   readonly capacity: number;
 }
-export interface EnabledMaterial {
-  readonly id: string;
-  readonly name: string;
-  readonly active: boolean;
-  readonly available: boolean;
-}
 export interface PeriodSummary {
   readonly id: string;
   readonly period: PeriodKey;
@@ -262,10 +256,6 @@ export interface PeriodSummary {
   readonly totalCapacity: number;
   /** Turnos of this month that are still active; zero means nobody can enroll. */
   readonly activeTurnos: number;
-}
-/** Actorless B9 offer membership read; order follows the persisted period offers. */
-export interface WorkshopOfferedMaterialIdsLookup {
-  listOfferedMaterialIds(periodId: string): Promise<readonly string[]>;
 }
 export interface WorkshopEnrollmentOffer {
   readonly workshop: {
@@ -276,7 +266,6 @@ export interface WorkshopEnrollmentOffer {
     readonly id: string;
     readonly period: PeriodKey;
     readonly fee: Money;
-    readonly materialsRequired: boolean;
   };
   readonly turnos: readonly {
     readonly id: string;
@@ -302,7 +291,6 @@ export interface WorkshopPeriod {
   readonly workshopId: string;
   readonly period: PeriodKey;
   readonly fee: Money;
-  readonly materialsRequired: boolean;
   readonly status: PeriodStatus;
   readonly project: {
     readonly title: string;
@@ -310,7 +298,6 @@ export interface WorkshopPeriod {
     readonly images: readonly ImageUse[];
   };
   readonly turnos: readonly PeriodTurno[];
-  readonly materials: readonly EnabledMaterial[];
   readonly snapshot: PeriodSnapshot;
   readonly openedBy: string;
   readonly openedAt: Date;
@@ -318,7 +305,6 @@ export interface WorkshopPeriod {
 }
 export interface WorkshopPeriodDraft {
   readonly fee: string;
-  readonly materialsRequired: boolean;
   readonly projectTitle: string;
   readonly projectDescription: string;
   readonly projectImages: readonly ImageUseDraft[];
@@ -327,7 +313,6 @@ export interface WorkshopPeriodDraft {
     readonly capacity: string;
   }[];
   readonly snapshotPercentage: string;
-  readonly materialIds: readonly string[];
 }
 export type PeriodField =
   | "period"
@@ -336,8 +321,7 @@ export type PeriodField =
   | "projectDescription"
   | "projectImages"
   | "capacities"
-  | "snapshotPercentage"
-  | "materialIds";
+  | "snapshotPercentage";
 export type OpenMonthRule =
   "workshop-status" | "teacher" | "percentage" | "active-turno";
 export interface IntensiveWorkshop {

@@ -65,11 +65,9 @@ export const buildWorkshopPeriod = (
   workshopId: "workshop-1",
   period: "2026-01",
   fee: buildMonthlyWorkshop().defaultFee,
-  materialsRequired: false,
   status: "draft",
   project: { title: "Proyecto", description: "", images: [] },
   turnos: [],
-  materials: [],
   snapshot: {
     teacher: { id: "teacher-1", name: "Cami", active: true },
     modality: "own",

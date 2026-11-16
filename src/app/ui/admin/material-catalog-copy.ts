@@ -1,6 +1,6 @@
 /**
  * Admin copy for the materials catalog tools (import, price raise, quick
- * photo, period selection). es-AR with voseo. Kept apart from the shared
+ * photo). es-AR with voseo. Kept apart from the shared
  * microcopy so parallel work does not collide; scanned by its own test.
  */
 export const materialCatalogCopy = {
@@ -122,16 +122,5 @@ export const materialCatalogCopy = {
       "invalid-percent": "Ingresá un porcentaje mayor a cero y hasta 200.",
       "no-scope": "Elegí un proveedor o una categoría.",
     },
-  },
-  period: {
-    search: "Buscar material",
-    searchApply: "Buscar",
-    searchClear: "Ver todos",
-    selectEverything: "Elegir todos",
-    selectNothing: "Quitar todos",
-    selectAll: (category: string) => `Elegir todos: ${category}`,
-    selectNone: (category: string) => `Quitar todos: ${category}`,
-    categoryGroup: (category: string) => `Categoría ${category}`,
-    noMatches: "Ningún material coincide con la búsqueda.",
   },
 } as const;

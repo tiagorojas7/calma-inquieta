@@ -1,21 +1,11 @@
 import { AdminButton as Button } from "./admin-button";
-import {
-  CheckboxField,
-  FormError,
-  TextAreaField,
-  TextField,
-} from "./form-fields";
+import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
-import {
-  PeriodMaterialsPicker,
-  type PeriodMaterialOption,
-} from "./workshop-period-materials";
 import { ADMIN_SHEET } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 type Values = {
   readonly fee: string;
-  readonly materialsRequired: boolean;
   readonly projectTitle: string;
   readonly projectDescription: string;
   readonly capacities: readonly {
@@ -24,17 +14,14 @@ type Values = {
     readonly capacity: string;
   }[];
   readonly snapshotPercentage: string;
-  readonly materialIds: readonly string[];
 };
 
 export function WorkshopPeriodForm({
   values,
-  materialOptions,
   errors,
   formError,
 }: {
   values: Values;
-  materialOptions: readonly PeriodMaterialOption[];
   errors: Readonly<Partial<Record<keyof Values, string>>>;
   formError?: string | undefined;
 }) {
@@ -48,16 +35,6 @@ export function WorkshopPeriodForm({
         inputMode="numeric"
         defaultValue={values.fee}
         error={errors.fee}
-      />
-      <CheckboxField
-        label={copy.materialsRequired}
-        name="materialsRequired"
-        defaultChecked={values.materialsRequired}
-      />
-      <PeriodMaterialsPicker
-        options={materialOptions}
-        selectedIds={values.materialIds}
-        error={errors.materialIds}
       />
       <TextField
         label={copy.projectTitle}

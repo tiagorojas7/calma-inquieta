@@ -81,7 +81,6 @@ async function pipeline() {
     workshops,
     turnos,
     teachers: teacherRepository,
-    materials: { findByIds: () => Promise.resolve(new Map()) },
     clock,
     newId: (() => {
       let sequence = 0;

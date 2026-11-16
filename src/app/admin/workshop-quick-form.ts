@@ -34,7 +34,6 @@ export interface QuickValues {
   readonly percentage: string;
   readonly images: readonly GalleryFormImage[];
   readonly rows: readonly QuickTurnoRow[];
-  readonly materialIds: readonly string[];
 }
 
 export type QuickIntent = "publish" | "draft";
@@ -46,7 +45,6 @@ export interface QuickWorkshopInput {
   readonly turnos: readonly { index: number; draft: TurnoDraft }[];
   /** Message per form row that cannot be saved. */
   readonly turnoErrors: Readonly<Record<number, string>>;
-  readonly materialIds: readonly string[];
   readonly values: QuickValues;
 }
 
@@ -137,9 +135,6 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     });
   });
   const description = text(form, "description");
-  const materialIds = form
-    .getAll("materialIds")
-    .filter((id): id is string => typeof id === "string" && id !== "");
   const intent = text(form, "intent") === "publish" ? "publish" : "draft";
   const values: QuickValues = {
     name: text(form, "name"),
@@ -149,7 +144,6 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     percentage: text(form, "percentage"),
     images: parseGallery(form),
     rows,
-    materialIds,
   };
   return {
     intent,
@@ -167,7 +161,6 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     },
     turnos,
     turnoErrors,
-    materialIds,
     values,
   };
 }

@@ -9,7 +9,6 @@ import {
 } from "~/testing/admin/route-kit";
 import {
   FLOW_MONTH,
-  buildMaterial,
   workshopFlowFixture,
 } from "~/testing/admin/workshop-flow-kit";
 import { seedTeacher } from "~/testing/admin/workshop-seed";
@@ -24,7 +23,6 @@ function context(fixture: Fixture, options: { admin?: boolean } = {}) {
       monthlyWorkshops: fixture.service,
       workshopPeriods: fixture.periods,
       teachers: fixture.teachers.service,
-      materials: fixture.materials,
     },
     options,
   );
@@ -81,10 +79,8 @@ const location = (response: unknown) =>
   (response as Response).headers.get("Location");
 
 describe("admin workshop create loader", () => {
-  it("offers active teachers with their modality and the selectable materials", async () => {
-    const fixture = workshopFlowFixture([
-      buildMaterial({ id: "m1", name: "Arcilla", category: "Arcillas" }),
-    ]);
+  it("offers active teachers with their modality and no materials", async () => {
+    const fixture = workshopFlowFixture();
     await seedTeacher(fixture, { name: "Beto Ruiz", modality: "third_party" });
     const archived = await seedTeacher(fixture, {
       name: "Caro Paz",
@@ -99,9 +95,7 @@ describe("admin workshop create loader", () => {
     expect(result.teachers).toEqual([
       { id: "t1", name: "Beto Ruiz", modality: "third_party" },
     ]);
-    expect(result.materials).toEqual([
-      { id: "m1", name: "Arcilla", category: "Arcillas" },
-    ]);
+    expect(Object.keys(result)).not.toContain("materials");
   });
 
   it("is denied for a non-admin", async () => {
@@ -146,10 +140,8 @@ describe("admin workshop create action", () => {
     });
   });
 
-  it("opens the month with the chosen materials and a third-party percentage", async () => {
-    const fixture = workshopFlowFixture([
-      buildMaterial({ id: "m1", name: "Arcilla" }),
-    ]);
+  it("opens the month with a third-party percentage and ignores posted materials", async () => {
+    const fixture = workshopFlowFixture();
     const teacherId = await seedTeacher(fixture, {
       name: "Beto",
       modality: "third_party",
@@ -167,7 +159,6 @@ describe("admin workshop create action", () => {
       ok: true,
       value: {
         status: "open",
-        materials: [{ id: "m1" }],
         snapshot: { percentage: { basisPoints: 3550 } },
       },
     });

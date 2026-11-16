@@ -32,7 +32,6 @@ function subject(
           workshopId: "workshop-1",
           period: "2026-10",
           fee,
-          materialsRequired: true,
           status: "open",
           turnos: [
             {
@@ -82,7 +81,6 @@ describe("workshop enrollment offer lookup", () => {
         id: "period-1",
         period: "2026-10",
         fee,
-        materialsRequired: true,
       },
       turnos: [
         {
@@ -118,7 +116,6 @@ describe("workshop enrollment offer lookup", () => {
           workshopId: "workshop-1",
           period: "2026-10",
           fee,
-          materialsRequired: false,
           status: "draft",
           turnos: [],
         },
@@ -132,7 +129,6 @@ describe("workshop enrollment offer lookup", () => {
           workshopId: "workshop-1",
           period: "2026-09",
           fee,
-          materialsRequired: false,
           status: "open",
           turnos: [],
         },
@@ -146,7 +142,6 @@ describe("workshop enrollment offer lookup", () => {
           workshopId: "workshop-1",
           period: "2026-10",
           fee,
-          materialsRequired: false,
           status: "open",
           turnos: [
             {
@@ -179,7 +174,6 @@ describe("workshop enrollment offer lookup", () => {
         workshopId: "other-workshop",
         period: "2026-10",
         fee,
-        materialsRequired: false,
         status: "open",
       },
     ],
@@ -190,7 +184,6 @@ describe("workshop enrollment offer lookup", () => {
         workshopId: "workshop-1",
         period: "2026-11",
         fee,
-        materialsRequired: false,
         status: "open",
       },
     ],

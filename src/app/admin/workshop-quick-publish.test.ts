@@ -5,7 +5,6 @@ import { seedTeacher } from "~/testing/admin/workshop-seed";
 import {
   FLOW_MONTH,
   FLOW_NEXT_MONTH,
-  buildMaterial,
   workshopFlowFixture,
 } from "~/testing/admin/workshop-flow-kit";
 import { parseQuickWorkshop } from "./workshop-quick-form";
@@ -35,9 +34,7 @@ function input(fields: Record<string, string | string[]>) {
 }
 
 async function fixture() {
-  const flow = workshopFlowFixture([
-    buildMaterial({ id: "m1", name: "Arcilla" }),
-  ]);
+  const flow = workshopFlowFixture();
   const teacherId = await seedTeacher(flow, { name: "Ana", modality: "own" });
   return { flow, teacherId };
 }
@@ -74,33 +71,40 @@ describe("publishQuickWorkshop", () => {
     });
   });
 
-  it("sets the chosen materials on the month before publishing it", async () => {
+  it("opens the month without any material and never updates it before publishing", async () => {
     const { flow, teacherId } = await fixture();
-    const outcome = await run(flow, input({ teacherId, materialIds: ["m1"] }));
-    expect(outcome.kind).toBe("published");
-    const period = await flow.periods.get(actor, "w1", FLOW_MONTH);
-    expect(period).toMatchObject({
-      ok: true,
-      value: {
-        status: "open",
-        materialsRequired: true,
-        materials: [{ id: "m1" }],
+    let updates = 0;
+    const outcome = await publishQuickWorkshop(
+      {
+        monthlyWorkshops: flow.service,
+        workshopPeriods: {
+          ...flow.periods,
+          update: (...args) => {
+            updates += 1;
+            return flow.periods.update(...args);
+          },
+        },
       },
-    });
+      actor,
+      input({ teacherId, materialIds: ["m1"] }),
+    );
+    expect(outcome).toEqual({ kind: "published", id: "w1" });
+    expect(updates).toBe(0);
+    const period = await flow.periods.get(actor, "w1", FLOW_MONTH);
+    expect(period).toMatchObject({ ok: true, value: { status: "open" } });
+    if (period.ok) {
+      expect(Object.keys(period.value)).not.toContain("materials");
+      expect(Object.keys(period.value)).not.toContain("materialsRequired");
+    }
   });
 
   it("copies a third-party percentage into the month", async () => {
-    const flow = workshopFlowFixture([
-      buildMaterial({ id: "m1", name: "Arcilla" }),
-    ]);
+    const flow = workshopFlowFixture();
     const teacherId = await seedTeacher(flow, {
       name: "Beto",
       modality: "third_party",
     });
-    const outcome = await run(
-      flow,
-      input({ teacherId, percentage: "35,5", materialIds: ["m1"] }),
-    );
+    const outcome = await run(flow, input({ teacherId, percentage: "35,5" }));
     expect(outcome.kind).toBe("published");
     expect(await flow.periods.get(actor, "w1", FLOW_MONTH)).toMatchObject({
       ok: true,
@@ -239,9 +243,9 @@ describe("publishQuickWorkshop", () => {
 });
 
 describe("openNextMonth", () => {
-  it("opens the suggested month copying the previous one and publishes it", async () => {
+  it("opens the suggested month copying the previous capacities and publishes it", async () => {
     const { flow, teacherId } = await fixture();
-    await run(flow, input({ teacherId, materialIds: ["m1"] }));
+    await run(flow, input({ teacherId }));
     const outcome = await openNextMonth(
       { monthlyWorkshops: flow.service, workshopPeriods: flow.periods },
       actor,
@@ -253,8 +257,6 @@ describe("openNextMonth", () => {
       ok: true,
       value: {
         status: "open",
-        materials: [{ id: "m1" }],
-        materialsRequired: true,
         turnos: [{ capacity: 8 }],
       },
     });

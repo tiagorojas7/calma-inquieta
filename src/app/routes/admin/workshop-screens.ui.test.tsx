@@ -46,8 +46,6 @@ const DETAIL_EXTRA = {
   ],
 };
 
-const MATERIALS = [{ id: "m1", name: "Arcilla" }];
-
 const EMPTY_ROWS = Array.from({ length: 5 }, () => ({
   weekday: "",
   startsAt: "",
@@ -142,7 +140,7 @@ describe("workshop admin screens", () => {
       path: "/admin/talleres/nuevo",
       Component: AdminWorkshopNew,
       action: () => null,
-      loader: () => ({ teachers: TEACHERS, materials: MATERIALS }),
+      loader: () => ({ teachers: TEACHERS }),
     };
     const Empty = createRoutesStub([route]);
     const { unmount } = render(
@@ -157,7 +155,7 @@ describe("workshop admin screens", () => {
       <Rejected
         initialEntries={["/admin/talleres/nuevo"]}
         hydrationData={{
-          loaderData: { new: { teachers: TEACHERS, materials: MATERIALS } },
+          loaderData: { new: { teachers: TEACHERS } },
           actionData: {
             new: {
               values: {
@@ -177,7 +175,6 @@ describe("workshop admin screens", () => {
                       }
                     : row,
                 ),
-                materialIds: ["m1"],
               },
               errors: { defaultFee: "El formato no es válido. Revisalo." },
               turnoErrors: { 0: "Revisá este turno: faltan datos." },
@@ -196,18 +193,18 @@ describe("workshop admin screens", () => {
     expect(screen.getByLabelText("Profesor")).toHaveValue("t2");
     expect(screen.getByLabelText("Porcentaje acordado")).toHaveValue("35,5");
     expect(screen.getByText("Revisá este turno: faltan datos.")).toBeVisible();
-    expect(screen.getByLabelText("Arcilla")).toBeChecked();
+    expect(screen.queryByLabelText("Arcilla")).toBeNull();
     expect(screen.queryByLabelText("Enlace")).toBeNull();
     await expectNoAxeViolations(container);
   });
 
-  it("create screen is one page with turnos, materials and a primary publish button", async () => {
+  it("create screen is one page with turnos, no materials and a primary publish button", async () => {
     const Stub = createRoutesStub([
       {
         path: "/admin/talleres/nuevo",
         Component: AdminWorkshopNew,
         action: () => null,
-        loader: () => ({ teachers: TEACHERS, materials: MATERIALS }),
+        loader: () => ({ teachers: TEACHERS }),
       },
     ]);
     const { container } = render(
@@ -228,7 +225,7 @@ describe("workshop admin screens", () => {
     expect(form?.querySelector("button[type=submit]")).toBe(publish);
     expect(container.querySelectorAll("[name=turnoWeekday]")).toHaveLength(5);
     expect(screen.getByText("+ otro turno")).toBeVisible();
-    expect(screen.getByLabelText("Arcilla")).not.toBeChecked();
+    expect(screen.queryByText(/Materiales/)).toBeNull();
     // Derived fields are not asked.
     expect(screen.queryByLabelText("Enlace")).toBeNull();
     expect(screen.queryByLabelText("Resumen")).toBeNull();
@@ -249,14 +246,14 @@ describe("workshop admin screens", () => {
         path: "/admin/talleres/nuevo",
         Component: AdminWorkshopNew,
         action: () => null,
-        loader: () => ({ teachers: TEACHERS, materials: [] }),
+        loader: () => ({ teachers: TEACHERS }),
       },
     ]);
     render(
       <Stub
         initialEntries={["/admin/talleres/nuevo"]}
         hydrationData={{
-          loaderData: { new: { teachers: TEACHERS, materials: [] } },
+          loaderData: { new: { teachers: TEACHERS } },
           actionData: {
             new: {
               values: {
@@ -267,7 +264,6 @@ describe("workshop admin screens", () => {
                 percentage: "",
                 images: [],
                 rows: EMPTY_ROWS,
-                materialIds: [],
               },
               errors: {},
               turnoErrors: {},
@@ -282,9 +278,6 @@ describe("workshop admin screens", () => {
         await screen.findByText("Porcentaje (solo profesores de terceros)")
       ).closest("details"),
     ).toHaveAttribute("open");
-    expect(
-      screen.getByText("Todavía no hay materiales en el catálogo."),
-    ).toBeVisible();
   });
 
   it("edit screen warns about an open month without an active turno and offers the one-click fix", async () => {

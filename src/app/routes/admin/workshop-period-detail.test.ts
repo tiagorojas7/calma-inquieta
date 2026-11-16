@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createUnavailableService } from "~/composition/unavailable-service";
 import { err, ok } from "~/modules/_shared";
-import type { MaterialsService } from "~/modules/materials";
 import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
@@ -29,7 +28,6 @@ const period = buildWorkshopPeriod({
       capacity: 8,
     },
   ],
-  materials: [{ id: "m1", name: "Arcilla", active: false, available: false }],
   snapshot: {
     teacher: { id: "teacher-1", name: "Cami", active: true },
     modality: "third_party",
@@ -43,19 +41,6 @@ function service(overrides: Partial<WorkshopPeriodsService>) {
     overrides,
   );
 }
-function materials(overrides: Partial<MaterialsService> = {}) {
-  return withOverrides(createUnavailableService<MaterialsService>(), overrides);
-}
-const selectable = {
-  id: "m2",
-  name: "Esmalte",
-  category: "Esmaltes",
-  hasImage: false,
-  supplierName: "Proveedor",
-  variantCount: 1,
-  active: true,
-  available: true,
-};
 const found = () => Promise.resolve(ok(period));
 type UpdateError = Extract<
   Awaited<ReturnType<WorkshopPeriodsService["update"]>>,
@@ -70,9 +55,6 @@ function args(
   request: Request,
   admin = true,
   period = "2026-11",
-  materialService = materials({
-    listSelectable: () => Promise.resolve(ok([])),
-  }),
 ) {
   return {
     request,
@@ -80,7 +62,6 @@ function args(
     context: adminContext(
       {
         workshopPeriods: periods,
-        materials: materialService,
         monthlyWorkshops: withOverrides(
           createUnavailableService<MonthlyWorkshopsService>(),
           {
@@ -92,13 +73,9 @@ function args(
     ),
   } as never;
 }
-function load(
-  periods: WorkshopPeriodsService,
-  periodKey = "2026-11",
-  materialService?: MaterialsService,
-) {
+function load(periods: WorkshopPeriodsService, periodKey = "2026-11") {
   const request = getRequest(`/admin/talleres/w1/periodos/${periodKey}`);
-  return route.loader(args(periods, request, true, periodKey, materialService));
+  return route.loader(args(periods, request, true, periodKey));
 }
 function submit(
   periods: WorkshopPeriodsService,
@@ -125,17 +102,12 @@ function submit(
 }
 
 describe("admin workshop period detail", () => {
-  it("authorizes first, then loads selectable and historical material options without duplicates", async () => {
-    const listSelectable = vi.fn(() => Promise.resolve(ok([selectable])));
+  it("loads the period without any material data and never reads the catalog", async () => {
     const loaded = await load(
       service({
         get: () => Promise.resolve(ok({ ...period, status: "draft" })),
       }),
       "2026-11",
-      materials({ listSelectable }),
-    );
-    expect(listSelectable).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "a@x.test" }),
     );
     expect(loaded).toMatchObject({
       period: "2026-11",
@@ -143,67 +115,33 @@ describe("admin workshop period detail", () => {
       values: {
         fee: "1",
         capacities: [{ turnoId: "t1", capacity: "8" }],
-        materialIds: ["m1"],
       },
-      materialOptions: [
-        { id: "m2", name: "Esmalte", historical: false },
-        {
-          id: "m1",
-          name: "Arcilla",
-          active: false,
-          available: false,
-          historical: true,
-        },
-      ],
-      materials: [{ name: "Arcilla", active: false, available: false }],
       snapshot: { teacherName: "Cami", percentage: "35" },
     });
+    expect(Object.keys(loaded)).not.toContain("materialOptions");
+    expect(Object.keys(loaded)).not.toContain("materials");
+    expect(Object.keys(loaded.values)).not.toContain("materialsRequired");
+    expect(Object.keys(loaded.values)).not.toContain("materialIds");
   });
 
-  it("keeps a closed historical period readable without the current materials service", async () => {
-    const listSelectable = vi.fn(() =>
-      Promise.resolve(err({ kind: "unavailable" as const })),
-    );
+  it("keeps a closed historical period readable", async () => {
     const loaded = await load(
       service({
         get: () => Promise.resolve(ok({ ...period, status: "closed" })),
       }),
       "2026-11",
-      materials({ listSelectable }),
     );
-    expect(loaded).toMatchObject({
-      status: "closed",
-      materialOptions: [{ id: "m1", historical: true }],
-    });
-    expect(listSelectable).not.toHaveBeenCalled();
+    expect(loaded).toMatchObject({ status: "closed" });
   });
 
-  it("maps selectable-material failures and denies non-admins before either service", async () => {
-    const listSelectable = vi.fn(() =>
-      Promise.resolve(err({ kind: "unavailable" as const })),
-    );
-    expect(
-      await thrownStatus(() =>
-        load(service({ get: found }), "2026-11", materials({ listSelectable })),
-      ),
-    ).toBe(503);
+  it("denies a non-admin loader before reading the period", async () => {
     const get = vi.fn(found);
-    const deniedSelectable = vi.fn(() => Promise.resolve(ok([])));
     expect(
       await thrownStatus(() =>
-        route.loader(
-          args(
-            service({ get }),
-            getRequest(path),
-            false,
-            "2026-11",
-            materials({ listSelectable: deniedSelectable }),
-          ),
-        ),
+        route.loader(args(service({ get }), getRequest(path), false)),
       ),
     ).toBe(403);
     expect(get).not.toHaveBeenCalled();
-    expect(deniedSelectable).not.toHaveBeenCalled();
   });
 
   it("validates the period before get and maps missing and unavailable failures", async () => {
@@ -247,7 +185,7 @@ describe("admin workshop period detail", () => {
     expect(calls).toBe(0);
   });
 
-  it("updates editable fields with submitted material selections", async () => {
+  it("updates editable fields and ignores posted material fields", async () => {
     const update = vi.fn(() => Promise.resolve(ok(period)));
     const response = await submit(service({ get: found, update }), {
       intent: "save",
@@ -262,11 +200,14 @@ describe("admin workshop period detail", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@x.test" }),
       "period-1",
-      expect.objectContaining({
+      {
         fee: "42000",
+        projectTitle: "Tazas",
+        projectDescription: "Esmaltes",
+        projectImages: [],
         capacities: [{ turnoId: "t1", capacity: "9" }],
-        materialIds: ["m2", "m3"],
-      }),
+        snapshotPercentage: "35",
+      },
     );
     expect((response as Response).headers.get("Location")).toBe(
       `${path}?ok=saved`,
@@ -327,35 +268,6 @@ describe("admin workshop period detail", () => {
     ).resolves.toMatchObject({
       init: { status: 422 },
       data: { values: { fee: "" }, errors: { fee: "Completá este campo." } },
-    });
-    await expect(
-      submit(
-        rejecting({
-          kind: "invalid",
-          issues: [{ field: "materialIds", code: "not-selectable" }],
-        }),
-        { intent: "save", materialIds: ["m1", "m2"] },
-      ),
-    ).resolves.toMatchObject({
-      init: { status: 422 },
-      data: {
-        values: { materialIds: ["m1", "m2"] },
-        errors: { materialIds: "Esa opción no se puede elegir. Elegí otra." },
-      },
-    });
-    await expect(
-      submit(
-        rejecting({
-          kind: "invalid",
-          issues: [{ field: "materialIds", code: "duplicate" }],
-        }),
-        { intent: "save", materialIds: ["m1", "m1"] },
-      ),
-    ).resolves.toMatchObject({
-      init: { status: 422 },
-      data: {
-        errors: { materialIds: "No repitas materiales en el período." },
-      },
     });
     await expect(
       submit(rejecting({ kind: "period-closed" }), { intent: "save" }),

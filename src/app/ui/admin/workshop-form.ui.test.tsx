@@ -237,7 +237,7 @@ describe("taller photos", () => {
     );
   });
 
-  it("offers the shared material picker on the one-page form", () => {
+  it("offers no material picker on the one-page form", () => {
     const { container } = stub(
       <QuickWorkshopForm
         values={{
@@ -248,35 +248,16 @@ describe("taller photos", () => {
           percentage: "",
           images: [],
           rows: [],
-          materialIds: ["m2"],
         }}
         errors={{}}
         turnoErrors={{}}
         teachers={[]}
-        materials={[
-          { id: "m1", name: "Canasto", category: "Canastos" },
-          { id: "m2", name: "Acrílico", category: "Pinturas" },
-        ]}
         cancelHref="/admin/talleres"
       />,
     );
-    const checked = () =>
-      [
-        ...container.querySelectorAll<HTMLInputElement>(
-          "input[name=materialIds]:checked",
-        ),
-      ].map((input) => input.value);
-    expect(screen.getByLabelText("Buscar material")).toBeInTheDocument();
-    expect(checked()).toEqual(["m2"]);
-    fireEvent.click(screen.getByRole("button", { name: "Elegir todos" }));
-    expect(checked()).toEqual(["m1", "m2"]);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Quitar todos: Canastos" }),
-    );
-    expect(checked()).toEqual(["m2"]);
-    expect(
-      screen.getByRole("group", { name: "Categoría Pinturas" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Buscar material")).toBeNull();
+    expect(container.querySelector("input[name=materialIds]")).toBeNull();
+    expect(screen.queryByText(/Materiales/)).toBeNull();
   });
 
   it("offers the same four slots on the one-page form", async () => {
@@ -290,12 +271,10 @@ describe("taller photos", () => {
           percentage: "",
           images: [],
           rows: [],
-          materialIds: [],
         }}
         errors={{}}
         turnoErrors={{}}
         teachers={[]}
-        materials={[]}
         cancelHref="/admin/talleres"
       />,
     );

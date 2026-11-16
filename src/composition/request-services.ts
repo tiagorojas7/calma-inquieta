@@ -32,7 +32,6 @@ import {
   createPeriodTurnoUsageLookup,
   createWorkshopPeriodsService,
   createWorkshopEnrollmentOfferLookup,
-  createWorkshopOfferedMaterialIdsLookup,
   createIntensiveSeatOfferLookup,
   createPublicIntensivosReader,
   createPublicTalleresReader,
@@ -44,7 +43,6 @@ import {
   type PublicCatalogService,
 } from "~/modules/workshops";
 import {
-  createOfferedMaterialSnapshotsLookup,
   createMaterialsService,
   createSuppliersService,
   type SuppliersService,
@@ -107,7 +105,6 @@ import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrast
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
-import { createOfferedMaterialsAdapter } from "./offered-materials-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
 import {
@@ -250,7 +247,6 @@ export function createRequestServices(
         workshops: workshopRepository,
         turnos: turnoRepository,
         teachers,
-        materials: materialRepository,
         confirmedSeats: createConfirmedSeatsAdapter(seats),
         clock: systemClock,
       })
@@ -272,15 +268,8 @@ export function createRequestServices(
             clock: systemClock,
           }),
         ),
-        materials: createOfferedMaterialsAdapter(
-          createWorkshopOfferedMaterialIdsLookup({
-            periods: periodRepository,
-          }),
-          createOfferedMaterialSnapshotsLookup({
-            materials: materialRepository,
-            media,
-          }),
-        ),
+        // Monthly periods offer no materials; the owners' catalog material search will replace this.
+        materials: { listForPeriod: () => Promise.resolve([]) },
         orders: createDrizzleOrderRepository(openSession),
         seats,
         clock: systemClock,

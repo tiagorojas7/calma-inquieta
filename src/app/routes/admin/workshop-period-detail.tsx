@@ -60,7 +60,6 @@ function formValues(period: WorkshopPeriod, draft?: WorkshopPeriodDraft) {
   );
   return {
     fee: draft?.fee ?? formatWholePesos(period.fee),
-    materialsRequired: draft?.materialsRequired ?? period.materialsRequired,
     projectTitle: draft?.projectTitle ?? period.project.title,
     projectDescription: draft?.projectDescription ?? period.project.description,
     capacities: period.turnos.map((turno) => ({
@@ -70,42 +69,12 @@ function formValues(period: WorkshopPeriod, draft?: WorkshopPeriodDraft) {
     })),
     snapshotPercentage:
       draft?.snapshotPercentage ?? formatPercentage(period.snapshot.percentage),
-    materialIds:
-      draft?.materialIds ?? period.materials.map((material) => material.id),
   };
 }
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const period = await getPeriod(actor, context, params.id, params.period);
-  const historicalOptions = period.materials.map((material) => ({
-    ...material,
-    category: "",
-    historical: true,
-  }));
-  let materialOptions = historicalOptions;
-  if (period.status !== "closed") {
-    const selectable = await context
-      .get(servicesContext)
-      .materials.listSelectable(actor);
-    if (!selectable.ok) throw failureResponse(selectable.error);
-    const selectableIds = new Set(
-      selectable.value.map((material) => material.id),
-    );
-    materialOptions = [
-      ...selectable.value.map((material) => ({
-        id: material.id,
-        name: material.name,
-        category: material.category,
-        active: material.active,
-        available: material.available,
-        historical: false,
-      })),
-      ...historicalOptions.filter(
-        (material) => !selectableIds.has(material.id),
-      ),
-    ];
-  }
   const workshop = await context
     .get(servicesContext)
     .monthlyWorkshops.get(actor, params.id);
@@ -127,8 +96,6 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     status: period.status,
     values: formValues(period),
     images: period.project.images.map((image) => ({ alt: image.alt })),
-    materialOptions,
-    materials: period.materials,
     snapshot: {
       teacherName: period.snapshot.teacher.name,
       modality: period.snapshot.modality,
@@ -168,9 +135,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       return data(
         {
           ...rejected,
-          errors: fieldErrors(saved.error.issues, {
-            materialIds: { duplicate: copy.duplicateMaterial },
-          }),
+          errors: fieldErrors(saved.error.issues),
         },
         { status: 422 },
       );
@@ -251,7 +216,6 @@ export default function AdminWorkshopPeriodDetail() {
       {screen.status !== "closed" && (
         <WorkshopPeriodForm
           values={formRejected?.values ?? screen.values}
-          materialOptions={screen.materialOptions}
           errors={formRejected?.errors ?? {}}
           formError={formRejected?.formError}
         />
@@ -299,10 +263,6 @@ export default function AdminWorkshopPeriodDetail() {
         <div>
           <dt className="font-semibold">{copy.fee}</dt>
           <dd>{screen.values.fee}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold">{copy.materialsRequired}</dt>
-          <dd>{screen.values.materialsRequired ? copy.yes : copy.no}</dd>
         </div>
       </dl>
       <section aria-labelledby="period-project-title" className={ADMIN_PANEL}>
@@ -371,16 +331,6 @@ export default function AdminWorkshopPeriodDetail() {
           </dl>
         </div>
         <div className="flex flex-col gap-4">
-          <section aria-labelledby="period-materials-title">
-            <Heading level={2} id="period-materials-title">
-              {copy.historicalMaterials}
-            </Heading>
-            <ul className="mt-3 flex flex-col gap-1">
-              {screen.materials.map((material) => (
-                <li key={material.id}>{copy.material(material)}</li>
-              ))}
-            </ul>
-          </section>
           <section aria-labelledby="period-images-title">
             <Heading level={2} id="period-images-title">
               {copy.images}

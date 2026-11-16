@@ -197,6 +197,14 @@ describe("order money", () => {
     });
   });
 
+  it("accepts a zero fee only when the caller allows a free enrollment, and never a negative one", () => {
+    const free = priceOrder(Money.zero(), pesos(0), { allowZeroFee: true });
+    expect(free.ok && free.value.isZero()).toBe(true);
+    expect(
+      priceOrder(pesos(-1000), Money.zero(), { allowZeroFee: true }),
+    ).toEqual({ ok: false, error: "invalid-amount" });
+  });
+
   it("refuses fractions of a peso", () => {
     const fee = Money.fromCentavos(5_800_050);
     if (!fee.ok) throw new Error("fixture");

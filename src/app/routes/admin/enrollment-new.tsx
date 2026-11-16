@@ -1,6 +1,7 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import {
+  FEE_INVALID,
   parseEnrollmentNewForm,
   type EnrollmentNewField,
   type EnrollmentNewValues,
@@ -16,6 +17,7 @@ import { AdminPageHeader } from "~/app/ui/admin/admin-page";
 import {
   EnrollmentNewForm,
   enrollmentNewCopy as copy,
+  type EnrollmentNewOption,
 } from "~/app/ui/admin/enrollment-new-form";
 import type { AppServices } from "~/composition/request-services";
 import { requireAdmin } from "./require-admin";
@@ -29,6 +31,7 @@ const EMPTY: EnrollmentNewValues = {
   fullName: "",
   email: "",
   phone: "",
+  fee: "",
 };
 
 const ISSUE_MESSAGES: Record<string, string> = {
@@ -49,7 +52,7 @@ async function loadOptions(services: AppServices, actor: Actor) {
     status: "live",
   });
   if (!workshops.ok) throw enrollmentFailureResponse(workshops.error);
-  const options: { value: string; label: string }[] = [];
+  const options: EnrollmentNewOption[] = [];
   for (const summary of workshops.value) {
     if (!summary.acceptsNewRequests) continue;
     const [workshop, periods] = await Promise.all([
@@ -72,6 +75,7 @@ async function loadOptions(services: AppServices, actor: Actor) {
             turnoId: turno.id,
           }),
           label: `${summary.name} · ${monthLabel(period.period)} · ${turno.label}`,
+          fee: String(offer.value.fee.toCentavos() / 100),
         });
     }
   }
@@ -95,12 +99,16 @@ function rejection(
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const parsed = parseEnrollmentNewForm(await request.formData());
-  if (parsed.target === null || Object.keys(parsed.errors).length > 0)
+  if (
+    parsed.target === null ||
+    parsed.fee === null ||
+    Object.keys(parsed.errors).length > 0
+  )
     return rejection(parsed.values, parsed.errors, copy.saveFailed, 422);
   const { fullName, email, phone } = parsed.values;
-  const created = await context
-    .get(servicesContext)
-    .enrollments.createPending(actor, {
+  const created = await context.get(servicesContext).enrollments.createPending(
+    actor,
+    {
       ...parsed.target,
       student: {
         fullName,
@@ -110,8 +118,12 @@ export async function action({ request, context }: Route.ActionArgs) {
         honeypot: "",
       },
       lines: [],
-    });
+    },
+    { fee: parsed.fee },
+  );
   if (created.ok) return redirect(withFeedback(AFTER_CREATE, "created"));
+  if (created.error.kind === "invalid-fee")
+    return rejection(parsed.values, { fee: FEE_INVALID }, copy.saveFailed, 422);
   if (created.error.kind === "invalid") {
     const errors: Partial<Record<EnrollmentNewField, string>> = {};
     for (const issue of created.error.issues) {

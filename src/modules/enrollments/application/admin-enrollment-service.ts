@@ -1,7 +1,9 @@
 import {
   err,
+  ok,
   parseWholePesos,
   type Clock,
+  type Money,
   type Result,
 } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
@@ -29,10 +31,16 @@ type Invalid = {
 };
 export type AdminEnrollmentError =
   AdminEnrollmentStoreError | Invalid | { readonly kind: "denied" };
+/** What only an admin may decide when enrolling a student by hand. */
+export interface CreatePendingOptions {
+  /** The student's fee in whole pesos, replacing the period fee; $0 is a scholarship. */
+  readonly fee?: Money;
+}
 /** Creates a pending enrollment on behalf of a student, attributed to the admin. */
 export type CreatePendingEnrollment = (
   input: RequestEnrollmentInput,
   actorEmail: string,
+  options?: CreatePendingOptions,
 ) => Promise<Result<PublicOrderView, RequestEnrollmentError>>;
 export interface AdminEnrollmentServiceDeps {
   readonly store: AdminEnrollmentStore;
@@ -59,6 +67,7 @@ export interface AdminEnrollmentUseCases {
   createPending(
     actor: Actor,
     input: RequestEnrollmentInput,
+    options?: CreatePendingOptions,
   ): Promise<
     Result<PublicOrderView, AdminEnrollmentError | RequestEnrollmentError>
   >;
@@ -172,11 +181,46 @@ export function createAdminEnrollmentService(
       })),
     );
   };
+  /** The internal id of a just-created pending order; the public view never carries it. */
+  const orderIdOf = async (
+    number: string,
+  ): Promise<Result<string, AdminEnrollmentError>> => {
+    try {
+      const page = await deps.store.list({
+        status: "pending_confirmation",
+        text: number,
+      });
+      const found = page.items.find((item) => item.number === number);
+      return found ? ok(found.id) : err({ kind: "not-found" });
+    } catch {
+      return err({ kind: "unavailable" });
+    }
+  };
   return {
-    async createPending(actor, input) {
+    async createPending(actor, input, options) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;
-      return deps.createPending(input, admin.value.email);
+      const created = await (options === undefined
+        ? deps.createPending(input, admin.value.email)
+        : deps.createPending(input, admin.value.email, options));
+      if (!created.ok || !created.value.total.isZero()) return created;
+      // Assumption (owner decision pending): an order that costs $0 has nothing
+      // to collect, so it is confirmed as paid right away with $0, dated the
+      // Córdoba creation day. It goes through the same confirmation as the
+      // "Confirmar pago" action, so the turno seat counter moves like any other.
+      const now = deps.clock.now();
+      const orderId = await orderIdOf(created.value.number);
+      if (!orderId.ok) return orderId;
+      const confirmed = await deps.store.confirm({
+        orderId: orderId.value,
+        amount: created.value.total,
+        paidAt: paidAt(cordobaDate(now)),
+        actor: admin.value,
+        now,
+      });
+      return confirmed.ok
+        ? ok({ ...created.value, status: "paid" as const })
+        : confirmed;
     },
     async confirmPayment(actor, input) {
       const admin = requireAdminActor(actor);

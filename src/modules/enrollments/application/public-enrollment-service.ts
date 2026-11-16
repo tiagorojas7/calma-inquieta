@@ -128,6 +128,11 @@ export interface PublicEnrollmentServiceDeps {
 export interface RequestEnrollmentOptions {
   /** Admin email when an owner enrolls the student by hand. */
   readonly createdBy?: string;
+  /**
+   * Fee an owner sets for one student (a scholarship may be $0) instead of the
+   * period fee. Only the admin path passes it; the public form has no such input.
+   */
+  readonly fee?: Money;
 }
 
 export interface PublicEnrollmentUseCases {
@@ -309,9 +314,11 @@ export function createPublicEnrollmentService(
       const lines = resolveLines(cart.value, foundMaterials.value);
       if (!lines.ok) return lines;
 
+      const fee = options.fee ?? period.fee;
       const priced = priceCart({
-        fee: period.fee,
+        fee,
         lines: lines.value,
+        allowZeroFee: options.fee !== undefined,
       });
       if (!priced.ok) return priced;
 
@@ -338,7 +345,7 @@ export function createPublicEnrollmentService(
           startsAt: turno.startsAt,
           endsAt: turno.endsAt,
           student: student.value,
-          fee: period.fee,
+          fee,
           materialsTotal: priced.value.materialsTotal,
           total: priced.value.total,
           policyVersion: deps.policyVersion,

@@ -70,6 +70,28 @@ export function runOrderRepositoryContract(
     Promise<OrderRepositoryContractHarness> | OrderRepositoryContractHarness,
 ): void {
   describe("OrderRepository contract", () => {
+    it("stores the fee an admin set, including $0, as fee and total", async () => {
+      const { repository: repo } = await create();
+      const scholarship = await repo.create(
+        orderDraft({ fee: pesos(0), total: pesos(0) }),
+      );
+      const discounted = await repo.create(
+        orderDraft({
+          publicId: "D".repeat(22),
+          student: other("desc@example.com"),
+          fee: pesos(40000),
+          total: pesos(40000),
+        }),
+      );
+      if (!scholarship.ok || !discounted.ok) throw new Error("expected ok");
+      expect(scholarship.value.fee.isZero()).toBe(true);
+      expect(scholarship.value.total.isZero()).toBe(true);
+      expect(discounted.value.fee.equals(pesos(40000))).toBe(true);
+      expect(discounted.value.total.equals(pesos(40000))).toBe(true);
+      const found = await repo.findByPublicId("D".repeat(22));
+      expect(found?.total.equals(pesos(40000))).toBe(true);
+    });
+
     it("creates a pending order with consecutive numbers per Córdoba year", async () => {
       const { repository: repo } = await create();
       const first = await repo.create(orderDraft({ year: 2026 }));

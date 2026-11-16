@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { err, ok } from "~/modules/_shared";
+import { err, Money, ok } from "~/modules/_shared";
 import {
   createUnavailableAdminEnrollmentService,
   type AdminEnrollmentUseCases,
@@ -27,7 +27,14 @@ const VALID = {
   fullName: " Ana Pérez ",
   email: "ana@x.test",
   phone: "351 555 0001",
+  fee: "40000",
 };
+
+function pesos(value: number): Money {
+  const money = Money.fromCentavos(value * 100);
+  if (!money.ok) throw new Error("invalid test money");
+  return money.value;
+}
 
 function services(createPending: CreatePending = vi.fn()) {
   return {
@@ -73,6 +80,7 @@ function services(createPending: CreatePending = vi.fn()) {
             ok({
               workshopName: "Cerámica",
               period,
+              fee: pesos(58000),
               turnos: [
                 { id: "t1", label: "Lunes 18:00" },
                 { id: "t2", label: "Martes 10:00" },
@@ -110,10 +118,12 @@ describe("admin enrollment-new loader", () => {
         {
           value: "ceramica|2026-11|t1",
           label: "Cerámica · noviembre 2026 · Lunes 18:00",
+          fee: "58000",
         },
         {
           value: "ceramica|2026-11|t2",
           label: "Cerámica · noviembre 2026 · Martes 10:00",
+          fee: "58000",
         },
       ],
     });
@@ -133,26 +143,78 @@ describe("admin enrollment-new loader", () => {
 });
 
 describe("admin enrollment-new action", () => {
-  it("creates the pending enrollment with fixed policy fields and redirects to the list", async () => {
+  it("creates the pending enrollment with fixed policy fields and the chosen fee, then redirects to the list", async () => {
     const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
     const response = (await submit(VALID, createPending)) as Response;
-    expect(createPending).toHaveBeenCalledWith(expect.anything(), {
-      slug: "ceramica",
-      period: "2026-11",
-      turnoId: "t1",
-      student: {
-        fullName: "Ana Pérez",
-        email: "ana@x.test",
-        phone: "351 555 0001",
-        policyAccepted: true,
-        honeypot: "",
+    expect(createPending).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        slug: "ceramica",
+        period: "2026-11",
+        turnoId: "t1",
+        student: {
+          fullName: "Ana Pérez",
+          email: "ana@x.test",
+          phone: "351 555 0001",
+          policyAccepted: true,
+          honeypot: "",
+        },
+        lines: [],
       },
-      lines: [],
-    });
+      { fee: pesos(40000) },
+    );
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe(
       "/admin/inscripciones?estado=pending_confirmation&ok=created",
     );
+  });
+
+  it("accepts $0 for a scholarship and hands it to the service", async () => {
+    const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
+    const response = (await submit(
+      { ...VALID, fee: "0" },
+      createPending,
+    )) as Response;
+    expect(response.status).toBe(302);
+    expect(createPending).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { fee: pesos(0) },
+    );
+  });
+
+  it("returns 422 with a fee field error for an empty or invalid fee and calls nothing", async () => {
+    const createPending = vi.fn<CreatePending>();
+    expect(await submit({ ...VALID, fee: "" }, createPending)).toMatchObject({
+      init: { status: 422 },
+      data: {
+        values: { fee: "" },
+        errors: { fee: "Completá este campo." },
+      },
+    });
+    expect(await submit({ ...VALID, fee: "-5" }, createPending)).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          fee: "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.",
+        },
+      },
+    });
+    expect(createPending).not.toHaveBeenCalled();
+  });
+
+  it("maps a refused fee from the service to the fee field", async () => {
+    const createPending = vi
+      .fn<CreatePending>()
+      .mockResolvedValue(err({ kind: "invalid-fee" }) as never);
+    expect(await submit(VALID, createPending)).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          fee: "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.",
+        },
+      },
+    });
   });
 
   it("returns 422 with Spanish required errors and calls nothing", async () => {

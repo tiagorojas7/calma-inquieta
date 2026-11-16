@@ -548,7 +548,7 @@
                                                                                                                   },
                                                                             "enrollment_order_fee_check":  {
                                                                                                                "name":  "enrollment_order_fee_check",
-                                                                                                               "value":  "\"enrollment_order\".\"fee_centavos\" \u003e 0"
+                                                                                                               "value":  "\"enrollment_order\".\"fee_centavos\" \u003e= 0"
                                                                                                            },
                                                                             "enrollment_order_materials_check":  {
                                                                                                                      "name":  "enrollment_order_materials_check",

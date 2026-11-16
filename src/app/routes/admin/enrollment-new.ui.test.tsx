@@ -5,7 +5,11 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import AdminEnrollmentNew from "./enrollment-new";
 
 const options = [
-  { value: "ceramica|2026-11|t1", label: "Cerámica · noviembre 2026 · Lunes" },
+  {
+    value: "ceramica|2026-11|t1",
+    label: "Cerámica · noviembre 2026 · Lunes",
+    fee: "58000",
+  },
 ];
 
 describe("admin enrollment-new screen", () => {
@@ -31,6 +35,7 @@ describe("admin enrollment-new screen", () => {
       screen.getByRole("link", { name: /Volver a inscripciones/ }),
     ).toHaveAttribute("href", "/admin/inscripciones");
     expect(screen.getByLabelText("Taller, mes y turno")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cuota")).toBeInTheDocument();
     await expectNoAxeViolations(container);
   });
 

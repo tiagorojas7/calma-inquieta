@@ -1,10 +1,15 @@
-export type EnrollmentNewField = "offer" | "fullName" | "email" | "phone";
+import { parseWholePesos, type Money } from "~/modules/_shared";
+
+export type EnrollmentNewField =
+  "offer" | "fullName" | "email" | "phone" | "fee";
 
 export interface EnrollmentNewValues {
   readonly offer: string;
   readonly fullName: string;
   readonly email: string;
   readonly phone: string;
+  /** Whole pesos as typed; the form starts with the period fee. */
+  readonly fee: string;
 }
 
 export interface EnrollmentTarget {
@@ -15,6 +20,8 @@ export interface EnrollmentTarget {
 }
 
 export const OFFER_REQUIRED = "Elegí el taller, el mes y el turno.";
+export const FEE_INVALID =
+  "Ingresá la cuota en pesos enteros, sin puntos ni centavos. Por ejemplo: 58000.";
 const REQUIRED = "Completá este campo.";
 const SEPARATOR = "|";
 
@@ -37,6 +44,8 @@ function text(form: FormData, name: string): string {
 export function parseEnrollmentNewForm(form: FormData): {
   values: EnrollmentNewValues;
   target: EnrollmentTarget | null;
+  /** The fee in whole pesos ($0 allowed); null when the field has an error. */
+  fee: Money | null;
   errors: Partial<Record<EnrollmentNewField, string>>;
 } {
   const values: EnrollmentNewValues = {
@@ -44,6 +53,7 @@ export function parseEnrollmentNewForm(form: FormData): {
     fullName: text(form, "fullName"),
     email: text(form, "email"),
     phone: text(form, "phone"),
+    fee: text(form, "fee"),
   };
   const target = decodeOffer(values.offer);
   const errors: Partial<Record<EnrollmentNewField, string>> = {};
@@ -51,5 +61,8 @@ export function parseEnrollmentNewForm(form: FormData): {
   if (values.fullName === "") errors.fullName = REQUIRED;
   if (values.email === "") errors.email = REQUIRED;
   if (values.phone === "") errors.phone = REQUIRED;
-  return { values, target, errors };
+  const parsedFee = parseWholePesos(values.fee);
+  if (!parsedFee.ok)
+    errors.fee = parsedFee.error === "required" ? REQUIRED : FEE_INVALID;
+  return { values, target, fee: parsedFee.ok ? parsedFee.value : null, errors };
 }

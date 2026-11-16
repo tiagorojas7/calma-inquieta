@@ -167,6 +167,31 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
+  it("accepts a zero fee for a free enrollment, paid with $0, and still rejects a negative fee", async () => {
+    await expect(
+      insertOrder({
+        id: "00000000-0000-4000-8000-000000000106",
+        email: "free@example.com",
+        feeCentavos: 0,
+        totalCentavos: 0,
+        status: "paid",
+        paidAt: new Date("2026-10-21T12:00:00.000Z"),
+        paidAmountCentavos: 0,
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      insertOrder({
+        id: "00000000-0000-4000-8000-000000000107",
+        email: "negative@example.com",
+        feeCentavos: -100,
+        totalCentavos: -100,
+      }),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "enrollment_order_fee_check",
+    });
+  });
+
   it("rejects invalid order lines and seat counters", async () => {
     const orderId = "00000000-0000-4000-8000-000000000201";
     await insertOrder({ id: orderId });

@@ -110,7 +110,7 @@ export const enrollmentOrder = pgTable(
       "enrollment_order_time_range_check",
       sql`${table.endsAt} > ${table.startsAt}`,
     ),
-    check("enrollment_order_fee_check", sql`${table.feeCentavos} > 0`),
+    check("enrollment_order_fee_check", sql`${table.feeCentavos} >= 0`),
     check(
       "enrollment_order_materials_check",
       sql`${table.materialsCentavos} >= 0`,

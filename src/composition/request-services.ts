@@ -286,9 +286,10 @@ export function createRequestServices(
           store: adminEnrollmentStore,
           clock: systemClock,
           // Unwrapped on purpose: a hand-made enrollment sends no automatic email.
-          createPending: (input, actorEmail) =>
+          createPending: (input, actorEmail, options) =>
             publicEnrollments.requestEnrollment(input, {
               createdBy: actorEmail,
+              ...(options?.fee === undefined ? {} : { fee: options.fee }),
             }),
         }),
         consolidation: createSupplierConsolidationService({

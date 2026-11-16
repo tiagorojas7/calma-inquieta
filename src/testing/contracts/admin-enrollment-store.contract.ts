@@ -87,6 +87,27 @@ export function runAdminEnrollmentStoreContract(
       ]);
     });
 
+    it("confirms a free order with a $0 payment and still claims the seat", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder({
+        fee: pesos(0),
+        total: pesos(0),
+      });
+
+      await expect(confirm(harness.store, order)).resolves.toEqual({
+        ok: true,
+        value: { kind: "confirmed" },
+      });
+      await expect(harness.seatCount(order)).resolves.toBe(1);
+      const detail = await harness.store.detail(order.id);
+      expect(detail).toMatchObject({
+        ok: true,
+        value: { status: "paid", paidAt, confirmedBy: actor.email },
+      });
+      if (!detail.ok) throw new Error("expected detail");
+      expect(detail.value.paidAmount?.isZero()).toBe(true);
+    });
+
     it("makes repeat confirmation idempotent", async () => {
       const harness = await setup();
       const order = await harness.createOrder();

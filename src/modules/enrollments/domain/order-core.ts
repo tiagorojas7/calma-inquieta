@@ -119,13 +119,17 @@ export type OrderPriceError = "invalid-amount" | "invalid-total";
 
 const isWholePesos = (money: Money): boolean => money.toCentavos() % 100 === 0;
 
-/** Total = fee + materials; both whole pesos, fee positive, materials >= 0. */
+/**
+ * Total = fee + materials; both whole pesos, materials >= 0, fee positive. A
+ * free enrollment (a scholarship set by an admin) opts in to a zero fee.
+ */
 export function priceOrder(
   fee: Money,
   materials: Money,
+  options: { readonly allowZeroFee?: boolean } = {},
 ): Result<Money, OrderPriceError> {
   if (
-    fee.toCentavos() <= 0 ||
+    fee.toCentavos() < (options.allowZeroFee === true ? 0 : 1) ||
     materials.isNegative() ||
     !isWholePesos(fee) ||
     !isWholePesos(materials)

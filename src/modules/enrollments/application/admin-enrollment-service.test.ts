@@ -6,6 +6,7 @@ import {
   type AdminEnrollmentUseCases,
 } from "./admin-enrollment-service";
 import type { AdminEnrollmentStore } from "./admin-enrollment-store";
+import type { CreatePendingEnrollment } from "./admin-enrollment-service";
 import type { OrderRepository } from "./enrollment-repository";
 import type { SeatLedger } from "./seat-ledger";
 import {
@@ -48,6 +49,9 @@ async function fixture(
       } | null>;
     };
     readonly repository?: OrderRepository;
+    readonly createPending?: (
+      orders: InMemoryOrderRepository,
+    ) => CreatePendingEnrollment;
   } = {},
 ) {
   const orders = new InMemoryOrderRepository();
@@ -68,31 +72,76 @@ async function fixture(
       },
     ),
     clock: overrides.clock ?? { now: () => now },
-    createPending: (input, actorEmail) => {
-      pendingCalls.push({ input, actorEmail });
-      return Promise.resolve({
-        ok: true,
-        value: {
-          publicId: "A".repeat(22),
-          number: "CI-2026-0002",
-          status: "pending_confirmation" as const,
-          studentName: input.student.fullName,
-          workshopName: "Ceramica",
-          period: input.period,
-          turnoLabel: "Lunes 18:00",
-          weekday: 1,
-          startsAt: "18:00",
-          endsAt: "20:00",
-          lines: [],
-          fee: pesos(58000),
-          materialsTotal: pesos(0),
-          total: pesos(58000),
-        },
-      });
-    },
+    createPending:
+      overrides.createPending?.(orders) ??
+      ((input, actorEmail, options) => {
+        pendingCalls.push({
+          input,
+          actorEmail,
+          ...(options === undefined ? {} : { options }),
+        });
+        return Promise.resolve({
+          ok: true,
+          value: {
+            publicId: "A".repeat(22),
+            number: "CI-2026-0002",
+            status: "pending_confirmation" as const,
+            studentName: input.student.fullName,
+            workshopName: "Ceramica",
+            period: input.period,
+            turnoLabel: "Lunes 18:00",
+            weekday: 1,
+            startsAt: "18:00",
+            endsAt: "20:00",
+            lines: [],
+            fee: pesos(58000),
+            materialsTotal: pesos(0),
+            total: pesos(58000),
+          },
+        });
+      }),
   });
   return { service, orders, seats, pendingCalls, order: created.value };
 }
+
+/** Stands in for the public flow: stores a free order the way an admin-set $0 fee does. */
+const storeFreeOrder =
+  (orders: InMemoryOrderRepository): CreatePendingEnrollment =>
+  async (input, actorEmail) => {
+    const stored = await orders.create(
+      orderDraft({
+        publicId: "F".repeat(22),
+        fee: pesos(0),
+        total: pesos(0),
+        createdBy: actorEmail,
+        student: {
+          fullName: input.student.fullName,
+          email: "free@example.com",
+          phoneDigits: "5493515551000",
+        },
+      }),
+    );
+    if (!stored.ok) throw new Error("fixture order");
+    return {
+      ok: true,
+      value: {
+        publicId: stored.value.publicId,
+        number: stored.value.number,
+        status: "pending_confirmation" as const,
+        studentName: input.student.fullName,
+        workshopName: "Ceramica",
+        period: input.period,
+        turnoLabel: "Lunes 18:00",
+        weekday: 1,
+        startsAt: "18:00",
+        endsAt: "20:00",
+        lines: [],
+        fee: pesos(0),
+        materialsTotal: pesos(0),
+        total: pesos(0),
+      },
+    };
+  };
 
 async function createOrder(
   orders: InMemoryOrderRepository,
@@ -126,6 +175,66 @@ const materialsLine = {
 };
 
 describe("admin enrollment service", () => {
+  it("hands an admin-set fee to the creation and leaves a priced order pending", async () => {
+    const { service, pendingCalls, seats } = await fixture();
+    const before = seats.snapshot();
+
+    const created = await service.createPending(admin, pendingInput, {
+      fee: pesos(40000),
+    });
+
+    expect(created).toMatchObject({
+      ok: true,
+      value: { status: "pending_confirmation" },
+    });
+    expect(pendingCalls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { fee: pesos(40000) },
+      },
+    ]);
+    expect(seats.snapshot()).toEqual(before);
+  });
+
+  it("confirms a free enrollment as paid with $0 on the Córdoba creation date and moves the seat counter", async () => {
+    const { service, orders, seats } = await fixture({
+      createPending: storeFreeOrder,
+    });
+    const seatsBefore = await seats.confirmedSeats("p-1", "t-1");
+
+    const created = await service.createPending(admin, pendingInput, {
+      fee: pesos(0),
+    });
+
+    expect(created).toMatchObject({
+      ok: true,
+      value: { status: "paid", total: pesos(0) },
+    });
+    const stored = await orders.findByPublicId("F".repeat(22));
+    expect(stored).toMatchObject({
+      status: "paid",
+      paidAt: new Date("2026-10-31T03:00:00.000Z"),
+      confirmedBy: "admin@example.com",
+    });
+    expect(stored?.paidAmount?.isZero()).toBe(true);
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(seatsBefore + 1);
+  });
+
+  it("returns the existing turno-full error when a free enrollment finds no seat", async () => {
+    const { service, orders } = await fixture({
+      capacity: 0,
+      createPending: storeFreeOrder,
+    });
+
+    await expect(
+      service.createPending(admin, pendingInput, { fee: pesos(0) }),
+    ).resolves.toEqual({ ok: false, error: { kind: "turno-full" } });
+    expect((await orders.findByPublicId("F".repeat(22)))?.status).toBe(
+      "pending_confirmation",
+    );
+  });
+
   it("creates a pending monthly enrollment as the authorized admin", async () => {
     const { service, pendingCalls } = await fixture();
 

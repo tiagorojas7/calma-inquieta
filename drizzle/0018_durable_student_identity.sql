@@ -43,3 +43,7 @@ ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_student_id_stude
 DROP INDEX "enrollment_order_active_duplicate_unique";
 --> statement-breakpoint
 CREATE UNIQUE INDEX "enrollment_order_student_period_active_unique" ON "enrollment_order" USING btree ("student_id","period") WHERE "enrollment_order"."status" <> 'cancelled';
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" DROP CONSTRAINT "enrollment_order_fee_check";
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_fee_check" CHECK ("enrollment_order"."fee_centavos" >= 0);

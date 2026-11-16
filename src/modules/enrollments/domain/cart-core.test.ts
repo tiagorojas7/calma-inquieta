@@ -189,6 +189,15 @@ describe("priceCart", () => {
     });
   });
 
+  it("prices a zero fee as a free enrollment only when the caller allows it", () => {
+    const free = priceCart({ fee: pesos(0), lines: [], allowZeroFee: true });
+    if (!free.ok) throw new Error("expected ok");
+    expect(free.value.total.isZero()).toBe(true);
+    expect(
+      priceCart({ fee: pesos(-1000), lines: [], allowZeroFee: true }),
+    ).toEqual({ ok: false, error: { kind: "invalid-fee" } });
+  });
+
   it("refuses a line total outside the safe-integer range, never rounds", () => {
     const huge = money(9_007_199_254_740_900);
     expect(

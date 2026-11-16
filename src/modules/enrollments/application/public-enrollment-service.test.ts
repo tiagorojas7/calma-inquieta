@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Clock } from "~/modules/_shared";
+import { Money, type Clock } from "~/modules/_shared";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import {
   materialFixture,
@@ -116,6 +116,57 @@ describe("requestEnrollment happy path", () => {
     expect(await orders.auditTrail(stored.id)).toMatchObject([
       { actor: "owner@example.com", to: "pending_confirmation" },
     ]);
+  });
+
+  it("stores an admin-set fee as fee and total, with no materials", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+      fee: pesos(40000),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(40000))).toBe(true);
+    expect(result.value.total.equals(pesos(40000))).toBe(true);
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.fee.equals(pesos(40000))).toBe(true);
+    expect(stored?.materialsTotal.isZero()).toBe(true);
+    expect(stored?.total.equals(pesos(40000))).toBe(true);
+  });
+
+  it("accepts a zero admin-set fee as a free enrollment", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+      fee: pesos(0),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.fee.isZero()).toBe(true);
+    expect(stored?.total.isZero()).toBe(true);
+  });
+
+  it("refuses an admin-set fee that is negative or not whole pesos", async () => {
+    const { service, orders } = setup();
+    const fraction = Money.fromCentavos(5_800_050);
+    if (!fraction.ok) throw new Error("fixture");
+    for (const fee of [pesos(-1000), fraction.value])
+      expect(await service.requestEnrollment(request(), { fee })).toEqual({
+        ok: false,
+        error: { kind: "invalid-fee" },
+      });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("keeps the period fee when no admin fee is given and never takes one from the input", async () => {
+    const { service } = setup();
+    const tampered = {
+      ...request(),
+      fee: pesos(1),
+    } as unknown as RequestEnrollmentInput;
+    const result = await service.requestEnrollment(tampered);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(58000))).toBe(true);
+    expect(result.value.total.equals(pesos(58000))).toBe(true);
   });
 
   it("normalizes email and phone", async () => {

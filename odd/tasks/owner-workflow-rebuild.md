@@ -242,3 +242,8 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - A full swap between two full turnos is refused both ways.
     - The 0018 student backfill (baseline behaviour) fails when two legacy emails share one phone; the L25 query counts exactly this.
 - L58 (2026-11-16): the native review START of `2c295ae..6cc7d75` (4867 lines) stopped with `lens_context_budget_exceeded`, and no authority was created. The owner was asked whether to split it into 4-5 reviewed slices or skip; verbatim answer: "Saltar esta revisión". Corrections stand on the writer checks, the seam run and the independent verifier (L57). The next review candidate starts at base `6cc7d75`.
+- L59 (2026-11-16, owner, verbatim, answering what an inactive student's new web enrollment does): "Se reactiva sola (Recommended)". Option text: "La inscripción web entra normal y la alumna vuelve a quedar activa. "Inactiva" sirve para ordenar la lista del panel, sin bloquear nada; su historial se conserva."
+  - S3 updated.
+  - Two units are delegated in parallel, with disjoint surfaces:
+    - P1: student deactivate and reactivate, no migration.
+    - A2: a "missed" make-up state, folded into 0018.

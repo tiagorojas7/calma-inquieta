@@ -48,6 +48,7 @@ export function createAttendanceService(
   const { schedule, roster, repository, clock } = deps;
   const newId = deps.newId ?? (() => crypto.randomUUID());
   const notFound = err({ kind: "not-found" as const });
+  const closed = err({ kind: "make-up-closed" as const });
 
   async function findTurno(
     periodId: string,
@@ -234,7 +235,15 @@ export function createAttendanceService(
         doneAt: null,
       };
       const inserted = await repository.insertMakeUp(makeUp);
-      if (!inserted.ok) return inserted;
+      if (!inserted.ok) {
+        // A make-up that was already done or missed was used: no replacement.
+        const existing = (
+          await repository.makeUpsForTurno(input.periodId, input.turnoId)
+        ).find((m) => m.email === email && m.date === input.date);
+        return existing && existing.status !== "pending"
+          ? err({ kind: "make-up-used" as const })
+          : inserted;
+      }
       // The make-up is already stored; the full-turno warning is advisory, so
       // a failed occupancy read must not turn the booking into a failure.
       let targetFull = false;
@@ -293,7 +302,19 @@ export function createAttendanceService(
         by: authorized.value.email,
         at: clock.now(),
       });
-      return done ? ok(done) : notFound;
+      if (!done) return notFound;
+      return done.status === "missed" ? closed : ok(done);
+    },
+
+    async markMakeUpMissed(actor, id) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const missed = await repository.markMakeUpMissed(id, {
+        by: authorized.value.email,
+        at: clock.now(),
+      });
+      if (!missed) return notFound;
+      return missed.status === "done" ? closed : ok(missed);
     },
 
     async studentSummary(actor, email) {
@@ -325,6 +346,7 @@ export function createUnavailableAttendanceService(): AttendanceUseCases {
     scheduleMakeUp: fail,
     listMakeUps: fail,
     completeMakeUp: fail,
+    markMakeUpMissed: fail,
     studentSummary: fail,
   };
 }

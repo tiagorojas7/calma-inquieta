@@ -209,5 +209,72 @@ export function runAttendanceRepositoryContract(
         null,
       );
     });
+
+    it("marks a pending make-up missed with who and when, and lists it by status", async () => {
+      const repo = await create();
+      await repo.insertMakeUp(buildMakeUp());
+      const first = new Date("2026-10-15T12:00:00.000Z");
+
+      const missed = await repo.markMakeUpMissed(MAKEUP_A, {
+        by: "owner@example.com",
+        at: first,
+      });
+
+      expect(missed).toMatchObject({
+        status: "missed",
+        doneBy: "owner@example.com",
+        doneAt: first,
+      });
+      expect((await repo.listMakeUps("missed")).map((m) => m.id)).toEqual([
+        MAKEUP_A,
+      ]);
+      expect(await repo.listMakeUps("pending")).toEqual([]);
+      expect(await repo.listMakeUps("done")).toEqual([]);
+      expect(
+        await repo.markMakeUpMissed(MAKEUP_B, { by: "x", at: first }),
+      ).toBe(null);
+    });
+
+    it("keeps done and missed make-ups as they were when the other action comes", async () => {
+      const repo = await create();
+      await repo.insertMakeUp(buildMakeUp());
+      await repo.insertMakeUp(
+        buildMakeUp({ id: MAKEUP_B, date: "2026-10-12" }),
+      );
+      const first = new Date("2026-10-15T12:00:00.000Z");
+      const later = {
+        by: "other@example.com",
+        at: new Date("2026-10-16T12:00:00.000Z"),
+      };
+      const done = await repo.completeMakeUp(MAKEUP_A, {
+        by: "owner@example.com",
+        at: first,
+      });
+      const missed = await repo.markMakeUpMissed(MAKEUP_B, {
+        by: "owner@example.com",
+        at: first,
+      });
+
+      expect(await repo.markMakeUpMissed(MAKEUP_A, later)).toEqual(done);
+      expect(await repo.completeMakeUp(MAKEUP_B, later)).toEqual(missed);
+      expect(await repo.markMakeUpMissed(MAKEUP_B, later)).toEqual(missed);
+      expect(await repo.listMakeUps("all")).toEqual(
+        expect.arrayContaining([done, missed]),
+      );
+    });
+
+    it("still refuses a second make-up for an absence whose make-up was missed", async () => {
+      const repo = await create();
+      await repo.insertMakeUp(buildMakeUp());
+      await repo.markMakeUpMissed(MAKEUP_A, {
+        by: "owner@example.com",
+        at: new Date("2026-10-15T12:00:00.000Z"),
+      });
+
+      expect(await repo.insertMakeUp(buildMakeUp({ id: MAKEUP_B }))).toEqual({
+        ok: false,
+        error: { kind: "make-up-exists" },
+      });
+    });
   });
 }

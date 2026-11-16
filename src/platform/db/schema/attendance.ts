@@ -79,11 +79,13 @@ export const attendanceMakeUp = pgTable(
     index("attendance_make_up_status_idx").on(table.status, table.makeUpDate),
     check(
       "attendance_make_up_status_check",
-      sql`${table.status} IN ('pending', 'done')`,
+      sql`${table.status} IN ('pending', 'done', 'missed')`,
     ),
+    // `done_by` and `done_at` record whoever closed the make-up, as done or as
+    // missed; a pending one has neither.
     check(
       "attendance_make_up_done_check",
-      sql`(${table.status} = 'done') = (${table.doneAt} IS NOT NULL AND ${table.doneBy} IS NOT NULL)`,
+      sql`(${table.status} IN ('done', 'missed')) = (${table.doneAt} IS NOT NULL AND ${table.doneBy} IS NOT NULL)`,
     ),
     check(
       "attendance_make_up_email_check",

@@ -14,9 +14,11 @@ export type {
 export type {
   AttendanceService,
   MakeUpBooked,
+  MakeUpClosed,
   MakeUpEntry,
   MakeUpInput,
   MakeUpPlanField,
+  MakeUpUsed,
   ScheduledMakeUp,
   SessionRow,
   SessionSheet,

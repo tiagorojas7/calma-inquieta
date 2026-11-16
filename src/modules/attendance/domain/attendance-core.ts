@@ -8,7 +8,11 @@ export function isAttendanceStatus(value: string): value is AttendanceStatus {
   return (ATTENDANCE_STATUSES as readonly string[]).includes(value);
 }
 
-export const MAKE_UP_STATUSES = ["pending", "done"] as const;
+/**
+ * `done` and `missed` close a make-up for good: the student recovered the
+ * class, or did not come and gets no replacement.
+ */
+export const MAKE_UP_STATUSES = ["pending", "done", "missed"] as const;
 export type MakeUpStatus = (typeof MAKE_UP_STATUSES)[number];
 
 export function isMakeUpStatus(value: string): value is MakeUpStatus {

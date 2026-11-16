@@ -115,6 +115,11 @@ async function scheduleMakeUp(
   const error = planned.error;
   if (error.kind === "make-up-exists")
     return rejected({ errors: {}, formError: makeUpErrors.exists });
+  if (error.kind === "make-up-used")
+    return rejected({
+      errors: {},
+      formError: attendanceRulesCopy.errors.makeUpUsed,
+    });
   if (error.kind === "invalid") {
     const errors: Record<string, string> = {};
     for (const issue of error.issues)

@@ -100,6 +100,7 @@ describe("attendance service", () => {
     ).resolves.toEqual(denied);
     await expect(service.listMakeUps(null, "all")).resolves.toEqual(denied);
     await expect(service.completeMakeUp(null, "x")).resolves.toEqual(denied);
+    await expect(service.markMakeUpMissed(null, "x")).resolves.toEqual(denied);
     await expect(service.studentSummary(null, "a@b.co")).resolves.toEqual(
       denied,
     );
@@ -599,6 +600,75 @@ describe("attendance service", () => {
         ok: false,
         error: { kind: "not-found" },
       });
+    });
+
+    it("marks a pending make-up as missed with who and when, and lists it as missed", async () => {
+      const { service, actor } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+
+      const missed = await service.markMakeUpMissed(actor, "makeup-1");
+
+      expect(missed).toMatchObject({
+        ok: true,
+        value: { status: "missed", doneBy: "owner@example.com", doneAt: now },
+      });
+      const listed = await service.listMakeUps(actor, "missed");
+      expect(listed.ok && listed.value.map((m) => m.id)).toEqual(["makeup-1"]);
+      const pending = await service.listMakeUps(actor, "pending");
+      expect(pending).toEqual({ ok: true, value: [] });
+      await expect(service.markMakeUpMissed(actor, "nope")).resolves.toEqual({
+        ok: false,
+        error: { kind: "not-found" },
+      });
+    });
+
+    it("keeps a repeated missed action idempotent and refuses to change a closed make-up", async () => {
+      const { service, actor, repository } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+      const missed = await service.markMakeUpMissed(actor, "makeup-1");
+
+      await expect(
+        service.markMakeUpMissed(actor, "makeup-1"),
+      ).resolves.toEqual(missed);
+      await expect(service.completeMakeUp(actor, "makeup-1")).resolves.toEqual({
+        ok: false,
+        error: { kind: "make-up-closed" },
+      });
+      expect(repository.makeUps.get("makeup-1")).toMatchObject({
+        status: "missed",
+      });
+
+      const other = await withAbsence();
+      await other.service.scheduleMakeUp(other.actor, input);
+      await other.service.completeMakeUp(other.actor, "makeup-1");
+      await expect(
+        other.service.markMakeUpMissed(other.actor, "makeup-1"),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-closed" } });
+      expect(other.repository.makeUps.get("makeup-1")).toMatchObject({
+        status: "done",
+      });
+    });
+
+    it("grants no new make-up once the absence's make-up was missed or done", async () => {
+      const { service, actor, repository } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+      await service.markMakeUpMissed(actor, "makeup-1");
+
+      await expect(service.scheduleMakeUp(actor, input)).resolves.toEqual({
+        ok: false,
+        error: { kind: "make-up-used" },
+      });
+      await expect(
+        service.scheduleMakeUp(actor, { ...input, makeUpDate: "2026-10-21" }),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-used" } });
+      expect(repository.makeUps.size).toBe(1);
+
+      const other = await withAbsence();
+      await other.service.scheduleMakeUp(other.actor, input);
+      await other.service.completeMakeUp(other.actor, "makeup-1");
+      await expect(
+        other.service.scheduleMakeUp(other.actor, input),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-used" } });
     });
   });
 

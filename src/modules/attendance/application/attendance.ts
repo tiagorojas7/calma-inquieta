@@ -72,6 +72,19 @@ export interface ScheduledMakeUp extends StoredMakeUp {
   readonly targetFull: boolean;
 }
 
+/** The make-up is already done or missed, so it cannot be changed. */
+export interface MakeUpClosed {
+  readonly kind: "make-up-closed";
+}
+
+/**
+ * The absence's make-up was already used (done or missed): an absence permits
+ * one make-up, and missing it grants no replacement.
+ */
+export interface MakeUpUsed {
+  readonly kind: "make-up-used";
+}
+
 /** Some absences already have a make-up, so they cannot become presences. */
 export interface MakeUpBooked {
   readonly kind: "make-up-booked";
@@ -117,17 +130,30 @@ export interface AttendanceService {
   ): Promise<
     Result<
       ScheduledMakeUp,
-      AdminFailure | NotFound | Invalid<MakeUpPlanField> | MakeUpExists
+      | AdminFailure
+      | NotFound
+      | Invalid<MakeUpPlanField>
+      | MakeUpExists
+      | MakeUpUsed
     >
   >;
   listMakeUps(
     actor: AdminActor,
     status: MakeUpStatus | "all",
   ): Promise<Result<readonly MakeUpEntry[], AdminFailure>>;
+  /** Done again is returned unchanged; a missed make-up cannot become done. */
   completeMakeUp(
     actor: AdminActor,
     id: string,
-  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound>>;
+  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound | MakeUpClosed>>;
+  /**
+   * The student did not come to the make-up. Missed again is returned
+   * unchanged; a done make-up cannot become missed.
+   */
+  markMakeUpMissed(
+    actor: AdminActor,
+    id: string,
+  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound | MakeUpClosed>>;
   studentSummary(
     actor: AdminActor,
     email: string,

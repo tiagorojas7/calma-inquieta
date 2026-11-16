@@ -2,6 +2,7 @@ import { err, ok, type Result } from "~/modules/_shared";
 import type {
   AttendanceRepository,
   MakeUpExists,
+  MakeUpStatus,
   StoredMakeUp,
   StoredMark,
 } from "~/modules/attendance";
@@ -70,7 +71,7 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
       );
   }
 
-  listMakeUps(status: "pending" | "done" | "all") {
+  listMakeUps(status: MakeUpStatus | "all") {
     return Promise.resolve(
       this.ordered((m) => status === "all" || m.status === status),
     );
@@ -101,12 +102,28 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
     id: string,
     change: { readonly by: string; readonly at: Date },
   ): Promise<StoredMakeUp | null> {
+    return this.closePending(id, "done", change);
+  }
+
+  markMakeUpMissed(
+    id: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
+    return this.closePending(id, "missed", change);
+  }
+
+  /** Only a pending make-up changes; a closed one is returned as it is. */
+  private closePending(
+    id: string,
+    status: "done" | "missed",
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
     const stored = this.makeUps.get(id);
     if (!stored) return Promise.resolve(null);
-    if (stored.status === "done") return Promise.resolve(stored);
+    if (stored.status !== "pending") return Promise.resolve(stored);
     const next: StoredMakeUp = {
       ...stored,
-      status: "done",
+      status,
       doneBy: change.by,
       doneAt: change.at,
     };

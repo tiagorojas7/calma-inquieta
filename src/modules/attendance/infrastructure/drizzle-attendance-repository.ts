@@ -75,6 +75,30 @@ export function createDrizzleAttendanceRepository(
     }
   }
 
+  /** Only a pending make-up changes; a closed one is read back as it is. */
+  function closePending(
+    id: string,
+    status: "done" | "missed",
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
+    return withSession(async (db) => {
+      await db
+        .update(attendanceMakeUp)
+        .set({ status, doneBy: change.by, doneAt: change.at })
+        .where(
+          and(
+            eq(attendanceMakeUp.id, id),
+            eq(attendanceMakeUp.status, "pending"),
+          ),
+        );
+      const [row] = await db
+        .select()
+        .from(attendanceMakeUp)
+        .where(eq(attendanceMakeUp.id, id));
+      return row ? toMakeUp(row) : null;
+    });
+  }
+
   return {
     upsertMarks: (marks) =>
       marks.length === 0
@@ -219,22 +243,8 @@ export function createDrizzleAttendanceRepository(
         return rows.map(toMakeUp);
       }),
 
-    completeMakeUp: (id, change) =>
-      withSession(async (db) => {
-        await db
-          .update(attendanceMakeUp)
-          .set({ status: "done", doneBy: change.by, doneAt: change.at })
-          .where(
-            and(
-              eq(attendanceMakeUp.id, id),
-              eq(attendanceMakeUp.status, "pending"),
-            ),
-          );
-        const [row] = await db
-          .select()
-          .from(attendanceMakeUp)
-          .where(eq(attendanceMakeUp.id, id));
-        return row ? toMakeUp(row) : null;
-      }),
+    completeMakeUp: (id, change) => closePending(id, "done", change),
+
+    markMakeUpMissed: (id, change) => closePending(id, "missed", change),
   };
 }

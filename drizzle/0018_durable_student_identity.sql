@@ -153,3 +153,8 @@ CREATE TABLE "order_correction" (
 );
 --> statement-breakpoint
 ALTER TABLE "order_correction" ADD CONSTRAINT "order_correction_order_id_enrollment_order_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."enrollment_order"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "attendance_make_up" DROP CONSTRAINT "attendance_make_up_status_check";--> statement-breakpoint
+ALTER TABLE "attendance_make_up" ADD CONSTRAINT "attendance_make_up_status_check" CHECK ("attendance_make_up"."status" IN ('pending', 'done', 'missed'));--> statement-breakpoint
+ALTER TABLE "attendance_make_up" DROP CONSTRAINT "attendance_make_up_done_check";--> statement-breakpoint
+ALTER TABLE "attendance_make_up" ADD CONSTRAINT "attendance_make_up_done_check" CHECK (("attendance_make_up"."status" IN ('done', 'missed')) = ("attendance_make_up"."done_at" IS NOT NULL AND "attendance_make_up"."done_by" IS NOT NULL));

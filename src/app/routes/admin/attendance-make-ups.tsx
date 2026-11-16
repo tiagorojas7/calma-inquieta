@@ -22,25 +22,42 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!listed.ok) throw failureResponse(listed.error);
   return {
     ...makeUpsView(listed.value),
-    feedback: feedbackCode(request, ["completed"]),
+    feedback: feedbackCode(request, ["completed", "missed", "closed"]),
   };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData().catch(() => null);
-  if (form === null || form.get("intent") !== "complete")
+  const intent = form?.get("intent");
+  if (form === null || (intent !== "complete" && intent !== "missed"))
     throw data(null, { status: 400 });
   const id = form.get("id");
   if (typeof id !== "string" || !isUuid(id)) throw data(null, { status: 404 });
-  const done = await context
-    .get(servicesContext)
-    .attendance.completeMakeUp(actor, id);
-  if (!done.ok) throw failureResponse(done.error);
-  return redirect(withFeedback(PATH, "completed"));
+  const { attendance } = context.get(servicesContext);
+  const closed =
+    intent === "complete"
+      ? await attendance.completeMakeUp(actor, id)
+      : await attendance.markMakeUpMissed(actor, id);
+  if (!closed.ok) {
+    if (closed.error.kind === "make-up-closed")
+      return redirect(withFeedback(PATH, "closed"));
+    throw failureResponse(closed.error);
+  }
+  return redirect(
+    withFeedback(PATH, intent === "complete" ? "completed" : "missed"),
+  );
 }
 
 export default function AdminAttendanceMakeUps() {
   const { feedback, ...lists } = useLoaderData<typeof loader>();
-  return <MakeUpsList {...lists} completed={feedback === "completed"} />;
+  return (
+    <MakeUpsList
+      {...lists}
+      completed={feedback === "completed"}
+      notice={
+        feedback === "missed" || feedback === "closed" ? feedback : undefined
+      }
+    />
+  );
 }

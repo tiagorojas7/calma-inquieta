@@ -168,11 +168,11 @@
                                                      "checkConstraints":  {
                                                                               "attendance_make_up_status_check":  {
                                                                                                                       "name":  "attendance_make_up_status_check",
-                                                                                                                      "value":  "\"attendance_make_up\".\"status\" IN (\u0027pending\u0027, \u0027done\u0027)"
+                                                                                                                      "value":  "\"attendance_make_up\".\"status\" IN (\u0027pending\u0027, \u0027done\u0027, \u0027missed\u0027)"
                                                                                                                   },
                                                                               "attendance_make_up_done_check":  {
                                                                                                                     "name":  "attendance_make_up_done_check",
-                                                                                                                    "value":  "(\"attendance_make_up\".\"status\" = \u0027done\u0027) = (\"attendance_make_up\".\"done_at\" IS NOT NULL AND \"attendance_make_up\".\"done_by\" IS NOT NULL)"
+                                                                                                                    "value":  "(\"attendance_make_up\".\"status\" IN (\u0027done\u0027, \u0027missed\u0027)) = (\"attendance_make_up\".\"done_at\" IS NOT NULL AND \"attendance_make_up\".\"done_by\" IS NOT NULL)"
                                                                                                                 },
                                                                               "attendance_make_up_email_check":  {
                                                                                                                      "name":  "attendance_make_up_email_check",

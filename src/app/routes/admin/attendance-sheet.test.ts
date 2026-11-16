@@ -321,6 +321,25 @@ describe("admin attendance sheet make-up classes", () => {
     });
   });
 
+  it("answers 422 with the used-make-up message once the make-up was missed", async () => {
+    const { save, service, repository } = await withAbsence();
+    await save(makeUp());
+    const actor = { kind: "admin-actor" as const, email: "a@x.test" };
+    await service.markMakeUpMissed(
+      actor,
+      [...repository.makeUps.keys()][0] ?? "",
+    );
+
+    const result = (await save(makeUp())) as {
+      data: { makeUp: { formError: string } };
+    };
+
+    expect(result.data.makeUp.formError).toBe(
+      "La recuperación de esta ausencia ya se usó. Una ausencia tiene una sola recuperación.",
+    );
+    expect(repository.makeUps.size).toBe(1);
+  });
+
   it("answers 422 when the absence already has a make-up", async () => {
     const { save } = await withAbsence();
     await save(makeUp());

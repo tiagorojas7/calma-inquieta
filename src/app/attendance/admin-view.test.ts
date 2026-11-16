@@ -216,6 +216,30 @@ describe("sheetView", () => {
   });
 });
 
+describe("sheetView make-up state", () => {
+  it("labels a missed make-up on the absence's row", () => {
+    const view = sheetView({
+      turno: turno(),
+      date: "2026-10-05",
+      rows: [
+        {
+          email: "ana@example.com",
+          name: "Ana Pérez",
+          orderNumber: "CI-1",
+          feePaid: true,
+          status: "absent",
+          makeUp: { id: "m1", status: "missed" },
+        },
+      ],
+    });
+
+    expect(view.rows[0]?.makeUp).toEqual({
+      status: "missed",
+      label: "Recuperación: no vino",
+    });
+  });
+});
+
 describe("turnoOptions", () => {
   it("offers only other turnos of the same workshop as period:turno", () => {
     const own = turnos[0] as ScheduledTurno;
@@ -326,6 +350,26 @@ describe("makeUpsView", () => {
         absence: "Cerámica, Lunes tarde · Lunes 05/10/2026",
         makeUp: "Cerámica, Miércoles · Miércoles 14/10/2026",
         doneNote: "Realizada el 15/10/2026 12:00 (owner@example.com)",
+      },
+    ]);
+  });
+
+  it("lists missed make-ups apart, with who marked them and when", () => {
+    const view = makeUpsView([
+      entry({
+        id: "m3",
+        status: "missed",
+        doneBy: "owner@example.com",
+        doneAt: new Date("2026-10-15T15:00:00Z"),
+      }),
+    ]);
+
+    expect(view.pending).toEqual([]);
+    expect(view.done).toEqual([]);
+    expect(view.missed).toMatchObject([
+      {
+        id: "m3",
+        doneNote: "No vino. Lo marcó owner@example.com el 15/10/2026 12:00",
       },
     ]);
   });

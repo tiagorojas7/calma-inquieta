@@ -15,7 +15,7 @@ export interface AttendanceSheetRow {
   readonly feePaid: boolean;
   readonly status: "present" | "absent" | null;
   readonly makeUp: {
-    readonly status: "pending" | "done";
+    readonly status: "pending" | "done" | "missed";
     readonly label: string;
   } | null;
 }

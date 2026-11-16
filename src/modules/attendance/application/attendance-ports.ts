@@ -71,6 +71,7 @@ export interface StoredMakeUp {
   readonly status: MakeUpStatus;
   readonly createdBy: string;
   readonly createdAt: Date;
+  /** Who closed the make-up as done or missed, and when; `null` while pending. */
   readonly doneBy: string | null;
   readonly doneAt: Date | null;
 }
@@ -109,10 +110,19 @@ export interface AttendanceRepository {
     turnoId: string,
   ): Promise<readonly StoredMakeUp[]>;
   /**
-   * Marks a pending make-up done. A done one is returned unchanged; `null`
-   * when the id is unknown.
+   * Marks a pending make-up done. A done or missed one is returned unchanged;
+   * `null` when the id is unknown.
    */
   completeMakeUp(
+    id: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null>;
+  /**
+   * Marks a pending make-up as missed: the student did not come. `by` and `at`
+   * are stored in the same closing fields `done` uses. A done or missed one is
+   * returned unchanged; `null` when the id is unknown.
+   */
+  markMakeUpMissed(
     id: string,
     change: { readonly by: string; readonly at: Date },
   ): Promise<StoredMakeUp | null>;

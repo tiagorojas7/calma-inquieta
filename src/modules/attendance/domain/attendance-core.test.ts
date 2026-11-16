@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isAttendanceStatus,
+  isMakeUpStatus,
   summarizeAttendance,
   validateMakeUpPlan,
 } from "./attendance-core";
@@ -10,6 +11,15 @@ describe("isAttendanceStatus", () => {
     expect(isAttendanceStatus("present")).toBe(true);
     expect(isAttendanceStatus("absent")).toBe(true);
     expect(isAttendanceStatus("late")).toBe(false);
+  });
+});
+
+describe("isMakeUpStatus", () => {
+  it("knows pending, done and missed only", () => {
+    expect(isMakeUpStatus("pending")).toBe(true);
+    expect(isMakeUpStatus("done")).toBe(true);
+    expect(isMakeUpStatus("missed")).toBe(true);
+    expect(isMakeUpStatus("cancelled")).toBe(false);
   });
 });
 

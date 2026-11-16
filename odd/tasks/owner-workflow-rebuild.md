@@ -141,3 +141,23 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Parent checks: scope inside the allowed surfaces; spot check 16/16. Seam run at `6c2c187`: `--project unit` 292 files / 3340 passed (198 s); `--project ui` 123 files / 1040 passed (107 s).
   - Follow-up: the form hardcodes quantities 1-20, while the server uses `MAX_LINE_QUANTITY`.
   - Independent verifier launched for item 3, the public path differential.
+- L46 (2026-11-16): read-only map of S3 and S7 (explorer).
+  - S3 is mostly missing:
+    - There is no refunded state, correction or reopen to pending. Cancel releases the seat but is refused once materials are requested.
+    - There is no sale concept, so post-payment sales depend on T2.
+    - `student.active` exists but nothing reads or toggles it; the students module still derives students from orders by email.
+  - S7, implemented:
+    - Pending students appear on the roster but cannot be marked.
+    - One make-up per absence (unique index).
+  - S7, missing (no migration):
+    - The make-up target is not restricted to another turno of the same workshop; `attendance-sheet.test.ts:159` pins "offers every scheduled turno".
+    - There is no full-turno warning.
+  - S7, missing (with migration): there is no "missed" make-up state.
+  - Defect: re-saving a class deletes every mark of the session and re-inserts only the current paid roster, so a mark of a since-cancelled or moved student is erased.
+  - Planned units:
+    - A1: make-up target rules, full-turno warning and history-safe saving (no migration).
+    - A2: missed make-up state.
+    - R1: refunds.
+    - C1 and C2: corrections.
+    - P1: student deactivate and reactivate.
+    - S1: post-payment sales, after T2.

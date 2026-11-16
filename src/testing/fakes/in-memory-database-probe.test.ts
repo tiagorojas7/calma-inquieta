@@ -9,7 +9,7 @@ import { inMemoryDatabaseProbe } from "./in-memory-database-probe";
 const results: Record<ProbeScenario, DatabaseProbeResult> = {
   migrated: {
     reachable: true,
-    latestMigration: "0017_material_price_on_request",
+    latestMigration: "0018_durable_student_identity",
   },
   empty: { reachable: true, latestMigration: null },
   unreachable: { reachable: false },

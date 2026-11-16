@@ -23,8 +23,11 @@ import type {
 import type { SeatLedger } from "~/modules/enrollments/application/seat-ledger";
 import {
   checkPaymentAmount,
+  checkRefund,
   confirmOutcome,
   cancelOutcome,
+  cordobaDateOf,
+  cordobaDayStart,
   transition,
   type IllegalTransition,
   type OrderStatus,
@@ -236,6 +239,14 @@ export class InMemoryOrderRepository implements OrderRepository {
             paymentNote: context.note,
           }
         : {}),
+      ...(context.refund
+        ? {
+            refund: {
+              ...context.refund,
+              refundedBy: context.actor,
+            },
+          }
+        : {}),
     };
     return Promise.resolve(ok(row.order));
   }
@@ -347,12 +358,33 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
         if (!order) return err({ kind: "not-found" });
         const outcome = cancelOutcome(order.status);
         if (outcome === "already-cancelled") return ok({ kind: outcome });
-        if (outcome === "illegal")
-          return err({
-            kind: "illegal-transition",
-            from: order.status,
-            to: "cancelled",
-          });
+        const refund = input.refund;
+        const checked = checkRefund(
+          {
+            status: order.status,
+            ...(order.paidAmount === undefined
+              ? {}
+              : { paidAmount: order.paidAmount }),
+            ...(order.paidAt === undefined
+              ? {}
+              : { paidOn: cordobaDateOf(order.paidAt) }),
+          },
+          refund === undefined
+            ? undefined
+            : { amount: refund.amount, on: refund.refundedOn },
+          cordobaDateOf(input.now),
+        );
+        if (!checked.ok) return checked;
+        const recorded =
+          refund === undefined
+            ? {}
+            : {
+                refund: {
+                  amount: refund.amount,
+                  refundedAt: cordobaDayStart(refund.refundedOn),
+                  ...(refund.note === undefined ? {} : { note: refund.note }),
+                },
+              };
         if (outcome === "cancel-release") {
           return await this.atomic(
             `seat:${order.periodId}:${order.turnoId}`,
@@ -366,6 +398,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                     actor: input.actor.email,
                     at: input.now,
                     note: input.reason,
+                    ...recorded,
                   },
                 );
                 if (moved.ok) return ok({ kind: "cancelled" });
@@ -390,6 +423,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
           actor: input.actor.email,
           at: input.now,
           note: input.reason,
+          ...recorded,
         });
         return moved.ok ? ok({ kind: "cancelled" }) : moved;
       } catch {

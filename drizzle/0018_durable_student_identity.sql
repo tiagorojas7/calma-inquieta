@@ -47,3 +47,28 @@ CREATE UNIQUE INDEX "enrollment_order_student_period_active_unique" ON "enrollme
 ALTER TABLE "enrollment_order" DROP CONSTRAINT "enrollment_order_fee_check";
 --> statement-breakpoint
 ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_fee_check" CHECK ("enrollment_order"."fee_centavos" >= 0);
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "refunded_amount_centavos" bigint;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "refunded_at" timestamp with time zone;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "refund_note" text;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "refunded_by" text;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_refund_whole_pesos_check" CHECK ("enrollment_order"."refunded_amount_centavos" IS NULL OR "enrollment_order"."refunded_amount_centavos" % 100 = 0);
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_refund_bounds_check" CHECK ("enrollment_order"."refunded_amount_centavos" IS NULL
+          OR ("enrollment_order"."refunded_amount_centavos" >= 0
+            AND "enrollment_order"."paid_amount_centavos" IS NOT NULL
+            AND "enrollment_order"."refunded_amount_centavos" <= "enrollment_order"."paid_amount_centavos"));
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_refund_state_check" CHECK (("enrollment_order"."refunded_amount_centavos" IS NULL
+            AND "enrollment_order"."refunded_at" IS NULL
+            AND "enrollment_order"."refunded_by" IS NULL
+            AND "enrollment_order"."refund_note" IS NULL)
+          OR ("enrollment_order"."status" = 'cancelled'
+            AND "enrollment_order"."paid_at" IS NOT NULL
+            AND "enrollment_order"."refunded_amount_centavos" IS NOT NULL
+            AND "enrollment_order"."refunded_at" IS NOT NULL
+            AND "enrollment_order"."refunded_by" IS NOT NULL));

@@ -551,6 +551,7 @@ describe("admin enrollment service", () => {
       closedService.cancel(admin, {
         orderId: paid.order.id,
         reason: "closed period cancellation",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({
       ok: true,
@@ -560,6 +561,7 @@ describe("admin enrollment service", () => {
       closedService.cancel(admin, {
         orderId: paid.order.id,
         reason: "closed period cancellation",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({
       ok: true,
@@ -581,15 +583,162 @@ describe("admin enrollment service", () => {
     await expect(
       material.service.cancel(admin, {
         orderId: withLines.id,
-        reason: "too late",
+        reason: "materials already requested",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
-    ).resolves.toEqual({
+    ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+    expect(
+      await material.seats.confirmedSeats(
+        withLines.periodId,
+        withLines.turnoId,
+      ),
+    ).toBe(0);
+  });
+
+  describe("refunds", () => {
+    const paidFixture = async () => {
+      const paid = await fixture();
+      await paid.service.confirmPayment(admin, {
+        orderId: paid.order.id,
+        ...payment,
+      });
+      return paid;
+    };
+    const cancelWith = (
+      paid: Awaited<ReturnType<typeof paidFixture>>,
+      refund: { amount: string; refundedOn: string; note?: string },
+    ) =>
+      paid.service.cancel(admin, {
+        orderId: paid.order.id,
+        reason: "changed plans",
+        refund,
+      });
+    const refused = (
+      field: "amount" | "refundedOn" | "note",
+      code: string,
+    ) => ({
       ok: false,
-      error: {
-        kind: "illegal-transition",
-        from: "materials_requested",
-        to: "cancelled",
+      error: { kind: "invalid-refund", field, code },
+    });
+
+    it.each(["0", "25000", "58.000"])(
+      "accepts a refund of %s pesos and records who returned it",
+      async (amount) => {
+        const paid = await paidFixture();
+
+        await expect(
+          cancelWith(paid, {
+            amount,
+            refundedOn: "2026-10-31",
+            note: "  transfer back  ",
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+
+        const stored = await paid.orders.findForAdmin(paid.order.id);
+        expect(stored?.refund).toEqual({
+          amount: pesos(Number(amount.replace(".", ""))),
+          refundedAt: new Date("2026-10-31T03:00:00.000Z"),
+          note: "transfer back",
+          refundedBy: admin.email,
+        });
+        expect(stored?.paidAmount).toEqual(pesos(58000));
+        await expect(
+          paid.seats.confirmedSeats(paid.order.periodId, paid.order.turnoId),
+        ).resolves.toBe(0);
       },
+    );
+
+    it.each([
+      ["", "required"],
+      ["-5", "invalid-format"],
+      ["abc", "invalid-format"],
+      ["100,50", "not-whole-pesos"],
+      ["100.5", "not-whole-pesos"],
+      ["99999999999999999999", "out-of-range"],
+    ])("refuses the typed amount %j", async (amount, code) => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount, refundedOn: "2026-10-31" }),
+      ).resolves.toEqual(refused("amount", code));
+      await expect(
+        paid.orders.findForAdmin(paid.order.id),
+      ).resolves.toMatchObject({ status: "paid" });
+    });
+
+    it("refuses a refund above what was paid", async () => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount: "58001", refundedOn: "2026-10-31" }),
+      ).resolves.toEqual(refused("amount", "above-paid"));
+    });
+
+    it.each([
+      ["2026-02-30", "invalid-calendar-date"],
+      ["31/10/2026", "invalid-calendar-date"],
+      ["2026-11-01", "future-date"],
+      ["2026-10-30", "before-payment"],
+    ])("refuses the refund date %s", async (refundedOn, code) => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount: "100", refundedOn }),
+      ).resolves.toEqual(refused("refundedOn", code));
+    });
+
+    it("refuses a note over 300 characters", async () => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, {
+          amount: "100",
+          refundedOn: "2026-10-31",
+          note: "x".repeat(301),
+        }),
+      ).resolves.toEqual(refused("note", "too-long"));
+    });
+
+    it("needs a refund to cancel a paid order and records none for a pending one", async () => {
+      const paid = await paidFixture();
+      await expect(
+        paid.service.cancel(admin, {
+          orderId: paid.order.id,
+          reason: "changed plans",
+        }),
+      ).resolves.toEqual(refused("amount", "required"));
+
+      const pending = await fixture();
+      await expect(
+        pending.service.cancel(admin, {
+          orderId: pending.order.id,
+          reason: "changed mind",
+        }),
+      ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+      expect(
+        (await pending.orders.findForAdmin(pending.order.id))?.refund,
+      ).toBeUndefined();
+
+      const other = await fixture();
+      await expect(
+        other.service.cancel(admin, {
+          orderId: other.order.id,
+          reason: "changed mind",
+          refund: { amount: "0", refundedOn: "2026-10-31" },
+        }),
+      ).resolves.toEqual(refused("amount", "not-refundable"));
+    });
+
+    it("keeps the first refund when the cancellation is repeated", async () => {
+      const paid = await paidFixture();
+      await cancelWith(paid, { amount: "100", refundedOn: "2026-10-31" });
+
+      await expect(
+        cancelWith(paid, { amount: "58000", refundedOn: "2026-10-31" }),
+      ).resolves.toEqual({ ok: true, value: { kind: "already-cancelled" } });
+      expect(
+        (await paid.orders.findForAdmin(paid.order.id))?.refund?.amount,
+      ).toEqual(pesos(100));
     });
   });
 
@@ -932,6 +1081,7 @@ describe("admin enrollment service", () => {
       service.cancel(admin, {
         orderId: paid.order.id,
         reason: "changed plans",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     await expect(paid.orders.findForAdmin(paid.order.id)).resolves.toEqual(
@@ -980,6 +1130,7 @@ describe("admin enrollment service", () => {
       service.cancel(admin, {
         orderId: paid.order.id,
         reason: "changed plans",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     expect(releases).toBe(1);
@@ -1029,6 +1180,7 @@ describe("admin enrollment service", () => {
     const cancellation = service.cancel(admin, {
       orderId: paid.order.id,
       reason: "changed plans",
+      refund: { amount: "58000", refundedOn: "2026-10-31" },
     });
     await entered;
     const confirmation = service.confirmPayment(admin, {

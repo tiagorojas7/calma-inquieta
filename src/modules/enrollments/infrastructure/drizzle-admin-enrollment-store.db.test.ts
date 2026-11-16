@@ -266,6 +266,7 @@ describe("DrizzleAdminEnrollmentStore PostgreSQL probes", () => {
       harness.store.cancel({
         orderId: order.id,
         reason: "changed plans",
+        refund: { amount: order.total, refundedOn: "2026-10-31" },
         actor,
         now,
       }),

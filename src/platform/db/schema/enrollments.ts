@@ -85,6 +85,13 @@ export const enrollmentOrder = pgTable(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
     cancelledBy: text("cancelled_by"),
+    // The refund of a cancelled paid order; the payment fields above stay as history.
+    refundedAmountCentavos: bigint("refunded_amount_centavos", {
+      mode: "number",
+    }),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundNote: text("refund_note"),
+    refundedBy: text("refunded_by"),
   },
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
@@ -140,6 +147,29 @@ export const enrollmentOrder = pgTable(
             AND ${table.paidAmountCentavos} IS NOT NULL)
           OR (${table.status} = 'cancelled'
             AND (${table.paidAt} IS NULL) = (${table.paidAmountCentavos} IS NULL))`,
+    ),
+    check(
+      "enrollment_order_refund_whole_pesos_check",
+      sql`${table.refundedAmountCentavos} IS NULL OR ${table.refundedAmountCentavos} % 100 = 0`,
+    ),
+    check(
+      "enrollment_order_refund_bounds_check",
+      sql`${table.refundedAmountCentavos} IS NULL
+          OR (${table.refundedAmountCentavos} >= 0
+            AND ${table.paidAmountCentavos} IS NOT NULL
+            AND ${table.refundedAmountCentavos} <= ${table.paidAmountCentavos})`,
+    ),
+    check(
+      "enrollment_order_refund_state_check",
+      sql`(${table.refundedAmountCentavos} IS NULL
+            AND ${table.refundedAt} IS NULL
+            AND ${table.refundedBy} IS NULL
+            AND ${table.refundNote} IS NULL)
+          OR (${table.status} = 'cancelled'
+            AND ${table.paidAt} IS NOT NULL
+            AND ${table.refundedAmountCentavos} IS NOT NULL
+            AND ${table.refundedAt} IS NOT NULL
+            AND ${table.refundedBy} IS NOT NULL)`,
     ),
   ],
 );

@@ -1,6 +1,11 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import {
+  cancelRefundValues,
+  parseCancelRefund,
+  refundFieldError,
+} from "~/app/admin/enrollment-cancel-form-data";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import {
@@ -80,6 +85,23 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
           note: order.paymentNote ?? null,
         }
       : null,
+    cancelRefund:
+      paid && order.status !== "cancelled"
+        ? {
+            paid: formatPesos(order.paidAmount),
+            paidPesos: String(order.paidAmount.toCentavos() / 100),
+          }
+        : null,
+    refund: order.refund
+      ? {
+          amount: formatPesos(order.refund.amount),
+          refundedOn: dateLabel(
+            order.refund.refundedAt.toISOString().slice(0, 10),
+          ),
+          note: order.refund.note ?? null,
+          refundedBy: order.refund.refundedBy,
+        }
+      : null,
     seat: order.seat,
     audit: order.audit.map((entry) => ({
       at: dateTimeLabel(entry.at),
@@ -90,8 +112,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     })),
     actions: {
       confirm: order.status === "pending_confirmation",
-      cancel:
-        order.status === "pending_confirmation" || order.status === "paid",
+      cancel: order.status !== "cancelled",
       materialsRequested: order.status === "paid" && order.lines.length > 0,
       materialsReceived: order.status === "materials_requested",
     },
@@ -112,10 +133,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     redirect(withFeedback(`/admin/inscripciones/${orderId}`, code));
 
   if (intent.kind === "confirm" || intent.kind === "cancel") {
+    const refund =
+      intent.kind === "cancel" ? parseCancelRefund(form) : undefined;
     const values =
       intent.kind === "confirm"
         ? { amount: intent.amount, paidOn: intent.paidOn, note: intent.note }
-        : { reason: intent.reason };
+        : { reason: intent.reason, ...cancelRefundValues(form) };
     const result =
       intent.kind === "confirm"
         ? await enrollments.confirmPayment(actor, {
@@ -124,11 +147,20 @@ export async function action({ request, context, params }: Route.ActionArgs) {
             paidOn: intent.paidOn,
             ...(intent.note === "" ? {} : { note: intent.note }),
           })
-        : await enrollments.cancel(actor, { orderId, reason: intent.reason });
+        : await enrollments.cancel(actor, {
+            orderId,
+            reason: intent.reason,
+            ...(refund === undefined ? {} : { refund }),
+          });
     if (!result.ok) {
       if (result.error.kind === "invalid")
         return data(
           { errors: enrollmentFieldErrors(result.error.issues), values },
+          { status: 422 },
+        );
+      if (result.error.kind === "invalid-refund")
+        return data(
+          { errors: refundFieldError(result.error), values },
           { status: 422 },
         );
       const message = enrollmentRefusalMessage(result.error);

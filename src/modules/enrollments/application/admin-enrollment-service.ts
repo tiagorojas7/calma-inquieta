@@ -6,6 +6,11 @@ import {
   type Result,
 } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
+import {
+  type InvalidRefund,
+  type RefundField,
+  type RefundIssueCode,
+} from "../domain/order-core";
 import type {
   AdminEnrollmentDetail,
   AdminEnrollmentStore,
@@ -57,10 +62,22 @@ export interface ConfirmPaymentInput {
   readonly paidOn: string;
   readonly note?: string;
 }
+/** What a paid order's cancellation records, as the form typed it. */
+export interface CancelRefundInput {
+  /** Whole pesos returned, from 0 up to what was paid. */
+  readonly amount: string;
+  /** Córdoba `YYYY-MM-DD`. */
+  readonly refundedOn: string;
+  readonly note?: string;
+}
 export interface CancelEnrollmentInput {
   readonly orderId: string;
   readonly reason: string;
+  /** Required for an order in a paid state, absent for a pending one. */
+  readonly refund?: CancelRefundInput;
 }
+
+const REFUND_NOTE_MAX = 300;
 export type BulkOutcomes = readonly {
   readonly orderId: string;
   readonly result: Result<void, AdminEnrollmentError>;
@@ -125,6 +142,34 @@ const invalid = (field: "amount" | "paidOn" | "reason", code: string) =>
   err({ kind: "invalid" as const, issues: [{ field, code }] });
 const calendarDate = (value: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(value) && cordobaDate(paidAt(value)) === value;
+const invalidRefund = (field: RefundField, code: RefundIssueCode) =>
+  err<InvalidRefund>({ kind: "invalid-refund", field, code });
+
+/** The syntax of a typed refund; the bounds against the payment are the store's. */
+function parseRefund(
+  refund: CancelRefundInput,
+): Result<{ amount: Money; refundedOn: string; note?: string }, InvalidRefund> {
+  const amount = parseWholePesos(refund.amount);
+  if (!amount.ok)
+    return invalidRefund(
+      "amount",
+      refund.amount.includes(",") || refund.amount.includes(".")
+        ? "not-whole-pesos"
+        : amount.error,
+    );
+  if (!calendarDate(refund.refundedOn))
+    return invalidRefund("refundedOn", "invalid-calendar-date");
+  const note = refund.note?.trim() ?? "";
+  if (note.length > REFUND_NOTE_MAX) return invalidRefund("note", "too-long");
+  return {
+    ok: true,
+    value: {
+      amount: amount.value,
+      refundedOn: refund.refundedOn,
+      ...(note === "" ? {} : { note }),
+    },
+  };
+}
 
 export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCases {
   const unavailableFor = (
@@ -233,9 +278,13 @@ export function createAdminEnrollmentService(
       const reason = input.reason.trim();
       if (reason.length < 3 || reason.length > 300)
         return invalid("reason", reason.length < 3 ? "required" : "too-long");
+      const refund =
+        input.refund === undefined ? undefined : parseRefund(input.refund);
+      if (refund !== undefined && !refund.ok) return refund;
       return deps.store.cancel({
         orderId: input.orderId,
         reason,
+        ...(refund === undefined ? {} : { refund: refund.value }),
         actor: admin.value,
         now: deps.clock.now(),
       });

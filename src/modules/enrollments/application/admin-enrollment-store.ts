@@ -1,5 +1,9 @@
 import { err, type Money, type Result } from "~/modules/_shared";
-import type { IllegalTransition, TurnoFull } from "../domain/order-core";
+import type {
+  IllegalTransition,
+  InvalidRefund,
+  TurnoFull,
+} from "../domain/order-core";
 import type { PeriodClosed, PeriodStatus } from "../domain/period-window";
 import type {
   AuditEntry,
@@ -13,7 +17,8 @@ export type AdminEnrollmentStoreError =
   | { readonly kind: "amount-mismatch" }
   | PeriodClosed
   | TurnoFull
-  | IllegalTransition;
+  | IllegalTransition
+  | InvalidRefund;
 
 export type AdminEnrollmentActor = { readonly email: string };
 export type Confirmed =
@@ -83,9 +88,20 @@ export interface AdminEnrollmentStore {
     readonly actor: AdminEnrollmentActor;
     readonly now: Date;
   }): Promise<Result<Confirmed, AdminEnrollmentStoreError>>;
+  /**
+   * Cancels the order. A paid one (any paid state) releases its seat and must
+   * carry the refund (from $0 up to what was paid, dated from the payment day
+   * to today); a pending one carries none. Either way history stays.
+   */
   cancel(input: {
     readonly orderId: string;
     readonly reason: string;
+    readonly refund?: {
+      readonly amount: Money;
+      /** Córdoba `YYYY-MM-DD`. */
+      readonly refundedOn: string;
+      readonly note?: string;
+    };
     readonly actor: AdminEnrollmentActor;
     readonly now: Date;
   }): Promise<Result<Cancelled, AdminEnrollmentStoreError>>;

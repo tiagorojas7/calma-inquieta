@@ -462,7 +462,31 @@
                                                                                       "type":  "uuid",
                                                                                       "primaryKey":  false,
                                                                                       "notNull":  true
-                                                                                  }
+                                                                                  },
+                                                                   "refunded_amount_centavos":  {
+                                                                                                    "name":  "refunded_amount_centavos",
+                                                                                                    "type":  "bigint",
+                                                                                                    "primaryKey":  false,
+                                                                                                    "notNull":  false
+                                                                                                },
+                                                                   "refunded_at":  {
+                                                                                       "name":  "refunded_at",
+                                                                                       "type":  "timestamp with time zone",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  false
+                                                                                   },
+                                                                   "refund_note":  {
+                                                                                       "name":  "refund_note",
+                                                                                       "type":  "text",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  false
+                                                                                   },
+                                                                   "refunded_by":  {
+                                                                                       "name":  "refunded_by",
+                                                                                       "type":  "text",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  false
+                                                                                   }
                                                                },
                                                    "indexes":  {
                                                        "enrollment_order_student_period_active_unique": {
@@ -569,7 +593,19 @@
                                                                             "enrollment_order_paid_state_check":  {
                                                                                                                       "name":  "enrollment_order_paid_state_check",
                                                                                                                       "value":  "(\"enrollment_order\".\"status\" = \u0027pending_confirmation\u0027\n            AND \"enrollment_order\".\"paid_at\" IS NULL\n            AND \"enrollment_order\".\"paid_amount_centavos\" IS NULL)\n          OR (\"enrollment_order\".\"status\" IN (\u0027paid\u0027, \u0027materials_requested\u0027, \u0027materials_received\u0027)\n            AND \"enrollment_order\".\"paid_at\" IS NOT NULL\n            AND \"enrollment_order\".\"paid_amount_centavos\" IS NOT NULL)\n          OR (\"enrollment_order\".\"status\" = \u0027cancelled\u0027\n            AND (\"enrollment_order\".\"paid_at\" IS NULL) = (\"enrollment_order\".\"paid_amount_centavos\" IS NULL))"
-                                                                                                                  }
+                                                                                                                  },
+                                                                            "enrollment_order_refund_whole_pesos_check":  {
+                                                                                                                              "name":  "enrollment_order_refund_whole_pesos_check",
+                                                                                                                              "value":  "\"enrollment_order\".\"refunded_amount_centavos\" IS NULL OR \"enrollment_order\".\"refunded_amount_centavos\" % 100 = 0"
+                                                                                                                          },
+                                                                            "enrollment_order_refund_bounds_check":  {
+                                                                                                                         "name":  "enrollment_order_refund_bounds_check",
+                                                                                                                         "value":  "\"enrollment_order\".\"refunded_amount_centavos\" IS NULL\n          OR (\"enrollment_order\".\"refunded_amount_centavos\" >= 0\n            AND \"enrollment_order\".\"paid_amount_centavos\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_amount_centavos\" <= \"enrollment_order\".\"paid_amount_centavos\")"
+                                                                                                                     },
+                                                                            "enrollment_order_refund_state_check":  {
+                                                                                                                        "name":  "enrollment_order_refund_state_check",
+                                                                                                                        "value":  "(\"enrollment_order\".\"refunded_amount_centavos\" IS NULL\n            AND \"enrollment_order\".\"refunded_at\" IS NULL\n            AND \"enrollment_order\".\"refunded_by\" IS NULL\n            AND \"enrollment_order\".\"refund_note\" IS NULL)\n          OR (\"enrollment_order\".\"status\" = 'cancelled'\n            AND \"enrollment_order\".\"paid_at\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_amount_centavos\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_at\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_by\" IS NOT NULL)"
+                                                                                                                    }
                                                                         },
                                                    "isRLSEnabled":  false
                                                },

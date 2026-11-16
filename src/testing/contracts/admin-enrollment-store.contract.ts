@@ -41,10 +41,26 @@ const confirm = (
     now,
   });
 
-const cancel = (store: AdminEnrollmentStore, order: StoredOrder) =>
+type CancelInput = Parameters<AdminEnrollmentStore["cancel"]>[0];
+
+/** A refund of the whole payment, dated the day of the contract clock. */
+const fullRefund = (
+  order: StoredOrder,
+): NonNullable<CancelInput["refund"]> => ({
+  amount: order.total,
+  refundedOn: "2026-10-31",
+  note: "returned in cash",
+});
+
+const cancel = (
+  store: AdminEnrollmentStore,
+  order: StoredOrder,
+  refund?: CancelInput["refund"],
+) =>
   store.cancel({
     orderId: order.id,
     reason: "changed plans",
+    ...(refund === undefined ? {} : { refund }),
     actor,
     now,
   });
@@ -175,7 +191,9 @@ export function runAdminEnrollmentStoreContract(
         },
       });
       await confirm(harness.store, paid, "cash");
-      await expect(cancel(harness.store, paid)).resolves.toEqual({
+      await expect(
+        cancel(harness.store, paid, fullRefund(paid)),
+      ).resolves.toEqual({
         ok: true,
         value: { kind: "cancelled" },
       });
@@ -192,14 +210,180 @@ export function runAdminEnrollmentStoreContract(
       });
     });
 
+    it("records no refund when a pending order is cancelled", async () => {
+      const harness = await setup();
+      const pending = await harness.createOrder();
+
+      await cancel(harness.store, pending);
+
+      const detail = await harness.store.detail(pending.id);
+      expect(detail.ok && detail.value.refund).toBeUndefined();
+    });
+
+    it.each([
+      ["paid", []],
+      ["materials_requested", ["materials_requested"]],
+      ["materials_received", ["materials_requested", "materials_received"]],
+    ] as const)(
+      "cancels a %s order, releases its seat once and records the refund beside the payment",
+      async (_state, steps) => {
+        const harness = await setup();
+        const order = await harness.createOrder({
+          lines: [
+            {
+              materialId: "m-1",
+              variantId: "v-1",
+              materialName: "Clay",
+              variantLabel: "Large",
+              unitPrice: pesos(1),
+              quantity: 1,
+              supplierId: "supplier-1",
+              supplierName: "Supplier",
+            },
+          ],
+          materialsTotal: pesos(1),
+          total: pesos(58001),
+        });
+        await confirm(harness.store, order);
+        for (const to of steps)
+          await harness.store.markMaterials({
+            orderId: order.id,
+            to,
+            actor,
+            now,
+          });
+        await expect(harness.seatCount(order)).resolves.toBe(1);
+
+        await expect(
+          cancel(harness.store, order, {
+            amount: pesos(58000),
+            refundedOn: "2026-10-31",
+            note: "materials stay with the student",
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+        await expect(
+          cancel(harness.store, order, fullRefund(order)),
+        ).resolves.toEqual({ ok: true, value: { kind: "already-cancelled" } });
+
+        await expect(harness.seatCount(order)).resolves.toBe(0);
+        await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+          ok: true,
+          value: {
+            status: "cancelled",
+            paidAt,
+            paidAmount: order.total,
+            refund: {
+              amount: pesos(58000),
+              refundedAt: new Date("2026-10-31T03:00:00.000Z"),
+              note: "materials stay with the student",
+              refundedBy: actor.email,
+            },
+          },
+        });
+        const trail = await harness.audit(order);
+        expect(trail.filter((entry) => entry.to === "cancelled")).toEqual([
+          expect.objectContaining({
+            actor: actor.email,
+            note: "changed plans",
+          }),
+        ]);
+      },
+    );
+
+    it("accepts a refund of nothing and keeps the payment as history", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder();
+      await confirm(harness.store, order);
+
+      await cancel(harness.store, order, {
+        amount: pesos(0),
+        refundedOn: "2026-10-30",
+      });
+
+      const detail = await harness.store.detail(order.id);
+      expect(detail.ok && detail.value.refund).toEqual({
+        amount: pesos(0),
+        refundedAt: new Date("2026-10-30T03:00:00.000Z"),
+        refundedBy: actor.email,
+      });
+      expect(detail.ok && detail.value.paidAmount).toEqual(order.total);
+    });
+
+    it.each([
+      [
+        "above what was paid",
+        { amount: pesos(58001), refundedOn: "2026-10-31" },
+        "amount",
+        "above-paid",
+      ],
+      [
+        "in the future",
+        { amount: pesos(1), refundedOn: "2026-11-01" },
+        "refundedOn",
+        "future-date",
+      ],
+      [
+        "before the payment",
+        { amount: pesos(1), refundedOn: "2026-10-29" },
+        "refundedOn",
+        "before-payment",
+      ],
+      ["missing for a paid order", undefined, "amount", "required"],
+    ] as const)(
+      "refuses a refund %s and leaves the paid order untouched",
+      async (_label, refund, field, code) => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+        await confirm(harness.store, order);
+        const trail = await harness.audit(order);
+
+        await expect(cancel(harness.store, order, refund)).resolves.toEqual({
+          ok: false,
+          error: { kind: "invalid-refund", field, code },
+        });
+
+        await expect(harness.seatCount(order)).resolves.toBe(1);
+        await expect(harness.audit(order)).resolves.toEqual(trail);
+        await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+          ok: true,
+          value: { status: "paid" },
+        });
+      },
+    );
+
+    it("refuses a refund on a pending order", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder();
+
+      await expect(
+        cancel(harness.store, order, {
+          amount: pesos(0),
+          refundedOn: "2026-10-31",
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid-refund",
+          field: "amount",
+          code: "not-refundable",
+        },
+      });
+      await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+        ok: true,
+        value: { status: "pending_confirmation" },
+      });
+    });
+
     it("makes repeat cancellation idempotent", async () => {
       const harness = await setup();
       const order = await harness.createOrder();
       await confirm(harness.store, order);
-      await cancel(harness.store, order);
+      await cancel(harness.store, order, fullRefund(order));
       const audit = await harness.audit(order);
 
-      await expect(cancel(harness.store, order)).resolves.toEqual({
+      await expect(
+        cancel(harness.store, order, fullRefund(order)),
+      ).resolves.toEqual({
         ok: true,
         value: { kind: "already-cancelled" },
       });
@@ -336,7 +520,7 @@ export function runAdminEnrollmentStoreContract(
       await confirm(harness.store, order);
 
       const results = await Promise.all([
-        cancel(harness.store, order),
+        cancel(harness.store, order, fullRefund(order)),
         confirm(harness.store, order),
       ]);
 

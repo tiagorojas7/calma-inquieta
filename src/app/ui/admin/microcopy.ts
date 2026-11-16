@@ -259,6 +259,21 @@ export const adminMicrocopy = {
         dialogTitle: "¿Cancelar este pedido?",
         dialogMessage:
           "Si el pedido ya estaba cobrado, se libera el lugar del turno. Esto no se puede deshacer.",
+        refundTitle: "Devolución",
+        refundAmount: "Monto devuelto",
+        refundAmountHint: (paid: string) =>
+          `Cobraste ${paid}. Poné 0 si no devolviste nada.`,
+        refundedOn: "Fecha de devolución",
+        refundNote: "Nota de la devolución (opcional)",
+        dialogMessageRefund:
+          "Se libera el lugar del turno y queda registrado el cobro y la devolución. Esto no se puede deshacer.",
+      },
+      refund: {
+        title: "Devolución",
+        amount: "Monto devuelto",
+        refundedOn: "Fecha de devolución",
+        refundedBy: "Registrada por",
+        note: "Nota",
       },
       materials: {
         requested: "Marcar como solicitado",

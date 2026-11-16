@@ -38,6 +38,15 @@ export interface EnrollmentDetailOrder {
     confirmedBy: string;
     note: string | null;
   } | null;
+  /** Set when cancelling must record a refund: what was paid, as text and as whole pesos. */
+  readonly cancelRefund: { paid: string; paidPesos: string } | null;
+  /** What was returned when the paid order was cancelled. */
+  readonly refund: {
+    amount: string;
+    refundedOn: string;
+    note: string | null;
+    refundedBy: string;
+  } | null;
   readonly seat: { confirmed: number; capacity: number };
   readonly audit: readonly {
     at: string;
@@ -64,9 +73,28 @@ export interface EnrollmentDetailProps {
   readonly feedback?: EnrollmentDetailFeedback | null | undefined;
   readonly form?: {
     readonly formError?: string | undefined;
-    readonly errors?: Partial<Record<"amount" | "paidOn" | "reason", string>>;
+    readonly errors?: Partial<
+      Record<
+        | "amount"
+        | "paidOn"
+        | "reason"
+        | "refundAmount"
+        | "refundedOn"
+        | "refundNote",
+        string
+      >
+    >;
     readonly values?: Partial<
-      Record<"amount" | "paidOn" | "note" | "reason", string>
+      Record<
+        | "amount"
+        | "paidOn"
+        | "note"
+        | "reason"
+        | "refundAmount"
+        | "refundedOn"
+        | "refundNote",
+        string
+      >
     >;
   };
 }
@@ -140,7 +168,15 @@ function ConfirmPaymentForm({
   );
 }
 
-function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
+function CancelOrderForm({
+  form,
+  refund,
+  today,
+}: {
+  form: EnrollmentDetailProps["form"];
+  refund: EnrollmentDetailOrder["cancelRefund"];
+  today: string;
+}) {
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   return (
@@ -160,6 +196,37 @@ function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
         defaultValue={form?.values?.reason ?? ""}
         error={form?.errors?.reason}
       />
+      {refund ? (
+        <fieldset className="flex flex-col gap-3 rounded-md bg-sand-100 p-4">
+          <legend className="px-1 font-semibold text-ink-900">
+            {copy.cancel.refundTitle}
+          </legend>
+          <TextField
+            label={copy.cancel.refundAmount}
+            hint={copy.cancel.refundAmountHint(refund.paid)}
+            name="refundAmount"
+            inputMode="numeric"
+            required
+            defaultValue={form?.values?.refundAmount ?? refund.paidPesos}
+            error={form?.errors?.refundAmount}
+          />
+          <TextField
+            label={copy.cancel.refundedOn}
+            name="refundedOn"
+            type="date"
+            max={today}
+            required
+            defaultValue={form?.values?.refundedOn ?? today}
+            error={form?.errors?.refundedOn}
+          />
+          <TextField
+            label={copy.cancel.refundNote}
+            name="refundNote"
+            defaultValue={form?.values?.refundNote ?? ""}
+            error={form?.errors?.refundNote}
+          />
+        </fieldset>
+      ) : null}
       <div>
         <Button
           type="button"
@@ -174,7 +241,9 @@ function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
       <ConfirmDialog
         open={open}
         title={copy.cancel.dialogTitle}
-        message={copy.cancel.dialogMessage}
+        message={
+          refund ? copy.cancel.dialogMessageRefund : copy.cancel.dialogMessage
+        }
         confirmLabel={copy.cancel.submit}
         tone="destructive"
         onCancel={() => {
@@ -374,6 +443,23 @@ export function EnrollmentDetail({
             </AdminSection>
           ) : null}
 
+          {order.refund ? (
+            <AdminSection title={copy.refund.title}>
+              <dl className="grid gap-4 md:grid-cols-2">
+                <Fact label={copy.refund.amount}>{order.refund.amount}</Fact>
+                <Fact label={copy.refund.refundedOn}>
+                  {order.refund.refundedOn}
+                </Fact>
+                <Fact label={copy.refund.refundedBy}>
+                  {order.refund.refundedBy}
+                </Fact>
+                {order.refund.note ? (
+                  <Fact label={copy.refund.note}>{order.refund.note}</Fact>
+                ) : null}
+              </dl>
+            </AdminSection>
+          ) : null}
+
           <details className="rounded-md bg-surface p-4 shadow-card">
             <summary className={summaryClasses}>{copy.moreData}</summary>
             <dl className="mt-3 grid gap-4 md:grid-cols-2">
@@ -408,7 +494,11 @@ export function EnrollmentDetail({
 
           {order.actions.cancel ? (
             <AdminDangerZone title={copy.dangerTitle}>
-              <CancelOrderForm form={form} />
+              <CancelOrderForm
+                form={form}
+                refund={order.cancelRefund}
+                today={order.today}
+              />
             </AdminDangerZone>
           ) : null}
         </div>

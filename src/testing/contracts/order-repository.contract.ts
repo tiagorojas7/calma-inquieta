@@ -490,5 +490,71 @@ export function runOrderRepositoryContract(
         ),
       ).toEqual({ ok: false, error: { kind: "not-found" } });
     });
+
+    it.each([[[]], [["materials_requested"]]] as const)(
+      "cancels a paid order after %j, keeping the payment and recording the refund",
+      async (steps) => {
+        const { repository: repo } = await create();
+        const created = await repo.create(
+          orderDraft({
+            lines: [
+              {
+                materialId: "m-1",
+                variantId: "v-1",
+                materialName: "Clay",
+                variantLabel: "Large",
+                unitPrice: pesos(1),
+                quantity: 1,
+                supplierId: "supplier-1",
+                supplierName: "Supplier",
+              },
+            ],
+            materialsTotal: pesos(1),
+            total: pesos(58001),
+          }),
+        );
+        if (!created.ok) throw new Error("fixture");
+        const paidAt = new Date("2026-10-20T03:00:00Z");
+        await repo.transitionOrder(created.value.id, "paid", {
+          actor: "owner@example.com",
+          at: paidAt,
+          paidAt,
+          paidAmount: pesos(58001),
+        });
+        for (const to of steps)
+          await repo.transitionOrder(created.value.id, to, {
+            actor: "owner@example.com",
+            at: paidAt,
+          });
+
+        const refundedAt = new Date("2026-10-25T03:00:00Z");
+        const cancelled = await repo.transitionOrder(
+          created.value.id,
+          "cancelled",
+          {
+            actor: "boss@example.com",
+            at: new Date("2026-10-25T15:00:00Z"),
+            note: "pidió baja",
+            refund: { amount: pesos(58000), refundedAt, note: "transferencia" },
+          },
+        );
+
+        const expected = {
+          status: "cancelled",
+          paidAt,
+          paidAmount: pesos(58001),
+          refund: {
+            amount: pesos(58000),
+            refundedAt,
+            note: "transferencia",
+            refundedBy: "boss@example.com",
+          },
+        };
+        expect(cancelled.ok && cancelled.value).toMatchObject(expected);
+        expect(await repo.findForAdmin(created.value.id)).toMatchObject(
+          expected,
+        );
+      },
+    );
   });
 }

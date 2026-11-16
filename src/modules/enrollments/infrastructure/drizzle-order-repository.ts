@@ -75,6 +75,18 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
           ...(row.paymentNote === null ? {} : { paymentNote: row.paymentNote }),
         }
       : {}),
+    ...(row.refundedAmountCentavos === null ||
+    row.refundedAt === null ||
+    row.refundedBy === null
+      ? {}
+      : {
+          refund: {
+            amount: money(row.refundedAmountCentavos),
+            refundedAt: row.refundedAt,
+            ...(row.refundNote === null ? {} : { note: row.refundNote }),
+            refundedBy: row.refundedBy,
+          },
+        }),
   };
 }
 
@@ -405,6 +417,15 @@ export function createDrizzleOrderRepository(
                       cancelledAt: context.at,
                       cancelReason: context.note ?? null,
                       cancelledBy: context.actor,
+                      ...(context.refund
+                        ? {
+                            refundedAmountCentavos:
+                              context.refund.amount.toCentavos(),
+                            refundedAt: context.refund.refundedAt,
+                            refundNote: context.refund.note ?? null,
+                            refundedBy: context.actor,
+                          }
+                        : {}),
                     }
                   : {}),
               })
@@ -435,6 +456,15 @@ export function createDrizzleOrderRepository(
                           context.paidAmount?.toCentavos() ?? null,
                         confirmedBy: context.actor,
                         paymentNote: context.note ?? null,
+                      }
+                    : {}),
+                  ...(to === "cancelled" && context.refund
+                    ? {
+                        refundedAmountCentavos:
+                          context.refund.amount.toCentavos(),
+                        refundedAt: context.refund.refundedAt,
+                        refundNote: context.refund.note ?? null,
+                        refundedBy: context.actor,
                       }
                     : {}),
                 },

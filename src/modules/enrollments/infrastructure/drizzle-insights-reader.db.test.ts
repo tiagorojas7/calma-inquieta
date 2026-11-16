@@ -205,6 +205,35 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
     expect(september[0]).toMatchObject({ period: "2026-10", orders: 1 });
   });
 
+  it("leaves a cancelled order out of income, materials and participation even when it was paid and refunded", async () => {
+    const { add, reader } = await fixture();
+    await add({ studentEmail: "kept@example.com" });
+    await add({
+      studentEmail: "refunded@example.com",
+      materials: 4_000_00,
+      status: "cancelled",
+      paidAt: new Date("2026-10-20T12:00:00Z"),
+      paidAmountCentavos: 14_000_00,
+      refundedAmountCentavos: 14_000_00,
+      refundedAt: new Date("2026-10-25T03:00:00Z"),
+      refundNote: "returned in full",
+      refundedBy: "admin@example.com",
+    });
+
+    expect(await reader.income({ period: "2026-11" })).toEqual([
+      expect.objectContaining({
+        orders: 1,
+        feeCentavos: 10_000_00,
+        materialsCentavos: 0,
+      }),
+    ]);
+    expect(await reader.materials({ period: "2026-11" })).toEqual([]);
+    expect(await reader.participation("2026-11")).toEqual({
+      students: 1,
+      recurring: 0,
+    });
+  });
+
   it("counts pending orders and those waiting longer than the cutoff", async () => {
     const { add, reader } = await fixture();
     await add({

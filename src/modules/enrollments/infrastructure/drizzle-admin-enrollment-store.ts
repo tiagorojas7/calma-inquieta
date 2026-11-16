@@ -20,7 +20,10 @@ import {
 import {
   cancelOutcome,
   checkPaymentAmount,
+  checkRefund,
   confirmOutcome,
+  cordobaDateOf,
+  cordobaDayStart,
   transition,
   type OrderStatus,
 } from "../domain/order-core";
@@ -97,6 +100,18 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
           ...(row.paymentNote === null ? {} : { paymentNote: row.paymentNote }),
         }
       : {}),
+    ...(row.refundedAmountCentavos === null ||
+    row.refundedAt === null ||
+    row.refundedBy === null
+      ? {}
+      : {
+          refund: {
+            amount: money(row.refundedAmountCentavos),
+            refundedAt: row.refundedAt,
+            ...(row.refundNote === null ? {} : { note: row.refundNote }),
+            refundedBy: row.refundedBy,
+          },
+        }),
   };
 }
 
@@ -259,12 +274,23 @@ export function createDrizzleAdminEnrollmentStore(
             if (!order) return err({ kind: "not-found" });
             const outcome = cancelOutcome(order.status as OrderStatus);
             if (outcome === "already-cancelled") return ok({ kind: outcome });
-            if (outcome === "illegal")
-              return err({
-                kind: "illegal-transition",
-                from: order.status as OrderStatus,
-                to: "cancelled",
-              });
+            const refund = input.refund;
+            const checked = checkRefund(
+              {
+                status: order.status as OrderStatus,
+                ...(order.paidAmountCentavos === null
+                  ? {}
+                  : { paidAmount: money(order.paidAmountCentavos) }),
+                ...(order.paidAt === null
+                  ? {}
+                  : { paidOn: cordobaDateOf(order.paidAt) }),
+              },
+              refund === undefined
+                ? undefined
+                : { amount: refund.amount, on: refund.refundedOn },
+              cordobaDateOf(input.now),
+            );
+            if (!checked.ok) return checked;
 
             if (outcome === "cancel-release") {
               const released = await tx
@@ -291,6 +317,14 @@ export function createDrizzleAdminEnrollmentStore(
                 cancelledAt: input.now,
                 cancelReason: input.reason,
                 cancelledBy: input.actor.email,
+                ...(refund === undefined
+                  ? {}
+                  : {
+                      refundedAmountCentavos: refund.amount.toCentavos(),
+                      refundedAt: cordobaDayStart(refund.refundedOn),
+                      refundNote: refund.note ?? null,
+                      refundedBy: input.actor.email,
+                    }),
               })
               .where(eq(enrollmentOrder.id, order.id));
             await appendAudit(tx, {

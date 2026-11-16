@@ -67,6 +67,17 @@ export interface StoredOrder extends Omit<
   readonly paidAmount?: Money;
   readonly confirmedBy?: string;
   readonly paymentNote?: string;
+  readonly refund?: OrderRefund;
+}
+
+/** What was returned to the student when a paid order was cancelled; the payment stays as history. */
+export interface OrderRefund {
+  /** Whole pesos, from $0 up to what was paid. */
+  readonly amount: Money;
+  /** The Córdoba day of the refund, stored at its local midnight. */
+  readonly refundedAt: Date;
+  readonly note?: string;
+  readonly refundedBy: string;
 }
 
 export type DuplicateOrder = { readonly kind: "duplicate-order" };
@@ -95,6 +106,8 @@ export interface TransitionContext {
   readonly note?: string;
   readonly paidAt?: Date;
   readonly paidAmount?: Money;
+  /** Recorded with the cancellation of a paid order; `actor` is who refunded. */
+  readonly refund?: Pick<OrderRefund, "amount" | "refundedAt" | "note">;
 }
 
 /**

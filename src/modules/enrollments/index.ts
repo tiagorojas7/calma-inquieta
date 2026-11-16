@@ -15,6 +15,7 @@ export {
   type AdminEnrollmentUseCases,
   type ConfirmPaymentInput,
   type CancelEnrollmentInput,
+  type CancelRefundInput,
 } from "./application/admin-enrollment-service";
 export type {
   AdminEnrollmentDetail,

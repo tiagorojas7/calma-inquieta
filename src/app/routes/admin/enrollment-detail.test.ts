@@ -192,6 +192,69 @@ describe("admin enrollment detail loader", () => {
     });
   });
 
+  it.each(["paid", "materials_requested", "materials_received"] as const)(
+    "offers cancelling a %s order with the refund prefilled from what was paid",
+    async (status) => {
+      const paid: AdminEnrollmentDetail = {
+        ...detail,
+        status,
+        paidAt: new Date("2026-11-02T03:00:00Z"),
+        paidAmount: pesos(58_000),
+        confirmedBy: "admin@x.test",
+      };
+      const result = await load({ detail: () => Promise.resolve(ok(paid)) });
+
+      expect(result.actions.cancel).toBe(true);
+      expect(result.cancelRefund).toEqual({
+        paid: "$ 58.000",
+        paidPesos: "58000",
+      });
+      expect(result.refund).toBeNull();
+    },
+  );
+
+  it("asks for no refund when cancelling a pending order", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(detail)) });
+
+    expect(result.actions.cancel).toBe(true);
+    expect(result.cancelRefund).toBeNull();
+  });
+
+  it.each([
+    [pesos(25_000), "$ 25.000"],
+    [pesos(0), "$ 0"],
+  ])(
+    "shows the recorded refund of a cancelled order",
+    async (amount, label) => {
+      const cancelled: AdminEnrollmentDetail = {
+        ...detail,
+        status: "cancelled",
+        paidAt: new Date("2026-11-02T03:00:00Z"),
+        paidAmount: pesos(58_000),
+        confirmedBy: "admin@x.test",
+        refund: {
+          amount,
+          refundedAt: new Date("2026-11-05T03:00:00Z"),
+          note: "Transferencia",
+          refundedBy: "owner@x.test",
+        },
+      };
+      const result = await load({
+        detail: () => Promise.resolve(ok(cancelled)),
+      });
+
+      expect(result.refund).toEqual({
+        amount: label,
+        refundedOn: "05/11/2026",
+        note: "Transferencia",
+        refundedBy: "owner@x.test",
+      });
+      expect(result.payment?.amount).toBe("$ 58.000");
+      expect(result.cancelRefund).toBeNull();
+      expect(result.actions.cancel).toBe(false);
+    },
+  );
+
   it("offers no actions on a cancelled order", async () => {
     const result = await load({
       detail: () => Promise.resolve(ok({ ...detail, status: "cancelled" })),
@@ -395,6 +458,72 @@ describe("admin enrollment detail action", () => {
     expect((result as Response).headers.get("Location")).toBe(
       "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=cancelled",
     );
+  });
+
+  it("cancels a paid order with the typed refund", async () => {
+    const cancel = vi.fn(() =>
+      Promise.resolve(ok({ kind: "cancelled" as const })),
+    );
+    const result = await submit(
+      { cancel },
+      {
+        intent: "cancel",
+        reason: "Pidió la baja",
+        refundAmount: " 25.000 ",
+        refundedOn: "2026-11-05",
+        refundNote: " Transferencia ",
+      },
+    );
+
+    expect(cancel).toHaveBeenCalledWith(expect.anything(), {
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      reason: "Pidió la baja",
+      refund: {
+        amount: "25.000",
+        refundedOn: "2026-11-05",
+        note: "Transferencia",
+      },
+    });
+    expect((result as Response).headers.get("Location")).toBe(
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=cancelled",
+    );
+  });
+
+  it("names a refused refund on its field and keeps what was typed", async () => {
+    const cancel = vi.fn(() =>
+      Promise.resolve(
+        err({
+          kind: "invalid-refund" as const,
+          field: "amount" as const,
+          code: "above-paid" as const,
+        }),
+      ),
+    );
+    const result = await submit(
+      { cancel },
+      {
+        intent: "cancel",
+        reason: "Pidió la baja",
+        refundAmount: "70000",
+        refundedOn: "2026-11-05",
+        refundNote: "",
+      },
+    );
+
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: {
+          refundAmount: "La devolución no puede ser mayor que lo cobrado.",
+        },
+        values: {
+          reason: "Pidió la baja",
+          refundAmount: "70000",
+          refundedOn: "2026-11-05",
+          refundNote: "",
+        },
+      },
+    });
   });
 
   it("names a missing cancel reason and keeps what was typed", async () => {

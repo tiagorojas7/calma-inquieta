@@ -19,8 +19,8 @@ export type IllegalTransition = {
 const ALLOWED: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = {
   pending_confirmation: ["paid", "cancelled"],
   paid: ["materials_requested", "cancelled"],
-  materials_requested: ["materials_received"],
-  materials_received: [],
+  materials_requested: ["materials_received", "cancelled"],
+  materials_received: ["cancelled"],
   cancelled: [],
 };
 
@@ -51,31 +51,102 @@ export function confirmOutcome(status: OrderStatus): ConfirmOutcome {
   }
 }
 
-export type CancelOutcome =
-  "cancel" | "cancel-release" | "already-cancelled" | "illegal";
+export type CancelOutcome = "cancel" | "cancel-release" | "already-cancelled";
 
+/** Every state that holds a seat (the order was paid) releases it exactly once on cancel. */
 export function cancelOutcome(status: OrderStatus): CancelOutcome {
   switch (status) {
     case "pending_confirmation":
       return "cancel";
     case "paid":
+    case "materials_requested":
+    case "materials_received":
       return "cancel-release";
     case "cancelled":
       return "already-cancelled";
-    case "materials_requested":
-    case "materials_received":
-      return "illegal";
   }
 }
 
-/** A seat goes back only when a paid order is cancelled. */
+/** A seat goes back only when an order in a paid state is cancelled. */
 export function releasesSeat(from: OrderStatus, to: OrderStatus): boolean {
-  return from === "paid" && to === "cancelled";
+  return cancelOutcome(from) === "cancel-release" && to === "cancelled";
+}
+
+// Refunds -------------------------------------------------------------------
+
+export type RefundField = "amount" | "refundedOn" | "note";
+export type RefundIssueCode =
+  | "required"
+  | "invalid-format"
+  | "out-of-range"
+  | "invalid-calendar-date"
+  | "too-long"
+  | "negative"
+  | "not-whole-pesos"
+  | "above-paid"
+  | "not-refundable"
+  | "future-date"
+  | "before-payment";
+export type InvalidRefund = {
+  readonly kind: "invalid-refund";
+  readonly field: RefundField;
+  readonly code: RefundIssueCode;
+};
+
+const invalidRefund = (
+  field: RefundField,
+  code: RefundIssueCode,
+): Result<never, InvalidRefund> => err({ kind: "invalid-refund", field, code });
+
+/**
+ * What cancelling an order must record. A paid order (any paid state) records
+ * the amount returned, from $0 up to what was paid, dated from the payment day
+ * to today (both Córdoba `YYYY-MM-DD`); a pending order records none.
+ */
+export function checkRefund(
+  order: {
+    readonly status: OrderStatus;
+    readonly paidAmount?: Money;
+    readonly paidOn?: string;
+  },
+  refund: { readonly amount: Money; readonly on: string } | undefined,
+  today: string,
+): Result<undefined, InvalidRefund> {
+  const paid = cancelOutcome(order.status) === "cancel-release";
+  if (!paid)
+    return refund === undefined
+      ? ok(undefined)
+      : invalidRefund("amount", "not-refundable");
+  if (refund === undefined) return invalidRefund("amount", "required");
+  if (refund.amount.isNegative()) return invalidRefund("amount", "negative");
+  if (!isWholePesos(refund.amount))
+    return invalidRefund("amount", "not-whole-pesos");
+  if (
+    order.paidAmount !== undefined &&
+    refund.amount.compare(order.paidAmount) > 0
+  )
+    return invalidRefund("amount", "above-paid");
+  if (refund.on > today) return invalidRefund("refundedOn", "future-date");
+  if (order.paidOn !== undefined && refund.on < order.paidOn)
+    return invalidRefund("refundedOn", "before-payment");
+  return ok(undefined);
 }
 
 // Order identity ------------------------------------------------------------
 
 const CORDOBA_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+/** The Córdoba calendar date (`YYYY-MM-DD`) of an instant. */
+export function cordobaDateOf(instant: Date): string {
+  return new Date(instant.getTime() - CORDOBA_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/** The instant a Córdoba calendar date is stored at: its local midnight (03:00 UTC). */
+export function cordobaDayStart(date: string): Date {
+  return new Date(`${date}T03:00:00.000Z`);
+}
 
 /** Argentina has no DST, so Córdoba is a fixed UTC-03:00. */
 export function cordobaYearOf(instant: Date): number {

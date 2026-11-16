@@ -5,6 +5,7 @@ import {
   availableSeats,
   cancelOutcome,
   checkPaymentAmount,
+  checkRefund,
   confirmOutcome,
   cordobaYearOf,
   formatOrderNumber,
@@ -29,6 +30,8 @@ const ALLOWED: ReadonlyArray<readonly [OrderStatus, OrderStatus]> = [
   ["paid", "materials_requested"],
   ["paid", "cancelled"],
   ["materials_requested", "materials_received"],
+  ["materials_requested", "cancelled"],
+  ["materials_received", "cancelled"],
 ];
 
 describe("order transitions", () => {
@@ -75,20 +78,22 @@ describe("order transitions", () => {
     });
   });
 
-  it("keeps cancelled and materials_received terminal", () => {
-    for (const from of ["cancelled", "materials_received"] as const) {
-      for (const to of ORDER_STATUSES) {
-        expect(transition(from, to, { hasMaterialLines: true }).ok).toBe(false);
-      }
+  it("keeps cancelled terminal", () => {
+    for (const to of ORDER_STATUSES) {
+      expect(transition("cancelled", to, { hasMaterialLines: true }).ok).toBe(
+        false,
+      );
     }
   });
 
-  it("refuses cancelling once materials were requested", () => {
-    expect(
-      transition("materials_requested", "cancelled", { hasMaterialLines: true })
-        .ok,
-    ).toBe(false);
-  });
+  it.each(["materials_requested", "materials_received"] as const)(
+    "allows cancelling once the order is %s",
+    (from) => {
+      expect(transition(from, "cancelled", { hasMaterialLines: true }).ok).toBe(
+        true,
+      );
+    },
+  );
 });
 
 describe("confirm and cancel outcomes", () => {
@@ -111,29 +116,137 @@ describe("confirm and cancel outcomes", () => {
     expect(cancelOutcome("pending_confirmation")).toBe("cancel");
   });
 
-  it("cancels a paid order and releases its seat", () => {
-    expect(cancelOutcome("paid")).toBe("cancel-release");
-  });
+  it.each(["paid", "materials_requested", "materials_received"] as const)(
+    "cancels a %s order and releases its seat",
+    (status) => {
+      expect(cancelOutcome(status)).toBe("cancel-release");
+    },
+  );
 
   it("makes a repeated cancel idempotent", () => {
     expect(cancelOutcome("cancelled")).toBe("already-cancelled");
   });
 
-  it.each(["materials_requested", "materials_received"] as const)(
-    "refuses cancelling a %s order",
-    (status) => {
-      expect(cancelOutcome(status)).toBe("illegal");
-    },
-  );
-
-  it("releases a seat only when a paid order is cancelled", () => {
+  it("releases a seat only when an order in a paid state is cancelled", () => {
+    const paidStates: readonly OrderStatus[] = [
+      "paid",
+      "materials_requested",
+      "materials_received",
+    ];
     for (const from of ORDER_STATUSES) {
       for (const to of ORDER_STATUSES) {
         expect(releasesSeat(from, to)).toBe(
-          from === "paid" && to === "cancelled",
+          paidStates.includes(from) && to === "cancelled",
         );
       }
     }
+  });
+});
+
+describe("refund rules", () => {
+  const paidOrder = {
+    status: "paid" as OrderStatus,
+    paidAmount: pesos(58_000),
+    paidOn: "2026-10-20",
+  };
+  const refund = (amount: Money, on = "2026-10-25") => ({ amount, on });
+  const today = "2026-10-31";
+
+  it.each([0, 25_000, 58_000])("accepts a refund of %i pesos", (amount) => {
+    expect(checkRefund(paidOrder, refund(pesos(amount)), today)).toEqual({
+      ok: true,
+      value: undefined,
+    });
+  });
+
+  it.each(["paid", "materials_requested", "materials_received"] as const)(
+    "needs a refund to cancel an order in the %s state",
+    (status) => {
+      expect(checkRefund({ ...paidOrder, status }, undefined, today)).toEqual({
+        ok: false,
+        error: { kind: "invalid-refund", field: "amount", code: "required" },
+      });
+    },
+  );
+
+  it("refuses a negative refund", () => {
+    const negative = Money.fromCentavos(-100);
+    if (!negative.ok) throw new Error("fixture");
+    expect(checkRefund(paidOrder, refund(negative.value), today)).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "negative" },
+    });
+  });
+
+  it("refuses a refund above what was paid", () => {
+    expect(checkRefund(paidOrder, refund(pesos(58_001)), today)).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "above-paid" },
+    });
+  });
+
+  it("refuses a refund with cents", () => {
+    const cents = Money.fromCentavos(1050);
+    if (!cents.ok) throw new Error("fixture");
+    expect(checkRefund(paidOrder, refund(cents.value), today)).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "amount",
+        code: "not-whole-pesos",
+      },
+    });
+  });
+
+  it("accepts the payment day and today as the refund date", () => {
+    expect(
+      checkRefund(paidOrder, refund(pesos(1), "2026-10-20"), today).ok,
+    ).toBe(true);
+    expect(checkRefund(paidOrder, refund(pesos(1), today), today).ok).toBe(
+      true,
+    );
+  });
+
+  it("refuses a refund dated in the future", () => {
+    expect(
+      checkRefund(paidOrder, refund(pesos(1), "2026-11-01"), today),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "refundedOn",
+        code: "future-date",
+      },
+    });
+  });
+
+  it("refuses a refund dated before the payment", () => {
+    expect(
+      checkRefund(paidOrder, refund(pesos(1), "2026-10-19"), today),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "refundedOn",
+        code: "before-payment",
+      },
+    });
+  });
+
+  it("records no refund when a pending order is cancelled", () => {
+    const pending = { status: "pending_confirmation" as OrderStatus };
+    expect(checkRefund(pending, undefined, today)).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(checkRefund(pending, refund(pesos(1)), today)).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "amount",
+        code: "not-refundable",
+      },
+    });
   });
 });
 

@@ -374,6 +374,121 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
+  describe("refund columns", () => {
+    const paidAt = new Date("2026-10-21T12:00:00.000Z");
+    const refundedAt = new Date("2026-10-25T03:00:00.000Z");
+    const PAID = 5800000;
+
+    const paidOrder = async (id: string, status = "paid") => {
+      await insertOrder({
+        id,
+        status,
+        paidAt,
+        paidAmountCentavos: PAID,
+      });
+      return id;
+    };
+    const refund = (
+      id: string,
+      values: {
+        status?: string;
+        amount?: number | null;
+        at?: Date | null;
+        by?: string | null;
+        note?: string | null;
+      },
+    ) =>
+      client.query(
+        `UPDATE enrollment_order SET status = $2, refunded_amount_centavos = $3,
+           refunded_at = $4, refunded_by = $5, refund_note = $6 WHERE id = $1`,
+        [
+          id,
+          values.status ?? "cancelled",
+          values.amount === undefined ? 0 : values.amount,
+          values.at === undefined ? refundedAt : values.at,
+          values.by === undefined ? "admin@example.com" : values.by,
+          values.note === undefined ? null : values.note,
+        ],
+      );
+
+    it.each([
+      ["nothing returned", 0],
+      ["a partial amount", 2500000],
+      ["the full paid amount", PAID],
+    ])(
+      "keeps the payment and accepts a refund of %s",
+      async (_label, cents) => {
+        const id = await paidOrder(
+          `00000000-0000-4000-8000-0000000006${String(cents).slice(0, 2).padStart(2, "0")}`,
+        );
+
+        await refund(id, { amount: cents, note: "transfer back" });
+
+        const { rows } = await client.query<{
+          paid_amount_centavos: string;
+          refunded_amount_centavos: string;
+        }>(
+          "SELECT paid_amount_centavos, refunded_amount_centavos FROM enrollment_order WHERE id = $1",
+          [id],
+        );
+        expect(rows).toEqual([
+          {
+            paid_amount_centavos: String(PAID),
+            refunded_amount_centavos: String(cents),
+          },
+        ]);
+      },
+    );
+
+    it("rejects a refund above what was paid or below zero", async () => {
+      const above = await paidOrder("00000000-0000-4000-8000-000000000701");
+      await expect(refund(above, { amount: PAID + 100 })).rejects.toMatchObject(
+        { code: "23514", constraint: "enrollment_order_refund_bounds_check" },
+      );
+      const negative = await paidOrder("00000000-0000-4000-8000-000000000702");
+      await expect(refund(negative, { amount: -100 })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_bounds_check",
+      });
+    });
+
+    it("rejects a refund with cents", async () => {
+      const id = await paidOrder("00000000-0000-4000-8000-000000000703");
+      await expect(refund(id, { amount: 1050 })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_whole_pesos_check",
+      });
+    });
+
+    it("rejects a refund on an order that is not cancelled", async () => {
+      const id = await paidOrder("00000000-0000-4000-8000-000000000704");
+      await expect(refund(id, { status: "paid" })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_state_check",
+      });
+    });
+
+    it("rejects a refund on a cancelled order that was never paid", async () => {
+      const id = "00000000-0000-4000-8000-000000000705";
+      await insertOrder({ id });
+      await expect(refund(id, {})).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it.each([
+      ["without a date", { at: null }],
+      ["without who recorded it", { by: null }],
+      ["without an amount", { amount: null, note: "orphan note" }],
+    ])("rejects a refund %s", async (_label, values) => {
+      const id = await paidOrder(
+        `00000000-0000-4000-8000-00000000071${String(_label.length % 10)}`,
+      );
+      await expect(refund(id, values)).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_state_check",
+      });
+    });
+  });
+
   it("contains no foreign keys to other module tables", async () => {
     const { rows } = await client.query<{ foreign_table_name: string }>(`
       SELECT ccu.table_name AS foreign_table_name

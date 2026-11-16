@@ -51,8 +51,29 @@ const base: EnrollmentDetailProps = {
       materialsRequested: false,
       materialsReceived: false,
     },
+    cancelRefund: null,
+    refund: null,
     today: "2026-10-31",
   },
+};
+
+const paidOrder: EnrollmentDetailProps["order"] = {
+  ...base.order,
+  status: "paid",
+  statusLabel: "Cobrado",
+  payment: {
+    paidOn: "30/10/2026",
+    amount: "$ 58.000",
+    confirmedBy: "admin@x.test",
+    note: null,
+  },
+  actions: {
+    confirm: false,
+    cancel: true,
+    materialsRequested: true,
+    materialsReceived: false,
+  },
+  cancelRefund: { paid: "$ 58.000", paidPesos: "58000" },
 };
 
 describe("EnrollmentDetail", () => {
@@ -254,6 +275,122 @@ describe("EnrollmentDetail", () => {
     await user.click(screen.getByRole("button", { name: "Cancelar pedido" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/no se puede deshacer/i)).toBeVisible();
+  });
+
+  it("asks a paid order's cancellation for the refund, prefilled with what was paid and today", async () => {
+    const user = userEvent.setup();
+    render(<EnrollmentDetail {...base} order={paidOrder} />);
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Motivo")).toBeVisible();
+    const amount = within(form).getByLabelText("Monto devuelto");
+    expect(amount).toHaveValue("58000");
+    expect(amount).toHaveAttribute("inputmode", "numeric");
+    expect(amount).toBeRequired();
+    expect(within(form).getByText(/Cobraste \$ 58\.000/)).toBeVisible();
+    const date = within(form).getByLabelText("Fecha de devolución");
+    expect(date).toHaveValue("2026-10-31");
+    expect(date).toHaveAttribute("max", "2026-10-31");
+    expect(date).toBeRequired();
+    expect(
+      within(form).getByLabelText("Nota de la devolución (opcional)"),
+    ).not.toBeRequired();
+
+    await user.click(
+      within(form).getByRole("button", { name: "Cancelar pedido" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/la devolución/i)).toBeVisible();
+  });
+
+  it("keeps the simple cancel, with no refund fields, for a pending order", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Motivo")).toBeVisible();
+    expect(within(form).queryByLabelText("Monto devuelto")).toBeNull();
+    expect(within(form).queryByLabelText("Fecha de devolución")).toBeNull();
+  });
+
+  it("shows the refund errors and keeps what was typed", () => {
+    render(
+      <EnrollmentDetail
+        {...base}
+        order={paidOrder}
+        form={{
+          errors: {
+            refundAmount: "La devolución no puede ser mayor que lo cobrado.",
+            refundedOn: "La fecha de devolución no puede ser futura.",
+          },
+          values: {
+            reason: "Pidió la baja",
+            refundAmount: "70000",
+            refundedOn: "2026-11-05",
+            refundNote: "Transferencia",
+          },
+        }}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Monto devuelto")).toHaveValue("70000");
+    expect(
+      within(form).getByLabelText("Monto devuelto"),
+    ).toHaveAccessibleDescription(/mayor que lo cobrado/);
+    expect(within(form).getByLabelText("Fecha de devolución")).toHaveValue(
+      "2026-11-05",
+    );
+    expect(
+      within(form).getByText("La fecha de devolución no puede ser futura."),
+    ).toBeVisible();
+    expect(
+      within(form).getByLabelText("Nota de la devolución (opcional)"),
+    ).toHaveValue("Transferencia");
+  });
+
+  it.each([
+    ["a partial refund", "$ 25.000"],
+    ["nothing returned", "$ 0"],
+  ])(
+    "shows the recorded refund beside the payment for %s",
+    (_label, amount) => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...paidOrder,
+            status: "cancelled",
+            statusLabel: "Cancelado",
+            actions: {
+              confirm: false,
+              cancel: false,
+              materialsRequested: false,
+              materialsReceived: false,
+            },
+            cancelRefund: null,
+            refund: {
+              amount,
+              refundedOn: "31/10/2026",
+              note: "Transferencia",
+              refundedBy: "owner@x.test",
+            },
+          }}
+        />,
+      );
+
+      const refund = screen.getByRole("region", { name: "Devolución" });
+      expect(within(refund).getByText(amount)).toBeVisible();
+      expect(within(refund).getByText("31/10/2026")).toBeVisible();
+      expect(within(refund).getByText("Transferencia")).toBeVisible();
+      expect(within(refund).getByText("owner@x.test")).toBeVisible();
+      expect(screen.getByRole("region", { name: "Cobro" })).toBeVisible();
+    },
+  );
+
+  it("shows no refund section when nothing was refunded", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    expect(screen.queryByRole("region", { name: "Devolución" })).toBeNull();
   });
 
   it("offers only the next materials step for a paid order", () => {

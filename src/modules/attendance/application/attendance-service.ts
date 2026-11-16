@@ -235,19 +235,24 @@ export function createAttendanceService(
       };
       const inserted = await repository.insertMakeUp(makeUp);
       if (!inserted.ok) return inserted;
-      const [seated, booked] = await Promise.all([
-        roster.forTurno(target.periodId, target.turnoId),
-        repository.countMakeUpsInto(
-          target.periodId,
-          target.turnoId,
-          makeUp.makeUpDate,
-        ),
-      ]);
-      // The new make-up is already counted in `booked`.
-      return ok({
-        ...makeUp,
-        targetFull: seated.length + booked > target.capacity,
-      });
+      // The make-up is already stored; the full-turno warning is advisory, so
+      // a failed occupancy read must not turn the booking into a failure.
+      let targetFull = false;
+      try {
+        const [seated, booked] = await Promise.all([
+          roster.forTurno(target.periodId, target.turnoId),
+          repository.countMakeUpsInto(
+            target.periodId,
+            target.turnoId,
+            makeUp.makeUpDate,
+          ),
+        ]);
+        // The new make-up is already counted in `booked`.
+        targetFull = seated.length + booked > target.capacity;
+      } catch {
+        targetFull = false;
+      }
+      return ok({ ...makeUp, targetFull });
     },
 
     async listMakeUps(actor, status) {

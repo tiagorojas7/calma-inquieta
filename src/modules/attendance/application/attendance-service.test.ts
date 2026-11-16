@@ -470,6 +470,20 @@ describe("attendance service", () => {
       expect(repository.makeUps.size).toBe(1);
     });
 
+    it("keeps a booked make-up successful when the occupancy check cannot be read", async () => {
+      const { service, repository, actor } = setup({ wednesdayCapacity: 2 });
+      await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "ana@example.com", status: "absent" },
+      ]);
+      repository.countMakeUpsInto = () =>
+        Promise.reject(new Error("occupancy read failed"));
+
+      const result = await service.scheduleMakeUp(actor, input);
+
+      expect(result).toMatchObject({ ok: true, value: { targetFull: false } });
+      expect(repository.makeUps.size).toBe(1);
+    });
+
     it("counts the make-ups already booked on that date toward the capacity", async () => {
       const { service, actor, rosters } = setup({ wednesdayCapacity: 3 });
       rosters[WEDNESDAY] = [bea, caro];

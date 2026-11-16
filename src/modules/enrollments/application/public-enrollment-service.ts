@@ -46,7 +46,6 @@ import type {
 } from "./offer-lookup";
 import type {
   OfferedMaterial,
-  OfferedMaterialImage,
   OfferedMaterialsLookup,
 } from "./offered-materials";
 import type { RandomBytes } from "./random-bytes";
@@ -91,25 +90,7 @@ export interface PublicOffer {
   readonly workshopName: string;
   readonly period: string;
   readonly fee: Money;
-  readonly materialsRequired: boolean;
   readonly turnos: readonly Omit<OfferedTurno, "capacity">[];
-  /**
-   * Active materials with available variants only; no supplier data. A
-   * variant without a price is listed as `onRequest` and is never orderable.
-   */
-  readonly materials: readonly {
-    readonly materialId: string;
-    readonly name: string;
-    readonly category: string;
-    readonly image: OfferedMaterialImage | null;
-    readonly variants: readonly {
-      readonly variantId: string;
-      readonly label: string;
-      readonly unitPrice: Money | null;
-      readonly onRequest: boolean;
-      readonly swatch: string | null;
-    }[];
-  }[];
 }
 
 export type DependencyUnavailable = { readonly kind: "unavailable" };
@@ -269,18 +250,6 @@ function resolveLines(
   return ok(lines);
 }
 
-/**
- * Whether the student can order anything at all. When every offered measure
- * is "consultar precio" the required-materials rule cannot be met, so it must
- * not block the enrollment.
- */
-function hasOrderableVariant(offered: readonly OfferedMaterial[]): boolean {
-  return offered.some(
-    (m) =>
-      m.active && m.variants.some((v) => v.available && v.unitPrice !== null),
-  );
-}
-
 export function createPublicEnrollmentService(
   deps: PublicEnrollmentServiceDeps,
 ): PublicEnrollmentUseCases {
@@ -296,17 +265,10 @@ export function createPublicEnrollmentService(
       const gate = gateOffer(foundOffer.value, deps.clock.now());
       if (!gate.ok) return gate;
       const { workshop, period, turnos } = gate.value;
-      const foundMaterials = await unavailableOnReject(
-        deps.materials.listForPeriod(period.id),
-      );
-      if (!foundMaterials.ok) return foundMaterials;
-      const materials = foundMaterials.value;
       return ok({
         workshopName: workshop.name,
         period: period.period,
         fee: period.fee,
-        materialsRequired:
-          period.materialsRequired && hasOrderableVariant(materials),
         turnos: turnos.map((t) => ({
           id: t.id,
           label: t.label,
@@ -314,31 +276,6 @@ export function createPublicEnrollmentService(
           startsAt: t.startsAt,
           endsAt: t.endsAt,
         })),
-        materials: materials
-          .filter((m) => m.active)
-          .map((m) => ({
-            materialId: m.materialId,
-            name: m.name,
-            category: m.category ?? "",
-            image:
-              m.image === undefined || m.image === null
-                ? null
-                : {
-                    src: m.image.src,
-                    alt: m.image.alt,
-                    width: m.image.width,
-                    height: m.image.height,
-                  },
-            variants: m.variants
-              .filter((v) => v.available)
-              .map((v) => ({
-                variantId: v.variantId,
-                label: v.label,
-                unitPrice: v.unitPrice,
-                onRequest: v.unitPrice === null,
-                swatch: v.swatch ?? null,
-              })),
-          })),
       });
     },
 
@@ -374,8 +311,6 @@ export function createPublicEnrollmentService(
 
       const priced = priceCart({
         fee: period.fee,
-        materialsRequired:
-          period.materialsRequired && hasOrderableVariant(foundMaterials.value),
         lines: lines.value,
       });
       if (!priced.ok) return priced;

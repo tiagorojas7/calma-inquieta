@@ -11,7 +11,6 @@ import { InMemoryOfferLookup } from "~/testing/fakes/enrollments-offer-lookup";
 import { InMemoryOfferedMaterials } from "~/testing/fakes/enrollments-offered-materials";
 import { InMemoryOrderRepository } from "~/testing/fakes/enrollments-order-repository";
 import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
-import { createOfferedMaterialsAdapter } from "~/composition/offered-materials-adapter";
 import type { EnrollmentOffer } from "./offer-lookup";
 import type { OfferedMaterialsLookup } from "./offered-materials";
 import {
@@ -220,20 +219,25 @@ describe("dependency availability", () => {
           .mockRejectedValue(new Error("offline")),
     ],
   ])(
-    "maps rejected %s calls to unavailable for getOffer and requestEnrollment",
+    "maps rejected %s calls to unavailable for requestEnrollment",
     async (_name, reject) => {
       const value = setup();
       reject(value);
 
-      await expect(
-        value.service.getOffer({ slug: "ceramica-inicial", period: "2026-10" }),
-      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
       await expect(
         value.service.requestEnrollment(request({ lines: [line("v-1")] })),
       ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
       expect(value.orders.size()).toBe(0);
     },
   );
+
+  it("maps a rejected offer lookup to unavailable for getOffer", async () => {
+    const value = setup();
+    vi.spyOn(value.offers, "findOffer").mockRejectedValue(new Error("offline"));
+    await expect(
+      value.service.getOffer({ slug: "ceramica-inicial", period: "2026-10" }),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+  });
 
   it.each([
     [
@@ -438,29 +442,12 @@ describe("requestEnrollment order number", () => {
 });
 
 describe("requestEnrollment materials", () => {
-  it("requires at least one line when the period requires materials", async () => {
-    expect(
-      await setup({
-        offer: withPeriod({ materialsRequired: true }),
-      }).service.requestEnrollment(request()),
-    ).toEqual({ ok: false, error: { kind: "materials-required" } });
-  });
-
-  it("accepts an enrollment with no lines when required materials are all on request", async () => {
-    const result = await setup({
-      materials: new InMemoryOfferedMaterials({
-        "p-1": [
-          materialFixture({
-            variants: materialFixture().variants.map((v) => ({
-              ...v,
-              unitPrice: null,
-            })),
-          }),
-        ],
-      }),
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.requestEnrollment(request());
-    expect(result.ok).toBe(true);
+  it("accepts an enrollment with no lines and never asks for materials", async () => {
+    const result = await setup().service.requestEnrollment(request());
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.lines).toEqual([]);
+    expect(result.value.materialsTotal.isZero()).toBe(true);
+    expect(result.value.total.equals(pesos(58000))).toBe(true);
   });
 
   it("refuses an invalid quantity naming the variant", async () => {
@@ -609,140 +596,26 @@ describe("getOrderByPublicId", () => {
 describe("getOffer", () => {
   const query = { slug: "ceramica-inicial", period: "2026-10" };
 
-  it("shows fee, month, turnos and offered materials for an open month", async () => {
+  it("shows fee, month and turnos for an open month, with no material data", async () => {
     const result = await setup().service.getOffer(query);
     if (!result.ok) throw new Error(JSON.stringify(result.error));
     expect(result.value.fee.equals(pesos(58000))).toBe(true);
     expect(result.value.period).toBe("2026-10");
-    expect(result.value.materialsRequired).toBe(false);
     expect(result.value.turnos.map((t) => t.id)).toEqual(["t-1", "t-2"]);
-    expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
-  });
-
-  it("lists variants without a price flagged as on request", async () => {
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          variants: materialFixture().variants.map((v) =>
-            v.variantId === "v-2" ? { ...v, unitPrice: null } : v,
-          ),
-        }),
-      ],
-    });
-    const result = await setup({ materials }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(
-      result.value.materials[0]?.variants.map((v) => [
-        v.variantId,
-        v.onRequest,
-        v.unitPrice === null,
-      ]),
-    ).toEqual([
-      ["v-1", false, false],
-      ["v-2", true, true],
+    expect(Object.keys(result.value).sort()).toEqual([
+      "fee",
+      "period",
+      "turnos",
+      "workshopName",
     ]);
   });
 
-  it("carries the material category, empty when unknown", async () => {
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({ category: "Arcilla" }),
-        materialFixture({ materialId: "m-2", name: "Pintura" }),
-      ],
-    });
-    const result = await setup({ materials }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materials.map((m) => m.category)).toEqual([
-      "Arcilla",
-      "",
-    ]);
-  });
-
-  const allOnRequest = () =>
-    new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          variants: materialFixture().variants.map((v) => ({
-            ...v,
-            unitPrice: null,
-          })),
-        }),
-      ],
-    });
-
-  it("keeps a material whose measures are all on request, with every measure flagged", async () => {
-    const result = await setup({ materials: allOnRequest() }).service.getOffer(
-      query,
-    );
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    const [material] = result.value.materials;
-    expect(material?.variants.length).toBeGreaterThan(0);
-    expect(material?.variants.every((v) => v.onRequest)).toBe(true);
-  });
-
-  it("does not report materials as required when nothing in the offer can be ordered", async () => {
-    const result = await setup({
-      materials: allOnRequest(),
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materialsRequired).toBe(false);
-  });
-
-  it("still reports materials as required when something can be ordered", async () => {
-    const result = await setup({
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materialsRequired).toBe(true);
-  });
-
-  it("carries the material image and variant swatch, and null when unset", async () => {
-    const image = {
-      src: "/media/arcilla.webp",
-      alt: "Arcilla blanca",
-      width: 800,
-      height: 600,
-    };
-    const [firstVariant] = materialFixture().variants;
-    if (!firstVariant) throw new Error("fixture variant");
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          image,
-          variants: [{ ...firstVariant, swatch: "#aabbcc" }],
-        }),
-        materialFixture({ materialId: "m-2", name: "Pintura" }),
-      ],
-    });
-    const { service } = setup({ materials });
+  it("never reads the offered materials", async () => {
+    const { service, materials } = setup();
+    const lookup = vi.spyOn(materials, "listForPeriod");
     const result = await service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    const [first, second] = result.value.materials;
-    expect(first?.image).toEqual(image);
-    expect(first?.variants[0]?.swatch).toBe("#aabbcc");
-    expect(second?.image).toBeNull();
-    expect(second?.variants[0]?.swatch).toBeNull();
-    expect(JSON.stringify(result.value)).not.toContain("assetId");
-  });
-
-  it("filters disappeared material sentinels from the public offer", async () => {
-    const materials = createOfferedMaterialsAdapter(
-      { listOfferedMaterialIds: () => Promise.resolve(["m-1"]) },
-      { findOfferedMaterialSnapshots: () => Promise.resolve(new Map()) },
-    );
-    const { service } = setup({ materials });
-
-    await expect(
-      service.requestEnrollment(request({ lines: [line("v-1")] })),
-    ).resolves.toEqual({
-      ok: false,
-      error: { kind: "material-unavailable", materialId: "m-1" },
-    });
-    const result = await service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materials).toEqual([]);
-    expect(JSON.stringify(result.value)).not.toContain('"supplierId":""');
+    expect(result.ok).toBe(true);
+    expect(lookup).not.toHaveBeenCalled();
   });
 
   it("applies the same gates: paused, unpublished and past month", async () => {

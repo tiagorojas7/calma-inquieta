@@ -13,12 +13,7 @@ describe("enrollment offer adapter", () => {
     const findEnrollmentOffer = () =>
       Promise.resolve({
         workshop: { id: "workshop-1", name: "Cerámica inicial" },
-        period: {
-          id: "period-1",
-          period: "2026-10",
-          fee,
-          materialsRequired: true,
-        },
+        period: { id: "period-1", period: "2026-10", fee },
         turnos: [
           {
             id: "turno-1",
@@ -46,7 +41,6 @@ describe("enrollment offer adapter", () => {
         period: "2026-10",
         status: "open",
         fee,
-        materialsRequired: true,
       },
       turnos: [
         {

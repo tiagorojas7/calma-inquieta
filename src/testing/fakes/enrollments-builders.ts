@@ -38,7 +38,6 @@ export const offerFixture = (
       period: periodKey,
       status: "open",
       fee: pesos(58000),
-      materialsRequired: false,
     },
     turnos: [
       {

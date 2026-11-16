@@ -16,7 +16,6 @@ const offer = {
   workshopName: "Cerámica inicial",
   period: "2026-11",
   fee: pesos(58_000),
-  materialsRequired: false,
   turnos: [
     {
       id: "turno-1",
@@ -96,11 +95,78 @@ describe("enrollment route", () => {
         period: "2026-11",
         periodLabel: "noviembre 2026",
         fee: "$ 58.000",
-        materialsRequired: false,
         turnos: [{ id: "turno-1" }],
       },
     });
     expect(JSON.stringify(result)).not.toContain("No serializar");
+    expect(JSON.stringify(result)).not.toContain("materialsRequired");
+  });
+
+  it("never exposes a materials flag, even if the service still sent one", async () => {
+    const services = createTestServices({
+      publicEnrollments: {
+        getOffer: vi
+          .fn()
+          .mockResolvedValue(ok({ ...offer, materialsRequired: true })),
+        requestEnrollment: vi.fn(),
+        getOrderByPublicId: vi.fn(),
+      },
+    });
+    const result = await loader(args(services));
+    if (!("offer" in result)) throw new Error("expected an open offer");
+    expect(Object.keys(result.offer).sort()).toEqual([
+      "content",
+      "fee",
+      "period",
+      "periodLabel",
+      "turnos",
+      "workshopName",
+    ]);
+  });
+
+  it("redirects to the order when the form is valid, with no materials step", async () => {
+    const requestEnrollment = vi.fn().mockResolvedValue(
+      ok({
+        publicId: "public-9",
+        number: "2026-9",
+        status: "pending",
+        studentName: "Ana",
+        workshopName: "Cerámica",
+        period: "2026-11",
+        turnoLabel: "Martes",
+        weekday: 2,
+        startsAt: "18:00",
+        endsAt: "20:00",
+        lines: [],
+        fee: pesos(1),
+        materialsTotal: pesos(0),
+        total: pesos(1),
+      }),
+    );
+    const services = createTestServices({
+      publicEnrollments: {
+        getOffer: vi.fn(),
+        requestEnrollment,
+        getOrderByPublicId: vi.fn(),
+      },
+    });
+    const result = await action({
+      ...args(services),
+      request: formRequest({
+        period: "2026-11",
+        turnoId: "turno-1",
+        fullName: "Ana Demo",
+        email: "ana@example.test",
+        phone: "+54 9 351 555 0000",
+        policy: "on",
+        honeypot: "",
+      }),
+    });
+    if (!(result instanceof Response)) throw new Error("expected redirect");
+    expect(result.headers.get("Location")).toBe("/pedido/public-9");
+    expect(requestEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({ lines: [] }),
+    );
   });
 
   it("uses the same 404 for unpublished and invalid offers and fails closed when unavailable", async () => {

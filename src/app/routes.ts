@@ -76,10 +76,6 @@ export default [
     route("talleres", "routes/talleres.tsx"),
     route("talleres/:slug", "routes/taller.tsx"),
     route("talleres/:slug/inscripcion", "routes/enrollment.tsx"),
-    route(
-      "talleres/:slug/inscripcion/materiales",
-      "routes/enrollment-materials.tsx",
-    ),
     route("pedido/:publicId", "routes/order.tsx"),
     route("intensivos", "routes/intensivos.tsx"),
     route("intensivos/:slug", "routes/intensivo.tsx"),

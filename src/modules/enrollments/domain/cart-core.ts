@@ -71,7 +71,6 @@ export interface PricedCart {
 }
 
 export type PricingError =
-  | { readonly kind: "materials-required" }
   | { readonly kind: "invalid-price"; readonly variantId: string }
   | { readonly kind: "invalid-fee" }
   | { readonly kind: "invalid-total" };
@@ -82,12 +81,8 @@ export type PricingError =
  */
 export function priceCart(input: {
   readonly fee: Money;
-  readonly materialsRequired: boolean;
   readonly lines: readonly PricingLineInput[];
 }): Result<PricedCart, PricingError> {
-  if (input.materialsRequired && input.lines.length === 0) {
-    return err({ kind: "materials-required" });
-  }
   const invalid = input.lines.find(
     (l) => l.unitPrice.isNegative() || l.unitPrice.toCentavos() % 100 !== 0,
   );

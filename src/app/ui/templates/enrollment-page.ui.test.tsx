@@ -9,17 +9,16 @@ const offer = {
   period: "2026-11",
   periodLabel: "noviembre 2026",
   fee: "$ 40.000",
-  materialsRequired: true,
   turnos: [{ id: "t1", label: "Lunes 18:00" }],
 };
 const values = { fullName: "", email: "", phone: "", turnoId: "" };
 
-function setup(errors: Record<string, string> = {}, materialsRequired = true) {
+function setup(errors: Record<string, string> = {}) {
   return render(
     <MemoryRouter>
       <EnrollmentPage
         state="open"
-        offer={{ ...offer, materialsRequired }}
+        offer={offer}
         values={values}
         errors={errors}
         backHref="/talleres/ceramica"
@@ -54,7 +53,7 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
 
   it("orients the visitor with a step indicator and a back link", () => {
     setup();
-    expect(screen.getByText("Paso 1 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Paso 1 de 2")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Volver/ })).toHaveAttribute(
       "href",
       "/talleres/ceramica",
@@ -79,9 +78,23 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     expect(new Set(glyphs).size).toBe(4);
   });
 
-  it("counts two steps when materials are not required", () => {
-    setup({}, false);
+  it("always counts two steps and never mentions materials", () => {
+    render(
+      <MemoryRouter>
+        <EnrollmentPage
+          state="open"
+          offer={offer}
+          values={values}
+          errors={{}}
+        />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("Paso 1 de 2")).toBeInTheDocument();
+    expect(screen.queryByText("Materiales requeridos")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Elegir materiales" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeVisible();
   });
 
   it("adds autofill tokens, input modes and a phone hint", () => {

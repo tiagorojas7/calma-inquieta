@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 
 describe("EnrollmentPage", () => {
@@ -12,7 +12,6 @@ describe("EnrollmentPage", () => {
           period: "2026-11",
           periodLabel: "noviembre 2026",
           fee: "$ 58.000",
-          materialsRequired: true,
           turnos: [{ id: "turno-1", label: "Martes · 18:00 a 20:00 h" }],
         }}
         values={{ fullName: "", email: "", phone: "", turnoId: "" }}
@@ -23,7 +22,8 @@ describe("EnrollmentPage", () => {
       screen.getByRole("heading", { name: "Cerámica inicial" }),
     ).toBeVisible();
     expect(screen.getByText("noviembre 2026")).toBeVisible();
-    expect(screen.getByText("Materiales requeridos")).toBeVisible();
+    expect(screen.queryByText("Materiales requeridos")).toBeNull();
+    expect(screen.getByText("Paso 1 de 2")).toBeVisible();
     expect(screen.getByLabelText("Nombre completo")).toBeRequired();
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Teléfono argentino")).toHaveAttribute(
@@ -48,7 +48,6 @@ describe("EnrollmentPage", () => {
           period: "2026-11",
           periodLabel: "noviembre 2026",
           fee: "$ 58.000",
-          materialsRequired: false,
           turnos: [{ id: "a", label: "Martes" }],
         }}
         values={{ fullName: "", email: "", phone: "", turnoId: "" }}
@@ -79,7 +78,6 @@ describe("EnrollmentPage", () => {
           period: "2026-11",
           periodLabel: "noviembre 2026",
           fee: "$ 58.000",
-          materialsRequired: false,
           turnos: [{ id: "a", label: "Martes" }],
         }}
         values={{ fullName: "Ana", email: "mal", phone: "123", turnoId: "a" }}
@@ -99,34 +97,6 @@ describe("EnrollmentPage", () => {
     ])
       expect(screen.getAllByText(message)).toHaveLength(2);
     expect(screen.getByLabelText("Nombre completo")).toHaveValue("Ana");
-  });
-
-  it("continues a valid student draft to the materials step", () => {
-    const onContinueToMaterials = vi.fn();
-    render(
-      <EnrollmentPage
-        errors={{}}
-        needsMaterials
-        offer={{
-          workshopName: "Cerámica",
-          period: "2026-11",
-          periodLabel: "noviembre 2026",
-          fee: "$ 58.000",
-          materialsRequired: true,
-          turnos: [{ id: "a", label: "Martes" }],
-        }}
-        onContinueToMaterials={onContinueToMaterials}
-        state="open"
-        values={{
-          fullName: "Ana",
-          email: "ana@example.test",
-          phone: "3515550000",
-          turnoId: "a",
-        }}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Elegir materiales" }));
-    expect(onContinueToMaterials).toHaveBeenCalledOnce();
   });
 
   it("shows paused enrollment with no form or unsupported contact path", () => {

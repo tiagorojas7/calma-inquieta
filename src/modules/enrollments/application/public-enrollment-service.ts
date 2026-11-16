@@ -144,6 +144,11 @@ export interface PublicEnrollmentServiceDeps {
   readonly policyVersion: string;
 }
 
+export interface RequestEnrollmentOptions {
+  /** Admin email when an owner enrolls the student by hand. */
+  readonly createdBy?: string;
+}
+
 export interface PublicEnrollmentUseCases {
   getOffer(
     query: EnrollmentOfferQuery,
@@ -154,6 +159,7 @@ export interface PublicEnrollmentUseCases {
    */
   requestEnrollment(
     input: RequestEnrollmentInput,
+    options?: RequestEnrollmentOptions,
   ): Promise<Result<PublicOrderView, RequestEnrollmentError>>;
   getOrderByPublicId(
     publicId: string,
@@ -336,7 +342,7 @@ export function createPublicEnrollmentService(
       });
     },
 
-    async requestEnrollment(input) {
+    async requestEnrollment(input, options = {}) {
       const student = validateStudentInput(input.student, phoneDigits);
       if (!student.ok) {
         if (student.error.kind === "honeypot") {
@@ -402,6 +408,9 @@ export function createPublicEnrollmentService(
           total: priced.value.total,
           policyVersion: deps.policyVersion,
           lines: lines.value,
+          ...(options.createdBy === undefined
+            ? {}
+            : { createdBy: options.createdBy }),
         }),
       );
       if (!created.ok) return created;

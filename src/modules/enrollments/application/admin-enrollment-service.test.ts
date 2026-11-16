@@ -19,6 +19,20 @@ const admin = { kind: "admin-actor" as const, email: "admin@example.com" };
 const now = new Date("2026-11-01T02:59:00Z");
 const offer = { status: "open" as const, capacity: 8 };
 const payment = { amount: "58000", paidOn: "2026-10-31" };
+const notCalled = () => Promise.reject(new Error("createPending not expected"));
+const pendingInput = {
+  slug: "ceramica",
+  period: "2026-11",
+  turnoId: "turno-1",
+  student: {
+    fullName: "Ana Perez",
+    email: "ana@example.com",
+    phone: "+54 9 351 555 1000",
+    policyAccepted: true,
+    honeypot: "",
+  },
+  lines: [],
+};
 
 async function fixture(
   overrides: {
@@ -38,6 +52,7 @@ async function fixture(
 ) {
   const orders = new InMemoryOrderRepository();
   const seats = new InMemorySeatLedger();
+  const pendingCalls: unknown[] = [];
   const created = await orders.create(orderDraft());
   if (!created.ok) throw new Error("fixture order");
   const service = createAdminEnrollmentService({
@@ -53,8 +68,30 @@ async function fixture(
       },
     ),
     clock: overrides.clock ?? { now: () => now },
+    createPending: (input, actorEmail) => {
+      pendingCalls.push({ input, actorEmail });
+      return Promise.resolve({
+        ok: true,
+        value: {
+          publicId: "A".repeat(22),
+          number: "CI-2026-0002",
+          status: "pending_confirmation" as const,
+          studentName: input.student.fullName,
+          workshopName: "Ceramica",
+          period: input.period,
+          turnoLabel: "Lunes 18:00",
+          weekday: 1,
+          startsAt: "18:00",
+          endsAt: "20:00",
+          lines: [],
+          fee: pesos(58000),
+          materialsTotal: pesos(0),
+          total: pesos(58000),
+        },
+      });
+    },
   });
-  return { service, orders, seats, order: created.value };
+  return { service, orders, seats, pendingCalls, order: created.value };
 }
 
 async function createOrder(
@@ -89,6 +126,29 @@ const materialsLine = {
 };
 
 describe("admin enrollment service", () => {
+  it("creates a pending monthly enrollment as the authorized admin", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    const created = await service.createPending(admin, pendingInput);
+
+    expect(created).toMatchObject({
+      ok: true,
+      value: { status: "pending_confirmation", studentName: "Ana Perez" },
+    });
+    expect(pendingCalls).toEqual([
+      { input: pendingInput, actorEmail: "admin@example.com" },
+    ]);
+  });
+
+  it("refuses a manual enrollment from a non-admin without creating it", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    await expect(
+      service.createPending({ kind: "visitor" }, pendingInput),
+    ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+    expect(pendingCalls).toEqual([]);
+  });
+
   it.each([
     [
       "confirmPayment",
@@ -181,6 +241,13 @@ describe("admin enrollment service", () => {
     ).resolves.toEqual(denied);
     await expect(service.list(undefined)).resolves.toEqual(denied);
     await expect(service.detail(undefined, "order-1")).resolves.toEqual(denied);
+    await expect(
+      service.createPending(undefined, pendingInput),
+    ).resolves.toEqual(denied);
+    await expect(service.createPending(admin, pendingInput)).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
     await expect(
       service.markMaterialsRequestedBulk(undefined, ["order-1"]),
     ).resolves.toEqual([{ orderId: "order-1", result: denied }]);
@@ -390,6 +457,7 @@ describe("admin enrollment service", () => {
     const closedService = createAdminEnrollmentService({
       store: closedStore,
       clock: { now: () => now },
+      createPending: notCalled,
     });
     await expect(
       closedService.cancel(admin, {
@@ -767,6 +835,7 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 8 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
     });
     const before = await paid.orders.findForAdmin(paid.order.id);
     const audit = await paid.orders.auditTrail(paid.order.id);
@@ -816,6 +885,7 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 8 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
     });
 
     await expect(
@@ -865,6 +935,7 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 1 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
     });
 
     const cancellation = service.cancel(admin, {
@@ -905,6 +976,7 @@ describe("admin enrollment service", () => {
     const service = createAdminEnrollmentService({
       store,
       clock: { now: () => now },
+      createPending: notCalled,
     });
     await expect(service.list(admin)).resolves.toEqual({
       ok: false,

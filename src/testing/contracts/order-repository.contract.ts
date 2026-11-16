@@ -245,6 +245,19 @@ export function runOrderRepositoryContract(
       ]);
     });
 
+    it("names the admin who created an order on behalf of a student", async () => {
+      const { repository: repo } = await create();
+      const created = await repo.create(
+        orderDraft({ createdBy: "owner@example.com" }),
+      );
+      if (!created.ok) throw new Error("fixture");
+
+      expect(await repo.auditTrail(created.value.id)).toMatchObject([
+        { actor: "owner@example.com", from: null, to: "pending_confirmation" },
+      ]);
+      expect(created.value).not.toHaveProperty("createdBy");
+    });
+
     it("filters admin lists by status, period, workshop and text, newest first", async () => {
       const { repository: repo } = await create();
       const oldest = await repo.create(

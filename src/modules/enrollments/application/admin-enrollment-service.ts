@@ -13,6 +13,11 @@ import type {
   Cancelled,
   Confirmed,
 } from "./admin-enrollment-store";
+import type {
+  PublicOrderView,
+  RequestEnrollmentError,
+  RequestEnrollmentInput,
+} from "./public-enrollment-service";
 
 type Actor = AdminActor | Record<string, unknown> | null | undefined;
 type Invalid = {
@@ -24,9 +29,15 @@ type Invalid = {
 };
 export type AdminEnrollmentError =
   AdminEnrollmentStoreError | Invalid | { readonly kind: "denied" };
+/** Creates a pending enrollment on behalf of a student, attributed to the admin. */
+export type CreatePendingEnrollment = (
+  input: RequestEnrollmentInput,
+  actorEmail: string,
+) => Promise<Result<PublicOrderView, RequestEnrollmentError>>;
 export interface AdminEnrollmentServiceDeps {
   readonly store: AdminEnrollmentStore;
   readonly clock: Clock;
+  readonly createPending: CreatePendingEnrollment;
 }
 export interface ConfirmPaymentInput {
   readonly orderId: string;
@@ -44,6 +55,13 @@ export type BulkOutcomes = readonly {
 }[];
 
 export interface AdminEnrollmentUseCases {
+  /** Same rules as the public form; the audit trail names the admin. */
+  createPending(
+    actor: Actor,
+    input: RequestEnrollmentInput,
+  ): Promise<
+    Result<PublicOrderView, AdminEnrollmentError | RequestEnrollmentError>
+  >;
   confirmPayment(
     actor: Actor,
     input: ConfirmPaymentInput,
@@ -108,6 +126,7 @@ export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCas
     return Promise.resolve(orderIds.map((orderId) => ({ orderId, result })));
   };
   return {
+    createPending: fail,
     confirmPayment: fail,
     cancel: fail,
     markMaterialsRequested: fail,
@@ -154,6 +173,11 @@ export function createAdminEnrollmentService(
     );
   };
   return {
+    async createPending(actor, input) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      return deps.createPending(input, admin.value.email);
+    },
     async confirmPayment(actor, input) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;

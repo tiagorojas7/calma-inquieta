@@ -263,36 +263,44 @@ export function createRequestServices(
       return turno ? { status: period.status, capacity: turno.capacity } : null;
     },
   });
-  const enrollmentServices = seats
+  const publicEnrollments = seats
+    ? createPublicEnrollmentService({
+        offers: createEnrollmentOfferAdapter(
+          createWorkshopEnrollmentOfferLookup({
+            workshops: workshopRepository,
+            periods: periodRepository,
+            clock: systemClock,
+          }),
+        ),
+        materials: createOfferedMaterialsAdapter(
+          createWorkshopOfferedMaterialIdsLookup({
+            periods: periodRepository,
+          }),
+          createOfferedMaterialSnapshotsLookup({
+            materials: materialRepository,
+            media,
+          }),
+        ),
+        orders: createDrizzleOrderRepository(openSession),
+        seats,
+        clock: systemClock,
+        random: {
+          bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+        },
+        policyVersion: "2026-10",
+      })
+    : null;
+  const enrollmentServices = publicEnrollments
     ? {
-        publicEnrollments: createPublicEnrollmentService({
-          offers: createEnrollmentOfferAdapter(
-            createWorkshopEnrollmentOfferLookup({
-              workshops: workshopRepository,
-              periods: periodRepository,
-              clock: systemClock,
-            }),
-          ),
-          materials: createOfferedMaterialsAdapter(
-            createWorkshopOfferedMaterialIdsLookup({
-              periods: periodRepository,
-            }),
-            createOfferedMaterialSnapshotsLookup({
-              materials: materialRepository,
-              media,
-            }),
-          ),
-          orders: createDrizzleOrderRepository(openSession),
-          seats,
-          clock: systemClock,
-          random: {
-            bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-          },
-          policyVersion: "2026-10",
-        }),
+        publicEnrollments,
         enrollments: createAdminEnrollmentService({
           store: adminEnrollmentStore,
           clock: systemClock,
+          // Unwrapped on purpose: a hand-made enrollment sends no automatic email.
+          createPending: (input, actorEmail) =>
+            publicEnrollments.requestEnrollment(input, {
+              createdBy: actorEmail,
+            }),
         }),
         consolidation: createSupplierConsolidationService({
           store: adminEnrollmentStore,

@@ -26,8 +26,8 @@ export function withEnrollmentEmails(
 ): PublicEnrollmentUseCases {
   return {
     ...inner,
-    async requestEnrollment(input) {
-      const result = await inner.requestEnrollment(input);
+    async requestEnrollment(input, options) {
+      const result = await inner.requestEnrollment(input, options);
       // The honeypot answers with a decoy that has no number and was never stored.
       if (result.ok && result.value.number !== "") {
         const order = result.value;

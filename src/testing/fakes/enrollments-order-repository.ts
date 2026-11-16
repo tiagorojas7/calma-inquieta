@@ -56,6 +56,13 @@ const cordobaDate = (instant: Date): string => {
 /** In-memory order aggregate driven by the same transition table as production. */
 export class InMemoryOrderRepository implements OrderRepository {
   private readonly rows: Row[] = [];
+  /** Durable profiles keyed like production: unique email and unique phone. */
+  private readonly students: {
+    id: string;
+    email: string;
+    phoneDigits: string;
+  }[] = [];
+  private readonly studentOf = new Map<string, string>();
   private readonly sequences = new Map<number, number>();
   private failNext = false;
   private reads = 0;
@@ -69,33 +76,50 @@ export class InMemoryOrderRepository implements OrderRepository {
     return this.reads;
   }
   create(draft: OrderDraft): Promise<Result<StoredOrder, DuplicateOrder>> {
-    const active = this.rows.some(
-      ({ order }) =>
-        order.status !== "cancelled" &&
-        order.student.email === draft.student.email &&
-        order.workshopId === draft.workshopId &&
-        order.periodId === draft.periodId,
+    const byEmail = this.students.find((s) => s.email === draft.student.email);
+    const byPhone = this.students.find(
+      (s) => s.phoneDigits === draft.student.phoneDigits,
     );
-    if (active) return Promise.resolve(err({ kind: "duplicate-order" }));
+    if (byEmail && byPhone && byEmail.id !== byPhone.id)
+      return Promise.resolve(err({ kind: "duplicate-order" }));
+    const known = byEmail ?? byPhone;
+    // One record per student and month, cancelled history included.
+    const taken =
+      known !== undefined &&
+      this.rows.some(
+        ({ order }) =>
+          this.studentOf.get(order.id) === known.id &&
+          order.period === draft.period,
+      );
+    if (taken) return Promise.resolve(err({ kind: "duplicate-order" }));
     const sequence = (this.sequences.get(draft.year) ?? 0) + 1;
     if (this.failNext) {
       this.failNext = false;
       return Promise.reject(new Error("injected failure after numbering"));
     }
     this.sequences.set(draft.year, sequence);
-    const { year, ...fields } = draft;
+    const profile = known ?? {
+      id: `student-${String(this.students.length + 1)}`,
+      email: draft.student.email,
+      phoneDigits: draft.student.phoneDigits,
+    };
+    if (!known) this.students.push(profile);
+    profile.email = draft.student.email;
+    profile.phoneDigits = draft.student.phoneDigits;
+    const { year, createdBy, ...fields } = draft;
     const order: StoredOrder = {
       ...fields,
       id: `order-${String(this.rows.length + 1)}`,
       number: `CI-${String(year)}-${String(sequence).padStart(4, "0")}`,
       status: "pending_confirmation",
     };
+    this.studentOf.set(order.id, profile.id);
     this.rows.push({
       order,
       audit: [
         {
           at: draft.requestedAt,
-          actor: "public",
+          actor: createdBy ?? "public",
           from: null,
           to: "pending_confirmation",
           note: null,

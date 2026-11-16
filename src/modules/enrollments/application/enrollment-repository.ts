@@ -34,9 +34,11 @@ export interface OrderDraft {
   readonly policyVersion: string;
   /** Position is the array index. */
   readonly lines: readonly OrderLineDraft[];
+  /** Admin email when an owner enrolls a student by hand; absent for the public form. */
+  readonly createdBy?: string;
 }
 
-export interface StoredOrder extends Omit<OrderDraft, "year"> {
+export interface StoredOrder extends Omit<OrderDraft, "year" | "createdBy"> {
   readonly id: string;
   /** `CI-YYYY-NNNN`, assigned by the repository inside the create transaction. */
   readonly number: string;

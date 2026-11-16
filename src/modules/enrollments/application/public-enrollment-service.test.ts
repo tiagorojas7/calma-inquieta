@@ -105,6 +105,20 @@ describe("requestEnrollment happy path", () => {
     expect(seats.snapshot()).toEqual(before);
   });
 
+  it("attributes an enrollment created on behalf of a student to that admin", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    if (!stored) throw new Error("fixture");
+
+    expect(await orders.auditTrail(stored.id)).toMatchObject([
+      { actor: "owner@example.com", to: "pending_confirmation" },
+    ]);
+  });
+
   it("normalizes email and phone", async () => {
     const { service, orders } = setup();
     const result = await service.requestEnrollment(
@@ -340,7 +354,10 @@ describe("requestEnrollment seats and duplicates", () => {
     for (let i = 0; i < 5; i += 1) {
       const r = await service.requestEnrollment(
         request({
-          student: studentDraft({ email: `s${String(i)}@example.com` }),
+          student: studentDraft({
+            email: `s${String(i)}@example.com`,
+            phone: `351 555-200${String(i)}`,
+          }),
         }),
       );
       expect(r.ok).toBe(true);
@@ -356,7 +373,7 @@ describe("requestEnrollment seats and duplicates", () => {
     ).toEqual({ ok: false, error: { kind: "duplicate-order" } });
   });
 
-  it("accepts a new order once the earlier one was cancelled", async () => {
+  it("keeps refusing the same student and month after a cancellation", async () => {
     const { service, orders } = setup();
     const first = await service.requestEnrollment(request());
     if (!first.ok) throw new Error("fixture");
@@ -365,8 +382,10 @@ describe("requestEnrollment seats and duplicates", () => {
       actor: "owner@example.com",
       at: NOW,
     });
-    const second = await service.requestEnrollment(request());
-    expect(second.ok && second.value.number).toBe("CI-2026-0002");
+    expect(await service.requestEnrollment(request())).toEqual({
+      ok: false,
+      error: { kind: "duplicate-order" },
+    });
   });
 });
 
@@ -405,7 +424,12 @@ describe("requestEnrollment order number", () => {
     const { service } = setup();
     const a = await service.requestEnrollment(request());
     const b = await service.requestEnrollment(
-      request({ student: studentDraft({ email: "bea@example.com" }) }),
+      request({
+        student: studentDraft({
+          email: "bea@example.com",
+          phone: "351 555-9876",
+        }),
+      }),
     );
     if (!a.ok || !b.ok) throw new Error("fixture");
     expect(a.value.publicId).toMatch(/^[A-Za-z0-9_-]{22,}$/);

@@ -25,7 +25,7 @@ runAdminEnrollmentStoreContract(() => {
         student: {
           fullName: `Student ${String(nextOrder)}`,
           email: `student-${String(nextOrder)}@example.com`,
-          phoneDigits: `549351555${String(nextOrder).padStart(4, "0")}`,
+          phoneDigits: `549351444${String(nextOrder).padStart(4, "0")}`,
         },
         ...args[0],
       }),

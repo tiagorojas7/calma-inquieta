@@ -51,7 +51,7 @@ describe("createRequestServices", () => {
       ok: true,
       value: {
         status: "ok",
-        latestMigration: "0017_material_price_on_request",
+        latestMigration: "0018_durable_student_identity",
         buildCommit: "abc",
       },
     });

@@ -269,7 +269,7 @@ export function createDrizzleOrderRepository(
               id: crypto.randomUUID(),
               orderId: id,
               at: draft.requestedAt,
-              actor: "public",
+              actor: draft.createdBy ?? "public",
               from: null,
               to: "pending_confirmation",
               note: null,

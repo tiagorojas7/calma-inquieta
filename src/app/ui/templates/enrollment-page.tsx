@@ -22,6 +22,8 @@ export type EnrollmentPageProps =
         periodLabel: string;
         fee: string;
         materialsRequired: boolean;
+        /** The full workshop content, empty when none was written. */
+        content?: string;
         turnos: readonly { id: string; label: string }[];
       };
       values: {
@@ -90,6 +92,17 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
           <Text tone="accent">Materiales requeridos</Text>
         ) : null}
       </header>
+      {offer.content ? (
+        <section
+          aria-labelledby="enrollment-content"
+          className="flex flex-col gap-2"
+        >
+          <Heading level={2} id="enrollment-content">
+            Sobre el taller
+          </Heading>
+          <Text className="whitespace-pre-line">{offer.content}</Text>
+        </section>
+      ) : null}
       {needsMaterials ? (
         <section className="flex flex-col gap-3">
           <Text tone="accent">Elegí los materiales para continuar.</Text>

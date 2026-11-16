@@ -29,6 +29,29 @@ function setup(errors: Record<string, string> = {}, materialsRequired = true) {
 }
 
 describe("EnrollmentPage form (EN01-EN05)", () => {
+  it("shows the full workshop content before the registration fields", () => {
+    render(
+      <MemoryRouter>
+        <EnrollmentPage
+          state="open"
+          offer={{ ...offer, content: "Aprendés modelado. Todo incluido." }}
+          values={values}
+          errors={{}}
+        />
+      </MemoryRouter>,
+    );
+    const content = screen.getByText(/Aprendés modelado/);
+    const field = screen.getByLabelText("Nombre completo");
+    expect(
+      content.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("renders no content block when the workshop has none", () => {
+    setup();
+    expect(screen.queryByText("Sobre el taller")).toBeNull();
+  });
+
   it("orients the visitor with a step indicator and a back link", () => {
     setup();
     expect(screen.getByText("Paso 1 de 3")).toBeInTheDocument();

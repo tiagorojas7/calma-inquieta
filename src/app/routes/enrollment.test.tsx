@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { err, Money, ok } from "~/modules/_shared";
+import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
+import type { PublicTaller } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
 import { action, loader } from "./enrollment";
@@ -47,6 +49,38 @@ function formRequest(values: Record<string, string>) {
 }
 
 describe("enrollment route", () => {
+  it("exposes the full workshop content from the public catalog, and none when absent", async () => {
+    const taller = {
+      slug: "ceramica",
+      name: "Cerámica inicial",
+      summary: "Resumen corto",
+      description: "Contenido completo del taller.",
+    } as unknown as PublicTaller;
+    const withContent = createTestServices({
+      publicCatalog: createFakePublicCatalog({ talleres: [taller] }),
+      publicEnrollments: {
+        getOffer: vi.fn().mockResolvedValue(ok(offer)),
+        requestEnrollment: vi.fn(),
+        getOrderByPublicId: vi.fn(),
+      },
+    });
+    const result = await loader(args(withContent));
+    expect(result).toMatchObject({
+      offer: { content: "Contenido completo del taller." },
+    });
+    expect(JSON.stringify(result)).not.toContain("Resumen corto");
+
+    const withoutContent = createTestServices({
+      publicEnrollments: {
+        getOffer: vi.fn().mockResolvedValue(ok(offer)),
+        requestEnrollment: vi.fn(),
+        getOrderByPublicId: vi.fn(),
+      },
+    });
+    const empty = await loader(args(withoutContent));
+    expect(empty).toMatchObject({ offer: { content: "" } });
+  });
+
   it("maps a public offer without serializing material data", async () => {
     const services = createTestServices({
       publicEnrollments: {

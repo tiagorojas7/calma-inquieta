@@ -105,6 +105,7 @@ export function WorkshopForm({
       />
       <TextAreaField
         label={copy.form.description}
+        hint={copy.form.descriptionHint}
         name="description"
         rows={6}
         defaultValue={values.description}

@@ -127,6 +127,10 @@ export async function loader({ context, params, request }: RouteArgs) {
     throw data(null, { status: 404 });
   }
   const offer = result.value;
+  const services = context.get(servicesContext);
+  const taller = await services.publicCatalog.talleres.findBySlug(
+    params.slug ?? "",
+  );
   return {
     offer: {
       workshopName: offer.workshopName,
@@ -134,6 +138,7 @@ export async function loader({ context, params, request }: RouteArgs) {
       periodLabel: monthLabel(offer.period),
       fee: formatPesos(offer.fee.toCentavos()),
       materialsRequired: offer.materialsRequired,
+      content: taller?.description ?? "",
       turnos: offer.turnos.map((turno) => ({
         id: turno.id,
         label: turno.label,

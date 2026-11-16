@@ -42,6 +42,30 @@ describe("short fields on a wide form", () => {
   });
 });
 
+describe("card text versus full content", () => {
+  it("names the card text Descripción and the full detail Contenido interno", () => {
+    stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    expect(screen.getByLabelText("Descripción")).toHaveAttribute(
+      "name",
+      "summary",
+    );
+    const content = screen.getByLabelText("Contenido interno");
+    expect(content).toHaveAttribute("name", "description");
+    expect(content).toHaveAccessibleDescription(
+      /antes de completar los datos de inscripción/,
+    );
+  });
+});
+
 /** Records whether a submit reached the document (not cancelled by the router). */
 function submitReachesBrowser(form: HTMLFormElement | null) {
   const seen: { prevented: boolean | null } = { prevented: null };

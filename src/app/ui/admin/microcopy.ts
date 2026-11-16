@@ -925,9 +925,12 @@ export const adminMicrocopy = {
         "Letras minúsculas, números y guiones. Si lo dejás vacío se arma con el nombre.",
       confirmSlugChange:
         "Entiendo que cambiar el enlace de un taller publicado rompe su dirección actual",
-      summary: "Resumen",
-      summaryHint: "Una frase para las tarjetas del sitio.",
-      description: "Descripción",
+      summary: "Descripción",
+      summaryHint:
+        "Texto corto que se ve en las tarjetas del inicio y del listado de talleres.",
+      description: "Contenido interno",
+      descriptionHint:
+        "Detalle completo: se ve en la página del taller y antes de completar los datos de inscripción.",
       technique: "Técnica",
       defaultFee: "Arancel mensual (en pesos)",
       defaultFeeHint:

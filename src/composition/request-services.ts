@@ -421,6 +421,7 @@ export function createRequestServices(
       : createUnavailableIntensiveRequestService(),
     reminders: createRemindersService({
       orders: createDrizzleOrderHistoryReader(openSession),
+      clock: systemClock,
     }),
     insights: createInsightsService({
       orders: createDrizzleEnrollmentInsightsReader(openSession),

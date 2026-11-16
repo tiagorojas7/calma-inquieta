@@ -4,6 +4,13 @@ import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { AdminDangerZone, AdminSection } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
+import {
+  EnrollmentCorrectionForm,
+  EnrollmentCorrectionHistory,
+  type CorrectionFormField,
+  type CorrectionFormModel,
+  type CorrectionHistoryEntry,
+} from "./enrollment-correction";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -48,6 +55,9 @@ export interface EnrollmentDetailOrder {
     refundedBy: string;
   } | null;
   readonly seat: { confirmed: number; capacity: number };
+  /** What the correction form offers; null once the order is cancelled. */
+  readonly correction: CorrectionFormModel | null;
+  readonly corrections: readonly CorrectionHistoryEntry[];
   readonly audit: readonly {
     at: string;
     actor: string;
@@ -80,7 +90,8 @@ export interface EnrollmentDetailProps {
         | "reason"
         | "refundAmount"
         | "refundedOn"
-        | "refundNote",
+        | "refundNote"
+        | CorrectionFormField,
         string
       >
     >;
@@ -92,11 +103,21 @@ export interface EnrollmentDetailProps {
         | "reason"
         | "refundAmount"
         | "refundedOn"
-        | "refundNote",
+        | "refundNote"
+        | CorrectionFormField,
         string
       >
     >;
   };
+}
+
+/** A refused correction reopens its form with what was typed. */
+function hasCorrectionFeedback(form: EnrollmentDetailProps["form"]): boolean {
+  const fields = [
+    ...Object.keys(form?.errors ?? {}),
+    ...Object.keys(form?.values ?? {}),
+  ];
+  return fields.some((field) => field.startsWith("correct"));
 }
 
 const summaryClasses =
@@ -401,6 +422,24 @@ export function EnrollmentDetail({
             ) : null}
           </AdminSection>
 
+          {order.correction ? (
+            <details
+              open={hasCorrectionFeedback(form)}
+              className="rounded-md bg-surface p-4 shadow-card"
+            >
+              <summary className={summaryClasses}>
+                {copy.correction.title}
+              </summary>
+              <div className="mt-3">
+                <EnrollmentCorrectionForm
+                  correction={order.correction}
+                  today={order.today}
+                  form={form}
+                />
+              </div>
+            </details>
+          ) : null}
+
           <AdminSection title={copy.lines}>
             {order.lines.length === 0 ? (
               <p>{copy.noLines}</p>
@@ -459,6 +498,8 @@ export function EnrollmentDetail({
               </dl>
             </AdminSection>
           ) : null}
+
+          <EnrollmentCorrectionHistory entries={order.corrections} />
 
           <details className="rounded-md bg-surface p-4 shadow-card">
             <summary className={summaryClasses}>{copy.moreData}</summary>

@@ -7,6 +7,19 @@ import {
   type EnrollmentDetailProps,
 } from "./enrollment-detail";
 
+const correctionForm: NonNullable<
+  EnrollmentDetailProps["order"]["correction"]
+> = {
+  options: [
+    {
+      value: "ceramica|2026-11|t-2",
+      label: "Cerámica · noviembre 2026 · Jueves",
+    },
+  ],
+  feePesos: "48000",
+  paid: null,
+};
+
 const base: EnrollmentDetailProps = {
   order: {
     id: "o1",
@@ -35,6 +48,8 @@ const base: EnrollmentDetailProps = {
       },
     ],
     payment: null,
+    correction: correctionForm,
+    corrections: [],
     seat: { confirmed: 3, capacity: 8 },
     audit: [
       {
@@ -74,6 +89,7 @@ const paidOrder: EnrollmentDetailProps["order"] = {
     materialsReceived: false,
   },
   cancelRefund: { paid: "$ 58.000", paidPesos: "58000" },
+  correction: { ...correctionForm, paid: "$ 58.000" },
 };
 
 describe("EnrollmentDetail", () => {
@@ -175,6 +191,7 @@ describe("EnrollmentDetail", () => {
           ...base.order,
           status: "cancelled",
           statusLabel: "Cancelado",
+          correction: null,
           actions: {
             confirm: false,
             cancel: false,
@@ -361,6 +378,7 @@ describe("EnrollmentDetail", () => {
             ...paidOrder,
             status: "cancelled",
             statusLabel: "Cancelado",
+            correction: null,
             actions: {
               confirm: false,
               cancel: false,
@@ -435,6 +453,7 @@ describe("EnrollmentDetail", () => {
           ...base.order,
           status: "cancelled",
           statusLabel: "Cancelado",
+          correction: null,
           actions: {
             confirm: false,
             cancel: false,
@@ -447,5 +466,108 @@ describe("EnrollmentDetail", () => {
 
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
+  });
+
+  describe("corrections", () => {
+    it("offers the correction form on an active order, closed until it is needed", () => {
+      render(<EnrollmentDetail {...base} />);
+
+      const disclosure = screen
+        .getByText("Corregir inscripción", { selector: "summary" })
+        .closest("details");
+      expect(disclosure).not.toHaveAttribute("open");
+      expect(
+        within(disclosure as HTMLElement).getByRole("form", {
+          name: "Corregir inscripción",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(disclosure as HTMLElement).queryByLabelText("Monto devuelto"),
+      ).toBeNull();
+    });
+
+    it("asks for the refunded difference on a paid order", () => {
+      render(<EnrollmentDetail order={paidOrder} />);
+
+      const form = screen.getByRole("form", { name: "Corregir inscripción" });
+      expect(within(form).getByLabelText("Monto devuelto")).toBeInTheDocument();
+    });
+
+    it("reopens the form with what was typed after a refused correction", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          form={{
+            errors: { correctFee: "Ingresá la cuota en pesos enteros." },
+            values: { correctFee: "48,5" },
+          }}
+        />,
+      );
+
+      const disclosure = screen
+        .getByText("Corregir inscripción", { selector: "summary" })
+        .closest("details");
+      expect(disclosure).toHaveAttribute("open");
+      expect(screen.getByRole("textbox", { name: "Cuota" })).toHaveValue(
+        "48,5",
+      );
+      expect(
+        screen.getByText("Ingresá la cuota en pesos enteros."),
+      ).toBeInTheDocument();
+    });
+
+    it("does not offer a correction on a cancelled order", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...base.order,
+            status: "cancelled",
+            statusLabel: "Cancelado",
+            correction: null,
+          }}
+        />,
+      );
+
+      expect(screen.queryByText("Corregir inscripción")).toBeNull();
+    });
+
+    it("shows the history of corrections next to the audit trail", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...base.order,
+            corrections: [
+              {
+                at: "31/10/2026 16:00",
+                actor: "admin@example.com",
+                note: null,
+                outcome: "kept-pending",
+                before: {
+                  workshop: "Cerámica",
+                  month: "noviembre 2026",
+                  turno: "Lunes",
+                  fee: "$ 48.000",
+                  total: "$ 58.000",
+                },
+                after: {
+                  workshop: "Cerámica",
+                  month: "noviembre 2026",
+                  turno: "Jueves",
+                  fee: "$ 50.000",
+                  total: "$ 60.000",
+                },
+                previousPayment: null,
+                refund: null,
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Correcciones (1)")).toBeInTheDocument();
+      expect(screen.getByText("Historial")).toBeInTheDocument();
+    });
   });
 });

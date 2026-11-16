@@ -197,6 +197,9 @@ export const adminMicrocopy = {
       feedback: {
         confirmed: "Cobro confirmado",
         cancelled: "Pedido cancelado",
+        corrected: "Corrección guardada",
+        "returned-to-pending":
+          "Corrección guardada. El total subió: el pedido volvió a pendiente y falta confirmar el cobro del nuevo total.",
         "materials-requested": "Materiales marcados como solicitados",
         "materials-received": "Materiales marcados como recibidos",
       },
@@ -274,6 +277,50 @@ export const adminMicrocopy = {
         refundedOn: "Fecha de devolución",
         refundedBy: "Registrada por",
         note: "Nota",
+      },
+      correction: {
+        title: "Corregir inscripción",
+        intro:
+          "Cambiá el taller, el mes, el turno o la cuota. Los materiales quedan como están. Si el total sube, el pedido vuelve a pendiente; si baja, sigue cobrado y cargás lo que devolviste.",
+        offer: "Taller, mes y turno",
+        keepOffer: "Dejar el actual",
+        fee: "Cuota",
+        feeHint:
+          "En pesos enteros, sin centavos; 0 para una beca. El total es la cuota más los materiales.",
+        note: "Motivo (opcional)",
+        refundTitle: "Diferencia devuelta",
+        refundHint: (paid: string) =>
+          `Cobraste ${paid}. Si el total baja, cargá cuánto devolviste: desde 0 hasta la diferencia. Si no baja, dejalo vacío.`,
+        refundAmount: "Monto devuelto",
+        refundedOn: "Fecha de devolución",
+        refundNote: "Nota de la devolución (opcional)",
+        submit: "Guardar corrección",
+      },
+      corrections: {
+        title: "Correcciones",
+        before: "Antes",
+        after: "Después",
+        previousPayment: (amount: string, paidOn: string, by: string) =>
+          `Cobro anterior que quedó sin efecto: ${amount} el ${paidOn}, confirmado por ${by}.`,
+        previousPaymentNoAuthor: (amount: string, paidOn: string) =>
+          `Cobro anterior que quedó sin efecto: ${amount} el ${paidOn}.`,
+        refund: (amount: string, refundedOn: string) =>
+          `Diferencia devuelta: ${amount} el ${refundedOn}.`,
+        refundNote: (note: string) => `Nota de la devolución: ${note}`,
+        outcome: {
+          "kept-pending": "Siguió pendiente",
+          "kept-paid": "Siguió cobrado",
+          "returned-to-pending": "Volvió a pendiente",
+          lowered: "Siguió cobrado con el total más bajo",
+        },
+        summary: (
+          workshop: string,
+          month: string,
+          turno: string,
+          fee: string,
+          total: string,
+        ) =>
+          `${workshop} · ${month} · ${turno} · cuota ${fee} · total ${total}`,
       },
       materials: {
         requested: "Marcar como solicitado",

@@ -4,7 +4,14 @@ import {
   createUnavailableAdminEnrollmentService,
   type AdminEnrollmentDetail,
   type AdminEnrollmentUseCases,
+  type Corrected,
+  type PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
+import type {
+  MonthlyWorkshopsService,
+  WorkshopPeriodsService,
+} from "~/modules/workshops";
+import { createUnavailableService } from "~/composition/unavailable-service";
 import {
   adminContext,
   getRequest,
@@ -60,6 +67,7 @@ const detail: AdminEnrollmentDetail = {
     },
   ],
   seat: { confirmed: 3, capacity: 8 },
+  corrections: [],
   audit: [
     {
       at: new Date("2026-10-31T15:30:00Z"),
@@ -73,11 +81,54 @@ const detail: AdminEnrollmentDetail = {
 
 type Overrides = Partial<AdminEnrollmentUseCases>;
 
+/** The open workshops, months and turnos the correction form can offer. */
 function services(overrides: Overrides) {
   return {
     enrollments: withOverrides(
       createUnavailableAdminEnrollmentService(),
       overrides,
+    ),
+    monthlyWorkshops: withOverrides(
+      createUnavailableService<MonthlyWorkshopsService>(),
+      {
+        list: () =>
+          Promise.resolve(
+            ok([
+              { id: "w1", name: "Cerámica", acceptsNewRequests: true },
+            ] as never),
+          ),
+        get: (_actor: unknown, id: string) =>
+          Promise.resolve(ok({ id, slug: "ceramica" } as never)),
+      },
+    ),
+    workshopPeriods: withOverrides(
+      createUnavailableService<WorkshopPeriodsService>(),
+      {
+        list: () =>
+          Promise.resolve(
+            ok({
+              periods: [{ period: "2026-11", status: "open", activeTurnos: 2 }],
+              suggestedNext: null,
+            } as never),
+          ),
+      },
+    ),
+    publicEnrollments: withOverrides(
+      createUnavailableService<PublicEnrollmentUseCases>(),
+      {
+        getOffer: ({ period }: { period: string }) =>
+          Promise.resolve(
+            ok({
+              workshopName: "Cerámica",
+              period,
+              fee: pesos(58_000),
+              turnos: [
+                { id: "t1", label: "Lunes 18:00" },
+                { id: "t2", label: "Martes 10:00" },
+              ],
+            } as never),
+          ),
+      },
     ),
   };
 }
@@ -648,5 +699,371 @@ describe("admin enrollment detail feedback", () => {
     } as never);
 
     expect(result.feedback).toBeNull();
+  });
+});
+
+describe("admin enrollment detail corrections", () => {
+  const paid: AdminEnrollmentDetail = {
+    ...detail,
+    status: "paid",
+    paidAt: new Date("2026-11-02T03:00:00Z"),
+    paidAmount: pesos(58_000),
+    confirmedBy: "admin@x.test",
+  };
+  const place = {
+    workshopId: "w1",
+    workshopName: "Cerámica",
+    periodId: "p1",
+    period: "2026-11",
+    turnoId: "t1",
+    turnoLabel: "Lunes",
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "12:00",
+  };
+  const snapshot = (
+    status: AdminEnrollmentDetail["status"],
+    fee: number,
+    turnoLabel = "Lunes",
+  ) => ({
+    ...place,
+    turnoLabel,
+    fee: pesos(fee),
+    total: pesos(fee + 10_000),
+    status,
+  });
+  const correctFields = {
+    intent: "correct",
+    correctOffer: "",
+    correctFee: "50000",
+    correctNote: "",
+    correctRefundAmount: "",
+    correctRefundedOn: "2026-11-05",
+    correctRefundNote: "",
+  };
+  const done = (outcome: Corrected["outcome"]) =>
+    vi.fn(() => Promise.resolve(ok({ kind: "corrected" as const, outcome })));
+
+  it("offers the correction with the current fee and every open turno", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(detail)) });
+
+    expect(result.correction).toEqual({
+      options: [
+        {
+          value: "ceramica|2026-11|t1",
+          label: "Cerámica · noviembre 2026 · Lunes 18:00",
+        },
+        {
+          value: "ceramica|2026-11|t2",
+          label: "Cerámica · noviembre 2026 · Martes 10:00",
+        },
+      ],
+      feePesos: "48000",
+      paid: null,
+    });
+    expect(result.corrections).toEqual([]);
+  });
+
+  it("asks for the refunded difference only once something was paid", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(paid)) });
+
+    expect(result.correction?.paid).toBe("$ 58.000");
+  });
+
+  it("offers no correction, and reads no offers, for a cancelled order", async () => {
+    const list = vi.fn();
+    const result = await loader({
+      request: getRequest(
+        "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      ),
+      params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
+      context: adminContext({
+        ...services({
+          detail: () =>
+            Promise.resolve(ok({ ...detail, status: "cancelled" as const })),
+        }),
+        monthlyWorkshops: withOverrides(
+          createUnavailableService<MonthlyWorkshopsService>(),
+          { list },
+        ),
+      }),
+    } as never);
+
+    expect(result.correction).toBeNull();
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it("still shows the order when the offers cannot be read", async () => {
+    const result = await loader({
+      request: getRequest(
+        "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      ),
+      params: { id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b" },
+      context: adminContext({
+        ...services({ detail: () => Promise.resolve(ok(detail)) }),
+        monthlyWorkshops: withOverrides(
+          createUnavailableService<MonthlyWorkshopsService>(),
+          { list: () => Promise.resolve(err({ kind: "unavailable" })) },
+        ),
+      }),
+    } as never);
+
+    expect(result.correction).toEqual({
+      options: [],
+      feePesos: "48000",
+      paid: null,
+    });
+  });
+
+  it("lists the corrections as readable history, with the money that moved", async () => {
+    const corrected: AdminEnrollmentDetail = {
+      ...detail,
+      corrections: [
+        {
+          id: "c1",
+          at: new Date("2026-11-03T15:00:00Z"),
+          actor: "admin@x.test",
+          note: "Cuota equivocada",
+          before: snapshot("paid", 48_000),
+          after: snapshot("pending_confirmation", 60_000, "Martes"),
+          previousPayment: {
+            amount: pesos(58_000),
+            paidAt: new Date("2026-11-02T03:00:00Z"),
+            confirmedBy: "admin@x.test",
+          },
+          refund: null,
+        },
+        {
+          id: "c2",
+          at: new Date("2026-11-04T15:00:00Z"),
+          actor: "owner@x.test",
+          note: null,
+          before: snapshot("paid", 60_000),
+          after: snapshot("paid", 50_000),
+          previousPayment: null,
+          refund: {
+            amount: pesos(8_000),
+            refundedAt: new Date("2026-11-04T03:00:00Z"),
+            note: "Efectivo",
+          },
+        },
+        {
+          id: "c3",
+          at: new Date("2026-11-05T15:00:00Z"),
+          actor: "owner@x.test",
+          note: null,
+          before: snapshot("pending_confirmation", 50_000),
+          after: snapshot("pending_confirmation", 52_000),
+          previousPayment: null,
+          refund: null,
+        },
+        {
+          id: "c4",
+          at: new Date("2026-11-06T15:00:00Z"),
+          actor: "owner@x.test",
+          note: null,
+          before: snapshot("materials_requested", 52_000),
+          after: snapshot("materials_requested", 52_000),
+          previousPayment: null,
+          refund: null,
+        },
+      ],
+    };
+    const result = await load({ detail: () => Promise.resolve(ok(corrected)) });
+
+    expect(result.corrections.map((entry) => entry.outcome)).toEqual([
+      "returned-to-pending",
+      "lowered",
+      "kept-pending",
+      "kept-paid",
+    ]);
+    expect(result.corrections[0]).toEqual({
+      at: "03/11/2026 12:00",
+      actor: "admin@x.test",
+      note: "Cuota equivocada",
+      outcome: "returned-to-pending",
+      before: {
+        workshop: "Cerámica",
+        month: "noviembre 2026",
+        turno: "Lunes · 10:00 a 12:00 h",
+        fee: "$ 48.000",
+        total: "$ 58.000",
+      },
+      after: {
+        workshop: "Cerámica",
+        month: "noviembre 2026",
+        turno: "Martes · 10:00 a 12:00 h",
+        fee: "$ 60.000",
+        total: "$ 70.000",
+      },
+      previousPayment: {
+        amount: "$ 58.000",
+        paidOn: "02/11/2026",
+        confirmedBy: "admin@x.test",
+      },
+      refund: null,
+    });
+    expect(result.corrections[1]?.refund).toEqual({
+      amount: "$ 8.000",
+      refundedOn: "04/11/2026",
+      note: "Efectivo",
+    });
+  });
+
+  it("corrects the order and goes back to the detail", async () => {
+    const correct = done("kept-pending");
+    const result = await submit({ correct }, correctFields);
+
+    expect(correct).toHaveBeenCalledWith(expect.anything(), {
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      fee: "50000",
+    });
+    expect((result as Response).headers.get("Location")).toBe(
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=corrected",
+    );
+  });
+
+  it("sends the chosen offer, the note and the refunded difference", async () => {
+    const correct = done("lowered");
+    await submit(
+      { correct },
+      {
+        ...correctFields,
+        correctOffer: "ceramica|2026-11|t2",
+        correctNote: " Beca ",
+        correctRefundAmount: "8000",
+        correctRefundNote: " Efectivo ",
+      },
+    );
+
+    expect(correct).toHaveBeenCalledWith(expect.anything(), {
+      orderId: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+      target: { slug: "ceramica", period: "2026-11", turnoId: "t2" },
+      fee: "50000",
+      refund: {
+        amount: "8000",
+        refundedOn: "2026-11-05",
+        note: "Efectivo",
+      },
+      note: "Beca",
+    });
+  });
+
+  it("says when the total went up and the order is pending again", async () => {
+    const result = await submit(
+      { correct: done("returned-to-pending") },
+      correctFields,
+    );
+
+    expect((result as Response).headers.get("Location")).toBe(
+      "/admin/inscripciones/0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b?ok=returned-to-pending",
+    );
+  });
+
+  it("refuses an unreadable offer without calling the use case", async () => {
+    const correct = done("kept-pending");
+    const result = await submit(
+      { correct },
+      { ...correctFields, correctOffer: "ceramica" },
+    );
+
+    expect(correct).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        errors: { correctOffer: "Elegí una opción válida." },
+        values: { correctOffer: "ceramica", correctFee: "50000" },
+      },
+    });
+  });
+
+  it.each([
+    [
+      { kind: "invalid-fee" },
+      { correctFee: expect.stringContaining("pesos enteros") as unknown },
+    ],
+    [
+      { kind: "invalid-refund", field: "amount", code: "above-difference" },
+      {
+        correctRefundAmount: expect.stringContaining("diferencia") as unknown,
+      },
+    ],
+    [
+      { kind: "invalid-refund", field: "amount", code: "required" },
+      {
+        correctRefundAmount: expect.stringContaining(
+          "cuánto devolviste",
+        ) as unknown,
+      },
+    ],
+  ])(
+    "names the field of %o and keeps what was typed",
+    async (failure, errors) => {
+      const correct = vi.fn(() => Promise.resolve(err(failure as never)));
+      const result = await submit({ correct }, correctFields);
+
+      expect(result).toMatchObject({
+        init: { status: 422 },
+        data: { errors, values: { correctFee: "50000" } },
+      });
+    },
+  );
+
+  it.each([
+    [
+      { kind: "turno-full" },
+      "El turno elegido está completo. No se cambió nada.",
+    ],
+    [
+      { kind: "duplicate-order" },
+      "Esa alumna ya tiene una inscripción en el mes elegido. No se cambió nada.",
+    ],
+    [
+      { kind: "period-closed" },
+      "El mes elegido ya está cerrado. Elegí otro mes.",
+    ],
+    [
+      { kind: "turno-not-offered" },
+      "Esa opción ya no está disponible. Elegí otra.",
+    ],
+    [
+      { kind: "enrollments-paused" },
+      "Esa opción ya no está disponible. Elegí otra.",
+    ],
+    [
+      { kind: "not-correctable" },
+      "Un pedido cancelado ya no se puede corregir.",
+    ],
+  ] as const)("shows %o as its own message", async (failure, message) => {
+    const correct = vi.fn(() => Promise.resolve(err(failure)));
+    const result = await submit({ correct }, correctFields);
+
+    expect(result).toMatchObject({
+      init: { status: 409 },
+      data: { formError: message, values: { correctFee: "50000" } },
+    });
+  });
+
+  it.each([
+    ["not-found", 404],
+    ["unavailable", 503],
+    ["denied", 403],
+  ] as const)("fails closed on %s", async (kind, status) => {
+    const result = await thrownStatus(() =>
+      submit({ correct: () => Promise.resolve(err({ kind })) }, correctFields),
+    );
+
+    expect(result).toBe(status);
+  });
+
+  it("does not correct for a request that is not an admin", async () => {
+    const correct = done("kept-pending");
+
+    expect(
+      await thrownStatus(() =>
+        submit({ correct }, correctFields, { admin: false }),
+      ),
+    ).toBe(403);
+    expect(correct).not.toHaveBeenCalled();
   });
 });

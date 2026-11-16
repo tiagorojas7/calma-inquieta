@@ -101,3 +101,14 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - At `50970d2`, `pnpm exec vitest run --project unit`: exit 0, 290 files / 3288 passed (346 s).
   - `pnpm exec vitest run --project ui`: 1 failed / 1022 passed. The failure was `workshop-screens.ui.test.tsx` "create screen shows an empty form, then the server errors with the typed values" (`Unable to find a label with the text of: Nombre`). That file passes 10/10 alone and was not touched by the change, so it is load flakiness.
   - An independent verifier was launched for `2677f88` (items 1 and 3).
+- L39 (2026-11-16): fee override verified and reviewed.
+  - Independent verifier at `2677f88`, all five items PASS.
+    - The admin fee is stored as fee and total. A $0 order ends paid with $0 on the Córdoba creation date, with the seat counted.
+    - An invalid fee stores nothing (snapshot unchanged). The public flow ignores a posted fee and still refuses a period fee of 0.
+    - 0018 on legacy data accepts 0 and rejects negatives. `drizzle-kit generate` reports no changes, and the snapshot differs only in the fee check.
+    - A $0 order on a full turno is refused before storing anything.
+  - Native review over `f8bd845..df2a3b4` (owner consent "Revisar este cambio"): risk and reliability approved it, and the acknowledgement burned the authority.
+  - Advisories, separate later work:
+    - R3-001: a $0 order is created and then confirmed in two steps. If the confirmation fails (a seat race), the owner sees an error while a pending $0 order exists, and a retry hits `duplicate-order`. Fix: create a $0 order as paid in one transaction.
+    - R3-002: any database that already applied the earlier 0018 keeps `fee > 0`, so reset it.
+    - R3-003: the "Cuota" error says "sin puntos ni centavos", but `parseWholePesos` accepts "12.500"; align the copy.

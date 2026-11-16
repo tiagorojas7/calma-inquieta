@@ -97,3 +97,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Parent checks: the diff stays inside the allowed surfaces; spot check 38/38 on the admin service and form tests; 0018 gains two statements, and the snapshot changes one line.
   - The full unit/ui seam run was stopped by the host for low memory and is pending; it was not restarted without the owner.
   - Follow-up: the service finds the new order's id by searching the pending list for its number. If that confirmation fails (the turno is full), a $0 order stays pending.
+- L38 (2026-11-16, owner, verbatim, answering whether to rerun the full suite in the foreground): "si".
+  - At `50970d2`, `pnpm exec vitest run --project unit`: exit 0, 290 files / 3288 passed (346 s).
+  - `pnpm exec vitest run --project ui`: 1 failed / 1022 passed. The failure was `workshop-screens.ui.test.tsx` "create screen shows an empty form, then the server errors with the typed values" (`Unable to find a label with the text of: Nombre`). That file passes 10/10 alone and was not touched by the change, so it is load flakiness.
+  - An independent verifier was launched for `2677f88` (items 1 and 3).

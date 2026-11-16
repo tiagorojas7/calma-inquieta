@@ -1487,8 +1487,6 @@ export const adminMicrocopy = {
       feePending: "Cuota pendiente",
       present: "Presente",
       absent: "Ausente",
-      pendingNote:
-        "Las alumnas con la cuota pendiente se pueden marcar cuando confirmes el pago.",
       save: "Guardar asistencia",
       saved: "Asistencia guardada.",
       makeUpScheduled: "Recuperación programada.",

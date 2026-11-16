@@ -6,6 +6,7 @@ import {
   monthLabel,
 } from "~/app/enrollment/order-labels";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { attendanceRulesCopy } from "./copy";
 import {
   sessionDates,
   weekdayOf,
@@ -104,6 +105,8 @@ export function sheetView({ turno, date, rows }: SessionSheet) {
     heading: sessionDateLabel(date),
     subtitle: `${turno.workshopName}, ${turno.turnoLabel} · ${monthLabel(turno.period)}`,
     backHref: sessionsPath(turno.periodId, turno.turnoId),
+    pendingNote: attendanceRulesCopy.pendingNote,
+    makeUpFullWarning: attendanceRulesCopy.makeUpFullWarning,
     rows: rows.map((row) => ({
       email: row.email,
       name: row.name,
@@ -120,12 +123,23 @@ export function sheetView({ turno, date, rows }: SessionSheet) {
   };
 }
 
-/** Every turno as a `periodId:turnoId` choice for a make-up class. */
-export function turnoOptions(turnos: readonly ScheduledTurno[]) {
-  return turnos.map((turno) => ({
-    value: `${turno.periodId}:${turno.turnoId}`,
-    label: `${turno.workshopName}, ${turno.turnoLabel} (${monthLabel(turno.period)})`,
-  }));
+/**
+ * The turnos a make-up class can go to, as `periodId:turnoId` choices: other
+ * turnos of the absent student's own workshop, never the turno itself.
+ */
+export function turnoOptions(
+  turnos: readonly ScheduledTurno[],
+  own: Pick<ScheduledTurno, "workshopId" | "turnoId">,
+) {
+  return turnos
+    .filter(
+      (turno) =>
+        turno.workshopId === own.workshopId && turno.turnoId !== own.turnoId,
+    )
+    .map((turno) => ({
+      value: `${turno.periodId}:${turno.turnoId}`,
+      label: `${turno.workshopName}, ${turno.turnoLabel} (${monthLabel(turno.period)})`,
+    }));
 }
 
 export function parseTurnoRef(

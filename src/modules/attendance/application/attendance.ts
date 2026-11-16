@@ -67,6 +67,18 @@ export interface MakeUpInput {
 
 export type MakeUpPlanField = MakeUpField | "student";
 
+/** A make-up that was saved; `targetFull` warns that its turno had no free seat. */
+export interface ScheduledMakeUp extends StoredMakeUp {
+  readonly targetFull: boolean;
+}
+
+/** Some absences already have a make-up, so they cannot become presences. */
+export interface MakeUpBooked {
+  readonly kind: "make-up-booked";
+  /** Normalized emails of the students concerned. */
+  readonly emails: readonly string[];
+}
+
 /** The admin contract of attendance and make-up classes. */
 export interface AttendanceService {
   listTurnos(
@@ -83,7 +95,10 @@ export interface AttendanceService {
     turnoId: string,
     date: string,
   ): Promise<Result<SessionSheet, AdminFailure | NotFound>>;
-  /** Replaces the whole session: students left out end up unmarked. */
+  /**
+   * Saves the submitted marks; students left out keep whatever mark they had.
+   * An absence that already has a make-up cannot be changed to present.
+   */
   recordSession(
     actor: AdminActor,
     periodId: string,
@@ -93,7 +108,7 @@ export interface AttendanceService {
   ): Promise<
     Result<
       { readonly recorded: number },
-      AdminFailure | NotFound | Invalid<"marks">
+      AdminFailure | NotFound | Invalid<"marks"> | MakeUpBooked
     >
   >;
   scheduleMakeUp(
@@ -101,7 +116,7 @@ export interface AttendanceService {
     input: MakeUpInput,
   ): Promise<
     Result<
-      StoredMakeUp,
+      ScheduledMakeUp,
       AdminFailure | NotFound | Invalid<MakeUpPlanField> | MakeUpExists
     >
   >;

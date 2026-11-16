@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { ScheduledTurno } from "~/modules/attendance";
 import {
   ATT_MONDAY,
   ATT_PERIOD,
+  ATT_TURNOS,
   ATT_UNKNOWN,
   attendanceFixture,
 } from "~/testing/admin/attendance-kit";
@@ -17,8 +19,8 @@ const DATE = "2026-10-05";
 const path = (date = DATE) =>
   `/admin/asistencia/${ATT_PERIOD}/${ATT_MONDAY}/${date}`;
 
-function setup() {
-  const fixture = attendanceFixture();
+function setup(options: Parameters<typeof attendanceFixture>[0] = {}) {
+  const fixture = attendanceFixture(options);
   const context = adminContext({ attendance: fixture.service });
   const params = (date = DATE) => ({
     periodId: ATT_PERIOD,
@@ -102,12 +104,26 @@ describe("admin attendance sheet route", () => {
     ]);
   });
 
-  it("answers 422 with a message when a mark is for someone outside the paid roster", async () => {
+  it("records the mark of a student whose fee is pending", async () => {
+    const { save, repository } = setup();
+
+    const response = (await save({
+      intent: "save",
+      "status:caro@example.com": "absent",
+    })) as Response;
+
+    expect(response.status).toBe(302);
+    expect(repository.marks.map((m) => [m.email, m.status])).toEqual([
+      ["caro@example.com", "absent"],
+    ]);
+  });
+
+  it("answers 422 with a message when a mark is for someone outside the roster", async () => {
     const { save, repository } = setup();
 
     const result = (await save({
       intent: "save",
-      "status:caro@example.com": "present",
+      "status:otra@example.com": "present",
     })) as { data: { error: string }; init: { status: number } };
 
     expect(result.init.status).toBe(422);
@@ -156,13 +172,86 @@ describe("admin attendance sheet make-up classes", () => {
     return context;
   }
 
-  it("offers every scheduled turno as a make-up choice", async () => {
-    const { load } = setup();
+  const otherWorkshop: ScheduledTurno = {
+    ...(ATT_TURNOS[1] as ScheduledTurno),
+    workshopId: "w2",
+    workshopName: "Acuarela",
+    turnoId: "5e4d3c2b-1a09-4f8e-9d7c-6b5a4f3e2d10",
+    turnoLabel: "Jueves tarde",
+    weekday: 4,
+  };
+
+  it("offers only the other turnos of the same workshop as make-up choices", async () => {
+    const { load } = setup({ turnos: [...ATT_TURNOS, otherWorkshop] });
     const result = await load();
     expect(result.makeUpTurnos.map((option) => option.label)).toEqual([
-      "Cerámica, Lunes tarde (octubre 2026)",
       "Cerámica, Miércoles mañana (octubre 2026)",
     ]);
+  });
+
+  it("answers 422 for a make-up in the own turno or in another workshop", async () => {
+    const { save, repository } = setup({
+      turnos: [...ATT_TURNOS, otherWorkshop],
+    });
+    await save({ intent: "save", "status:ana@example.com": "absent" });
+    const rejected = async (turno: string, date: string) =>
+      (
+        (await save(
+          makeUp({ makeUpTurno: `${ATT_PERIOD}:${turno}`, makeUpDate: date }),
+        )) as { data: { makeUp: { errors: Record<string, string> } } }
+      ).data.makeUp.errors;
+
+    expect(await rejected(ATT_MONDAY, "2026-10-12")).toEqual({
+      makeUpTurno: "Elegí otro turno del mismo taller.",
+    });
+    expect(await rejected(otherWorkshop.turnoId, "2026-10-15")).toEqual({
+      makeUpTurno: "Elegí otro turno del mismo taller.",
+    });
+    expect(repository.makeUps.size).toBe(0);
+  });
+
+  it("answers 422 for a make-up date outside the month of the turno", async () => {
+    const { save, repository } = await withAbsence();
+    const result = (await save(makeUp({ makeUpDate: "2026-11-04" }))) as {
+      data: { makeUp: { errors: Record<string, string> } };
+    };
+    expect(result.data.makeUp.errors).toEqual({
+      makeUpDate:
+        "Elegí una fecha dentro del mes del turno, en su día de la semana.",
+    });
+    expect(repository.makeUps.size).toBe(0);
+  });
+
+  it("schedules the make-up and warns when the make-up turno is full", async () => {
+    const { save, load, repository } = setup({ wednesdayCapacity: 3 });
+    await save({ intent: "save", "status:ana@example.com": "absent" });
+
+    const response = (await save(makeUp())) as Response;
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(`${path()}?ok=makeup-full`);
+    expect(repository.makeUps.size).toBe(1);
+    const after = await load(DATE, `${path()}?ok=makeup-full`);
+    expect(after.feedback).toBe("makeup-full");
+    expect(after.makeUpFullWarning).toBe(
+      "La recuperación quedó programada, pero ese turno ya no tiene lugares libres ese día.",
+    );
+  });
+
+  it("answers 422 when an absence with a make-up is turned into a presence", async () => {
+    const { save, repository } = await withAbsence();
+    await save(makeUp());
+
+    const result = (await save({
+      intent: "save",
+      "status:ana@example.com": "present",
+    })) as { data: { error: string }; init: { status: number } };
+
+    expect(result.init.status).toBe(422);
+    expect(result.data.error).toBe(
+      "Una alumna con una recuperación programada no puede pasar a presente. Resolvé primero la recuperación.",
+    );
+    expect(repository.marks.map((m) => m.status)).toEqual(["absent"]);
   });
 
   it("schedules a pending make-up for an absent student and shows it", async () => {
@@ -201,7 +290,8 @@ describe("admin attendance sheet make-up classes", () => {
 
     expect(result.init.status).toBe(422);
     expect(result.data.makeUp.errors).toEqual({
-      makeUpDate: "Elegí una fecha que sea el día de la semana del turno.",
+      makeUpDate:
+        "Elegí una fecha dentro del mes del turno, en su día de la semana.",
     });
     expect(result.data.makeUp.values).toEqual({
       makeUpTurno: `${ATT_PERIOD}:${WED}`,

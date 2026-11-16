@@ -12,6 +12,7 @@ export interface WorkshopScheduleTurno {
   readonly weekday: number;
   readonly startsAt: string;
   readonly endsAt: string;
+  readonly capacity: number;
 }
 
 export interface WorkshopScheduleLookup {
@@ -56,6 +57,7 @@ export function createWorkshopScheduleLookup(
                 weekday: turno.weekday,
                 startsAt: turno.startsAt,
                 endsAt: turno.endsAt,
+                capacity: turno.capacity,
               })),
             ),
         ),

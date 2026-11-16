@@ -125,17 +125,17 @@ export function createAttendanceService(
       const turno = await findTurno(periodId, turnoId);
       if (!turno || !isSessionDate(turno.period, turno.weekday, date))
         return notFound;
-      const paid = new Set(
-        (await roster.forTurno(periodId, turnoId))
-          .filter((student) => student.feePaid)
-          .map((student) => student.email),
+      const onRoster = new Set(
+        (await roster.forTurno(periodId, turnoId)).map(
+          (student) => student.email,
+        ),
       );
       const marks: StoredMark[] = [];
       const at = clock.now();
       for (const entry of entries) {
         const email = normalizeEmail(entry.email);
         if (
-          !paid.has(email) ||
+          !onRoster.has(email) ||
           !isAttendanceStatus(entry.status) ||
           marks.some((m) => m.email === email)
         )
@@ -155,7 +155,17 @@ export function createAttendanceService(
           markedAt: at,
         });
       }
-      await repository.replaceSession({ periodId, turnoId, date }, marks);
+      const booked = new Set(
+        (await repository.makeUpsForTurno(periodId, turnoId))
+          .filter((makeUp) => makeUp.date === date)
+          .map((makeUp) => makeUp.email),
+      );
+      const blocked = marks
+        .filter((mark) => mark.status !== "absent" && booked.has(mark.email))
+        .map((mark) => mark.email);
+      if (blocked.length > 0)
+        return err({ kind: "make-up-booked" as const, emails: blocked });
+      await repository.upsertMarks(marks);
       return ok({ recorded: marks.length });
     },
 
@@ -195,6 +205,16 @@ export function createAttendanceService(
             },
           ],
         });
+      if (
+        target.workshopId !== turno.workshopId ||
+        target.turnoId === turno.turnoId
+      )
+        return err({
+          kind: "invalid" as const,
+          issues: [
+            { field: "makeUpTurno" as const, code: "not-selectable" as const },
+          ],
+        });
       const date = validateMakeUpPlan(input.makeUpDate, target);
       if (!date.ok) return date;
       const makeUp = {
@@ -214,7 +234,20 @@ export function createAttendanceService(
         doneAt: null,
       };
       const inserted = await repository.insertMakeUp(makeUp);
-      return inserted.ok ? ok(makeUp) : inserted;
+      if (!inserted.ok) return inserted;
+      const [seated, booked] = await Promise.all([
+        roster.forTurno(target.periodId, target.turnoId),
+        repository.countMakeUpsInto(
+          target.periodId,
+          target.turnoId,
+          makeUp.makeUpDate,
+        ),
+      ]);
+      // The new make-up is already counted in `booked`.
+      return ok({
+        ...makeUp,
+        targetFull: seated.length + booked > target.capacity,
+      });
     },
 
     async listMakeUps(actor, status) {

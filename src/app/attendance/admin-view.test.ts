@@ -31,6 +31,7 @@ const turno = (overrides: Partial<ScheduledTurno> = {}): ScheduledTurno => ({
   weekday: 1,
   startsAt: "18:00",
   endsAt: "20:00",
+  capacity: 10,
   ...overrides,
 });
 
@@ -155,6 +156,16 @@ describe("sessionsView", () => {
 });
 
 describe("sheetView", () => {
+  it("carries the pending-fee note and the full-turno warning", () => {
+    const view = sheetView({ turno: turno(), date: "2026-10-05", rows: [] });
+    expect(view.pendingNote).toBe(
+      "Todavía debe la cuota del mes. Podés marcar su asistencia igual.",
+    );
+    expect(view.makeUpFullWarning).toBe(
+      "La recuperación quedó programada, pero ese turno ya no tiene lugares libres ese día.",
+    );
+  });
+
   const sheet: SessionSheet = {
     turno: turno(),
     date: "2026-10-05",
@@ -206,12 +217,35 @@ describe("sheetView", () => {
 });
 
 describe("turnoOptions", () => {
-  it("offers each turno as period:turno with the workshop and month", () => {
-    expect(turnoOptions(turnos)[0]).toEqual({
-      value: `${P1}:${T1}`,
-      label: "Cerámica, Lunes tarde (octubre 2026)",
+  it("offers only other turnos of the same workshop as period:turno", () => {
+    const own = turnos[0] as ScheduledTurno;
+    const nextMonth = turno({
+      periodId: P2,
+      turnoId: T2,
+      turnoLabel: "Miércoles",
+      period: "2026-11",
+      weekday: 3,
     });
-    expect(turnoOptions(turnos)).toHaveLength(3);
+
+    expect(turnoOptions([...turnos, nextMonth], own)).toEqual([
+      {
+        value: `${P1}:${T2}`,
+        label: "Cerámica, Miércoles (octubre 2026)",
+      },
+      {
+        value: `${P2}:${T2}`,
+        label: "Cerámica, Miércoles (noviembre 2026)",
+      },
+    ]);
+  });
+
+  it("never offers the student's own turno, in any month", () => {
+    const own = turnos[0] as ScheduledTurno;
+    const sameTurnoLater = turno({ periodId: P2, period: "2026-11" });
+
+    expect(
+      turnoOptions([own, sameTurnoLater], own).map((option) => option.value),
+    ).toEqual([]);
   });
 });
 

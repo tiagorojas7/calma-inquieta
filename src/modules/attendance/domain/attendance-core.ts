@@ -1,5 +1,5 @@
 import { err, ok, type Invalid, type Result } from "~/modules/_shared";
-import { isIsoDate, weekdayOf } from "./session-calendar";
+import { isIsoDate, isSessionDate } from "./session-calendar";
 
 export const ATTENDANCE_STATUSES = ["present", "absent"] as const;
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
@@ -41,10 +41,13 @@ export function summarizeAttendance(
 
 export type MakeUpField = "makeUpDate" | "makeUpTurno";
 
-/** The make-up must be a real date that falls on the chosen turno's weekday. */
+/**
+ * The make-up must be a real date inside the chosen turno's period and on its
+ * weekday.
+ */
 export function validateMakeUpPlan(
   date: string,
-  turno: { readonly weekday: number },
+  turno: { readonly period: string; readonly weekday: number },
 ): Result<string, Invalid<MakeUpField>> {
   const issue = (code: "invalid-format" | "not-selectable") =>
     err({
@@ -52,6 +55,7 @@ export function validateMakeUpPlan(
       issues: [{ field: "makeUpDate" as const, code }],
     });
   if (!isIsoDate(date)) return issue("invalid-format");
-  if (weekdayOf(date) !== turno.weekday) return issue("not-selectable");
+  if (!isSessionDate(turno.period, turno.weekday, date))
+    return issue("not-selectable");
   return ok(date);
 }

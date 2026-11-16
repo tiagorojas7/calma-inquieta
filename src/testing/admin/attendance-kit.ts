@@ -22,6 +22,7 @@ export const ATT_TURNOS: readonly ScheduledTurno[] = [
     weekday: 1,
     startsAt: "18:00",
     endsAt: "20:00",
+    capacity: 10,
   },
   {
     periodId: ATT_PERIOD,
@@ -33,6 +34,7 @@ export const ATT_TURNOS: readonly ScheduledTurno[] = [
     weekday: 3,
     startsAt: "10:00",
     endsAt: "12:00",
+    capacity: 10,
   },
 ];
 
@@ -57,12 +59,26 @@ export const ATT_ROSTER: readonly RosterStudent[] = [
   },
 ];
 
-/** Real attendance service over an in-memory repository, fixed schedule and roster. */
-export function attendanceFixture() {
+/**
+ * Real attendance service over an in-memory repository, fixed schedule and
+ * roster. `turnos` replaces the schedule; `wednesdayCapacity` sizes the
+ * Wednesday turno, which seats the whole roster.
+ */
+export function attendanceFixture(
+  options: {
+    readonly turnos?: readonly ScheduledTurno[];
+    readonly wednesdayCapacity?: number;
+  } = {},
+) {
   const repository = new InMemoryAttendanceRepository();
+  const turnos = (options.turnos ?? ATT_TURNOS).map((turno) =>
+    turno.turnoId === ATT_WEDNESDAY && options.wednesdayCapacity !== undefined
+      ? { ...turno, capacity: options.wednesdayCapacity }
+      : turno,
+  );
   let next = 0;
   const service = createAttendanceService({
-    schedule: { listScheduledTurnos: () => Promise.resolve(ATT_TURNOS) },
+    schedule: { listScheduledTurnos: () => Promise.resolve(turnos) },
     roster: { forTurno: () => Promise.resolve(ATT_ROSTER) },
     repository,
     clock: fixedClock(new Date("2026-10-06T15:00:00.000Z")),

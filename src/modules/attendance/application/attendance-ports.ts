@@ -14,6 +14,8 @@ export interface ScheduledTurno {
   readonly weekday: number;
   readonly startsAt: string;
   readonly endsAt: string;
+  /** Seats of the turno in that period. */
+  readonly capacity: number;
 }
 
 /** Consumer-defined port; `workshops` supplies the periods and their turnos. */
@@ -79,11 +81,11 @@ export interface MakeUpExists {
 
 /** The attendance marks and make-up classes the owner records. */
 export interface AttendanceRepository {
-  /** Replaces every mark of one session with `marks`, atomically. */
-  replaceSession(
-    session: SessionKey,
-    marks: readonly StoredMark[],
-  ): Promise<void>;
+  /**
+   * Inserts each mark or updates the stored one of the same student and
+   * session. Marks that are not listed are never touched or deleted.
+   */
+  upsertMarks(marks: readonly StoredMark[]): Promise<void>;
   /** Ordered by date, then email. */
   marksForTurno(
     periodId: string,
@@ -95,6 +97,12 @@ export interface AttendanceRepository {
   /** Ordered by make-up date, then id. */
   listMakeUps(status: MakeUpStatus | "all"): Promise<readonly StoredMakeUp[]>;
   makeUpsByStudent(email: string): Promise<readonly StoredMakeUp[]>;
+  /** Make-ups booked into one turno on one date, taken or not. */
+  countMakeUpsInto(
+    periodId: string,
+    turnoId: string,
+    date: string,
+  ): Promise<number>;
   /** Make-ups of the absent sessions of one turno. */
   makeUpsForTurno(
     periodId: string,

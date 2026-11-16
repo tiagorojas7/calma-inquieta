@@ -46,12 +46,6 @@ export function buildMakeUp(
   };
 }
 
-const session = (date: string) => ({
-  periodId: PERIOD_A,
-  turnoId: TURNO_A,
-  date,
-});
-
 /** Behavior every AttendanceRepository implementation must satisfy. */
 export function runAttendanceRepositoryContract(
   create: () => Promise<AttendanceRepository>,
@@ -62,8 +56,8 @@ export function runAttendanceRepositoryContract(
       const later = buildMark({ date: "2026-10-12", email: "bea@example.com" });
       const second = buildMark({ email: "bea@example.com", status: "absent" });
       const first = buildMark({ email: "ana@example.com" });
-      await repo.replaceSession(session("2026-10-12"), [later]);
-      await repo.replaceSession(session("2026-10-05"), [second, first]);
+      await repo.upsertMarks([later]);
+      await repo.upsertMarks([second, first]);
 
       expect(await repo.marksForTurno(PERIOD_A, TURNO_A)).toEqual([
         first,
@@ -72,44 +66,80 @@ export function runAttendanceRepositoryContract(
       ]);
     });
 
-    it("replaces only the marks of the given session", async () => {
+    it("updates a mark in place and never deletes the marks left out", async () => {
       const repo = await create();
       const other = buildMark({ date: "2026-10-12" });
-      await repo.replaceSession(session("2026-10-12"), [other]);
-      await repo.replaceSession(session("2026-10-05"), [
+      const bea = buildMark({ email: "bea@example.com" });
+      await repo.upsertMarks([other]);
+      await repo.upsertMarks([
         buildMark({ email: "ana@example.com", status: "absent" }),
-        buildMark({ email: "bea@example.com" }),
+        bea,
       ]);
-      await repo.replaceSession(session("2026-10-05"), [
-        buildMark({ email: "ana@example.com", status: "present" }),
-      ]);
+      const changed = buildMark({
+        email: "ana@example.com",
+        status: "present",
+        markedBy: "second@example.com",
+        markedAt: new Date("2026-10-06T10:00:00.000Z"),
+      });
+      await repo.upsertMarks([changed]);
 
-      const marks = await repo.marksForTurno(PERIOD_A, TURNO_A);
-      expect(marks.map((m) => [m.date, m.email, m.status])).toEqual([
-        ["2026-10-05", "ana@example.com", "present"],
-        ["2026-10-12", "ana@example.com", "present"],
+      expect(await repo.marksForTurno(PERIOD_A, TURNO_A)).toEqual([
+        changed,
+        bea,
+        other,
       ]);
     });
 
-    it("clears a session when replaced with no marks", async () => {
+    it("accepts no marks", async () => {
       const repo = await create();
-      await repo.replaceSession(session("2026-10-05"), [buildMark()]);
-      await repo.replaceSession(session("2026-10-05"), []);
-      expect(await repo.marksForTurno(PERIOD_A, TURNO_A)).toEqual([]);
+      await repo.upsertMarks([buildMark()]);
+      await repo.upsertMarks([]);
+      expect(await repo.marksForTurno(PERIOD_A, TURNO_A)).toEqual([
+        buildMark(),
+      ]);
     });
 
     it("keeps turnos apart and finds marks by student", async () => {
       const repo = await create();
       const mine = buildMark();
-      await repo.replaceSession(session("2026-10-05"), [mine]);
-      await repo.replaceSession(
-        { periodId: PERIOD_A, turnoId: TURNO_B, date: "2026-10-07" },
-        [buildMark({ turnoId: TURNO_B, date: "2026-10-07" })],
-      );
+      await repo.upsertMarks([mine]);
+      await repo.upsertMarks([
+        buildMark({ turnoId: TURNO_B, date: "2026-10-07" }),
+      ]);
 
       expect(await repo.marksForTurno(PERIOD_A, TURNO_A)).toEqual([mine]);
       expect(await repo.marksByStudent("ana@example.com")).toHaveLength(2);
       expect(await repo.marksByStudent("nadie@example.com")).toEqual([]);
+    });
+
+    it("counts the make-ups booked into a turno on one date", async () => {
+      const repo = await create();
+      await repo.insertMakeUp(buildMakeUp());
+      await repo.insertMakeUp(
+        buildMakeUp({
+          id: MAKEUP_B,
+          email: "bea@example.com",
+          studentName: "Bea Gómez",
+        }),
+      );
+      await repo.insertMakeUp(
+        buildMakeUp({
+          id: "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e06",
+          email: "caro@example.com",
+          studentName: "Caro Díaz",
+          makeUpDate: "2026-10-21",
+        }),
+      );
+
+      expect(await repo.countMakeUpsInto(PERIOD_A, TURNO_B, "2026-10-14")).toBe(
+        2,
+      );
+      expect(await repo.countMakeUpsInto(PERIOD_A, TURNO_B, "2026-10-21")).toBe(
+        1,
+      );
+      expect(await repo.countMakeUpsInto(PERIOD_A, TURNO_A, "2026-10-14")).toBe(
+        0,
+      );
     });
 
     it("round-trips a make-up and refuses a second one for the same absence", async () => {

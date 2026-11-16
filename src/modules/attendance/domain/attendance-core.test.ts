@@ -34,7 +34,7 @@ describe("summarizeAttendance", () => {
 });
 
 describe("validateMakeUpPlan", () => {
-  const monday = { weekday: 1 };
+  const monday = { period: "2026-10", weekday: 1 };
 
   it("accepts a real date on the weekday of the chosen turno", () => {
     expect(validateMakeUpPlan("2026-10-19", monday)).toEqual({
@@ -55,6 +55,16 @@ describe("validateMakeUpPlan", () => {
 
   it("rejects a date that is not the weekday of the turno", () => {
     expect(validateMakeUpPlan("2026-10-20", monday)).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "makeUpDate", code: "not-selectable" }],
+      },
+    });
+  });
+
+  it("rejects a date on the right weekday but outside the period of the turno", () => {
+    expect(validateMakeUpPlan("2026-11-02", monday)).toEqual({
       ok: false,
       error: {
         kind: "invalid",

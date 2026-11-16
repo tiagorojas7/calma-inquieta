@@ -2,10 +2,10 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   enrollmentOrder,
   orderLine,
+  student,
   turnoSeatCounter,
 } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
-import { student } from "~/platform/db/schema/students";
 import {
   createTestDatabase,
   type TestDatabase,

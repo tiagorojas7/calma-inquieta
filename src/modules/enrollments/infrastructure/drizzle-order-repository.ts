@@ -6,8 +6,8 @@ import {
   orderAudit,
   orderLine,
   orderNumberSequence,
+  student,
 } from "~/platform/db/schema/enrollments";
-import { student } from "~/platform/db/schema/students";
 import {
   formatOrderNumber,
   transition,

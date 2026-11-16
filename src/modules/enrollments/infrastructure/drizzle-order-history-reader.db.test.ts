@@ -1,7 +1,6 @@
 import { afterAll } from "vitest";
-import { enrollmentOrder } from "~/platform/db/schema/enrollments";
+import { enrollmentOrder, student } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
-import { student } from "~/platform/db/schema/students";
 import { runStudentOrderSourceContract } from "~/testing/contracts/student-order-source.contract";
 import { studentOrder } from "~/testing/fakes/student-builders";
 import {

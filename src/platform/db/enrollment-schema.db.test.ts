@@ -71,11 +71,17 @@ const INSERT_ORDER = `
     turno_id, workshop_name, turno_label, weekday, starts_at, ends_at,
     student_name, student_email, student_phone_digits, fee_centavos,
     materials_centavos, total_centavos, policy_version, requested_at, paid_at,
-    paid_amount_centavos
+    paid_amount_centavos, student_id
   ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-    $17, $18, $19, $20, $21, $22, $23, $24
+    $17, $18, $19, $20, $21, $22, $23, $24, md5($16)::uuid
   )`;
+
+// One durable profile per email, each with its own phone (both are unique).
+const INSERT_STUDENT = `
+  INSERT INTO student (id, full_name, email, phone_digits, created_at, updated_at)
+  VALUES (md5($1)::uuid, 'Ana Perez', $1, $2, now(), now())
+  ON CONFLICT (id) DO NOTHING`;
 
 describe("enrollment schema", () => {
   const database = createTestDatabase({ empty: true });
@@ -93,17 +99,25 @@ describe("enrollment schema", () => {
     await (await database).drop();
   });
 
-  const insertOrder = (values: OrderValues) =>
-    client.query(INSERT_ORDER, orderValues(values));
+  const phones = new Map<string, string>();
+  const insertOrder = async (values: OrderValues) => {
+    const order = orderValues(values);
+    const email = String(order[15]);
+    const phone =
+      phones.get(email) ?? `549351${String(phones.size).padStart(7, "0")}`;
+    phones.set(email, phone);
+    await client.query(INSERT_STUDENT, [email, phone]);
+    return client.query(INSERT_ORDER, order);
+  };
 
-  it("creates the five enrollment-owned tables", async () => {
+  it("creates the six enrollment-owned tables", async () => {
     const { rows } = await client.query<{ table_name: string }>(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
         AND table_name IN (
           'enrollment_order', 'order_line', 'order_audit',
-          'turno_seat_counter', 'order_number_sequence'
+          'turno_seat_counter', 'order_number_sequence', 'student'
         )
       ORDER BY table_name
     `);
@@ -113,6 +127,7 @@ describe("enrollment schema", () => {
       { table_name: "order_audit" },
       { table_name: "order_line" },
       { table_name: "order_number_sequence" },
+      { table_name: "student" },
       { table_name: "turno_seat_counter" },
     ]);
   });
@@ -199,7 +214,7 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
-  it("enforces normalized active duplicates while allowing cancelled replacement", async () => {
+  it("allows one order per student and month, cancelled history included", async () => {
     await insertOrder({
       id: "00000000-0000-4000-8000-000000000301",
       email: "ana@example.com",
@@ -219,7 +234,10 @@ describe("enrollment schema", () => {
         id: "00000000-0000-4000-8000-000000000302",
         email: "ana@example.com",
       }),
-    ).resolves.toBeDefined();
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "enrollment_order_student_period_unique",
+    });
   });
 
   it("enforces unique public ids and order numbers", async () => {
@@ -330,6 +348,7 @@ describe("enrollment schema", () => {
     `);
 
     expect(rows).toEqual([
+      { foreign_table_name: "student" },
       { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },
     ]);

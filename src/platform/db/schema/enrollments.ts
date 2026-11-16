@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   integer,
   pgTable,
@@ -11,7 +12,40 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { student } from "./students";
+
+/**
+ * Durable student profile, created by the first completed enrollment and
+ * matched afterwards by normalized email or phone. Owned by enrollments so
+ * the profile and its order are written in one transaction.
+ */
+export const student = pgTable(
+  "student",
+  {
+    id: uuid("id").primaryKey(),
+    fullName: text("full_name").notNull(),
+    email: text("email").notNull(),
+    phoneDigits: text("phone_digits").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    unique("student_email_unique").on(table.email),
+    unique("student_phone_digits_unique").on(table.phoneDigits),
+    check(
+      "student_full_name_check",
+      sql`${table.fullName} = btrim(${table.fullName}) AND ${table.fullName} <> ''`,
+    ),
+    check(
+      "student_email_check",
+      sql`${table.email} = lower(btrim(${table.email})) AND ${table.email} <> ''`,
+    ),
+    check(
+      "student_phone_digits_check",
+      sql`${table.phoneDigits} ~ '^[0-9]{10,15}$'`,
+    ),
+  ],
+);
 
 export const enrollmentOrder = pgTable(
   "enrollment_order",

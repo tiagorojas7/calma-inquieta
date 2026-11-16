@@ -377,7 +377,7 @@ describe("requestEnrollment seats and duplicates", () => {
     ).toEqual({ ok: false, error: { kind: "duplicate-order" } });
   });
 
-  it("keeps refusing the same student and month after a cancellation", async () => {
+  it("lets the same student enroll again that month after a cancellation", async () => {
     const { service, orders } = setup();
     const first = await service.requestEnrollment(request());
     if (!first.ok) throw new Error("fixture");
@@ -386,6 +386,8 @@ describe("requestEnrollment seats and duplicates", () => {
       actor: "owner@example.com",
       at: NOW,
     });
+    const again = await service.requestEnrollment(request());
+    expect(again.ok && again.value.number).toBe("CI-2026-0002");
     expect(await service.requestEnrollment(request())).toEqual({
       ok: false,
       error: { kind: "duplicate-order" },

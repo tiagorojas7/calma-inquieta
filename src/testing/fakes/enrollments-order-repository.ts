@@ -83,13 +83,14 @@ export class InMemoryOrderRepository implements OrderRepository {
     if (byEmail && byPhone && byEmail.id !== byPhone.id)
       return Promise.resolve(err({ kind: "duplicate-order" }));
     const known = byEmail ?? byPhone;
-    // One record per student and month, cancelled history included.
+    // One active record per student and month; a cancelled one frees it.
     const taken =
       known !== undefined &&
       this.rows.some(
         ({ order }) =>
           this.studentOf.get(order.id) === known.id &&
-          order.period === draft.period,
+          order.period === draft.period &&
+          order.status !== "cancelled",
       );
     if (taken) return Promise.resolve(err({ kind: "duplicate-order" }));
     const sequence = (this.sequences.get(draft.year) ?? 0) + 1;

@@ -214,7 +214,7 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
-  it("allows one order per student and month, cancelled history included", async () => {
+  it("allows one active order per student and month, and a cancelled one frees the month", async () => {
     await insertOrder({
       id: "00000000-0000-4000-8000-000000000301",
       email: "ana@example.com",
@@ -224,20 +224,35 @@ describe("enrollment schema", () => {
         id: "00000000-0000-4000-8000-000000000302",
         email: "ana@example.com",
       }),
-    ).rejects.toMatchObject({ code: "23505" });
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "enrollment_order_student_period_active_unique",
+    });
     await client.query(
       "UPDATE enrollment_order SET status = 'cancelled' WHERE id = $1",
       ["00000000-0000-4000-8000-000000000301"],
     );
+    await insertOrder({
+      id: "00000000-0000-4000-8000-000000000302",
+      email: "ana@example.com",
+    });
     await expect(
       insertOrder({
-        id: "00000000-0000-4000-8000-000000000302",
+        id: "00000000-0000-4000-8000-000000000303",
         email: "ana@example.com",
       }),
     ).rejects.toMatchObject({
       code: "23505",
-      constraint: "enrollment_order_student_period_unique",
+      constraint: "enrollment_order_student_period_active_unique",
     });
+    const stored = await client.query<{ status: string }>(
+      "SELECT status FROM enrollment_order WHERE student_id = (SELECT id FROM student WHERE email = $1) ORDER BY id",
+      ["ana@example.com"],
+    );
+    expect(stored.rows.map((row) => row.status)).toEqual([
+      "cancelled",
+      "pending_confirmation",
+    ]);
   });
 
   it("enforces unique public ids and order numbers", async () => {

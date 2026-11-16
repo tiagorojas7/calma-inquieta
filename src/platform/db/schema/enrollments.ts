@@ -10,6 +10,7 @@ import {
   time,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -88,10 +89,10 @@ export const enrollmentOrder = pgTable(
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
     unique("enrollment_order_number_unique").on(table.number),
-    unique("enrollment_order_student_period_unique").on(
-      table.studentId,
-      table.period,
-    ),
+    // One active order per student and month; a cancelled order frees it.
+    uniqueIndex("enrollment_order_student_period_active_unique")
+      .on(table.studentId, table.period)
+      .where(sql`${table.status} <> 'cancelled'`),
     check(
       "enrollment_order_status_check",
       sql`${table.status} IN ('pending_confirmation', 'paid', 'materials_requested', 'materials_received', 'cancelled')`,

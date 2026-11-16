@@ -138,7 +138,7 @@ export function runOrderRepositoryContract(
       expect(next.ok && next.value.number).toBe("CI-2026-0002");
     });
 
-    it("allows only one record per student and month, including cancelled history", async () => {
+    it("allows one active record per student and month, and a cancelled one frees the month", async () => {
       const { repository: repo } = await create();
       const first = await repo.create(orderDraft());
       if (!first.ok) throw new Error("fixture");
@@ -170,21 +170,25 @@ export function runOrderRepositoryContract(
         at: new Date("2026-10-21T12:00:00Z"),
       });
       const replacement = await repo.create(
-        orderDraft({ publicId: "E".repeat(22) }),
+        orderDraft({ publicId: "E".repeat(22), turnoId: "t-2" }),
       );
-      expect(replacement).toEqual({
-        ok: false,
-        error: { kind: "duplicate-order" },
-      });
+      expect(replacement.ok && replacement.value.number).toBe("CI-2026-0004");
+      expect(
+        await repo.create(orderDraft({ publicId: "F".repeat(22) })),
+      ).toEqual({ ok: false, error: { kind: "duplicate-order" } });
+      expect((await repo.findForAdmin(first.value.id))?.status).toBe(
+        "cancelled",
+      );
+
       const next = await repo.create(
         orderDraft({
-          publicId: "F".repeat(22),
+          publicId: "G".repeat(22),
           periodId: "p-3",
           period: "2026-12",
           student: other("cai@example.com"),
         }),
       );
-      expect(next.ok && next.value.number).toBe("CI-2026-0004");
+      expect(next.ok && next.value.number).toBe("CI-2026-0005");
     });
 
     it("round-trips by public id and never by order number", async () => {

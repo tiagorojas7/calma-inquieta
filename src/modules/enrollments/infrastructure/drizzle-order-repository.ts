@@ -289,7 +289,10 @@ export function createDrizzleOrderRepository(
           });
         } catch (error) {
           if (
-            hasConstraint(error, "enrollment_order_student_period_unique") ||
+            hasConstraint(
+              error,
+              "enrollment_order_student_period_active_unique",
+            ) ||
             hasConstraint(error, "student_email_unique") ||
             hasConstraint(error, "student_phone_digits_unique")
           )

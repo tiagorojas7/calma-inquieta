@@ -388,6 +388,45 @@ describe("admin teacher detail workshops", () => {
     expect(fixture.repository.items.get(fixture.torno)).toEqual(before);
   });
 
+  it("refuses a workshop that belongs to another teacher with 404 and stores nothing", async () => {
+    const fixture = await withAssignedWorkshops();
+    const actor = testAdminActor();
+    const other = await fixture.teachers.service.create(actor, {
+      ...DRAFT,
+      name: "Otra Profe",
+      modality: "third_party",
+    });
+    if (!other.ok) throw new Error("seed failed");
+    const foreign = await fixture.service.create(actor, {
+      name: "Ajena",
+      slug: "ajena",
+      summary: "Corto",
+      description: "Largo",
+      technique: "Torno",
+      defaultFee: "12000",
+      teacherId: other.value.id,
+      percentage: "20",
+      images: [],
+      confirmSlugChange: false,
+    });
+    if (!foreign.ok) throw new Error("seed failed");
+    const before = fixture.repository.items.get(foreign.value.id);
+
+    // Her own page, but the other teacher's workshop id.
+    const status = await thrownStatus(() =>
+      submitPercentage(fixture, {
+        workshopId: foreign.value.id,
+        percentage: "99",
+      }),
+    );
+
+    expect(status).toBe(404);
+    expect(fixture.repository.items.get(foreign.value.id)).toEqual(before);
+    expect(fixture.repository.items.get(foreign.value.id)).toMatchObject({
+      percentage: { basisPoints: 2000 },
+    });
+  });
+
   it("answers 404 for an unknown workshop and 403 for a non-admin", async () => {
     const fixture = await withAssignedWorkshops();
     expect(

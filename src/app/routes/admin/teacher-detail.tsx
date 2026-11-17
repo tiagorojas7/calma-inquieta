@@ -101,6 +101,15 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
   if (intent === "percentage") {
     const input = parseTeacherPercentage(form);
+    // The posted workshop must be one of this teacher's: the page edits her
+    // workshops only, so another teacher's id is refused before any write.
+    const owned = await services.monthlyWorkshops.listForTeacher(
+      actor,
+      params.id,
+    );
+    if (!owned.ok) throw failureResponse(owned.error);
+    if (!owned.value.some((workshop) => workshop.id === input.workshopId))
+      throw failureResponse({ kind: "not-found" });
     const saved = await services.monthlyWorkshops.setPercentage(
       actor,
       input.workshopId,

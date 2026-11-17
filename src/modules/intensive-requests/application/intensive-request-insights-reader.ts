@@ -3,6 +3,8 @@ export interface IntensiveRegistrationRow {
   readonly intensiveId: string;
   /** Confirmed requests: the only ones that take a seat. */
   readonly confirmedSeats: number;
+  /** Every payment the confirmed requests received: deposits plus balances. */
+  readonly collectedCentavos: number;
   /**
    * What the fully paid requests received, deposit plus balance. A confirmed
    * request counts only once its balance is recorded, or when the deposit was

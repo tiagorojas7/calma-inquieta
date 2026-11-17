@@ -151,6 +151,7 @@ function earningsFixture() {
     {
       intensiveId: "i1",
       confirmedSeats: 3,
+      collectedCentavos: 30_000_00,
       settledCentavos: 30_000_00,
       materialsCostCentavos: 0,
     },
@@ -456,6 +457,7 @@ describe("insights earnings", () => {
         {
           intensiveId: "i1",
           confirmedSeats: 3,
+          collectedCentavos: 24_000_00,
           settledCentavos: 24_000_00,
           materialsCostCentavos: 0,
         },
@@ -475,12 +477,36 @@ describe("insights earnings", () => {
       ).toBe(12_000_00);
     });
 
+    it("shows every deposit received as collected while pay, cost and profit stay on the fully paid reservations", async () => {
+      const { intensiveRequests, service } = earningsFixture();
+      // Two reservations paid in full (24.000) and one with only its deposit (4.000).
+      intensiveRequests.registrationRows = [
+        {
+          intensiveId: "i1",
+          confirmedSeats: 3,
+          collectedCentavos: 28_000_00,
+          settledCentavos: 24_000_00,
+          materialsCostCentavos: 2_000_00,
+        },
+      ];
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      const torno = result.value.activities.find((row) => row.name === "Torno");
+      expect(torno?.collected.toCentavos()).toBe(28_000_00);
+      expect(torno?.teacherPay.toCentavos()).toBe(12_000_00);
+      expect(torno?.materialsCost.toCentavos()).toBe(2_000_00);
+      expect(torno?.profit.toCentavos()).toBe(24_000_00 - 12_000_00 - 2_000_00);
+    });
+
     it("takes the margin from the cost captured on the allocated materials", async () => {
       const { intensiveRequests, service } = earningsFixture();
       intensiveRequests.registrationRows = [
         {
           intensiveId: "i1",
           confirmedSeats: 3,
+          collectedCentavos: 30_000_00,
           settledCentavos: 30_000_00,
           materialsCostCentavos: 2_500_00,
         },
@@ -517,6 +543,7 @@ describe("insights earnings", () => {
         {
           intensiveId: "i1",
           confirmedSeats: 3,
+          collectedCentavos: 90_000_00,
           settledCentavos: 90_000_00,
           materialsCostCentavos: 9_000_00,
         },

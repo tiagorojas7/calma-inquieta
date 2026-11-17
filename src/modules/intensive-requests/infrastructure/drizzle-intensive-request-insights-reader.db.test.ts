@@ -141,6 +141,8 @@ describe("createDrizzleIntensiveRequestInsightsReader", () => {
       {
         intensiveId: INTENSIVE_1,
         confirmedSeats: 3,
+        // Collected also shows the deposit of the request still owing.
+        collectedCentavos: 4_000_000 + 3_000_000 + 1_500_000,
         settledCentavos: 4_000_000 + 3_000_000,
         materialsCostCentavos: 2 * 300_000 + 80_000,
       },
@@ -165,12 +167,14 @@ describe("createDrizzleIntensiveRequestInsightsReader", () => {
       {
         intensiveId: INTENSIVE_1,
         confirmedSeats: 1,
+        collectedCentavos: 1_500_000,
         settledCentavos: 0,
         materialsCostCentavos: 0,
       },
       {
         intensiveId: INTENSIVE_2,
         confirmedSeats: 1,
+        collectedCentavos: 2_000_000,
         settledCentavos: 2_000_000,
         materialsCostCentavos: 200_000,
       },

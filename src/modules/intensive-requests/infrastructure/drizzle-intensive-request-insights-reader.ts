@@ -22,11 +22,14 @@ export function createDrizzleIntensiveRequestInsightsReader(
         const { rows } = await session.db.execute<{
           intensive_id: string;
           confirmed_seats: number;
+          collected: string;
           settled: string;
           materials_cost: string;
         }>(sql`
           SELECT request.intensive_id,
                  count(*)::int AS confirmed_seats,
+                 coalesce(sum(coalesce(request.paid_centavos, 0)
+                   + coalesce(request.balance_centavos, 0)), 0) AS collected,
                  coalesce(sum(CASE WHEN paid.in_full
                    THEN request.paid_centavos + coalesce(request.balance_centavos, 0)
                    ELSE 0 END), 0) AS settled,
@@ -52,6 +55,7 @@ export function createDrizzleIntensiveRequestInsightsReader(
         return rows.map((row) => ({
           intensiveId: row.intensive_id,
           confirmedSeats: row.confirmed_seats,
+          collectedCentavos: Number(row.collected),
           settledCentavos: Number(row.settled),
           materialsCostCentavos: Number(row.materials_cost),
         }));

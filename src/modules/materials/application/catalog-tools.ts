@@ -144,6 +144,7 @@ export function createCatalogTools(deps: CatalogToolsDeps) {
           id: deps.newVariantId(),
           label: row.measure,
           price: row.price === null ? null : toMoney(row.price),
+          cost: null,
           available: true,
           used: false,
           position,

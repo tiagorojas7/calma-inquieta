@@ -5,6 +5,10 @@ import {
   parseMaterialDraft,
 } from "~/app/admin/material-form-data";
 import { issueMessage } from "~/app/admin/issue-messages";
+import {
+  parseStockAdjustmentDraft,
+  stockAdjustmentErrors,
+} from "~/app/admin/stock-adjustment-form-data";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
@@ -14,7 +18,7 @@ import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/material-detail";
 
 const LIST = "/admin/materiales";
-const FEEDBACK = ["saved", "deactivated", "reactivated"] as const;
+const FEEDBACK = ["saved", "deactivated", "reactivated", "stock"] as const;
 const copy = adminMicrocopy.materialDetail;
 
 function auditDate(value: Date): string {
@@ -39,6 +43,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const material = found.value;
   const listed = await services.suppliers.list(actor, { active: true });
   if (!listed.ok) throw failureResponse(listed.error);
+  const stock = await services.materials.stockOf(actor, params.id);
+  if (!stock.ok) throw failureResponse(stock.error);
 
   const suppliers = [...listed.value];
   if (!suppliers.some((supplier) => supplier.id === material.supplier.id))
@@ -67,6 +73,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       id: variant.id,
       label: variant.label,
       price: variant.price ? String(variant.price.toCentavos() / 100) : "",
+      cost: variant.cost ? String(variant.cost.toCentavos() / 100) : "",
+      onHand: stock.value.get(variant.id) ?? 0,
       priceOnRequest: variant.price === null,
       available: variant.available,
       used: variant.used,
@@ -114,6 +122,32 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
   }
 
+  if (intent === "adjust-stock") {
+    const adjustment = parseStockAdjustmentDraft(form);
+    const adjusted = await materials.adjustStock(
+      actor,
+      params.id,
+      adjustment.variantId,
+      { delta: adjustment.delta, reason: adjustment.reason },
+    );
+    if (adjusted.ok)
+      return redirect(withFeedback(`${LIST}/${params.id}`, "stock"));
+    if (
+      adjusted.error.kind === "invalid" ||
+      adjusted.error.kind === "insufficient-stock"
+    )
+      return data(
+        {
+          stock: {
+            ...adjustment,
+            errors: stockAdjustmentErrors(adjusted.error),
+          },
+        },
+        { status: 422 },
+      );
+    throw failureResponse(adjusted.error);
+  }
+
   if (intent !== null && intent !== "save") throw data(null, { status: 400 });
   const draft = parseMaterialDraft(form);
   const values = {
@@ -156,6 +190,7 @@ export default function AdminMaterialDetail() {
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const edit = rejected && "values" in rejected ? rejected : undefined;
+  const stock = rejected && "stock" in rejected ? rejected.stock : undefined;
   const saved = material.feedback ? copy.feedback[material.feedback] : null;
   return (
     <MaterialDetail
@@ -165,6 +200,7 @@ export default function AdminMaterialDetail() {
       errors={edit?.errors ?? {}}
       formError={edit?.formError}
       stateError={stateError}
+      stockRejection={stock}
     />
   );
 }

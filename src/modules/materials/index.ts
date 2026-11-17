@@ -43,6 +43,14 @@ export type {
   ValidMaterialDraft,
   ValidMaterialVariantDraft,
 } from "./domain/material-core";
+export { STOCK_DELTA_MAX, STOCK_REASON_MAX } from "./domain/stock-core";
+export type {
+  StockAdjustmentOutcome,
+  StockAdjustmentWrite,
+  StockStamp,
+  StockStore,
+  VariantStockPort,
+} from "./application/stock-store";
 export { SupplierNameConflictError } from "./application/supplier-repository";
 export type {
   SupplierFilter,

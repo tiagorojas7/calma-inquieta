@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
@@ -31,6 +31,8 @@ const detail = {
       id: "v1",
       label: "Chico",
       price: "2500",
+      cost: "800",
+      onHand: 3,
       available: true,
       used: false,
       swatch: "#111111",
@@ -39,6 +41,8 @@ const detail = {
       id: "v2",
       label: "Grande",
       price: "2500",
+      cost: "",
+      onHand: 0,
       available: false,
       used: true,
       swatch: null,
@@ -122,6 +126,90 @@ describe("material detail screen", () => {
       screen.getByText("Revisá los campos marcados e intentá de nuevo."),
     ).toHaveAttribute("role", "alert");
     expect(screen.getByText("El precio no es válido.")).toBeVisible();
+  });
+
+  it("shows each variant's supplier cost and on-hand units", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+
+    const chico = screen.getByRole("form", { name: "Ajustar stock de Chico" });
+    expect(chico.closest("li")).toHaveTextContent("Costo: $800");
+    expect(chico.closest("li")).toHaveTextContent("En stock: 3");
+    const grande = screen.getByRole("form", {
+      name: "Ajustar stock de Grande",
+    });
+    expect(grande.closest("li")).toHaveTextContent("Costo sin cargar");
+    expect(grande.closest("li")).toHaveTextContent("En stock: 0");
+  });
+
+  it("offers a native stock adjustment form per variant with a signed delta and a required reason", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Ajustar stock de Chico" });
+    expect(form).toHaveAttribute("method", "post");
+    expect(form.querySelector("input[name=intent]")).toHaveValue(
+      "adjust-stock",
+    );
+    expect(form.querySelector("input[name=variantId]")).toHaveValue("v1");
+    expect(within(form).getByLabelText(/Cantidad/)).toHaveAttribute(
+      "name",
+      "delta",
+    );
+    expect(within(form).getByLabelText("Motivo")).toHaveAttribute(
+      "name",
+      "reason",
+    );
+    expect(
+      within(form).getByRole("button", { name: "Ajustar stock" }),
+    ).toBeVisible();
+  });
+
+  it("keeps the rejected adjustment's text and shows its field errors on that variant only", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+        stockRejection={{
+          variantId: "v1",
+          delta: "-9",
+          reason: "Rotura",
+          errors: {
+            delta: "No podés restar más de lo que hay: en stock hay 3.",
+          },
+        }}
+      />,
+    );
+
+    const chico = screen.getByRole("form", { name: "Ajustar stock de Chico" });
+    expect(within(chico).getByLabelText(/Cantidad/)).toHaveValue("-9");
+    expect(within(chico).getByLabelText("Motivo")).toHaveValue("Rotura");
+    expect(
+      within(chico).getByText(
+        "No podés restar más de lo que hay: en stock hay 3.",
+      ),
+    ).toBeVisible();
+    const grande = screen.getByRole("form", {
+      name: "Ajustar stock de Grande",
+    });
+    expect(within(grande).getByLabelText(/Cantidad/)).toHaveValue("");
   });
 
   it("announces lifecycle feedback accessibly", () => {

@@ -112,6 +112,7 @@ describe("createDrizzleMaterialRepository", () => {
         { table_name: "material", column_name: "updated_at" },
         { table_name: "material", column_name: "updated_by" },
         { table_name: "material_variant", column_name: "available" },
+        { table_name: "material_variant", column_name: "cost_centavos" },
         { table_name: "material_variant", column_name: "id" },
         { table_name: "material_variant", column_name: "label" },
         { table_name: "material_variant", column_name: "label_key" },
@@ -152,7 +153,7 @@ describe("createDrizzleMaterialRepository", () => {
     ).rejects.toThrow();
   });
 
-  it("enforces image pairs, positive prices, and lowercase hex swatches", async () => {
+  it("enforces image pairs, positive prices and costs, and lowercase hex swatches", async () => {
     const { repository } = await freshRepository();
     await expect(
       repository.insert(
@@ -163,6 +164,13 @@ describe("createDrizzleMaterialRepository", () => {
     ).rejects.toThrow();
     const negative = Money.fromCentavos(-1);
     if (!negative.ok) throw new Error("expected signed Money");
+    await expect(
+      repository.insert(
+        buildStoredMaterial({
+          variants: [buildStoredVariant({ cost: negative.value })],
+        }),
+      ),
+    ).rejects.toThrow();
     await expect(
       repository.insert(
         buildStoredMaterial({

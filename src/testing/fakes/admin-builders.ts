@@ -117,6 +117,7 @@ export const buildMaterialVariant = (
   id: "variant-1",
   label: "Única",
   price: testMoney.value,
+  cost: null,
   available: true,
   used: false,
   position: 0,

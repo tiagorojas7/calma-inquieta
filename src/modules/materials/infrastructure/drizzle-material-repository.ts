@@ -47,10 +47,14 @@ function toVariant(row: VariantRow): MaterialVariant {
     row.priceCentavos === null ? null : Money.fromCentavos(row.priceCentavos);
   if (price && !price.ok)
     throw new Error("persisted material price is invalid");
+  const cost =
+    row.costCentavos === null ? null : Money.fromCentavos(row.costCentavos);
+  if (cost && !cost.ok) throw new Error("persisted material cost is invalid");
   return {
     id: row.id,
     label: row.label,
     price: price?.value ?? null,
+    cost: cost?.value ?? null,
     available: row.available,
     used: false,
     position: row.position,
@@ -121,6 +125,7 @@ function variantValues(value: Material) {
     label: variant.label,
     labelKey: variantLabelKey(variant.label),
     priceCentavos: variant.price?.toCentavos() ?? null,
+    costCentavos: variant.cost?.toCentavos() ?? null,
     available: variant.available,
     position: variant.position,
     swatch: variant.swatch,

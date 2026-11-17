@@ -53,6 +53,44 @@ describe("MaterialForm", () => {
     ).toBe("0");
   });
 
+  it("asks for the optional supplier cost next to the price and posts it per variant", async () => {
+    const { container } = renderForm({
+      values: {
+        ...empty,
+        variants: [
+          {
+            id: "v1",
+            label: "Chico",
+            price: "2500",
+            cost: "800",
+            swatch: "",
+            available: true,
+          },
+        ],
+      },
+    });
+
+    const cost = await screen.findByLabelText("Costo del proveedor (en pesos)");
+    expect(cost).toHaveAttribute("name", "variantCost");
+    expect(cost).toHaveValue("800");
+    fireEvent.change(cost, { target: { value: "900" } });
+    expect(
+      container.querySelector<HTMLInputElement>('input[name="variantCost"]')
+        ?.value,
+    ).toBe("900");
+  });
+
+  it("shows a cost error on its variant row", async () => {
+    renderForm({
+      errors: {
+        variants: { rows: [{ cost: "Ingresá un costo mayor a cero." }] },
+      },
+    });
+    expect(
+      await screen.findByText("Ingresá un costo mayor a cero."),
+    ).toBeVisible();
+  });
+
   it("renders a native document form with its default Única variant and image field", async () => {
     const { container } = renderForm();
     for (const label of [

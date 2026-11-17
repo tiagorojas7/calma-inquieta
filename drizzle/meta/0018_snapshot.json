@@ -1584,6 +1584,12 @@
                                                                                           "primaryKey":  false,
                                                                                           "notNull":  false
                                                                                       },
+                                                                   "cost_centavos":  {
+                                                                                         "name":  "cost_centavos",
+                                                                                         "type":  "bigint",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  false
+                                                                                     },
                                                                    "available":  {
                                                                                      "name":  "available",
                                                                                      "type":  "boolean",
@@ -1685,6 +1691,10 @@
                                                                                                                  "name":  "material_variant_price_check",
                                                                                                                  "value":  "\"material_variant\".\"price_centavos\" \u003e 0"
                                                                                                              },
+                                                                            "material_variant_cost_check":  {
+                                                                                                                "name":  "material_variant_cost_check",
+                                                                                                                "value":  "\"material_variant\".\"cost_centavos\" \u003e 0"
+                                                                                                            },
                                                                             "material_variant_position_check":  {
                                                                                                                     "name":  "material_variant_position_check",
                                                                                                                     "value":  "\"material_variant\".\"position\" \u003e= 0"
@@ -1692,6 +1702,96 @@
                                                                             "material_variant_swatch_check":  {
                                                                                                                   "name":  "material_variant_swatch_check",
                                                                                                                   "value":  "\"material_variant\".\"swatch\" IS NULL OR \"material_variant\".\"swatch\" ~ \u0027^#[0-9a-f]{6}$\u0027"
+                                                                                                              }
+                                                                        },
+                                                   "isRLSEnabled":  false
+                                               },
+                   "public.stock_adjustment":  {
+                                                   "name":  "stock_adjustment",
+                                                   "schema":  "",
+                                                   "columns":  {
+                                                                   "id":  {
+                                                                              "name":  "id",
+                                                                              "type":  "uuid",
+                                                                              "primaryKey":  true,
+                                                                              "notNull":  true
+                                                                          },
+                                                                   "variant_id":  {
+                                                                                      "name":  "variant_id",
+                                                                                      "type":  "uuid",
+                                                                                      "primaryKey":  false,
+                                                                                      "notNull":  true
+                                                                                  },
+                                                                   "delta":  {
+                                                                                 "name":  "delta",
+                                                                                 "type":  "integer",
+                                                                                 "primaryKey":  false,
+                                                                                 "notNull":  true
+                                                                             },
+                                                                   "reason":  {
+                                                                                  "name":  "reason",
+                                                                                  "type":  "text",
+                                                                                  "primaryKey":  false,
+                                                                                  "notNull":  true
+                                                                              },
+                                                                   "at":  {
+                                                                              "name":  "at",
+                                                                              "type":  "timestamp with time zone",
+                                                                              "primaryKey":  false,
+                                                                              "notNull":  true
+                                                                          },
+                                                                   "by":  {
+                                                                              "name":  "by",
+                                                                              "type":  "text",
+                                                                              "primaryKey":  false,
+                                                                              "notNull":  true
+                                                                          }
+                                                               },
+                                                   "indexes":  {
+                                                                   "stock_adjustment_variant_idx":  {
+                                                                                                        "name":  "stock_adjustment_variant_idx",
+                                                                                                        "columns":  [
+                                                                                                                        {
+                                                                                                                            "expression":  "variant_id",
+                                                                                                                            "isExpression":  false,
+                                                                                                                            "asc":  true,
+                                                                                                                            "nulls":  "last"
+                                                                                                                        },
+                                                                                                                        {
+                                                                                                                            "expression":  "at",
+                                                                                                                            "isExpression":  false,
+                                                                                                                            "asc":  true,
+                                                                                                                            "nulls":  "last"
+                                                                                                                        }
+                                                                                                                    ],
+                                                                                                        "isUnique":  false,
+                                                                                                        "concurrently":  false,
+                                                                                                        "method":  "btree",
+                                                                                                        "with":  {
+
+                                                                                                                 }
+                                                                                                    }
+                                                               },
+                                                   "foreignKeys":  {
+
+                                                                   },
+                                                   "compositePrimaryKeys":  {
+
+                                                                            },
+                                                   "uniqueConstraints":  {
+
+                                                                         },
+                                                   "policies":  {
+
+                                                                },
+                                                   "checkConstraints":  {
+                                                                            "stock_adjustment_delta_check":  {
+                                                                                                                 "name":  "stock_adjustment_delta_check",
+                                                                                                                 "value":  "\"stock_adjustment\".\"delta\" \u003c\u003e 0"
+                                                                                                             },
+                                                                            "stock_adjustment_reason_check":  {
+                                                                                                                  "name":  "stock_adjustment_reason_check",
+                                                                                                                  "value":  "btrim(\"stock_adjustment\".\"reason\") \u003c\u003e \u0027\u0027"
                                                                                                               }
                                                                         },
                                                    "isRLSEnabled":  false
@@ -1793,6 +1893,58 @@
                                                                 },
                                            "isRLSEnabled":  false
                                        },
+                   "public.variant_stock":  {
+                                                "name":  "variant_stock",
+                                                "schema":  "",
+                                                "columns":  {
+                                                                "variant_id":  {
+                                                                                   "name":  "variant_id",
+                                                                                   "type":  "uuid",
+                                                                                   "primaryKey":  true,
+                                                                                   "notNull":  true
+                                                                               },
+                                                                "on_hand":  {
+                                                                                "name":  "on_hand",
+                                                                                "type":  "integer",
+                                                                                "primaryKey":  false,
+                                                                                "notNull":  true
+                                                                            },
+                                                                "updated_at":  {
+                                                                                   "name":  "updated_at",
+                                                                                   "type":  "timestamp with time zone",
+                                                                                   "primaryKey":  false,
+                                                                                   "notNull":  true
+                                                                               },
+                                                                "updated_by":  {
+                                                                                   "name":  "updated_by",
+                                                                                   "type":  "text",
+                                                                                   "primaryKey":  false,
+                                                                                   "notNull":  true
+                                                                               }
+                                                            },
+                                                "indexes":  {
+
+                                                            },
+                                                "foreignKeys":  {
+
+                                                                },
+                                                "compositePrimaryKeys":  {
+
+                                                                         },
+                                                "uniqueConstraints":  {
+
+                                                                      },
+                                                "policies":  {
+
+                                                             },
+                                                "checkConstraints":  {
+                                                                         "variant_stock_on_hand_check":  {
+                                                                                                             "name":  "variant_stock_on_hand_check",
+                                                                                                             "value":  "\"variant_stock\".\"on_hand\" \u003e= 0"
+                                                                                                         }
+                                                                     },
+                                                "isRLSEnabled":  false
+                                            },
                    "public.media_asset":  {
                                               "name":  "media_asset",
                                               "schema":  "",

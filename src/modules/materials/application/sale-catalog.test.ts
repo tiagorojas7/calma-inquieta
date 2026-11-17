@@ -8,6 +8,7 @@ import {
 } from "~/testing/fakes/admin-builders";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
 import { InMemoryMaterialRepository } from "~/testing/fakes/in-memory-material-repository";
+import { InMemoryStockStore } from "~/testing/fakes/in-memory-stock-store";
 import { InMemorySupplierRepository } from "~/testing/fakes/in-memory-supplier-repository";
 import { createMaterialsService } from "./material-service";
 import { createSaleCatalogReader } from "./sale-catalog";
@@ -78,6 +79,7 @@ describe("sale catalog for hand-made enrollments", () => {
       repository,
       suppliers: new InMemorySupplierRepository(),
       media: { findAssets: () => Promise.resolve(new Map()) },
+      stock: new InMemoryStockStore(),
       clock: advancingClock(new Date("2026-11-16T12:00:00.000Z")),
     });
     const listed = await service.listSaleVariants(testAdminActor());
@@ -107,6 +109,7 @@ describe("sale catalog for hand-made enrollments", () => {
       repository: await catalog(),
       suppliers: new InMemorySupplierRepository(),
       media: { findAssets: () => Promise.resolve(new Map()) },
+      stock: new InMemoryStockStore(),
       clock: advancingClock(new Date("2026-11-16T12:00:00.000Z")),
     });
     expect(await service.listSaleVariants(null)).toEqual({

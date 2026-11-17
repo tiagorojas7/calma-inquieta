@@ -9,9 +9,17 @@ import type {
 import type { ImageUse } from "~/modules/media";
 import type { CatalogFileError, CatalogRowCode } from "../domain/catalog-csv";
 import type { MaterialDraft, MaterialField } from "../domain/material-core";
+import type {
+  StockAdjustmentDraft,
+  StockAdjustmentField,
+} from "../domain/stock-core";
 import type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export type { MaterialDraft, MaterialField } from "../domain/material-core";
+export type {
+  StockAdjustmentDraft,
+  StockAdjustmentField,
+} from "../domain/stock-core";
 export type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export const DEFAULT_VARIANT_LABEL = "Única";
@@ -58,6 +66,8 @@ export interface MaterialVariant {
   readonly label: string;
   /** Null means "consultar precio". */
   readonly price: import("~/modules/_shared").Money | null;
+  /** Current supplier cost; null until the owner loads it. */
+  readonly cost: import("~/modules/_shared").Money | null;
   readonly available: boolean;
   readonly used: boolean;
   readonly position: number;
@@ -84,6 +94,11 @@ export interface MaterialSummary {
   readonly variantCount: number;
   readonly active: boolean;
   readonly available: boolean;
+}
+/** A manual stock subtraction larger than the units on hand. */
+export interface InsufficientStock {
+  readonly kind: "insufficient-stock";
+  readonly onHand: number;
 }
 export type MaterialError =
   Invalid<MaterialField> | { readonly kind: "variant-in-use" };
@@ -242,6 +257,30 @@ export interface MaterialsService {
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;
+  /** On-hand units per variant id of the material; no stock row reads 0. */
+  stockOf(
+    a: AdminActor,
+    materialId: string,
+  ): Promise<Result<ReadonlyMap<string, number>, AdminFailure | NotFound>>;
+  /**
+   * Adds (positive delta) or removes (negative) whole units of one variant
+   * with a required reason, auditing who and when. A removal that would leave
+   * fewer than 0 units is refused as `insufficient-stock` and changes nothing.
+   */
+  adjustStock(
+    a: AdminActor,
+    materialId: string,
+    variantId: string,
+    d: StockAdjustmentDraft,
+  ): Promise<
+    Result<
+      { readonly onHand: number },
+      | AdminFailure
+      | NotFound
+      | Invalid<StockAdjustmentField>
+      | InsufficientStock
+    >
+  >;
   setImage(
     a: AdminActor,
     id: string,

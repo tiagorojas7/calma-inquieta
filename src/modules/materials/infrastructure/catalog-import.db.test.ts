@@ -10,6 +10,7 @@ import type { TestDatabase } from "~/testing/db/test-database";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
 import { createDrizzleMaterialRepository } from "./drizzle-material-repository";
+import { createDrizzleStockStore } from "./drizzle-stock-store";
 import { createDrizzleSupplierRepository } from "./drizzle-supplier-repository";
 
 const SUPPLIER_ID = "00000000-0000-4000-8000-000000000301";
@@ -64,6 +65,7 @@ async function setup() {
     ),
     suppliers: createDrizzleSupplierRepository(openSession),
     media: { findAssets: () => Promise.resolve(new Map()) },
+    stock: createDrizzleStockStore(openSession),
     clock: advancingClock(new Date("2026-10-20T12:00:00.000Z")),
   });
   const count = async () => {

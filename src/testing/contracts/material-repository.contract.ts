@@ -30,6 +30,7 @@ export function buildStoredVariant(
     id: "00000000-0000-4000-8000-000000000201",
     label: "Única",
     price: money(1000),
+    cost: null,
     available: true,
     used: false,
     position: 0,
@@ -76,7 +77,7 @@ export function runMaterialRepositoryContract(
       const { repository } = await create();
       const material = buildStoredMaterial({
         variants: [
-          buildStoredVariant({ swatch: "#aabbcc" }),
+          buildStoredVariant({ swatch: "#aabbcc", cost: money(600) }),
           buildStoredVariant({
             id: "00000000-0000-4000-8000-000000000202",
             label: "Grande",

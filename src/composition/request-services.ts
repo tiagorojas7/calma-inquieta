@@ -101,6 +101,7 @@ import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infr
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
 import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infrastructure/drizzle-workshop-period-repository";
 import { createDrizzleMaterialRepository } from "~/modules/materials/infrastructure/drizzle-material-repository";
+import { createDrizzleStockStore } from "~/modules/materials/infrastructure/drizzle-stock-store";
 import { createDrizzleAdminEnrollmentStore } from "~/modules/enrollments/infrastructure/drizzle-admin-enrollment-store";
 import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructure/drizzle-order-repository";
 import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrastructure/drizzle-order-line-usage-lookup";
@@ -240,6 +241,9 @@ export function createRequestServices(
     openSession,
     createDrizzleOrderLineUsageLookup(openSession),
   );
+  // Variant stock. The same store is the port the paid-order flows join in
+  // their own transaction (take on confirm, put on cancel); bind it there.
+  const stockStore = createDrizzleStockStore(openSession);
   const turnoRepository = createDrizzleTurnoRepository(openSession);
   const intensiveRepository = createDrizzleIntensiveRepository(openSession);
   const seats = config.databaseUrl
@@ -387,6 +391,7 @@ export function createRequestServices(
       suppliers: createDrizzleSupplierRepository(openSession),
       media,
       clock: systemClock,
+      stock: stockStore,
     }),
     ...enrollmentServices,
     publicEnrollments: withEnrollmentEmails(

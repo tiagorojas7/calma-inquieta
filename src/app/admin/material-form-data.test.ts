@@ -76,6 +76,29 @@ describe("parseMaterialDraft", () => {
     ]);
   });
 
+  it("reads the supplier cost per row only when the form carries it", () => {
+    expect(
+      parseMaterialDraft(
+        formOf({
+          variantLabel: ["Chica", "Grande"],
+          variantPrice: ["1200", "2500"],
+          variantCost: ["800", ""],
+          variantSwatch: ["", ""],
+          variantAvailable: ["0", "1"],
+        }),
+      ).variants,
+    ).toEqual([
+      {
+        label: "Chica",
+        price: "1200",
+        cost: "800",
+        swatch: "",
+        available: true,
+      },
+      { label: "Grande", price: "2500", cost: "", swatch: "", available: true },
+    ]);
+  });
+
   it("keeps a persisted ID aligned after a new row", () => {
     expect(
       parseMaterialDraft(
@@ -125,6 +148,22 @@ describe("parseMaterialDraft", () => {
 });
 
 describe("materialFormErrors", () => {
+  it("words the cost issues on the affected variant row", () => {
+    expect(
+      materialFormErrors([
+        { field: "variants.0.cost", code: "invalid-format" },
+        { field: "variants.1.cost", code: "out-of-range" },
+      ]),
+    ).toEqual({
+      variants: {
+        rows: [
+          { cost: "Ingresá solo números, por ejemplo 8000 o 8.000." },
+          { cost: "Ingresá un costo mayor a cero." },
+        ],
+      },
+    });
+  });
+
   it("maps scalar and indexed variant issues to their individual fields", () => {
     expect(
       materialFormErrors([

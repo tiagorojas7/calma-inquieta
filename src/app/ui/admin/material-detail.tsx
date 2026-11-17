@@ -2,7 +2,8 @@ import { Heading, Text } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { ADMIN_PANEL, AdminDangerZone } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { FormError } from "./form-fields";
+import { AdminButton as Button } from "./admin-button";
+import { FormError, TextField } from "./form-fields";
 import { MaterialForm, type MaterialFormErrors } from "./material-form";
 import type { ImageFieldFailure } from "./image-field";
 import { materialCatalogCopy } from "./material-catalog-copy";
@@ -50,6 +51,7 @@ export function MaterialDetail({
   errors,
   formError,
   stateError,
+  stockRejection,
   feedback = null,
 }: {
   name: string;
@@ -64,6 +66,10 @@ export function MaterialDetail({
     id: string;
     label: string;
     price: string;
+    /** Current supplier cost in whole pesos; blank when not loaded. */
+    cost: string;
+    /** Exact units on hand; 0 when the variant has no stock row. */
+    onHand: number;
     priceOnRequest?: boolean;
     available: boolean;
     used: boolean;
@@ -81,6 +87,7 @@ export function MaterialDetail({
       id?: string;
       label: string;
       price: string;
+      cost?: string;
       priceOnRequest?: boolean;
       swatch: string | null;
       available: boolean;
@@ -89,6 +96,15 @@ export function MaterialDetail({
   errors: MaterialFormErrors;
   formError: string | undefined;
   stateError: string | undefined;
+  /** The refused stock adjustment, to redisplay its text and errors. */
+  stockRejection?:
+    | {
+        variantId: string;
+        delta: string;
+        reason: string;
+        errors: { delta?: string | undefined; reason?: string | undefined };
+      }
+    | undefined;
   /** Success text from the redirect that brought the owner here. */
   feedback?: string | null | undefined;
 }) {
@@ -188,6 +204,60 @@ export function MaterialDetail({
                 {!variant.available && <span>{copy.unavailable}</span>}
                 {variant.used && <span>{copy.used}</span>}
               </div>
+              <p className="mt-1 flex flex-wrap gap-x-4 text-sm text-ink-700">
+                <span>
+                  {variant.cost === ""
+                    ? copy.costMissing
+                    : copy.cost(variant.cost)}
+                </span>
+                <span>{copy.stock.onHand(variant.onHand)}</span>
+              </p>
+              <form
+                method="post"
+                noValidate
+                aria-label={copy.stock.formLabel(variant.label)}
+                className="mt-2 grid gap-3 sm:grid-cols-2"
+              >
+                <input type="hidden" name="intent" value="adjust-stock" />
+                <input type="hidden" name="variantId" value={variant.id} />
+                <TextField
+                  label={copy.stock.delta}
+                  hint={copy.stock.deltaHint}
+                  name="delta"
+                  autoComplete="off"
+                  defaultValue={
+                    stockRejection?.variantId === variant.id
+                      ? stockRejection.delta
+                      : ""
+                  }
+                  error={
+                    stockRejection?.variantId === variant.id
+                      ? stockRejection.errors.delta
+                      : undefined
+                  }
+                />
+                <TextField
+                  label={copy.stock.reason}
+                  hint={copy.stock.reasonHint}
+                  name="reason"
+                  autoComplete="off"
+                  defaultValue={
+                    stockRejection?.variantId === variant.id
+                      ? stockRejection.reason
+                      : ""
+                  }
+                  error={
+                    stockRejection?.variantId === variant.id
+                      ? stockRejection.errors.reason
+                      : undefined
+                  }
+                />
+                <div className="sm:col-span-2">
+                  <Button type="submit" variant="outline">
+                    {copy.stock.submit}
+                  </Button>
+                </div>
+              </form>
             </li>
           ))}
         </ul>

@@ -158,3 +158,26 @@ ALTER TABLE "attendance_make_up" DROP CONSTRAINT "attendance_make_up_status_chec
 ALTER TABLE "attendance_make_up" ADD CONSTRAINT "attendance_make_up_status_check" CHECK ("attendance_make_up"."status" IN ('pending', 'done', 'missed'));--> statement-breakpoint
 ALTER TABLE "attendance_make_up" DROP CONSTRAINT "attendance_make_up_done_check";--> statement-breakpoint
 ALTER TABLE "attendance_make_up" ADD CONSTRAINT "attendance_make_up_done_check" CHECK (("attendance_make_up"."status" IN ('done', 'missed')) = ("attendance_make_up"."done_at" IS NOT NULL AND "attendance_make_up"."done_by" IS NOT NULL));
+--> statement-breakpoint
+CREATE TABLE "stock_adjustment" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"variant_id" uuid NOT NULL,
+	"delta" integer NOT NULL,
+	"reason" text NOT NULL,
+	"at" timestamp with time zone NOT NULL,
+	"by" text NOT NULL,
+	CONSTRAINT "stock_adjustment_delta_check" CHECK ("stock_adjustment"."delta" <> 0),
+	CONSTRAINT "stock_adjustment_reason_check" CHECK (btrim("stock_adjustment"."reason") <> '')
+);
+--> statement-breakpoint
+CREATE TABLE "variant_stock" (
+	"variant_id" uuid PRIMARY KEY NOT NULL,
+	"on_hand" integer NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL,
+	"updated_by" text NOT NULL,
+	CONSTRAINT "variant_stock_on_hand_check" CHECK ("variant_stock"."on_hand" >= 0)
+);
+--> statement-breakpoint
+ALTER TABLE "material_variant" ADD COLUMN "cost_centavos" bigint;--> statement-breakpoint
+CREATE INDEX "stock_adjustment_variant_idx" ON "stock_adjustment" USING btree ("variant_id","at");--> statement-breakpoint
+ALTER TABLE "material_variant" ADD CONSTRAINT "material_variant_cost_check" CHECK ("material_variant"."cost_centavos" > 0);

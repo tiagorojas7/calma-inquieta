@@ -1228,6 +1228,7 @@ describe("admin enrollment service", () => {
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       list: () => Promise.reject(new Error("read failed")),
       detail: () => Promise.reject(new Error("read failed")),
+      markSeen: () => Promise.reject(new Error("read failed")),
     };
     const service = createAdminEnrollmentService({
       store,
@@ -1675,5 +1676,69 @@ describe("admin order corrections", () => {
         fee: "58000",
       }),
     ).resolves.toEqual({ ok: false, error: { kind: "period-closed" } });
+  });
+});
+
+describe("admin enrollment read state", () => {
+  it("stamps the first opener and the clock time, and never overwrites them", async () => {
+    const { service, orders, order } = await fixture();
+
+    await expect(service.markSeen(admin, order.id)).resolves.toEqual({
+      ok: true,
+      value: { kind: "seen" },
+    });
+    await expect(
+      service.markSeen(
+        { kind: "admin-actor" as const, email: "other@example.com" },
+        order.id,
+      ),
+    ).resolves.toEqual({ ok: true, value: { kind: "already-seen" } });
+    expect(orders.seenMark(order.id)).toEqual({
+      by: "admin@example.com",
+      at: now,
+    });
+  });
+
+  it("leaves an order an admin created already read", async () => {
+    const { service, orders } = await fixture();
+    const manual = await createOrder(orders, 2, { createdBy: admin.email });
+
+    await expect(service.markSeen(admin, manual.id)).resolves.toEqual({
+      ok: true,
+      value: { kind: "already-seen" },
+    });
+  });
+
+  it("denies without an admin actor and answers not found for an unknown order", async () => {
+    const { service, order } = await fixture();
+
+    await expect(service.markSeen(null, order.id)).resolves.toMatchObject({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    await expect(service.markSeen(admin, "missing")).resolves.toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+
+  it("reports unavailable when the store fails", async () => {
+    const { order } = await fixture();
+    const failing = createAdminEnrollmentService({
+      store: {
+        markSeen: () => Promise.reject(new Error("db down")),
+      } as unknown as AdminEnrollmentStore,
+      clock: { now: () => now },
+      offers: noOffers,
+      createPending: notCalled,
+    });
+
+    await expect(failing.markSeen(admin, order.id)).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+    await expect(
+      createUnavailableAdminEnrollmentService().markSeen(admin, order.id),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 });

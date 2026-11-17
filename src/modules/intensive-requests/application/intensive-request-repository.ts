@@ -150,6 +150,15 @@ export interface IntensiveRequestRepository {
   /** Seats taken: confirmed requests only, pending ones never count. */
   confirmedSeats(intensiveId: string): Promise<number>;
   /**
+   * Marks every request of the intensivo that no owner opened yet as read for
+   * both owners, and returns how many it just marked. A mark already there is
+   * never overwritten, and nothing else about a request changes.
+   */
+  markSeenForIntensive(
+    intensiveId: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<number>;
+  /**
    * Atomically confirms a pending request while confirmed seats stay under
    * `capacity`. Two concurrent confirmations never exceed it. In the same
    * transaction the chosen project's materials are copied to the request and

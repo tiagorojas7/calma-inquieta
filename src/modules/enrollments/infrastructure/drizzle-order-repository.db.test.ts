@@ -261,3 +261,58 @@ describe("student identity association", () => {
     }
   });
 });
+
+describe("panel read state at creation", () => {
+  const draft = (overrides: Parameters<typeof orderDraft>[0] = {}) =>
+    orderDraft({
+      workshopId: "00000000-0000-4000-8000-000000000001",
+      periodId: "00000000-0000-4000-8000-000000000011",
+      turnoId: "00000000-0000-4000-8000-000000000021",
+      ...overrides,
+    });
+
+  async function seenColumns(
+    openSession: Awaited<ReturnType<typeof freshRepository>>["openSession"],
+  ) {
+    const session = await openSession();
+    try {
+      return await session.db
+        .select({
+          publicId: enrollmentOrder.publicId,
+          seenAt: enrollmentOrder.seenAt,
+          seenBy: enrollmentOrder.seenBy,
+        })
+        .from(enrollmentOrder);
+    } finally {
+      await session.close();
+    }
+  }
+
+  it("stores a public order unseen", async () => {
+    const { openSession, repository } = await freshRepository();
+    expect((await repository.create(draft())).ok).toBe(true);
+
+    expect(await seenColumns(openSession)).toEqual([
+      expect.objectContaining({ seenAt: null, seenBy: null }),
+    ]);
+  });
+
+  it("stores an order an admin created already seen by its creator", async () => {
+    const { openSession, repository } = await freshRepository();
+    const requestedAt = new Date("2026-10-30T15:00:00Z");
+    expect(
+      (
+        await repository.create(
+          draft({ requestedAt, createdBy: "agus@example.com" }),
+        )
+      ).ok,
+    ).toBe(true);
+
+    expect(await seenColumns(openSession)).toEqual([
+      expect.objectContaining({
+        seenAt: requestedAt,
+        seenBy: "agus@example.com",
+      }),
+    ]);
+  });
+});

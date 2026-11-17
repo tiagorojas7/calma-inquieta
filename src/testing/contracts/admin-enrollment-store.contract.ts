@@ -980,5 +980,64 @@ export function runAdminEnrollmentStoreContract(
       await expect(harness.seatCount(first)).resolves.toBe(1);
       await expect(harness.seatCount(second)).resolves.toBe(1);
     });
+
+    describe("shared read state", () => {
+      const mark = (store: AdminEnrollmentStore, orderId: string) =>
+        store.markSeen({ orderId, actor, now });
+
+      it("marks a public order seen once and keeps the first mark", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+
+        await expect(mark(harness.store, order.id)).resolves.toEqual({
+          ok: true,
+          value: { kind: "seen" },
+        });
+        await expect(
+          harness.store.markSeen({
+            orderId: order.id,
+            actor: { email: "other-owner@example.com" },
+            now: new Date("2026-11-02T15:00:00Z"),
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "already-seen" } });
+      });
+
+      it("stores an order an admin created already seen", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder({ createdBy: actor.email });
+
+        await expect(mark(harness.store, order.id)).resolves.toEqual({
+          ok: true,
+          value: { kind: "already-seen" },
+        });
+      });
+
+      it("answers not found for an unknown order", async () => {
+        const harness = await setup();
+
+        await expect(
+          mark(harness.store, "00000000-0000-4000-8000-0000000000ff"),
+        ).resolves.toEqual({ ok: false, error: { kind: "not-found" } });
+      });
+
+      it("changes nothing but the read state: status, seats, audit and stock", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+        await confirm(harness.store, order);
+        const before = {
+          detail: await harness.store.detail(order.id),
+          seats: await harness.seatCount(order),
+          audit: await harness.audit(order),
+        };
+
+        await mark(harness.store, order.id);
+
+        await expect(harness.store.detail(order.id)).resolves.toEqual(
+          before.detail,
+        );
+        await expect(harness.seatCount(order)).resolves.toBe(before.seats);
+        await expect(harness.audit(order)).resolves.toEqual(before.audit);
+      });
+    });
   });
 }

@@ -651,3 +651,71 @@ describe("DrizzleAdminEnrollmentStore material sales", () => {
     });
   });
 });
+
+describe("DrizzleAdminEnrollmentStore panel read state", () => {
+  it("stores a sale already seen by the owner who sold it, and leaves its monthly record unread", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const parent = await harness.monthly({}, "paid");
+    const before = await harness.row(parent.id);
+    expect(before).toMatchObject({ seen_at: null, seen_by: null });
+
+    const saleId = await harness.saleId(parent, [line(ids.clay, 1)]);
+
+    const sold = await harness.row(saleId);
+    expect(sold?.seen_by).toBe(actor.email);
+    expect(new Date(String(sold?.seen_at)).getTime()).toBe(now.getTime());
+    expect(await harness.row(parent.id)).toEqual(before);
+    await expect(
+      harness.store.markSeen({ orderId: saleId, actor, now }),
+    ).resolves.toEqual({ ok: true, value: { kind: "already-seen" } });
+  });
+
+  it("keeps the first opener's mark, and lets exactly one of several concurrent openers set it", async () => {
+    const harness = await freshHarness();
+    const order = await harness.monthly();
+    const first = { email: "agus@example.com" };
+
+    const outcomes = await Promise.all(
+      Array.from({ length: 6 }, (_, index) =>
+        harness.store.markSeen({
+          orderId: order.id,
+          actor:
+            index === 0
+              ? first
+              : { email: `owner-${String(index)}@example.com` },
+          now: new Date(`2026-11-0${String(index + 1)}T15:00:00Z`),
+        }),
+      ),
+    );
+
+    const kinds = outcomes.map((outcome) =>
+      outcome.ok ? outcome.value.kind : "failed",
+    );
+    expect(kinds.filter((kind) => kind === "seen")).toHaveLength(1);
+    expect(kinds.filter((kind) => kind === "already-seen")).toHaveLength(5);
+    const row = await harness.row(order.id);
+    expect(row?.seen_by).toMatch(/@example\.com$/);
+    await harness.store.markSeen({
+      orderId: order.id,
+      actor: { email: "late@example.com" },
+      now,
+    });
+    expect((await harness.row(order.id))?.seen_by).toBe(row?.seen_by);
+  });
+
+  it("refuses a half-set read mark at the database", async () => {
+    const harness = await freshHarness();
+    const order = await harness.monthly();
+    const session = await harness.openSession();
+    try {
+      await expect(
+        session.db.execute(
+          sql`UPDATE enrollment_order SET seen_at = now() WHERE id = ${order.id}`,
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await session.close();
+    }
+  });
+});

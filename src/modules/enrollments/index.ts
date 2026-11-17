@@ -37,6 +37,7 @@ export type {
   MaterialSaleStore,
   MaterialSaleSummary,
   OrderCorrection,
+  SeenMark,
 } from "./application/admin-enrollment-store";
 export {
   createSupplierConsolidationService,
@@ -106,8 +107,10 @@ export type {
   MaterialRow,
   OrderCountRow,
   ParticipationRow,
+  PendingOrderPaymentRow,
   PendingSummary,
   PeriodRegistrationRow,
+  UnseenOrderRow,
 } from "./application/insights-reader";
 export type {
   OrderAudienceReader,

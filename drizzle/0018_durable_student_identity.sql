@@ -322,3 +322,16 @@ ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_refu
           OR ("intensive_seat_request"."refund_centavos" >= 0 AND "intensive_seat_request"."refund_centavos" % 100 = 0
               AND "intensive_seat_request"."paid_centavos" IS NOT NULL
               AND "intensive_seat_request"."refund_centavos" <= "intensive_seat_request"."paid_centavos" + COALESCE("intensive_seat_request"."balance_centavos", 0)));
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "seen_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "seen_by" text;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "seen_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "seen_by" text;--> statement-breakpoint
+ALTER TABLE "private_event_request" ADD COLUMN "seen_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "private_event_request" ADD COLUMN "seen_by" text;--> statement-breakpoint
+UPDATE "enrollment_order" SET "seen_at" = "requested_at", "seen_by" = 'migration 0018';--> statement-breakpoint
+UPDATE "intensive_seat_request" SET "seen_at" = "created_at", "seen_by" = 'migration 0018';--> statement-breakpoint
+UPDATE "private_event_request" SET "seen_at" = "created_at", "seen_by" = 'migration 0018';--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_seen_check" CHECK (("enrollment_order"."seen_at" IS NULL) = ("enrollment_order"."seen_by" IS NULL));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_seen_check" CHECK (("intensive_seat_request"."seen_at" IS NULL) = ("intensive_seat_request"."seen_by" IS NULL));--> statement-breakpoint
+ALTER TABLE "private_event_request" ADD CONSTRAINT "private_event_request_seen_check" CHECK (("private_event_request"."seen_at" IS NULL) = ("private_event_request"."seen_by" IS NULL));

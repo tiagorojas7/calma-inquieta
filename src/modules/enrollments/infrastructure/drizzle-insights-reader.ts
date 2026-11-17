@@ -1,4 +1,16 @@
-import { and, count, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  sql,
+} from "drizzle-orm";
 import {
   enrollmentOrder as orders,
   orderLine,
@@ -6,7 +18,7 @@ import {
 } from "~/platform/db/schema/enrollments";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type { EnrollmentInsightsReader } from "../application/insights-reader";
-import type { OrderStatus } from "../domain/order-core";
+import type { OrderKind, OrderStatus } from "../domain/order-core";
 
 const CONFIRMED = ["paid", "materials_requested", "materials_received"];
 
@@ -182,6 +194,50 @@ export function createDrizzleEnrollmentInsightsReader(
         return rows.map((row) => ({
           ...row,
           status: row.status as OrderStatus,
+        }));
+      }),
+
+    unseenOrders: () =>
+      withDb((db) =>
+        db
+          .select({
+            id: orders.id,
+            studentName: orders.studentName,
+            workshopName: orders.workshopName,
+            period: orders.period,
+            requestedAt: orders.requestedAt,
+          })
+          .from(orders)
+          .where(
+            and(
+              ENROLLMENT,
+              ne(orders.status, "cancelled"),
+              isNull(orders.seenAt),
+            ),
+          )
+          .orderBy(desc(orders.requestedAt), asc(orders.id)),
+      ),
+
+    pendingPayments: () =>
+      withDb(async (db) => {
+        // Monthly fees and material sales alike; no due date, so a pending
+        // order stays listed until it is paid or cancelled.
+        const rows = await db
+          .select({
+            id: orders.id,
+            kind: orders.kind,
+            studentName: orders.studentName,
+            workshopName: orders.workshopName,
+            period: orders.period,
+            totalCentavos: orders.totalCentavos,
+            requestedAt: orders.requestedAt,
+          })
+          .from(orders)
+          .where(eq(orders.status, "pending_confirmation"))
+          .orderBy(asc(orders.requestedAt), asc(orders.id));
+        return rows.map((row) => ({
+          ...row,
+          kind: row.kind as OrderKind,
         }));
       }),
 

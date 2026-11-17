@@ -348,6 +348,9 @@ export function createRequestServices(
         enrollments: createUnavailableAdminEnrollmentService(),
         consolidation: createUnavailableSupplierConsolidationService(),
       };
+  // One adapter serves the private-event use cases and the bell's novelty read.
+  const privateEventRepository =
+    createDrizzlePrivateEventRepository(openSession);
   const defer = (pending: Promise<unknown>) => {
     if (runtime.defer) runtime.defer(pending);
     else void pending;
@@ -481,12 +484,13 @@ export function createRequestServices(
       intensives: createDrizzleIntensiveInsightsReader(openSession),
       intensiveRequests:
         createDrizzleIntensiveRequestInsightsReader(openSession),
+      privateEvents: privateEventRepository,
       teachers,
       clock: systemClock,
     }),
     privateEvents: withPrivateEventEmails(
       createPrivateEventService({
-        repository: createDrizzlePrivateEventRepository(openSession),
+        repository: privateEventRepository,
         clock: systemClock,
       }),
       notifications,

@@ -1,6 +1,7 @@
 import { err, ok, type Clock } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
 import type { IntensiveRequestInsightsReader } from "~/modules/intensive-requests";
+import type { PrivateEventNoveltyReader } from "~/modules/private-events";
 import type { TeacherLookup } from "~/modules/teachers";
 import {
   ORDER_STATUSES,
@@ -34,9 +35,12 @@ import type {
   IncomeTotals,
   InsightsService,
   MaterialsToOrder,
+  NotificationsView,
+  NoveltyItem,
   OccupancyRow,
   OccupancyTotals,
   PanelView,
+  PendingPaymentItem,
   SettlementsView,
   StatisticsView,
   SupplierMaterials,
@@ -61,6 +65,8 @@ export interface InsightsServiceDeps {
   readonly workshops: WorkshopInsightsReader;
   readonly intensives: IntensiveInsightsReader;
   readonly intensiveRequests: IntensiveRequestInsightsReader;
+  /** Unopened private-event requests, for the bell. */
+  readonly privateEvents: PrivateEventNoveltyReader;
   readonly teachers: TeacherLookup;
   readonly clock: Clock;
 }
@@ -191,10 +197,92 @@ function settlementRows(
 export function createInsightsService(
   deps: InsightsServiceDeps,
 ): InsightsUseCases {
-  const { orders, workshops, intensives, intensiveRequests, teachers, clock } =
-    deps;
+  const {
+    orders,
+    workshops,
+    intensives,
+    intensiveRequests,
+    privateEvents,
+    teachers,
+    clock,
+  } = deps;
 
   const currentPeriod = () => cordobaDateOf(clock.now()).slice(0, 7);
+
+  /** The unopened requests and every payment still owed; a failed read rejects. */
+  async function notificationsOf(): Promise<NotificationsView> {
+    const [unseenOrders, unseenSeats, events, orderPayments, seatPayments] =
+      await Promise.all([
+        orders.unseenOrders(),
+        intensiveRequests.unseenRequests(),
+        privateEvents.unseen(),
+        orders.pendingPayments(),
+        intensiveRequests.pendingPayments(),
+      ]);
+    const novelties: NoveltyItem[] = [
+      ...unseenOrders.map((row): NoveltyItem => ({
+        kind: "enrollment",
+        id: row.id,
+        intensiveId: null,
+        name: row.studentName,
+        workshopName: row.workshopName,
+        period: row.period,
+        eventDate: null,
+        requestedAt: row.requestedAt,
+      })),
+      ...unseenSeats.map((row): NoveltyItem => ({
+        kind: "workshop-request",
+        id: row.id,
+        intensiveId: row.intensiveId,
+        name: row.fullName,
+        workshopName: row.workshopName,
+        period: null,
+        eventDate: null,
+        requestedAt: row.createdAt,
+      })),
+      ...events.map((row): NoveltyItem => ({
+        kind: "private-event",
+        id: row.id,
+        intensiveId: null,
+        name: row.fullName,
+        workshopName: null,
+        period: null,
+        eventDate: row.desiredDate,
+        requestedAt: row.createdAt,
+      })),
+    ].sort(
+      (a, b) =>
+        b.requestedAt.getTime() - a.requestedAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    const pendingPayments: PendingPaymentItem[] = [
+      ...orderPayments.map((row): PendingPaymentItem => ({
+        kind: row.kind === "material_sale" ? "material-sale" : "enrollment",
+        id: row.id,
+        intensiveId: null,
+        name: row.studentName,
+        workshopName: row.workshopName,
+        period: row.period,
+        amount: pesos(row.totalCentavos),
+        requestedAt: row.requestedAt,
+      })),
+      ...seatPayments.map((row): PendingPaymentItem => ({
+        kind: row.kind === "deposit" ? "workshop-deposit" : "workshop-balance",
+        id: row.id,
+        intensiveId: row.intensiveId,
+        name: row.fullName,
+        workshopName: row.workshopName,
+        period: null,
+        amount: pesos(row.amountCentavos),
+        requestedAt: row.createdAt,
+      })),
+    ].sort(
+      (a, b) =>
+        a.requestedAt.getTime() - b.requestedAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    return { unseen: novelties.length, novelties, pendingPayments };
+  }
 
   async function occupancyOf(period: string) {
     const capacity = await workshops.capacity(period);
@@ -611,6 +699,31 @@ export function createInsightsService(
       return ok(await earningsOf(period));
     },
 
+    async notifications(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      try {
+        return ok(await notificationsOf());
+      } catch {
+        return err({ kind: "unavailable" as const });
+      }
+    },
+
+    async unseenCount(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      try {
+        const [enrollments, seats, events] = await Promise.all([
+          orders.unseenOrders(),
+          intensiveRequests.unseenRequests(),
+          privateEvents.unseen(),
+        ]);
+        return ok(enrollments.length + seats.length + events.length);
+      } catch {
+        return err({ kind: "unavailable" as const });
+      }
+    },
+
     async settlements(actor, query) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -652,5 +765,7 @@ export function createUnavailableInsightsService(): InsightsUseCases {
     statistics: fail,
     earnings: fail,
     settlements: fail,
+    notifications: fail,
+    unseenCount: fail,
   };
 }

@@ -493,3 +493,106 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
     expect(kept).not.toBe(corrected);
   });
 });
+
+describe("the bell readers", () => {
+  const SEEN = { seenAt: new Date("2026-10-02T12:00:00Z"), seenBy: "a@b.c" };
+
+  it("lists the unopened public monthly records newest first, never a read, cancelled or sale one", async () => {
+    const { add, reader } = await fixture();
+    const older = await add({
+      status: "pending_confirmation",
+      studentName: "Older",
+      requestedAt: new Date("2026-10-01T12:00:00Z"),
+    });
+    const newer = await add({
+      status: "paid",
+      studentName: "Newer",
+      requestedAt: new Date("2026-10-03T12:00:00Z"),
+    });
+    await add({ status: "pending_confirmation", ...SEEN });
+    await add({ ...CANCELLED });
+    const parentEmail = "parent@example.com";
+    const parent = await add({ studentEmail: parentEmail, ...SEEN });
+    // A sale never counts as a novelty, even if its mark were missing.
+    await add({
+      studentEmail: parentEmail,
+      kind: "material_sale",
+      parentOrderId: parent,
+      feeCentavos: 0,
+      materials: 4_000_00,
+      totalCentavos: 4_000_00,
+      status: "pending_confirmation",
+    });
+
+    expect(await reader.unseenOrders()).toEqual([
+      {
+        id: newer,
+        studentName: "Newer",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        requestedAt: new Date("2026-10-03T12:00:00Z"),
+      },
+      {
+        id: older,
+        studentName: "Older",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        requestedAt: new Date("2026-10-01T12:00:00Z"),
+      },
+    ]);
+  });
+
+  it("lists every pending fee and pending sale oldest first, read or not, until they are paid or cancelled", async () => {
+    const { add, reader } = await fixture();
+    const fee = await add({
+      status: "pending_confirmation",
+      studentName: "Fee Student",
+      materials: 2_000_00,
+      requestedAt: new Date("2026-10-05T12:00:00Z"),
+      ...SEEN,
+    });
+    const parentEmail = "parent@example.com";
+    const parent = await add({ studentEmail: parentEmail });
+    const sale = await add({
+      studentEmail: parentEmail,
+      studentName: "Sale Student",
+      kind: "material_sale",
+      parentOrderId: parent,
+      feeCentavos: 0,
+      materials: 4_000_00,
+      totalCentavos: 4_000_00,
+      status: "pending_confirmation",
+      requestedAt: new Date("2026-10-04T12:00:00Z"),
+    });
+    await add({ status: "paid" });
+    await add({ ...CANCELLED });
+
+    expect(await reader.pendingPayments()).toEqual([
+      {
+        id: sale,
+        kind: "material_sale",
+        studentName: "Sale Student",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        totalCentavos: 4_000_00,
+        requestedAt: new Date("2026-10-04T12:00:00Z"),
+      },
+      {
+        id: fee,
+        kind: "enrollment",
+        studentName: "Fee Student",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        totalCentavos: 12_000_00,
+        requestedAt: new Date("2026-10-05T12:00:00Z"),
+      },
+    ]);
+  });
+
+  it("rejects a half-set read mark and a sale-less order check at the database", async () => {
+    const { add } = await fixture();
+
+    await expect(add({ seenBy: "someone@example.com" })).rejects.toThrow();
+    await expect(add({ seenAt: new Date() })).rejects.toThrow();
+  });
+});

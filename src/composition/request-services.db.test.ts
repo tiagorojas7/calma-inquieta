@@ -346,6 +346,111 @@ describe("createRequestServices", () => {
     expect(pending.ok && pending.value.items).toEqual([]);
   });
 
+  it("counts new public requests on the bell, marks them read when opened, and keeps pending payments until paid", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                capacities: [{ turnoId: turno.id, capacity: 5 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+    const actor = testAdminActor();
+    const enrollment = (n: number) => ({
+      slug: "ceramica",
+      period: "2099-01",
+      turnoId: turno.id,
+      student: {
+        fullName: `Alumna ${String(n)}`,
+        email: `alumna${String(n)}@example.com`,
+        phone: `351 555-100${String(n)}`,
+        policyAccepted: true,
+        honeypot: "",
+      },
+      lines: [],
+    });
+    const asked = await services.publicEnrollments.requestEnrollment(
+      enrollment(1),
+    );
+    const manual = await services.enrollments.createPending(
+      actor,
+      enrollment(2),
+    );
+    const event = await services.privateEvents.requestEvent({
+      fullName: "Dora Ruiz",
+      phone: "351 555 0101",
+      email: "",
+      desiredDate: "2099-12-05",
+      place: "Casa",
+      participants: "12",
+      notes: "",
+      honeypot: "",
+    });
+    expect([asked.ok, manual.ok, event.ok]).toEqual([true, true, true]);
+
+    const view = await services.insights.notifications(actor);
+    if (!view.ok) throw new Error("no notifications");
+    // The public enrollment and the event are new; the manual one was made by an owner.
+    expect(view.value.novelties.map((item) => item.name).sort()).toEqual([
+      "Alumna 1",
+      "Dora Ruiz",
+    ]);
+    expect(await services.insights.unseenCount(actor)).toEqual({
+      ok: true,
+      value: 2,
+    });
+    // Both enrollments still owe their fee, read or not.
+    expect(view.value.pendingPayments.map((item) => item.name).sort()).toEqual([
+      "Alumna 1",
+      "Alumna 2",
+    ]);
+
+    const listed = await services.enrollments.list(actor, {});
+    const publicOrder = listed.ok
+      ? listed.value.items.find((item) => item.studentName === "Alumna 1")
+      : undefined;
+    if (!publicOrder) throw new Error("public order missing");
+    expect(await services.enrollments.markSeen(actor, publicOrder.id)).toEqual({
+      ok: true,
+      value: { kind: "seen" },
+    });
+    expect(await services.insights.unseenCount(actor)).toEqual({
+      ok: true,
+      value: 1,
+    });
+    await services.privateEvents.markSeen(
+      actor,
+      view.value.novelties.find((item) => item.kind === "private-event")?.id ??
+        "",
+    );
+    expect(await services.insights.unseenCount(actor)).toEqual({
+      ok: true,
+      value: 0,
+    });
+    const after = await services.insights.notifications(actor);
+    expect(
+      after.ok && after.value.pendingPayments.map((item) => item.name).sort(),
+    ).toEqual(["Alumna 1", "Alumna 2"]);
+  });
+
   it("stores catalog materials on a manual enrollment, and never on a public one", async () => {
     const database = await newDatabase();
     const turno = seedTurno({ label: "Lunes" });

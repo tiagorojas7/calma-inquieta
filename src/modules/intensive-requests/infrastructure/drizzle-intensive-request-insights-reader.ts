@@ -64,6 +64,84 @@ export function createDrizzleIntensiveRequestInsightsReader(
       }
     },
 
+    async unseenRequests() {
+      const session = await openSession();
+      try {
+        // The workshop name comes from a LEFT JOIN written as SQL: the schema
+        // ownership rule keeps this module out of the workshops schema file.
+        const { rows } = await session.db.execute<{
+          id: string;
+          intensive_id: string;
+          workshop_name: string | null;
+          full_name: string;
+          created_at: Date;
+        }>(sql`
+          SELECT request.id, request.intensive_id, workshop.name AS workshop_name,
+                 request.full_name, request.created_at
+          FROM ${requests} AS request
+          LEFT JOIN intensive_workshop AS workshop
+            ON workshop.id = request.intensive_id
+          WHERE request.seen_at IS NULL AND request.status <> 'cancelled'
+          ORDER BY request.created_at DESC, request.id ASC`);
+        return rows.map((row) => ({
+          id: row.id,
+          intensiveId: row.intensive_id,
+          workshopName: row.workshop_name,
+          fullName: row.full_name,
+          createdAt: new Date(row.created_at),
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+
+    async pendingPayments() {
+      const session = await openSession();
+      try {
+        // A pending request owes its deposit (the quoted one, or the
+        // workshop's for a request made before projects existed). A confirmed
+        // one owes the balance while its price is above its deposit and none is
+        // recorded. Cancelled requests owe nothing. No due dates.
+        const { rows } = await session.db.execute<{
+          id: string;
+          intensive_id: string;
+          workshop_name: string | null;
+          full_name: string;
+          kind: "deposit" | "balance";
+          amount: string;
+          created_at: Date;
+        }>(sql`
+          SELECT request.id, request.intensive_id, workshop.name AS workshop_name,
+                 request.full_name, request.created_at,
+                 CASE WHEN request.status = 'pending_confirmation'
+                      THEN 'deposit' ELSE 'balance' END AS kind,
+                 CASE WHEN request.status = 'pending_confirmation'
+                      THEN coalesce(request.deposit_centavos, workshop.deposit_centavos, 0)
+                      ELSE request.price_centavos - request.deposit_centavos END AS amount
+          FROM ${requests} AS request
+          LEFT JOIN intensive_workshop AS workshop
+            ON workshop.id = request.intensive_id
+          WHERE request.status = 'pending_confirmation'
+             OR (request.status = 'confirmed'
+                 AND request.balance_centavos IS NULL
+                 AND request.price_centavos IS NOT NULL
+                 AND request.deposit_centavos IS NOT NULL
+                 AND request.price_centavos > request.deposit_centavos)
+          ORDER BY request.created_at ASC, request.id ASC`);
+        return rows.map((row) => ({
+          id: row.id,
+          intensiveId: row.intensive_id,
+          workshopName: row.workshop_name,
+          fullName: row.full_name,
+          kind: row.kind,
+          amountCentavos: Number(row.amount),
+          createdAt: new Date(row.created_at),
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+
     async pendingRequests() {
       const session = await openSession();
       try {

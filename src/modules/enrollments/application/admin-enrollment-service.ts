@@ -31,6 +31,7 @@ import type {
   Corrected,
   CorrectionTarget,
   MaterialSaleStore,
+  SeenMark,
 } from "./admin-enrollment-store";
 import type { EnrollmentOfferLookup } from "./offer-lookup";
 import type { OfferedMaterialsLookup } from "./offered-materials";
@@ -219,6 +220,14 @@ export interface AdminEnrollmentUseCases {
     actor: Actor,
     orderId: string,
   ): Promise<Result<AdminEnrollmentDetail, AdminEnrollmentError>>;
+  /**
+   * Marks the order read for both owners when one opens it. Idempotent: the
+   * first opener's mark stays, and nothing else about the order changes.
+   */
+  markSeen(
+    actor: Actor,
+    orderId: string,
+  ): Promise<Result<SeenMark, AdminEnrollmentError>>;
 }
 
 const cordobaDate = (instant: Date) =>
@@ -318,6 +327,7 @@ export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCas
     markMaterialsReceivedBulk: unavailableBulk,
     list: fail,
     detail: fail,
+    markSeen: fail,
   };
 }
 
@@ -501,6 +511,19 @@ export function createAdminEnrollmentService(
       if (!admin.ok) return admin;
       try {
         return await deps.store.detail(orderId);
+      } catch {
+        return err({ kind: "unavailable" });
+      }
+    },
+    async markSeen(actor, orderId) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      try {
+        return await deps.store.markSeen({
+          orderId,
+          actor: { email: admin.value.email },
+          now: deps.clock.now(),
+        });
       } catch {
         return err({ kind: "unavailable" });
       }

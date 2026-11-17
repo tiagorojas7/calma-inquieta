@@ -36,6 +36,9 @@ export type AdminEnrollmentStoreError =
 export type AdminEnrollmentActor = { readonly email: string };
 export type Confirmed =
   { readonly kind: "confirmed" } | { readonly kind: "already-confirmed" };
+/** The shared read state: first opened by an owner now, or already read. */
+export type SeenMark =
+  { readonly kind: "seen" } | { readonly kind: "already-seen" };
 export type Cancelled =
   { readonly kind: "cancelled" } | { readonly kind: "already-cancelled" };
 export type Corrected = {
@@ -233,6 +236,17 @@ export interface AdminEnrollmentStore {
     readonly actor: AdminEnrollmentActor;
     readonly now: Date;
   }): Promise<Result<Corrected, AdminEnrollmentStoreError>>;
+  /**
+   * Marks an order read for both owners: the first call stamps who and when,
+   * later calls change nothing and never overwrite the first mark. An order an
+   * admin created is stored already read. It touches no status, payment,
+   * audit row, seat or stock.
+   */
+  markSeen(input: {
+    readonly orderId: string;
+    readonly actor: AdminEnrollmentActor;
+    readonly now: Date;
+  }): Promise<Result<SeenMark, AdminEnrollmentStoreError>>;
   /**
    * Moves a paid order along the material steps. An order whose lines all come
    * from stock may go from `paid` straight to `materials_received`.

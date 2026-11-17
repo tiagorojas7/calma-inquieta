@@ -24,6 +24,8 @@ type NotFound = { readonly kind: "not-found" };
  */
 export class InMemoryIntensiveRequestRepository implements IntensiveRequestRepository {
   readonly requests = new Map<string, StoredIntensiveRequest>();
+  /** Who opened each request first and when; absent while unread. */
+  readonly seenMarks = new Map<string, { by: string; at: Date }>();
 
   insert(
     request: StoredIntensiveRequest,
@@ -71,6 +73,20 @@ export class InMemoryIntensiveRequestRepository implements IntensiveRequestRepos
 
   confirmedSeats(intensiveId: string): Promise<number> {
     return Promise.resolve(this.countConfirmed(intensiveId));
+  }
+
+  markSeenForIntensive(
+    intensiveId: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<number> {
+    let marked = 0;
+    for (const stored of this.requests.values()) {
+      if (stored.intensiveId !== intensiveId || this.seenMarks.has(stored.id))
+        continue;
+      this.seenMarks.set(stored.id, { by: change.by, at: change.at });
+      marked += 1;
+    }
+    return Promise.resolve(marked);
   }
 
   confirm(

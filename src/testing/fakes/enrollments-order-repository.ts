@@ -19,6 +19,7 @@ import {
   type ConsolidationLine,
   type DeliveryOrder,
   type Confirmed,
+  type SeenMark,
   type OrderCorrection,
 } from "~/modules/enrollments/application/admin-enrollment-store";
 import type {
@@ -98,6 +99,16 @@ export interface StockedOrders {
   returnStockLines(orderId: string, stamp: OrderStockStamp): Promise<void>;
 }
 
+/** The read state of the orders, which the fake store needs to mark one seen. */
+export interface SeenOrders {
+  markSeen(orderId: string, by: string, at: Date): boolean | undefined;
+}
+
+const isSeenable = (
+  orders: OrderRepository,
+): orders is OrderRepository & SeenOrders =>
+  "markSeen" in orders && typeof orders.markSeen === "function";
+
 const isStocked = (
   orders: OrderRepository,
 ): orders is OrderRepository & StockedOrders =>
@@ -145,7 +156,7 @@ const cordobaDate = (instant: Date): string => {
 
 /** In-memory order aggregate driven by the same transition table as production. */
 export class InMemoryOrderRepository
-  implements OrderRepository, CorrectableOrders
+  implements OrderRepository, CorrectableOrders, SeenOrders
 {
   private readonly rows: Row[] = [];
   /** Durable profiles keyed like production: unique email and unique phone. */
@@ -155,6 +166,11 @@ export class InMemoryOrderRepository
     phoneDigits: string;
   }[] = [];
   private readonly studentOf = new Map<string, string>();
+  /** The shared read state per order id: null while nobody opened it. */
+  private readonly seen = new Map<
+    string,
+    { readonly by: string; readonly at: Date } | null
+  >();
   private readonly sequences = new Map<number, number>();
   private failNext = false;
   private reads = 0;
@@ -299,6 +315,11 @@ export class InMemoryOrderRepository
         : {}),
     };
     this.studentOf.set(order.id, profile.id);
+    // A request an admin created is read by its creator; a public one is new.
+    this.seen.set(
+      order.id,
+      createdBy === undefined ? null : { by: createdBy, at: draft.requestedAt },
+    );
     this.rows.push({
       order,
       audit: [
@@ -313,6 +334,21 @@ export class InMemoryOrderRepository
       corrections: [],
     });
     return ok(order);
+  }
+  /**
+   * Stamps the order read the first time only. Returns `undefined` for an
+   * unknown order, `true` when this call set the mark and `false` when one
+   * was already there.
+   */
+  markSeen(orderId: string, by: string, at: Date): boolean | undefined {
+    if (!this.seen.has(orderId)) return undefined;
+    if (this.seen.get(orderId) !== null) return false;
+    this.seen.set(orderId, { by, at });
+    return true;
+  }
+  /** The read mark of an order, for assertions: null while unread. */
+  seenMark(orderId: string): { readonly by: string; readonly at: Date } | null {
+    return this.seen.get(orderId) ?? null;
   }
   holdsMonth(orderId: string, period: string): boolean {
     const studentId = this.studentOf.get(orderId);
@@ -802,6 +838,23 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
         return unavailable();
       }
     });
+  }
+  async markSeen(
+    input: Parameters<AdminEnrollmentStore["markSeen"]>[0],
+  ): Promise<Result<SeenMark, AdminEnrollmentStoreError>> {
+    return this.atomic<Result<SeenMark, AdminEnrollmentStoreError>>(
+      `order:${input.orderId}`,
+      () => {
+        const marked = isSeenable(this.orders)
+          ? this.orders.markSeen(input.orderId, input.actor.email, input.now)
+          : undefined;
+        if (marked === undefined)
+          return Promise.resolve(err({ kind: "not-found" as const }));
+        return Promise.resolve(
+          ok({ kind: marked ? ("seen" as const) : ("already-seen" as const) }),
+        );
+      },
+    );
   }
   async markMaterials(
     input: Parameters<AdminEnrollmentStore["markMaterials"]>[0],

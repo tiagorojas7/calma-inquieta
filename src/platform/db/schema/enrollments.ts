@@ -103,6 +103,13 @@ export const enrollmentOrder = pgTable(
     parentOrderId: uuid("parent_order_id").references(
       (): AnyPgColumn => enrollmentOrder.id,
     ),
+    /**
+     * The panel's shared read state: set once, by the first owner who opens
+     * the request (or by its creator when an admin makes it); both columns are
+     * null or both set. Rows that predate the bell are backfilled as seen.
+     */
+    seenAt: timestamp("seen_at", { withTimezone: true }),
+    seenBy: text("seen_by"),
   },
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
@@ -114,6 +121,10 @@ export const enrollmentOrder = pgTable(
       .where(
         sql`${table.status} <> 'cancelled' AND ${table.kind} = 'enrollment'`,
       ),
+    check(
+      "enrollment_order_seen_check",
+      sql`(${table.seenAt} IS NULL) = (${table.seenBy} IS NULL)`,
+    ),
     check(
       "enrollment_order_kind_check",
       sql`${table.kind} IN ('enrollment', 'material_sale')`,

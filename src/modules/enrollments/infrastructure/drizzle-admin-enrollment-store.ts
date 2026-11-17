@@ -5,6 +5,7 @@ import {
   eq,
   ilike,
   inArray,
+  isNull,
   or,
   sql,
   type SQL,
@@ -48,6 +49,7 @@ import type {
   CorrectionTarget,
   DeliveryOrder,
   MaterialSaleStore,
+  SeenMark,
   OrderCorrection,
 } from "../application/admin-enrollment-store";
 import type {
@@ -384,6 +386,9 @@ export function createDrizzleAdminEnrollmentStore(
               requestedAt: input.now,
               kind: "material_sale",
               parentOrderId: parent.id,
+              // The owner who sells it already knows about it.
+              seenAt: input.now,
+              seenBy: input.actor.email,
             });
             await tx.insert(orderLine).values(
               input.lines.map((line, position) => ({
@@ -805,6 +810,37 @@ export function createDrizzleAdminEnrollmentStore(
           hasConstraint(error, "enrollment_order_student_period_active_unique")
         )
           return err({ kind: "duplicate-order" });
+        return err({ kind: "unavailable" });
+      }
+    },
+
+    async markSeen(
+      input,
+    ): Promise<Result<SeenMark, AdminEnrollmentStoreError>> {
+      try {
+        return await withSession(async (db) => {
+          // One conditional update: the first opener stamps it and a later
+          // one (or a concurrent one) never overwrites the mark.
+          const marked = await db
+            .update(enrollmentOrder)
+            .set({ seenAt: input.now, seenBy: input.actor.email })
+            .where(
+              and(
+                eq(enrollmentOrder.id, input.orderId),
+                isNull(enrollmentOrder.seenAt),
+              ),
+            )
+            .returning({ id: enrollmentOrder.id });
+          if (marked.length > 0) return ok<SeenMark>({ kind: "seen" });
+          const known = await db
+            .select({ id: enrollmentOrder.id })
+            .from(enrollmentOrder)
+            .where(eq(enrollmentOrder.id, input.orderId));
+          return known.length > 0
+            ? ok<SeenMark>({ kind: "already-seen" })
+            : err({ kind: "not-found" as const });
+        });
+      } catch {
         return err({ kind: "unavailable" });
       }
     },

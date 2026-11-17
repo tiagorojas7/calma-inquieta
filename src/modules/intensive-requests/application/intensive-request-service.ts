@@ -163,6 +163,15 @@ export interface IntensiveRequestUseCases {
     actor: MaybeActor,
     intensiveId: string,
   ): Promise<Result<AdminIntensiveOverview, AdminFailure>>;
+  /**
+   * Marks the requests of an intensivo read for both owners when one opens
+   * their list, and returns how many it just marked. Idempotent: an earlier
+   * mark stays, and nothing else about the requests changes.
+   */
+  markSeen(
+    actor: MaybeActor,
+    intensiveId: string,
+  ): Promise<Result<{ readonly marked: number }, AdminFailure>>;
   confirm(
     actor: MaybeActor,
     input: ConfirmDepositInput,
@@ -376,6 +385,18 @@ export function createIntensiveRequestService(
       return ok({ intensivo: found.value, confirmedSeats, requests });
     },
 
+    async markSeen(actor, intensiveId) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const marked = await unavailableOnReject(
+        repository.markSeenForIntensive(intensiveId, {
+          by: authorized.value.email,
+          at: clock.now(),
+        }),
+      );
+      return marked.ok ? ok({ marked: marked.value }) : marked;
+    },
+
     async confirm(actor, input) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -501,6 +522,7 @@ export function createUnavailableIntensiveRequestService(): IntensiveRequestUseC
     requestSeat: fail,
     getRequestByPublicId: fail,
     overview: failAdmin,
+    markSeen: failAdmin,
     confirm: failAdmin,
     recordBalance: failAdmin,
     cancel: failAdmin,

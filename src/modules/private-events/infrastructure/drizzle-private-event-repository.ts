@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { privateEventRequest } from "~/platform/db/schema/private-events";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type {
@@ -75,6 +75,45 @@ export function createDrizzlePrivateEventRepository(
             asc(privateEventRequest.id),
           );
         return rows.map(toStored);
+      }),
+
+    unseen: () =>
+      withSession((db) =>
+        db
+          .select({
+            id: privateEventRequest.id,
+            fullName: privateEventRequest.fullName,
+            desiredDate: privateEventRequest.desiredDate,
+            createdAt: privateEventRequest.createdAt,
+          })
+          .from(privateEventRequest)
+          .where(isNull(privateEventRequest.seenAt))
+          .orderBy(
+            desc(privateEventRequest.createdAt),
+            asc(privateEventRequest.id),
+          ),
+      ),
+
+    markSeen: (id, change) =>
+      withSession(async (db) => {
+        // One conditional update: the first opener stamps it, and a later or
+        // concurrent opener never overwrites the mark.
+        const marked = await db
+          .update(privateEventRequest)
+          .set({ seenAt: change.at, seenBy: change.by })
+          .where(
+            and(
+              eq(privateEventRequest.id, id),
+              isNull(privateEventRequest.seenAt),
+            ),
+          )
+          .returning({ id: privateEventRequest.id });
+        if (marked.length > 0) return "seen" as const;
+        const known = await db
+          .select({ id: privateEventRequest.id })
+          .from(privateEventRequest)
+          .where(eq(privateEventRequest.id, id));
+        return known.length > 0 ? ("already-seen" as const) : null;
       }),
 
     setStatus: (id, status, change) =>

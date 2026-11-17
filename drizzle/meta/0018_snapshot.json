@@ -499,7 +499,19 @@
                                                                                            "type":  "uuid",
                                                                                            "primaryKey":  false,
                                                                                            "notNull":  false
-                                                                                       }
+                                                                                       },
+                                                                   "seen_at":  {
+                                                                                           "name":  "seen_at",
+                                                                                           "type":  "timestamp with time zone",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  false
+                                                                   },
+                                                                   "seen_by":  {
+                                                                                           "name":  "seen_by",
+                                                                                           "type":  "text",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  false
+                                                                   }
                                                                },
                                                    "indexes":  {
                                                        "enrollment_order_student_period_active_unique": {
@@ -639,7 +651,11 @@
                                                                             "enrollment_order_sale_check":  {
                                                                                                                 "name":  "enrollment_order_sale_check",
                                                                                                                 "value":  "(\"enrollment_order\".\"kind\" = \u0027enrollment\u0027 AND \"enrollment_order\".\"parent_order_id\" IS NULL)\n          OR (\"enrollment_order\".\"kind\" = \u0027material_sale\u0027\n            AND \"enrollment_order\".\"parent_order_id\" IS NOT NULL\n            AND \"enrollment_order\".\"fee_centavos\" = 0\n            AND \"enrollment_order\".\"materials_centavos\" > 0)"
-                                                                                                            }
+                                                                                                            },
+                                                                            "enrollment_order_seen_check":  {
+                                                                                                                "name":  "enrollment_order_seen_check",
+                                                                                                                "value":  "(\"enrollment_order\".\"seen_at\" IS NULL) = (\"enrollment_order\".\"seen_by\" IS NULL)"
+                                                                            }
                                                                         },
                                                    "isRLSEnabled":  false
                                                },
@@ -1767,6 +1783,18 @@
                                                                                             "type":  "text",
                                                                                             "primaryKey":  false,
                                                                                             "notNull":  false
+                                                                         },
+                                                                         "seen_at":  {
+                                                                                            "name":  "seen_at",
+                                                                                            "type":  "timestamp with time zone",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                         },
+                                                                         "seen_by":  {
+                                                                                            "name":  "seen_by",
+                                                                                            "type":  "text",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
                                                                          }
                                                                      },
                                                          "indexes":  {
@@ -1883,6 +1911,10 @@
                                                                                   "intensive_seat_request_refund_amount_check":  {
                                                                                                                                       "name":  "intensive_seat_request_refund_amount_check",
                                                                                                                                       "value":  "\"intensive_seat_request\".\"refund_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"refund_centavos\" >= 0 AND \"intensive_seat_request\".\"refund_centavos\" % 100 = 0\n              AND \"intensive_seat_request\".\"paid_centavos\" IS NOT NULL\n              AND \"intensive_seat_request\".\"refund_centavos\" <= \"intensive_seat_request\".\"paid_centavos\" + COALESCE(\"intensive_seat_request\".\"balance_centavos\", 0))"
+                                                                                  },
+                                                                                  "intensive_seat_request_seen_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_seen_check",
+                                                                                                                                      "value":  "(\"intensive_seat_request\".\"seen_at\" IS NULL) = (\"intensive_seat_request\".\"seen_by\" IS NULL)"
                                                                                   }
                                                                               },
                                                          "isRLSEnabled":  false
@@ -2613,7 +2645,19 @@
                                                                                                   "type":  "timestamp with time zone",
                                                                                                   "primaryKey":  false,
                                                                                                   "notNull":  false
-                                                                                              }
+                                                                                              },
+                                                                        "seen_at":  {
+                                                                                                  "name":  "seen_at",
+                                                                                                  "type":  "timestamp with time zone",
+                                                                                                  "primaryKey":  false,
+                                                                                                  "notNull":  false
+                                                                        },
+                                                                        "seen_by":  {
+                                                                                                  "name":  "seen_by",
+                                                                                                  "type":  "text",
+                                                                                                  "primaryKey":  false,
+                                                                                                  "notNull":  false
+                                                                        }
                                                                     },
                                                         "indexes":  {
                                                                         "private_event_request_status_created_idx":  {
@@ -2660,7 +2704,11 @@
                                                                                  "private_event_request_participants_check":  {
                                                                                                                                   "name":  "private_event_request_participants_check",
                                                                                                                                   "value":  "\"private_event_request\".\"participants\" BETWEEN 1 AND 200"
-                                                                                                                              }
+                                                                                                                              },
+                                                                                 "private_event_request_seen_check":  {
+                                                                                                                                  "name":  "private_event_request_seen_check",
+                                                                                                                                  "value":  "(\"private_event_request\".\"seen_at\" IS NULL) = (\"private_event_request\".\"seen_by\" IS NULL)"
+                                                                                 }
                                                                              },
                                                         "isRLSEnabled":  false
                                                     },

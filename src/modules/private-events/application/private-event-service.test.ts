@@ -131,3 +131,57 @@ describe("admin use cases", () => {
     });
   });
 });
+
+describe("shared read state", () => {
+  const admin = testAdminActor("owner@example.com");
+
+  it("leaves a new public request unread", async () => {
+    const { repository, service } = setup();
+    await service.requestEvent(draft);
+
+    expect((await repository.unseen()).map((request) => request.id)).toEqual([
+      ID,
+    ]);
+  });
+
+  it("marks a request read for both owners, once", async () => {
+    const { repository, service } = setup();
+    await service.requestEvent(draft);
+
+    expect(await service.markSeen(admin, ID)).toEqual({
+      ok: true,
+      value: { kind: "seen" },
+    });
+    expect(
+      await service.markSeen(testAdminActor("second@example.com"), ID),
+    ).toEqual({ ok: true, value: { kind: "already-seen" } });
+    expect(await repository.unseen()).toEqual([]);
+    expect(repository.seenMarks.get(ID)).toEqual({
+      by: "owner@example.com",
+      at: NOW,
+    });
+  });
+
+  it("denies without an actor and reports not-found for an unknown id", async () => {
+    const { service } = setup();
+
+    expect(await service.markSeen(null, ID)).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    expect(await service.markSeen(admin, ID)).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+
+  it("keeps the inbox list and the status of the request exactly as they were", async () => {
+    const { service } = setup();
+    await service.requestEvent(draft);
+    const before = await service.list(admin, "nueva");
+
+    await service.markSeen(admin, ID);
+
+    expect(await service.list(admin, "nueva")).toEqual(before);
+  });
+});

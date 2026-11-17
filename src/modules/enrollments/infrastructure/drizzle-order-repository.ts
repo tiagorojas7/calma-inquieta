@@ -266,6 +266,10 @@ export function createDrizzleOrderRepository(
               totalCentavos: draft.total.toCentavos(),
               policyVersion: draft.policyVersion,
               requestedAt: draft.requestedAt,
+              // A request an admin created is read by its creator; a public one is new.
+              ...(draft.createdBy === undefined
+                ? {}
+                : { seenAt: draft.requestedAt, seenBy: draft.createdBy }),
               ...(paid
                 ? {
                     paidAt: paid.paidAt,

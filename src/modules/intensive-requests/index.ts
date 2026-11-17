@@ -43,6 +43,8 @@ export type {
 export type {
   IntensiveRegistrationRow,
   IntensiveRequestInsightsReader,
+  PendingSeatPaymentRow,
+  UnseenSeatRequestRow,
 } from "./application/intensive-request-insights-reader";
 export type {
   WorkshopSupplierLineRow,

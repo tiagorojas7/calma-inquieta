@@ -530,6 +530,66 @@ describe("listProjects", () => {
   });
 });
 
+describe("shared read state", () => {
+  it("leaves a new public request unread", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+
+    expect([...repository.requests.keys()]).toHaveLength(1);
+    expect(repository.seenMarks.size).toBe(0);
+  });
+
+  it("marks every request of the intensivo read for both owners, once", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+    await pendingRequest(service, { email: "bea@example.com" });
+
+    expect(await service.markSeen(ADMIN, INTENSIVE_ID)).toEqual({
+      ok: true,
+      value: { marked: 2 },
+    });
+    expect(
+      await service.markSeen(
+        testAdminActor("second@example.com"),
+        INTENSIVE_ID,
+      ),
+    ).toEqual({ ok: true, value: { marked: 0 } });
+    expect([...repository.seenMarks.values()]).toEqual([
+      { by: "duena@example.com", at: NOW },
+      { by: "duena@example.com", at: NOW },
+    ]);
+  });
+
+  it("changes neither the statuses nor the overview of the intensivo", async () => {
+    const { service } = setup();
+    await pendingRequest(service);
+    const before = await service.overview(ADMIN, INTENSIVE_ID);
+
+    await service.markSeen(ADMIN, INTENSIVE_ID);
+
+    expect(await service.overview(ADMIN, INTENSIVE_ID)).toEqual(before);
+  });
+
+  it("denies without an admin actor", async () => {
+    const { service } = setup();
+
+    expect(await service.markSeen(null, INTENSIVE_ID)).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+  });
+
+  it("answers unavailable when the repository fails", async () => {
+    const { service, repository } = setup();
+    repository.markSeenForIntensive = () => Promise.reject(new Error("down"));
+
+    expect(await service.markSeen(ADMIN, INTENSIVE_ID)).toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+  });
+});
+
 describe("admin", () => {
   it("denies every use case without an admin actor", async () => {
     const { service } = setup();

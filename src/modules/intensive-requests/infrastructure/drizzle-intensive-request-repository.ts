@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { err, ok, Money } from "~/modules/_shared";
 import { intensiveSeatRequest } from "~/platform/db/schema/intensive-requests";
 import type { DbSessionFactory } from "~/platform/db/session";
@@ -131,6 +131,23 @@ export function createDrizzleIntensiveRequestRepository(
   };
 
   return {
+    markSeenForIntensive: (intensiveId, change) =>
+      withSession(async (db) => {
+        // One conditional update: an earlier mark, or a concurrent opener, is
+        // never overwritten.
+        const marked = await db
+          .update(intensiveSeatRequest)
+          .set({ seenAt: change.at, seenBy: change.by })
+          .where(
+            and(
+              eq(intensiveSeatRequest.intensiveId, intensiveId),
+              isNull(intensiveSeatRequest.seenAt),
+            ),
+          )
+          .returning({ id: intensiveSeatRequest.id });
+        return marked.length;
+      }),
+
     insert: (request) =>
       withSession(async (db) => {
         try {

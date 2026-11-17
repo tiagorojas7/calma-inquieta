@@ -116,6 +116,51 @@ export interface PanelView {
   };
 }
 
+export type NoveltyKind = "enrollment" | "workshop-request" | "private-event";
+
+/** One request nobody opened yet: the data a panel link needs, with no copy. */
+export interface NoveltyItem {
+  readonly kind: NoveltyKind;
+  /** The order, seat request or event id. */
+  readonly id: string;
+  /** The workshop a seat request belongs to; its page lists the reservations. */
+  readonly intensiveId: string | null;
+  readonly name: string;
+  /** The monthly workshop or the workshop; null for a private event. */
+  readonly workshopName: string | null;
+  /** `YYYY-MM` of a monthly enrollment; null otherwise. */
+  readonly period: string | null;
+  /** `YYYY-MM-DD` a private event asks for; null otherwise. */
+  readonly eventDate: string | null;
+  readonly requestedAt: Date;
+}
+
+export type PendingPaymentKind =
+  "enrollment" | "material-sale" | "workshop-deposit" | "workshop-balance";
+
+/** A payment still owed. There is no due date: it stays until it is paid. */
+export interface PendingPaymentItem {
+  readonly kind: PendingPaymentKind;
+  /** The order or seat request id. */
+  readonly id: string;
+  readonly intensiveId: string | null;
+  readonly name: string;
+  readonly workshopName: string | null;
+  readonly period: string | null;
+  readonly amount: Money;
+  readonly requestedAt: Date;
+}
+
+/** What the panel bell shows: the new requests and the payments still owed. */
+export interface NotificationsView {
+  /** The number of novelties; pending payments never count. */
+  readonly unseen: number;
+  /** Newest first. */
+  readonly novelties: readonly NoveltyItem[];
+  /** Oldest first. */
+  readonly pendingPayments: readonly PendingPaymentItem[];
+}
+
 export interface TeacherSettlementRow {
   readonly teacherId: string;
   readonly teacherName: string;
@@ -229,4 +274,10 @@ export interface InsightsService {
     actor: AdminActor,
     query: StatisticsQuery,
   ): Promise<Result<SettlementsView, AdminFailure | Invalid<"period">>>;
+  /** The bell: unopened requests and every payment still owed. */
+  notifications(
+    actor: AdminActor,
+  ): Promise<Result<NotificationsView, AdminFailure>>;
+  /** Only the number of unopened requests, for the badge on every page. */
+  unseenCount(actor: AdminActor): Promise<Result<number, AdminFailure>>;
 }

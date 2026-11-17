@@ -1,5 +1,6 @@
 import { createInsightsService } from "~/modules/insights";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryPrivateEventRepository } from "~/testing/fakes/in-memory-private-event-repository";
 import {
   InMemoryEnrollmentInsightsReader,
   InMemoryIntensiveInsightsReader,
@@ -15,11 +16,13 @@ export function insightsFixture() {
   const intensives = new InMemoryIntensiveInsightsReader();
   const intensiveRequests = new InMemoryIntensiveRequestInsightsReader();
   const teachers = new InMemoryTeacherDirectory();
+  const privateEvents = new InMemoryPrivateEventRepository();
   const service = createInsightsService({
     orders,
     workshops,
     intensives,
     intensiveRequests,
+    privateEvents,
     teachers,
     clock: fixedClock(new Date("2026-10-31T15:30:00.000Z")),
   });
@@ -28,6 +31,7 @@ export function insightsFixture() {
     workshops,
     intensives,
     intensiveRequests,
+    privateEvents,
     teachers,
     service,
   };

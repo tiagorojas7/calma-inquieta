@@ -18,6 +18,7 @@ afterAll(async () => {
 
 const INTENSIVE_1 = "33333333-3333-4333-8333-000000000001";
 const INTENSIVE_2 = "33333333-3333-4333-8333-000000000002";
+const INTENSIVE_3 = "33333333-3333-4333-8333-000000000003";
 
 function pesos(centavos: number) {
   const money = Money.fromCentavos(centavos);
@@ -32,11 +33,29 @@ async function setup() {
     connectionString: database.url,
   });
   return {
+    /** A workshop row, as the panel reads its name and deposit terms. */
+    workshop: async (id: string, name: string, depositCentavos: number) => {
+      const session = await openSession();
+      try {
+        await session.db.execute(
+          sql`INSERT INTO intensive_workshop
+              (id, slug, name, summary, description, event_date, starts_at,
+               ends_at, price_centavos, deposit_centavos, capacity, min_seats,
+               policy_text, materials_included, status, updated_by, updated_at)
+              VALUES (${id}, ${"slug-" + id.slice(-4)}, ${name}, 's', 'd',
+                      '2026-12-05', '10:00', '14:00', 4000000, ${depositCentavos},
+                      10, 1, 'p', true, 'published', 'owner@example.com', now())`,
+        );
+      } finally {
+        await session.close();
+      }
+    },
     repo: createDrizzleIntensiveRequestRepository(
       openSession,
       createTestOrderStock(openSession).port,
     ),
     reader: createDrizzleIntensiveRequestInsightsReader(openSession),
+    openSession,
     /** Writes an allocated line straight in, as the confirm step would. */
     allocate: async (
       requestId: string,
@@ -188,5 +207,179 @@ describe("createDrizzleIntensiveRequestInsightsReader", () => {
     await repo.insert(confirmed(INTENSIVE_1, 1_500_000));
 
     expect(await reader.pendingRequests()).toBe(2);
+  });
+});
+
+describe("the bell readers", () => {
+  const opened = {
+    by: "owner@example.com",
+    at: new Date("2026-10-27T15:00:00Z"),
+  };
+  const quoted = (intensiveId: string, price: number, deposit: number) =>
+    request({
+      intensiveId,
+      status: "confirmed",
+      paidAmount: pesos(deposit),
+      paidOn: "2026-10-20",
+      confirmedBy: "owner@example.com",
+      confirmedAt: new Date("2026-10-20T15:00:00.000Z"),
+      price: pesos(price),
+      deposit: pesos(deposit),
+    });
+  const balanceOf = (amount: number) => ({
+    amount: pesos(amount),
+    paidOn: "2026-10-25",
+    note: null,
+    by: "owner@example.com",
+    at: new Date("2026-10-25T15:00:00.000Z"),
+  });
+
+  it("lists the unopened requests that are not cancelled, newest first, with the workshop name", async () => {
+    const { repo, reader, workshop } = await setup();
+    await workshop(INTENSIVE_1, "Taller de torno", 1_500_000);
+    const older = request({
+      intensiveId: INTENSIVE_1,
+      fullName: "Older",
+      createdAt: new Date("2026-10-20T12:00:00Z"),
+    });
+    const newer = request({
+      intensiveId: INTENSIVE_2,
+      fullName: "Newer",
+      createdAt: new Date("2026-10-22T12:00:00Z"),
+    });
+    const read = request({ intensiveId: INTENSIVE_3, fullName: "Read" });
+    const cancelled = {
+      ...request({ intensiveId: INTENSIVE_1, fullName: "Cancelled" }),
+      status: "cancelled" as const,
+      cancelReason: "no puede asistir",
+      cancelledBy: "owner@example.com",
+      cancelledAt: new Date("2026-10-26T15:00:00.000Z"),
+    };
+    for (const stored of [older, newer, read, cancelled])
+      await repo.insert(stored);
+    await repo.markSeenForIntensive(INTENSIVE_3, opened);
+
+    expect(await reader.unseenRequests()).toEqual([
+      {
+        id: newer.id,
+        intensiveId: INTENSIVE_2,
+        workshopName: null,
+        fullName: "Newer",
+        createdAt: newer.createdAt,
+      },
+      {
+        id: older.id,
+        intensiveId: INTENSIVE_1,
+        workshopName: "Taller de torno",
+        fullName: "Older",
+        createdAt: older.createdAt,
+      },
+    ]);
+  });
+
+  it("lists the deposit of every pending request and the balance of every confirmed one that still owes it, oldest first", async () => {
+    const { repo, reader, workshop } = await setup();
+    await workshop(INTENSIVE_1, "Taller de torno", 1_500_000);
+    // Quoted when requested: its own deposit counts, not the workshop's.
+    const quotedPending = request({
+      intensiveId: INTENSIVE_1,
+      fullName: "Quoted",
+      createdAt: new Date("2026-10-21T12:00:00Z"),
+      price: pesos(3_000_000),
+      deposit: pesos(1_000_000),
+    });
+    // Made before projects existed: the workshop's deposit stands in.
+    const legacyPending = request({
+      intensiveId: INTENSIVE_1,
+      fullName: "Legacy",
+      createdAt: new Date("2026-10-22T12:00:00Z"),
+    });
+    const owingBalance = {
+      ...quoted(INTENSIVE_1, 4_000_000, 1_500_000),
+      fullName: "Owing",
+      createdAt: new Date("2026-10-20T12:00:00Z"),
+    };
+    const paidBalance = {
+      ...quoted(INTENSIVE_1, 4_000_000, 1_500_000),
+      balance: balanceOf(2_500_000),
+    };
+    const depositWasAll = quoted(INTENSIVE_1, 3_000_000, 3_000_000);
+    const cancelled = {
+      ...request({ intensiveId: INTENSIVE_1 }),
+      status: "cancelled" as const,
+      cancelReason: "no puede asistir",
+      cancelledBy: "owner@example.com",
+      cancelledAt: new Date("2026-10-26T15:00:00.000Z"),
+    };
+    for (const stored of [
+      quotedPending,
+      legacyPending,
+      owingBalance,
+      paidBalance,
+      depositWasAll,
+      cancelled,
+    ])
+      await repo.insert(stored);
+
+    expect(await reader.pendingPayments()).toEqual([
+      {
+        id: owingBalance.id,
+        intensiveId: INTENSIVE_1,
+        workshopName: "Taller de torno",
+        fullName: "Owing",
+        kind: "balance",
+        amountCentavos: 2_500_000,
+        createdAt: owingBalance.createdAt,
+      },
+      {
+        id: quotedPending.id,
+        intensiveId: INTENSIVE_1,
+        workshopName: "Taller de torno",
+        fullName: "Quoted",
+        kind: "deposit",
+        amountCentavos: 1_000_000,
+        createdAt: quotedPending.createdAt,
+      },
+      {
+        id: legacyPending.id,
+        intensiveId: INTENSIVE_1,
+        workshopName: "Taller de torno",
+        fullName: "Legacy",
+        kind: "deposit",
+        amountCentavos: 1_500_000,
+        createdAt: legacyPending.createdAt,
+      },
+    ]);
+  });
+
+  it("marks only the opened workshop and rejects a half-set mark at the database", async () => {
+    const { repo, openSession } = await setup();
+    const first = request({ intensiveId: INTENSIVE_1 });
+    const other = request({ intensiveId: INTENSIVE_2 });
+    await repo.insert(first);
+    await repo.insert(other);
+
+    expect(await repo.markSeenForIntensive(INTENSIVE_1, opened)).toBe(1);
+    expect(
+      await repo.markSeenForIntensive(INTENSIVE_1, { ...opened, by: "x@y.z" }),
+    ).toBe(0);
+
+    const session = await openSession();
+    try {
+      const { rows } = await session.db.execute<{
+        id: string;
+        seen_by: string | null;
+      }>(sql`SELECT id, seen_by FROM intensive_seat_request ORDER BY id`);
+      expect(rows.find((row) => row.id === first.id)?.seen_by).toBe(opened.by);
+      expect(rows.find((row) => row.id === other.id)?.seen_by).toBeNull();
+      await expect(
+        session.db.execute(
+          sql`UPDATE intensive_seat_request SET seen_by = 'someone'
+              WHERE id = ${other.id}`,
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await session.close();
+    }
   });
 });

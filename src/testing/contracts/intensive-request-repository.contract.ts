@@ -479,5 +479,70 @@ export function runIntensiveRequestRepositoryContract(
         expect(await repo.findById(REQUEST_1)).toEqual(before);
       });
     });
+
+    describe("shared read state", () => {
+      const first = {
+        by: "agus@example.com",
+        at: new Date("2026-10-25T09:30:00.000Z"),
+      };
+      const second = {
+        by: "caro@example.com",
+        at: new Date("2026-10-26T09:30:00.000Z"),
+      };
+
+      async function threeRequests() {
+        const repo = await create();
+        await repo.insert(buildStoredRequest());
+        await repo.insert(buildStoredRequest(SECOND));
+        await repo.insert(
+          buildStoredRequest({
+            id: REQUEST_3,
+            publicId: "third-public-id-0000",
+            email: "cleo@example.com",
+            intensiveId: INTENSIVE_B,
+          }),
+        );
+        return repo;
+      }
+
+      it("marks every unopened request of one intensivo and none of another", async () => {
+        const repo = await threeRequests();
+
+        expect(await repo.markSeenForIntensive(INTENSIVE_A, first)).toBe(2);
+        expect(await repo.markSeenForIntensive(INTENSIVE_B, second)).toBe(1);
+      });
+
+      it("never overwrites an earlier mark and counts only what it just marked", async () => {
+        const repo = await threeRequests();
+        await repo.markSeenForIntensive(INTENSIVE_A, first);
+        await repo.insert(
+          buildStoredRequest({
+            id: "5c3d4e5f-6071-4c8d-8e9f-2a3b4c5d6e06",
+            publicId: "fourth-public-id-000",
+            email: "dora@example.com",
+          }),
+        );
+
+        expect(await repo.markSeenForIntensive(INTENSIVE_A, second)).toBe(1);
+        expect(await repo.markSeenForIntensive(INTENSIVE_A, second)).toBe(0);
+      });
+
+      it("answers zero for an intensivo with no requests", async () => {
+        const repo = await create();
+
+        expect(await repo.markSeenForIntensive(INTENSIVE_A, first)).toBe(0);
+      });
+
+      it("changes nothing but the read state of the requests", async () => {
+        const repo = await threeRequests();
+        const before = await repo.listByIntensive(INTENSIVE_A, "all");
+        const seats = await repo.confirmedSeats(INTENSIVE_A);
+
+        await repo.markSeenForIntensive(INTENSIVE_A, first);
+
+        expect(await repo.listByIntensive(INTENSIVE_A, "all")).toEqual(before);
+        expect(await repo.confirmedSeats(INTENSIVE_A)).toBe(seats);
+      });
+    });
   });
 }

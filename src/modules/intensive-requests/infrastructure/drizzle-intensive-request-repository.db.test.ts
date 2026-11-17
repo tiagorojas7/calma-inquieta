@@ -86,6 +86,8 @@ describe("createDrizzleIntensiveRequestRepository", () => {
         "refund_centavos",
         "refund_note",
         "refunded_on",
+        "seen_at",
+        "seen_by",
         "status",
       ]);
     } finally {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createMonthlyWorkshopsService } from "~/modules/workshops/application/monthly-workshop-service";
 import { createWorkshopPeriodsService } from "~/modules/workshops/application/workshop-period-service";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryPrivateEventRepository } from "~/testing/fakes/in-memory-private-event-repository";
 import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
 import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-repository";
 import { InMemoryTurnoRepository } from "~/testing/fakes/in-memory-turno-repository";
@@ -135,6 +136,7 @@ async function pipeline() {
     workshops: insightsWorkshops,
     intensives: new InMemoryIntensiveInsightsReader(),
     intensiveRequests: new InMemoryIntensiveRequestInsightsReader(),
+    privateEvents: new InMemoryPrivateEventRepository(),
     teachers: directory,
     clock,
   });

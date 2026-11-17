@@ -60,8 +60,19 @@ export const intensiveSeatRequest = pgTable(
     // `YYYY-MM-DD` Córdoba calendar day, like `paid_on`.
     refundedOn: text("refunded_on"),
     refundNote: text("refund_note"),
+    /**
+     * The panel's shared read state: set once, by the first owner who opens
+     * the request (or by its creator when an admin makes it); both columns are
+     * null or both set. Rows that predate the bell are backfilled as seen.
+     */
+    seenAt: timestamp("seen_at", { withTimezone: true }),
+    seenBy: text("seen_by"),
   },
   (table) => [
+    check(
+      "intensive_seat_request_seen_check",
+      sql`(${table.seenAt} IS NULL) = (${table.seenBy} IS NULL)`,
+    ),
     uniqueIndex("intensive_seat_request_public_id_unique").on(table.publicId),
     // One live request per person and intensivo; a cancelled one is released.
     uniqueIndex("intensive_seat_request_live_email_unique")

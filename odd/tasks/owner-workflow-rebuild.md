@@ -320,3 +320,4 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - The detail-route stock-only actions have no route-level test.
     - A `materials_received` order corrected back to pending and paid again takes its stock lines a second time.
   - Per L67, no per-unit verifier or review.
+- L69 (2026-11-16, owner, verbatim, answering whether workshop projects take materials from stock): "Sí, simple (Recommended)" (option text: "Cada proyecto lista sus materiales por participante. Al confirmar la seña se descuentan del stock propio; lo que no hay aparece en la lista de pedidos al proveedor. Si se cancela, vuelven al stock."). T3 is planned after a read-only map of intensives and reservations.

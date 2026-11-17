@@ -431,19 +431,20 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Owner-created orders store null versions; a material sale copies its parent's (parent assumptions for T6).
   - Evidence: writer RED/GREEN per rule (exceptions in its report: the domain body validator, the form helpers, the policy-page template, the admin policies ui test, the order CHECK and the sale copy were written alongside). Each DB file ran alone and passed:
 
-    | DB file | Tests |
-    | --- | --- |
-    | `policy-seed` | 6 |
-    | `drizzle-policy-repository` | 5 |
-    | `enrollment-schema` | 53 |
-    | `drizzle-order-repository` | 35 |
-    | `drizzle-intensive-request-repository` | 20 |
-    | `drizzle-material-sale-store` | 20 |
-    | `request-services` | 18 |
-    | `migrate` | 7 |
-    | `drizzle-admin-enrollment-store` | 79 |
+    | DB file                                | Tests |
+    | -------------------------------------- | ----- |
+    | `policy-seed`                          | 6     |
+    | `drizzle-policy-repository`            | 5     |
+    | `enrollment-schema`                    | 53    |
+    | `drizzle-order-repository`             | 35    |
+    | `drizzle-intensive-request-repository` | 20    |
+    | `drizzle-material-sale-store`          | 20    |
+    | `request-services`                     | 18    |
+    | `migrate`                              | 7     |
+    | `drizzle-admin-enrollment-store`       | 79    |
 
     Parent: diff inside the allowed surfaces; `pnpm typecheck` exit 0; unit 318 files / 4037 passed; ui 132 files / 1175 passed.
+
   - For T6:
     - `enrollment_order.policy_version` is still written as "2026-10" and is redundant now.
     - `/condiciones` and `/privacidad` are not in the menu or sitemap (`PUBLIC_PAGES` is asserted to be six items).

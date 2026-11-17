@@ -1111,7 +1111,13 @@
                                                                                         "type":  "bigint",
                                                                                         "primaryKey":  false,
                                                                                         "notNull":  false
-                                                                                    }
+                                                                                    },
+                                                             "stock_taken_at":  {
+                                                                                    "name":  "stock_taken_at",
+                                                                                    "type":  "timestamp with time zone",
+                                                                                    "primaryKey":  false,
+                                                                                    "notNull":  false
+                                                                                }
                                                          },
                                              "indexes":  {
 
@@ -1166,7 +1172,11 @@
                                                                       "order_line_unit_cost_check":  {
                                                                                                          "name":  "order_line_unit_cost_check",
                                                                                                          "value":  "\"order_line\".\"unit_cost_centavos\" \u003e 0"
-                                                                                                     }
+                                                                                                     },
+                                                                      "order_line_stock_taken_check":  {
+                                                                                                           "name":  "order_line_stock_taken_check",
+                                                                                                           "value":  "\"order_line\".\"stock_taken_at\" IS NULL OR \"order_line\".\"source\" = 'stock'"
+                                                                                                       }
                                                                   },
                                              "isRLSEnabled":  false
                                          },

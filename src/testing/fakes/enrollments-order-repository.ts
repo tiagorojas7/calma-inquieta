@@ -93,9 +93,9 @@ export interface CorrectableOrders {
  * `OrderRepository` port does not have them.
  */
 export interface StockedOrders {
-  /** Takes every `stock` line once; a line that cannot be covered becomes a `supplier` line. */
+  /** Takes every `stock` line not yet taken, once; a line that cannot be covered becomes a `supplier` line. */
   takeStockLines(orderId: string, stamp: OrderStockStamp): Promise<void>;
-  /** Puts back the units of every `stock` line. */
+  /** Puts back the units of every line that took them, and clears their mark. */
   returnStockLines(orderId: string, stamp: OrderStockStamp): Promise<void>;
 }
 
@@ -178,6 +178,8 @@ export class InMemoryOrderRepository
   /** Every enrollment, public or manual, leaves its profile active, like the transaction. */
   private readonly activity: InMemoryStudentActivityStore;
   private readonly stock: OrderStockPort<unknown> | undefined;
+  /** The `stock` lines whose units were taken, as `orderId:position`. */
+  private readonly taken = new Set<string>();
   /**
    * A free order created paid claims its seat from the same ledger the services
    * read, and takes its stock lines from `stock` when one is given.
@@ -200,13 +202,16 @@ export class InMemoryOrderRepository
       .filter(({ line }) => line.source === "stock")
       .sort((a, b) => (a.line.variantId < b.line.variantId ? -1 : 1));
     for (const { line, position } of byVariant) {
+      const mark = `${orderId}:${String(position)}`;
+      if (this.taken.has(mark)) continue;
       const taken = await this.stock.take(
         undefined,
         line.variantId,
         line.quantity,
         stamp,
       );
-      if (!taken) lines[position] = { ...line, source: "supplier" };
+      if (taken) this.taken.add(mark);
+      else lines[position] = { ...line, source: "supplier" };
     }
     row.order = { ...row.order, lines };
   }
@@ -216,9 +221,12 @@ export class InMemoryOrderRepository
   ): Promise<void> {
     const row = this.rows.find(({ order }) => order.id === orderId);
     if (!row || !this.stock) return;
-    for (const line of row.order.lines)
-      if (line.source === "stock")
-        await this.stock.put(undefined, line.variantId, line.quantity, stamp);
+    for (const [position, line] of row.order.lines.entries()) {
+      const mark = `${orderId}:${String(position)}`;
+      if (line.source !== "stock" || !this.taken.has(mark)) continue;
+      await this.stock.put(undefined, line.variantId, line.quantity, stamp);
+      this.taken.delete(mark);
+    }
   }
   failNextCreateAfterNumbering(): void {
     this.failNext = true;

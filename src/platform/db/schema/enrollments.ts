@@ -249,6 +249,12 @@ export const orderLine = pgTable(
     source: text("source").notNull().default("supplier"),
     /** The variant's supplier cost when the line was created; null when none was set. */
     unitCostCentavos: bigint("unit_cost_centavos", { mode: "number" }),
+    /**
+     * When this `stock` line's units left the on-hand count; null while they
+     * have not. Taking skips a marked line and returning clears the mark, so
+     * a line never takes or returns its units twice.
+     */
+    stockTakenAt: timestamp("stock_taken_at", { withTimezone: true }),
   },
   (table) => [
     primaryKey({
@@ -266,6 +272,10 @@ export const orderLine = pgTable(
       sql`${table.source} IN ('stock', 'supplier')`,
     ),
     check("order_line_unit_cost_check", sql`${table.unitCostCentavos} > 0`),
+    check(
+      "order_line_stock_taken_check",
+      sql`${table.stockTakenAt} IS NULL OR ${table.source} = 'stock'`,
+    ),
   ],
 );
 

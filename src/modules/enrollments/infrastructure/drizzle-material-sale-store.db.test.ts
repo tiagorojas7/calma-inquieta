@@ -760,3 +760,134 @@ describe("DrizzleAdminEnrollmentStore accepted policy versions", () => {
     expect(saleDetail.ok && saleDetail.value).not.toHaveProperty("acceptance");
   });
 });
+
+describe("DrizzleAdminEnrollmentStore stock taken once per line", () => {
+  const withClay = (units: number) => ({
+    lines: [line(ids.clay, units)],
+    materialsTotal: pesos(4_000 * units),
+    total: pesos(58_000 + 4_000 * units),
+  });
+  const received = (harness: Harness, orderId: string) =>
+    harness.store.markMaterials({
+      orderId,
+      to: "materials_received",
+      actor,
+      now,
+    });
+  const raiseFee = (harness: Harness, orderId: string) =>
+    harness.store.correct({
+      orderId,
+      fee: pesos(70_000),
+      actor,
+      now,
+    });
+  const stockTaken = async (harness: Harness, orderId: string) =>
+    (
+      await (async () => {
+        const session = await harness.openSession();
+        try {
+          return (
+            await session.db.execute(
+              sql`select stock_taken_at is not null as taken from order_line where order_id = ${orderId} order by position`,
+            )
+          ).rows as { taken: boolean }[];
+        } finally {
+          await session.close();
+        }
+      })()
+    ).map((row) => row.taken);
+
+  it("does not take the units of a delivered record again when it is corrected up and paid again", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const order = await harness.monthly(withClay(2), "paid");
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await received(harness, order.id);
+
+    await expect(raiseFee(harness, order.id)).resolves.toEqual({
+      ok: true,
+      value: { kind: "corrected", outcome: "returned-to-pending" },
+    });
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await expect(pay(harness, order.id, pesos(78_000))).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([true]);
+  });
+
+  it("keeps a delivered line on the stock and out of the purchase list when no units are left", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 2);
+    const order = await harness.monthly(withClay(2), "paid");
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(0);
+    await received(harness, order.id);
+    await raiseFee(harness, order.id);
+
+    await expect(pay(harness, order.id, pesos(78_000))).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(harness.lineSources(order.id)).resolves.toEqual([
+      [ids.clay, "stock"],
+    ]);
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(0);
+    await expect(
+      harness.store.consolidationLines("2026-11"),
+    ).resolves.toMatchObject({ lines: [] });
+  });
+
+  it("returns the units exactly once when a paid record is corrected up, paid again and cancelled", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const order = await harness.monthly(withClay(2), "paid");
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([true]);
+
+    await raiseFee(harness, order.id);
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(5);
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([false]);
+
+    await pay(harness, order.id, pesos(78_000));
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([true]);
+
+    await expect(
+      void_(harness, order.id, pesos(78_000)),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(5);
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([false]);
+  });
+
+  it("returns nothing when a paid record is corrected up and then cancelled while pending", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const order = await harness.monthly(withClay(2), "paid");
+    await raiseFee(harness, order.id);
+
+    await expect(
+      harness.store.cancel({
+        orderId: order.id,
+        reason: "baja",
+        actor,
+        now,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(5);
+  });
+
+  it("returns nothing when a delivered monthly record is cancelled, and keeps its mark", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const order = await harness.monthly(withClay(2), "paid");
+    await received(harness, order.id);
+
+    await expect(
+      void_(harness, order.id, pesos(66_000)),
+    ).resolves.toMatchObject({ ok: true });
+
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await expect(stockTaken(harness, order.id)).resolves.toEqual([true]);
+  });
+});

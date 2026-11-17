@@ -198,8 +198,10 @@ ALTER TABLE "material_variant" ADD CONSTRAINT "material_variant_cost_check" CHEC
 --> statement-breakpoint
 ALTER TABLE "order_line" ADD COLUMN "source" text DEFAULT 'supplier' NOT NULL;--> statement-breakpoint
 ALTER TABLE "order_line" ADD COLUMN "unit_cost_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "order_line" ADD COLUMN "stock_taken_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "order_line" ADD CONSTRAINT "order_line_source_check" CHECK ("order_line"."source" IN ('stock', 'supplier'));--> statement-breakpoint
-ALTER TABLE "order_line" ADD CONSTRAINT "order_line_unit_cost_check" CHECK ("order_line"."unit_cost_centavos" > 0);
+ALTER TABLE "order_line" ADD CONSTRAINT "order_line_unit_cost_check" CHECK ("order_line"."unit_cost_centavos" > 0);--> statement-breakpoint
+ALTER TABLE "order_line" ADD CONSTRAINT "order_line_stock_taken_check" CHECK ("order_line"."stock_taken_at" IS NULL OR "order_line"."source" = 'stock');
 --> statement-breakpoint
 CREATE TABLE "intensive_request_material" (
 	"request_id" uuid NOT NULL,

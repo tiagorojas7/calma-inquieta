@@ -309,6 +309,40 @@ describe("enrollment schema", () => {
         code: "23514",
       });
     });
+
+    it("marks a taken stock line, defaults the mark to none, and refuses a mark on a supplier line", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000215";
+      await insertOrder({ id: orderId });
+      await insertPlainLine(orderId);
+      expect(
+        (
+          await client.query<{ taken: string | null }>(
+            "SELECT stock_taken_at AS taken FROM order_line WHERE order_id = $1",
+            [orderId],
+          )
+        ).rows[0],
+      ).toEqual({ taken: null });
+
+      await client.query("DELETE FROM order_line WHERE order_id = $1", [
+        orderId,
+      ]);
+      await insertLine(orderId, { source: "stock" });
+      await client.query(
+        "UPDATE order_line SET stock_taken_at = now() WHERE order_id = $1",
+        [orderId],
+      );
+      await client.query(
+        "UPDATE order_line SET stock_taken_at = NULL WHERE order_id = $1",
+        [orderId],
+      );
+
+      await expect(
+        client.query(
+          "UPDATE order_line SET source = 'supplier', stock_taken_at = now() WHERE order_id = $1",
+          [orderId],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
   });
 
   it("allows one active order per student and month, and a cancelled one frees the month", async () => {

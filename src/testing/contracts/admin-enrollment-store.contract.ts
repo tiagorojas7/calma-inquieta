@@ -903,6 +903,51 @@ export function runAdminEnrollmentStoreContract(
         await expect(harness.fixtureStock.onHand()).resolves.toBe(5);
       });
 
+      it("does not take the units of a delivered order again when it is corrected up and paid again", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(2);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+        await confirm(harness.store, order);
+        await harness.store.markMaterials({
+          orderId: order.id,
+          to: "materials_received",
+          actor,
+          now,
+        });
+
+        await expect(
+          harness.store.correct({
+            orderId: order.id,
+            fee: pesos(70_000),
+            actor,
+            now,
+          }),
+        ).resolves.toEqual({
+          ok: true,
+          value: { kind: "corrected", outcome: "returned-to-pending" },
+        });
+        const raised = await harness.store.detail(order.id);
+        if (!raised.ok) throw new Error("expected detail");
+        await harness.store.confirm({
+          orderId: order.id,
+          amount: raised.value.total,
+          paidAt,
+          actor,
+          now,
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(0);
+        const detail = await harness.store.detail(order.id);
+        if (!detail.ok) throw new Error("expected detail");
+        expect(detail.value.status).toBe("paid");
+        expect(detail.value.lines.map((line) => line.source)).toEqual([
+          "stock",
+        ]);
+        await expect(
+          harness.store.consolidationLines("2026-10"),
+        ).resolves.toMatchObject({ lines: [] });
+      });
+
       it("consolidates only the supplier lines but delivers every line, with its source", async () => {
         const harness = await setup();
         await harness.fixtureStock.seed(5);

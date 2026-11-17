@@ -179,6 +179,7 @@ describe("StudentDetail", () => {
             absent: "2",
             makeUpsPending: "1",
             makeUpsDone: "1",
+            makeUpsMissed: "1",
           },
         }}
       />,
@@ -188,6 +189,7 @@ describe("StudentDetail", () => {
     expect(summary).toHaveTextContent("Clases a las que vino8");
     expect(summary).toHaveTextContent("Clases que faltó2");
     expect(summary).toHaveTextContent("Recuperaciones pendientes1");
+    expect(summary).toHaveTextContent("Recuperaciones perdidas1");
     expect(summary).toHaveTextContent("Recuperaciones realizadas1");
   });
 

@@ -28,9 +28,20 @@ describe("summarizeAttendance", () => {
     expect(
       summarizeAttendance(
         [{ status: "present" }, { status: "absent" }, { status: "present" }],
-        [{ status: "pending" }, { status: "done" }, { status: "done" }],
+        [
+          { status: "pending" },
+          { status: "done" },
+          { status: "done" },
+          { status: "missed" },
+        ],
       ),
-    ).toEqual({ present: 2, absent: 1, makeUpsPending: 1, makeUpsDone: 2 });
+    ).toEqual({
+      present: 2,
+      absent: 1,
+      makeUpsPending: 1,
+      makeUpsDone: 2,
+      makeUpsMissed: 1,
+    });
   });
 
   it("is all zeros without history", () => {
@@ -39,6 +50,7 @@ describe("summarizeAttendance", () => {
       absent: 0,
       makeUpsPending: 0,
       makeUpsDone: 0,
+      makeUpsMissed: 0,
     });
   });
 });

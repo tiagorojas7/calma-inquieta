@@ -24,6 +24,7 @@ export interface AttendanceSummary {
   readonly absent: number;
   readonly makeUpsPending: number;
   readonly makeUpsDone: number;
+  readonly makeUpsMissed: number;
 }
 
 /** What the student file shows: marks and make-up classes by status. */
@@ -40,6 +41,7 @@ export function summarizeAttendance(
     absent: count(marks, "absent"),
     makeUpsPending: count(makeUps, "pending"),
     makeUpsDone: count(makeUps, "done"),
+    makeUpsMissed: count(makeUps, "missed"),
   };
 }
 

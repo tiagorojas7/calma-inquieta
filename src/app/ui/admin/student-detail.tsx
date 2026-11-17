@@ -41,6 +41,7 @@ export interface StudentDetailProps {
           readonly absent: string;
           readonly makeUpsPending: string;
           readonly makeUpsDone: string;
+          readonly makeUpsMissed: string;
         }
       | null
       | undefined;
@@ -203,6 +204,9 @@ export function StudentDetail({
             </Fact>
             <Fact label={attendanceCopy.makeUpsDone}>
               {student.attendance.makeUpsDone}
+            </Fact>
+            <Fact label={attendanceCopy.makeUpsMissed}>
+              {student.attendance.makeUpsMissed}
             </Fact>
           </dl>
         </section>

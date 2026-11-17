@@ -694,7 +694,13 @@ describe("attendance service", () => {
       service.studentSummary(actor, "Ana@Example.com "),
     ).resolves.toEqual({
       ok: true,
-      value: { present: 1, absent: 1, makeUpsPending: 1, makeUpsDone: 0 },
+      value: {
+        present: 1,
+        absent: 1,
+        makeUpsPending: 1,
+        makeUpsDone: 0,
+        makeUpsMissed: 0,
+      },
     });
   });
 

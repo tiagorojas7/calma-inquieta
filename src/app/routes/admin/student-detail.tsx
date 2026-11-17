@@ -77,6 +77,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
           absent: String(summary.value.absent),
           makeUpsPending: String(summary.value.makeUpsPending),
           makeUpsDone: String(summary.value.makeUpsDone),
+          makeUpsMissed: String(summary.value.makeUpsMissed),
         }
       : null,
     note: {

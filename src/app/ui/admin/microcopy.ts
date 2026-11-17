@@ -1633,6 +1633,7 @@ export const adminMicrocopy = {
       absent: "Clases que faltó",
       makeUpsPending: "Recuperaciones pendientes",
       makeUpsDone: "Recuperaciones realizadas",
+      makeUpsMissed: "Recuperaciones perdidas",
     },
   },
   errors: {

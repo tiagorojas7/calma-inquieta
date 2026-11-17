@@ -290,6 +290,7 @@ describe("admin student detail attendance summary", () => {
       absent: "1",
       makeUpsPending: "1",
       makeUpsDone: "0",
+      makeUpsMissed: "0",
     });
   });
 

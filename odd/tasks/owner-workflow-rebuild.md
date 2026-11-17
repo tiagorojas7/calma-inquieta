@@ -257,3 +257,15 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Surface note: the writer also edited `src/app/ui/admin/make-ups-list.tsx` and its test. It is attendance UI outside the listed globs and conflicts with no other unit, so the parent accepted it.
   - Gap: the student summary still counts only pending and done make-ups.
   - One independent verifier will cover A2 and P1 together after P1 lands.
+- L62 (2026-11-16): unit P1 (students active and inactive) committed in `0845c73`.
+  - What it does:
+    - The enrollments port `StudentActivityStore` (`inactiveEmails`, `setActive`) has a Drizzle adapter wired in composition.
+    - The detail screen deactivates and reactivates a student (`intent=deactivate|reactivate`).
+    - The list filters with `mostrar=activas|inactivas|todas`, active by default, and shows an "Estado" column.
+    - The order create transaction sets `active: true` on a matched profile.
+  - Writer evidence: RED on the real DB for the reactivation rule (2 failed). Service, route and UI tests have no true RED and were proven by mutation (6 failed). Unit/ui 10 files / 109 passed, DB order repository 26 and request-services 15; typecheck, eslint and prettier clean.
+  - Gaps:
+    - `mostrar` is parsed in the new `src/app/students/activity-filter.ts` instead of `parseStudentFilter`.
+    - Deactivating a student with no `student` row returns not-found.
+  - Seam run at `0845c73` (covers A2 and P1): `--project unit` 296 files / 3558 passed; `--project ui` 124 files / 1069 passed.
+  - One independent verifier covers A2 and P1.

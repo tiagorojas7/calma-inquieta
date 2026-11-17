@@ -229,9 +229,9 @@ export const adminMicrocopy = {
           title: "Cancelar venta",
           dialogTitle: "¿Cancelar esta venta?",
           dialogMessage:
-            "Si la venta ya estaba cobrada, vuelve al stock lo que se descontó. Esto no se puede deshacer.",
+            "Si la venta ya estaba cobrada, vuelve al stock lo que todavía no se entregó. Esto no se puede deshacer.",
           dialogMessageRefund:
-            "Queda registrado el cobro y la devolución, y vuelve al stock lo que se descontó. Esto no se puede deshacer.",
+            "Queda registrado el cobro y la devolución, y vuelve al stock lo que todavía no se entregó. Esto no se puede deshacer.",
         },
       },
       student: "Alumno",

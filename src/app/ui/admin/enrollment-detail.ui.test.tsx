@@ -789,7 +789,9 @@ describe("EnrollmentDetail: material sales", () => {
       within(form).getByRole("button", { name: "Cancelar venta" }),
     );
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/vuelve al stock/)).toBeVisible();
+    expect(
+      within(dialog).getByText(/vuelve al stock lo que todavía no se entregó/),
+    ).toBeVisible();
     expect(within(dialog).queryByText(/lugar del turno/)).toBeNull();
   });
 

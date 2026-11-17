@@ -524,3 +524,4 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Correction batch:
     - Unit F1 (delegated, parallel): STU-1, the L96/L97 colours and the advisories above.
     - Unit F2 (delegated, after the DB suite ends, because it changes 0018): ENR-B1 / STK-1 with a per-line stock-taken mark.
+- L99 (2026-11-17): The full DB suite at `cc6adad` passed: 43 of 43 files, one per command. `catalog-import` exited 127 once and passed on retry. This covers the 17 files never rerun after T7. Log is in `...\scratchpad\t6\db-summary.txt`. Unit F2 (stock-taken mark in 0018) delegated now; F1 is still running.

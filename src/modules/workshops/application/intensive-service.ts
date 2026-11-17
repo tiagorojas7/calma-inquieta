@@ -31,6 +31,7 @@ import {
   type IntensiveSchedule,
   type PercentageSubmission,
 } from "../domain/intensive-core";
+import { defaultProjectName } from "../domain/intensive-project-core";
 import {
   parsePercentage,
   slugify,
@@ -42,6 +43,7 @@ import {
   type IntensivesService,
   type Percentage,
 } from "./contracts";
+import { createIntensiveProjectUseCases } from "./intensive-project-use-cases";
 import type {
   IntensiveRepository,
   StoredIntensive,
@@ -372,6 +374,7 @@ export function createIntensivesService(
       deposit: current.deposit,
       capacity: current.capacity,
       minSeats: current.minSeats,
+      projectCount: (await repository.listProjects(current.id)).length,
       assignment: teacher
         ? {
             active: teacher.active || assignmentKept,
@@ -388,6 +391,7 @@ export function createIntensivesService(
   }
 
   return {
+    ...createIntensiveProjectUseCases({ repository, media, clock, newId }),
     async list(actor, filter) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -416,7 +420,17 @@ export function createIntensivesService(
         fields.value,
         authorized.value,
       );
-      const inserted = await repository.insert(stored);
+      // A new workshop starts with one project made from its own price and
+      // deposit, so it can be published without further steps.
+      const inserted = await repository.insert(stored, {
+        id: newId(),
+        intensiveId: stored.id,
+        name: defaultProjectName(stored.name),
+        image: null,
+        price: stored.price,
+        deposit: stored.deposit,
+        audit: stored.audit,
+      });
       return inserted.ok ? ok(await readModel(stored)) : duplicateSlugResult;
     },
     async update(actor, id, draft) {

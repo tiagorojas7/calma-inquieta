@@ -490,6 +490,7 @@ describe("unmetPublishRules", () => {
     deposit: pesos(10000),
     capacity: 8,
     minSeats: 4,
+    projectCount: 1,
     assignment: { active: true, modality: "third_party", percentageBp: 5000 },
     ...overrides,
   });
@@ -575,6 +576,16 @@ describe("unmetPublishRules", () => {
     ).toEqual(["deposit", "min-seats"]);
   });
 
+  it("needs at least one project and lists that rule last", () => {
+    expect(unmetPublishRules(facts({ projectCount: 0 }), BEFORE)).toEqual([
+      "projects",
+    ]);
+    expect(
+      unmetPublishRules(facts({ projectCount: 0, capacity: 0 }), BEFORE),
+    ).toEqual(["capacity", "min-seats", "projects"]);
+    expect(unmetPublishRules(facts({ projectCount: 3 }), BEFORE)).toEqual([]);
+  });
+
   it("accepts a start one Córdoba minute ahead", () => {
     expect(unmetPublishRules(facts(), BEFORE)).toEqual([]);
   });
@@ -620,6 +631,7 @@ describe("unmetEditRules", () => {
     deposit: pesos(10000),
     capacity: 8,
     minSeats: 4,
+    projectCount: 1,
     assignment: { active: true, modality: "own", percentageBp: null },
   };
 
@@ -628,5 +640,9 @@ describe("unmetEditRules", () => {
     expect(unmetEditRules({ ...facts, assignment: null, capacity: 0 })).toEqual(
       ["teacher", "capacity", "min-seats"],
     );
+  });
+
+  it("still needs a project while the intensivo is live", () => {
+    expect(unmetEditRules({ ...facts, projectCount: 0 })).toEqual(["projects"]);
   });
 });

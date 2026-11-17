@@ -186,3 +186,112 @@ ALTER TABLE "order_line" ADD COLUMN "source" text DEFAULT 'supplier' NOT NULL;--
 ALTER TABLE "order_line" ADD COLUMN "unit_cost_centavos" bigint;--> statement-breakpoint
 ALTER TABLE "order_line" ADD CONSTRAINT "order_line_source_check" CHECK ("order_line"."source" IN ('stock', 'supplier'));--> statement-breakpoint
 ALTER TABLE "order_line" ADD CONSTRAINT "order_line_unit_cost_check" CHECK ("order_line"."unit_cost_centavos" > 0);
+--> statement-breakpoint
+CREATE TABLE "intensive_request_material" (
+	"request_id" uuid NOT NULL,
+	"position" integer NOT NULL,
+	"variant_id" uuid NOT NULL,
+	"material_name" text NOT NULL,
+	"variant_label" text NOT NULL,
+	"supplier_id" uuid NOT NULL,
+	"supplier_name" text NOT NULL,
+	"quantity" integer NOT NULL,
+	"unit_cost_centavos" bigint,
+	"source" text NOT NULL,
+	"requested_at" timestamp with time zone,
+	CONSTRAINT "intensive_request_material_pkey" PRIMARY KEY("request_id","position"),
+	CONSTRAINT "intensive_request_material_position_check" CHECK ("intensive_request_material"."position" >= 0),
+	CONSTRAINT "intensive_request_material_quantity_check" CHECK ("intensive_request_material"."quantity" BETWEEN 1 AND 20),
+	CONSTRAINT "intensive_request_material_unit_cost_check" CHECK ("intensive_request_material"."unit_cost_centavos" > 0),
+	CONSTRAINT "intensive_request_material_source_check" CHECK ("intensive_request_material"."source" IN ('stock', 'supplier'))
+);
+--> statement-breakpoint
+CREATE TABLE "intensive_project" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"intensive_id" uuid NOT NULL,
+	"position" integer NOT NULL,
+	"name" text NOT NULL,
+	"media_asset_id" uuid,
+	"alt" text,
+	"price_centavos" bigint NOT NULL,
+	"deposit_centavos" bigint NOT NULL,
+	"updated_by" text NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL,
+	CONSTRAINT "intensive_project_position_unique" UNIQUE("intensive_id","position"),
+	CONSTRAINT "intensive_project_position_check" CHECK ("intensive_project"."position" >= 0),
+	CONSTRAINT "intensive_project_name_check" CHECK (btrim("intensive_project"."name") <> '' AND length("intensive_project"."name") <= 80),
+	CONSTRAINT "intensive_project_price_check" CHECK ("intensive_project"."price_centavos" > 0 AND "intensive_project"."price_centavos" % 100 = 0),
+	CONSTRAINT "intensive_project_deposit_check" CHECK ("intensive_project"."deposit_centavos" > 0 AND "intensive_project"."deposit_centavos" <= "intensive_project"."price_centavos" AND "intensive_project"."deposit_centavos" % 100 = 0),
+	CONSTRAINT "intensive_project_image_check" CHECK (("intensive_project"."media_asset_id" IS NULL AND "intensive_project"."alt" IS NULL)
+          OR ("intensive_project"."media_asset_id" IS NOT NULL AND "intensive_project"."alt" IS NOT NULL
+              AND btrim("intensive_project"."alt") <> '' AND length("intensive_project"."alt") <= 200))
+);
+--> statement-breakpoint
+CREATE TABLE "intensive_project_material" (
+	"project_id" uuid NOT NULL,
+	"position" integer NOT NULL,
+	"variant_id" uuid NOT NULL,
+	"quantity" integer NOT NULL,
+	CONSTRAINT "intensive_project_material_pkey" PRIMARY KEY("project_id","position"),
+	CONSTRAINT "intensive_project_material_position_check" CHECK ("intensive_project_material"."position" >= 0),
+	CONSTRAINT "intensive_project_material_quantity_check" CHECK ("intensive_project_material"."quantity" BETWEEN 1 AND 20)
+);
+--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "project_id" uuid;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "price_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "deposit_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_paid_on" text;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_note" text;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_by" text;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "intensive_request_material" ADD CONSTRAINT "intensive_request_material_request_id_intensive_seat_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."intensive_seat_request"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "intensive_project" ADD CONSTRAINT "intensive_project_intensive_id_intensive_workshop_id_fk" FOREIGN KEY ("intensive_id") REFERENCES "public"."intensive_workshop"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "intensive_project" ADD CONSTRAINT "intensive_project_media_asset_id_media_asset_id_fk" FOREIGN KEY ("media_asset_id") REFERENCES "public"."media_asset"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "intensive_project_material" ADD CONSTRAINT "intensive_project_material_project_id_intensive_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."intensive_project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "intensive_project_media_asset_idx" ON "intensive_project" USING btree ("media_asset_id");--> statement-breakpoint
+INSERT INTO "intensive_project" (
+	"id",
+	"intensive_id",
+	"position",
+	"name",
+	"price_centavos",
+	"deposit_centavos",
+	"updated_by",
+	"updated_at"
+)
+SELECT
+	md5('intensive_project:' || "id"::text)::uuid,
+	"id",
+	0,
+	btrim(left(btrim("name"), 80)),
+	"price_centavos",
+	"deposit_centavos",
+	'migration 0018',
+	"updated_at"
+FROM "intensive_workshop";
+--> statement-breakpoint
+UPDATE "intensive_seat_request" AS "request"
+SET
+	"project_id" = "project"."id",
+	"price_centavos" = "project"."price_centavos",
+	"deposit_centavos" = "project"."deposit_centavos"
+FROM "intensive_project" AS "project"
+WHERE "project"."intensive_id" = "request"."intensive_id"
+	AND "project"."position" = 0;
+--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_snapshot_check" CHECK (("intensive_seat_request"."price_centavos" IS NULL AND "intensive_seat_request"."deposit_centavos" IS NULL)
+          OR ("intensive_seat_request"."price_centavos" IS NOT NULL AND "intensive_seat_request"."deposit_centavos" IS NOT NULL
+              AND "intensive_seat_request"."price_centavos" > 0 AND "intensive_seat_request"."deposit_centavos" > 0
+              AND "intensive_seat_request"."deposit_centavos" <= "intensive_seat_request"."price_centavos"
+              AND "intensive_seat_request"."price_centavos" % 100 = 0
+              AND "intensive_seat_request"."deposit_centavos" % 100 = 0));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_complete_check" CHECK (("intensive_seat_request"."balance_centavos" IS NULL AND "intensive_seat_request"."balance_paid_on" IS NULL
+            AND "intensive_seat_request"."balance_by" IS NULL AND "intensive_seat_request"."balance_at" IS NULL
+            AND "intensive_seat_request"."balance_note" IS NULL)
+          OR ("intensive_seat_request"."balance_centavos" IS NOT NULL AND "intensive_seat_request"."balance_paid_on" IS NOT NULL
+              AND "intensive_seat_request"."balance_by" IS NOT NULL AND "intensive_seat_request"."balance_at" IS NOT NULL));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_status_check" CHECK ("intensive_seat_request"."balance_centavos" IS NULL OR "intensive_seat_request"."status" = 'confirmed');--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_amount_check" CHECK ("intensive_seat_request"."balance_centavos" IS NULL
+          OR ("intensive_seat_request"."price_centavos" IS NOT NULL
+              AND "intensive_seat_request"."balance_centavos" = "intensive_seat_request"."price_centavos" - "intensive_seat_request"."deposit_centavos"));

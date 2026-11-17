@@ -117,6 +117,7 @@ const INTENSIVE_RULE_MESSAGES = {
   deposit: "una seña válida",
   capacity: "una capacidad válida",
   "min-seats": "cupos mínimos válidos",
+  projects: "al menos un proyecto",
 } as const satisfies Record<IntensivePublishRule, string>;
 
 /** Names all eligibility failures returned while a live intensivo is edited. */

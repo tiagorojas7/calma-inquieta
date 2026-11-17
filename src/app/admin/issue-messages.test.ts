@@ -116,9 +116,10 @@ describe("intensive publish messages", () => {
         "deposit",
         "capacity",
         "min-seats",
+        "projects",
       ]),
     ).toBe(
-      "No se puede guardar este workshop porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
+      "No se puede guardar este workshop porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos, al menos un proyecto.",
     );
   });
 });

@@ -1212,6 +1212,356 @@
                                                                           },
                                                      "isRLSEnabled":  false
                                                  },
+                   "public.intensive_request_material":  {
+                                                             "name":  "intensive_request_material",
+                                                             "schema":  "",
+                                                             "columns":  {
+                                                                             "request_id":  {
+                                                                                                "name":  "request_id",
+                                                                                                "type":  "uuid",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                             "position":  {
+                                                                                              "name":  "position",
+                                                                                              "type":  "integer",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                             "variant_id":  {
+                                                                                                "name":  "variant_id",
+                                                                                                "type":  "uuid",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                             "material_name":  {
+                                                                                                   "name":  "material_name",
+                                                                                                   "type":  "text",
+                                                                                                   "primaryKey":  false,
+                                                                                                   "notNull":  true
+                                                                                               },
+                                                                             "variant_label":  {
+                                                                                                   "name":  "variant_label",
+                                                                                                   "type":  "text",
+                                                                                                   "primaryKey":  false,
+                                                                                                   "notNull":  true
+                                                                                               },
+                                                                             "supplier_id":  {
+                                                                                                 "name":  "supplier_id",
+                                                                                                 "type":  "uuid",
+                                                                                                 "primaryKey":  false,
+                                                                                                 "notNull":  true
+                                                                                             },
+                                                                             "supplier_name":  {
+                                                                                                   "name":  "supplier_name",
+                                                                                                   "type":  "text",
+                                                                                                   "primaryKey":  false,
+                                                                                                   "notNull":  true
+                                                                                               },
+                                                                             "quantity":  {
+                                                                                              "name":  "quantity",
+                                                                                              "type":  "integer",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                             "unit_cost_centavos":  {
+                                                                                                        "name":  "unit_cost_centavos",
+                                                                                                        "type":  "bigint",
+                                                                                                        "primaryKey":  false,
+                                                                                                        "notNull":  false
+                                                                                                    },
+                                                                             "source":  {
+                                                                                            "name":  "source",
+                                                                                            "type":  "text",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  true
+                                                                                        },
+                                                                             "requested_at":  {
+                                                                                                  "name":  "requested_at",
+                                                                                                  "type":  "timestamp with time zone",
+                                                                                                  "primaryKey":  false,
+                                                                                                  "notNull":  false
+                                                                                              }
+                                                                         },
+                                                             "indexes":  {
+
+                                                                         },
+                                                             "foreignKeys":  {
+                                                                                 "intensive_request_material_request_id_intensive_seat_request_id_fk":  {
+                                                                                                                                                            "name":  "intensive_request_material_request_id_intensive_seat_request_id_fk",
+                                                                                                                                                            "tableFrom":  "intensive_request_material",
+                                                                                                                                                            "tableTo":  "intensive_seat_request",
+                                                                                                                                                            "columnsFrom":  [
+                                                                                                                                                                                "request_id"
+                                                                                                                                                                            ],
+                                                                                                                                                            "columnsTo":  [
+                                                                                                                                                                              "id"
+                                                                                                                                                                          ],
+                                                                                                                                                            "onDelete":  "cascade",
+                                                                                                                                                            "onUpdate":  "no action"
+                                                                                                                                                        }
+                                                                             },
+                                                             "compositePrimaryKeys":  {
+                                                                                          "intensive_request_material_pkey":  {
+                                                                                                                                  "name":  "intensive_request_material_pkey",
+                                                                                                                                  "columns":  [
+                                                                                                                                                  "request_id",
+                                                                                                                                                  "position"
+                                                                                                                                              ]
+                                                                                                                              }
+                                                                                      },
+                                                             "uniqueConstraints":  {
+
+                                                                                   },
+                                                             "policies":  {
+
+                                                                          },
+                                                             "checkConstraints":  {
+                                                                                      "intensive_request_material_position_check":  {
+                                                                                                                                        "name":  "intensive_request_material_position_check",
+                                                                                                                                        "value":  "\"intensive_request_material\".\"position\" \u003e= 0"
+                                                                                                                                    },
+                                                                                      "intensive_request_material_quantity_check":  {
+                                                                                                                                        "name":  "intensive_request_material_quantity_check",
+                                                                                                                                        "value":  "\"intensive_request_material\".\"quantity\" BETWEEN 1 AND 20"
+                                                                                                                                    },
+                                                                                      "intensive_request_material_unit_cost_check":  {
+                                                                                                                                         "name":  "intensive_request_material_unit_cost_check",
+                                                                                                                                         "value":  "\"intensive_request_material\".\"unit_cost_centavos\" \u003e 0"
+                                                                                                                                     },
+                                                                                      "intensive_request_material_source_check":  {
+                                                                                                                                      "name":  "intensive_request_material_source_check",
+                                                                                                                                      "value":  "\"intensive_request_material\".\"source\" IN (\u0027stock\u0027, \u0027supplier\u0027)"
+                                                                                                                                  }
+                                                                                  },
+                                                             "isRLSEnabled":  false
+                                                         },
+                   "public.intensive_project":  {
+                                                    "name":  "intensive_project",
+                                                    "schema":  "",
+                                                    "columns":  {
+                                                                    "id":  {
+                                                                               "name":  "id",
+                                                                               "type":  "uuid",
+                                                                               "primaryKey":  true,
+                                                                               "notNull":  true
+                                                                           },
+                                                                    "intensive_id":  {
+                                                                                         "name":  "intensive_id",
+                                                                                         "type":  "uuid",
+                                                                                         "primaryKey":  false,
+                                                                                         "notNull":  true
+                                                                                     },
+                                                                    "position":  {
+                                                                                     "name":  "position",
+                                                                                     "type":  "integer",
+                                                                                     "primaryKey":  false,
+                                                                                     "notNull":  true
+                                                                                 },
+                                                                    "name":  {
+                                                                                 "name":  "name",
+                                                                                 "type":  "text",
+                                                                                 "primaryKey":  false,
+                                                                                 "notNull":  true
+                                                                             },
+                                                                    "media_asset_id":  {
+                                                                                           "name":  "media_asset_id",
+                                                                                           "type":  "uuid",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  false
+                                                                                       },
+                                                                    "alt":  {
+                                                                                "name":  "alt",
+                                                                                "type":  "text",
+                                                                                "primaryKey":  false,
+                                                                                "notNull":  false
+                                                                            },
+                                                                    "price_centavos":  {
+                                                                                           "name":  "price_centavos",
+                                                                                           "type":  "bigint",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  true
+                                                                                       },
+                                                                    "deposit_centavos":  {
+                                                                                             "name":  "deposit_centavos",
+                                                                                             "type":  "bigint",
+                                                                                             "primaryKey":  false,
+                                                                                             "notNull":  true
+                                                                                         },
+                                                                    "updated_by":  {
+                                                                                       "name":  "updated_by",
+                                                                                       "type":  "text",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  true
+                                                                                   },
+                                                                    "updated_at":  {
+                                                                                       "name":  "updated_at",
+                                                                                       "type":  "timestamp with time zone",
+                                                                                       "primaryKey":  false,
+                                                                                       "notNull":  true
+                                                                                   }
+                                                                },
+                                                    "indexes":  {
+                                                                    "intensive_project_media_asset_idx":  {
+                                                                                                              "name":  "intensive_project_media_asset_idx",
+                                                                                                              "columns":  [
+                                                                                                                              {
+                                                                                                                                  "expression":  "media_asset_id",
+                                                                                                                                  "isExpression":  false,
+                                                                                                                                  "asc":  true,
+                                                                                                                                  "nulls":  "last"
+                                                                                                                              }
+                                                                                                                          ],
+                                                                                                              "isUnique":  false,
+                                                                                                              "concurrently":  false,
+                                                                                                              "method":  "btree",
+                                                                                                              "with":  {
+
+                                                                                                                       }
+                                                                                                          }
+                                                                },
+                                                    "foreignKeys":  {
+                                                                        "intensive_project_intensive_id_intensive_workshop_id_fk":  {
+                                                                                                                                        "name":  "intensive_project_intensive_id_intensive_workshop_id_fk",
+                                                                                                                                        "tableFrom":  "intensive_project",
+                                                                                                                                        "tableTo":  "intensive_workshop",
+                                                                                                                                        "columnsFrom":  [
+                                                                                                                                                            "intensive_id"
+                                                                                                                                                        ],
+                                                                                                                                        "columnsTo":  [
+                                                                                                                                                          "id"
+                                                                                                                                                      ],
+                                                                                                                                        "onDelete":  "cascade",
+                                                                                                                                        "onUpdate":  "no action"
+                                                                                                                                    },
+                                                                        "intensive_project_media_asset_id_media_asset_id_fk":  {
+                                                                                                                                   "name":  "intensive_project_media_asset_id_media_asset_id_fk",
+                                                                                                                                   "tableFrom":  "intensive_project",
+                                                                                                                                   "tableTo":  "media_asset",
+                                                                                                                                   "columnsFrom":  [
+                                                                                                                                                       "media_asset_id"
+                                                                                                                                                   ],
+                                                                                                                                   "columnsTo":  [
+                                                                                                                                                     "id"
+                                                                                                                                                 ],
+                                                                                                                                   "onDelete":  "restrict",
+                                                                                                                                   "onUpdate":  "no action"
+                                                                                                                               }
+                                                                    },
+                                                    "compositePrimaryKeys":  {
+
+                                                                             },
+                                                    "uniqueConstraints":  {
+                                                                              "intensive_project_position_unique":  {
+                                                                                                                        "name":  "intensive_project_position_unique",
+                                                                                                                        "nullsNotDistinct":  false,
+                                                                                                                        "columns":  [
+                                                                                                                                        "intensive_id",
+                                                                                                                                        "position"
+                                                                                                                                    ]
+                                                                                                                    }
+                                                                          },
+                                                    "policies":  {
+
+                                                                 },
+                                                    "checkConstraints":  {
+                                                                             "intensive_project_position_check":  {
+                                                                                                                      "name":  "intensive_project_position_check",
+                                                                                                                      "value":  "\"intensive_project\".\"position\" \u003e= 0"
+                                                                                                                  },
+                                                                             "intensive_project_name_check":  {
+                                                                                                                  "name":  "intensive_project_name_check",
+                                                                                                                  "value":  "btrim(\"intensive_project\".\"name\") \u003c\u003e \u0027\u0027 AND length(\"intensive_project\".\"name\") \u003c= 80"
+                                                                                                              },
+                                                                             "intensive_project_price_check":  {
+                                                                                                                   "name":  "intensive_project_price_check",
+                                                                                                                   "value":  "\"intensive_project\".\"price_centavos\" \u003e 0 AND \"intensive_project\".\"price_centavos\" % 100 = 0"
+                                                                                                               },
+                                                                             "intensive_project_deposit_check":  {
+                                                                                                                     "name":  "intensive_project_deposit_check",
+                                                                                                                     "value":  "\"intensive_project\".\"deposit_centavos\" \u003e 0 AND \"intensive_project\".\"deposit_centavos\" \u003c= \"intensive_project\".\"price_centavos\" AND \"intensive_project\".\"deposit_centavos\" % 100 = 0"
+                                                                                                                 },
+                                                                             "intensive_project_image_check":  {
+                                                                                                                   "name":  "intensive_project_image_check",
+                                                                                                                   "value":  "(\"intensive_project\".\"media_asset_id\" IS NULL AND \"intensive_project\".\"alt\" IS NULL)\n          OR (\"intensive_project\".\"media_asset_id\" IS NOT NULL AND \"intensive_project\".\"alt\" IS NOT NULL\n              AND btrim(\"intensive_project\".\"alt\") \u003c\u003e \u0027\u0027 AND length(\"intensive_project\".\"alt\") \u003c= 200)"
+                                                                                                               }
+                                                                         },
+                                                    "isRLSEnabled":  false
+                                                },
+                   "public.intensive_project_material":  {
+                                                             "name":  "intensive_project_material",
+                                                             "schema":  "",
+                                                             "columns":  {
+                                                                             "project_id":  {
+                                                                                                "name":  "project_id",
+                                                                                                "type":  "uuid",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                             "position":  {
+                                                                                              "name":  "position",
+                                                                                              "type":  "integer",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          },
+                                                                             "variant_id":  {
+                                                                                                "name":  "variant_id",
+                                                                                                "type":  "uuid",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  true
+                                                                                            },
+                                                                             "quantity":  {
+                                                                                              "name":  "quantity",
+                                                                                              "type":  "integer",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  true
+                                                                                          }
+                                                                         },
+                                                             "indexes":  {
+
+                                                                         },
+                                                             "foreignKeys":  {
+                                                                                 "intensive_project_material_project_id_intensive_project_id_fk":  {
+                                                                                                                                                       "name":  "intensive_project_material_project_id_intensive_project_id_fk",
+                                                                                                                                                       "tableFrom":  "intensive_project_material",
+                                                                                                                                                       "tableTo":  "intensive_project",
+                                                                                                                                                       "columnsFrom":  [
+                                                                                                                                                                           "project_id"
+                                                                                                                                                                       ],
+                                                                                                                                                       "columnsTo":  [
+                                                                                                                                                                         "id"
+                                                                                                                                                                     ],
+                                                                                                                                                       "onDelete":  "cascade",
+                                                                                                                                                       "onUpdate":  "no action"
+                                                                                                                                                   }
+                                                                             },
+                                                             "compositePrimaryKeys":  {
+                                                                                          "intensive_project_material_pkey":  {
+                                                                                                                                  "name":  "intensive_project_material_pkey",
+                                                                                                                                  "columns":  [
+                                                                                                                                                  "project_id",
+                                                                                                                                                  "position"
+                                                                                                                                              ]
+                                                                                                                              }
+                                                                                      },
+                                                             "uniqueConstraints":  {
+
+                                                                                   },
+                                                             "policies":  {
+
+                                                                          },
+                                                             "checkConstraints":  {
+                                                                                      "intensive_project_material_position_check":  {
+                                                                                                                                        "name":  "intensive_project_material_position_check",
+                                                                                                                                        "value":  "\"intensive_project_material\".\"position\" \u003e= 0"
+                                                                                                                                    },
+                                                                                      "intensive_project_material_quantity_check":  {
+                                                                                                                                        "name":  "intensive_project_material_quantity_check",
+                                                                                                                                        "value":  "\"intensive_project_material\".\"quantity\" BETWEEN 1 AND 20"
+                                                                                                                                    }
+                                                                                  },
+                                                             "isRLSEnabled":  false
+                                                         },
                    "public.intensive_seat_request":  {
                                                          "name":  "intensive_seat_request",
                                                          "schema":  "",
@@ -1317,7 +1667,55 @@
                                                                                               "type":  "timestamp with time zone",
                                                                                               "primaryKey":  false,
                                                                                               "notNull":  false
-                                                                                          }
+                                                                                          },
+                                                                         "project_id":  {
+                                                                                            "name":  "project_id",
+                                                                                            "type":  "uuid",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                                        },
+                                                                         "price_centavos":  {
+                                                                                                "name":  "price_centavos",
+                                                                                                "type":  "bigint",
+                                                                                                "primaryKey":  false,
+                                                                                                "notNull":  false
+                                                                                            },
+                                                                         "deposit_centavos":  {
+                                                                                                  "name":  "deposit_centavos",
+                                                                                                  "type":  "bigint",
+                                                                                                  "primaryKey":  false,
+                                                                                                  "notNull":  false
+                                                                                              },
+                                                                         "balance_centavos":  {
+                                                                                                  "name":  "balance_centavos",
+                                                                                                  "type":  "bigint",
+                                                                                                  "primaryKey":  false,
+                                                                                                  "notNull":  false
+                                                                                              },
+                                                                         "balance_paid_on":  {
+                                                                                                 "name":  "balance_paid_on",
+                                                                                                 "type":  "text",
+                                                                                                 "primaryKey":  false,
+                                                                                                 "notNull":  false
+                                                                                             },
+                                                                         "balance_note":  {
+                                                                                              "name":  "balance_note",
+                                                                                              "type":  "text",
+                                                                                              "primaryKey":  false,
+                                                                                              "notNull":  false
+                                                                                          },
+                                                                         "balance_by":  {
+                                                                                            "name":  "balance_by",
+                                                                                            "type":  "text",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                                        },
+                                                                         "balance_at":  {
+                                                                                            "name":  "balance_at",
+                                                                                            "type":  "timestamp with time zone",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                                        }
                                                                      },
                                                          "indexes":  {
                                                                          "intensive_seat_request_public_id_unique":  {
@@ -1405,7 +1803,23 @@
                                                                                   "intensive_seat_request_confirmed_check":  {
                                                                                                                                  "name":  "intensive_seat_request_confirmed_check",
                                                                                                                                  "value":  "\"intensive_seat_request\".\"status\" \u003c\u003e \u0027confirmed\u0027 OR (\"intensive_seat_request\".\"paid_centavos\" \u003e 0 AND \"intensive_seat_request\".\"paid_on\" IS NOT NULL)"
-                                                                                                                             }
+                                                                                                                             },
+                                                                                  "intensive_seat_request_snapshot_check":  {
+                                                                                                                                "name":  "intensive_seat_request_snapshot_check",
+                                                                                                                                "value":  "(\"intensive_seat_request\".\"price_centavos\" IS NULL AND \"intensive_seat_request\".\"deposit_centavos\" IS NULL)\n          OR (\"intensive_seat_request\".\"price_centavos\" IS NOT NULL AND \"intensive_seat_request\".\"deposit_centavos\" IS NOT NULL\n              AND \"intensive_seat_request\".\"price_centavos\" \u003e 0 AND \"intensive_seat_request\".\"deposit_centavos\" \u003e 0\n              AND \"intensive_seat_request\".\"deposit_centavos\" \u003c= \"intensive_seat_request\".\"price_centavos\"\n              AND \"intensive_seat_request\".\"price_centavos\" % 100 = 0\n              AND \"intensive_seat_request\".\"deposit_centavos\" % 100 = 0)"
+                                                                                                                            },
+                                                                                  "intensive_seat_request_balance_complete_check":  {
+                                                                                                                                        "name":  "intensive_seat_request_balance_complete_check",
+                                                                                                                                        "value":  "(\"intensive_seat_request\".\"balance_centavos\" IS NULL AND \"intensive_seat_request\".\"balance_paid_on\" IS NULL\n            AND \"intensive_seat_request\".\"balance_by\" IS NULL AND \"intensive_seat_request\".\"balance_at\" IS NULL\n            AND \"intensive_seat_request\".\"balance_note\" IS NULL)\n          OR (\"intensive_seat_request\".\"balance_centavos\" IS NOT NULL AND \"intensive_seat_request\".\"balance_paid_on\" IS NOT NULL\n              AND \"intensive_seat_request\".\"balance_by\" IS NOT NULL AND \"intensive_seat_request\".\"balance_at\" IS NOT NULL)"
+                                                                                                                                    },
+                                                                                  "intensive_seat_request_balance_status_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_balance_status_check",
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL OR \"intensive_seat_request\".\"status\" = \u0027confirmed\u0027"
+                                                                                                                                  },
+                                                                                  "intensive_seat_request_balance_amount_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_balance_amount_check",
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"price_centavos\" IS NOT NULL\n              AND \"intensive_seat_request\".\"balance_centavos\" = \"intensive_seat_request\".\"price_centavos\" - \"intensive_seat_request\".\"deposit_centavos\")"
+                                                                                                                                  }
                                                                               },
                                                          "isRLSEnabled":  false
                                                      },

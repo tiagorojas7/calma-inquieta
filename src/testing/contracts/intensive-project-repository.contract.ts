@@ -1,0 +1,290 @@
+import { describe, expect, it } from "vitest";
+import { Money } from "~/modules/_shared";
+import type {
+  IntensiveRepository,
+  NewIntensiveProject,
+  StoredIntensiveProject,
+} from "~/modules/workshops/application/intensive-repository";
+import {
+  ASSET_1,
+  buildStoredIntensive,
+  ID_A,
+  ID_B,
+  ID_UNKNOWN,
+} from "./intensive-repository.contract";
+
+export const PROJECT_1 = "c0000000-0000-4000-8000-000000000001";
+export const PROJECT_2 = "c0000000-0000-4000-8000-000000000002";
+export const PROJECT_3 = "c0000000-0000-4000-8000-000000000003";
+export const PROJECT_OTHER = "c0000000-0000-4000-8000-0000000000b1";
+
+const pesos = (amount: number): Money => {
+  const money = Money.fromCentavos(amount * 100);
+  if (!money.ok) throw new Error("invalid test money");
+  return money.value;
+};
+
+export function buildNewProject(
+  overrides: Partial<NewIntensiveProject> = {},
+): NewIntensiveProject {
+  return {
+    id: PROJECT_1,
+    intensiveId: ID_A,
+    name: "Taza de torno",
+    image: null,
+    price: pesos(30000),
+    deposit: pesos(10000),
+    audit: {
+      updatedBy: "admin@example.com",
+      updatedAt: new Date("2026-11-02T12:00:00.123Z"),
+    },
+    ...overrides,
+  };
+}
+
+/** Money hides its field from toEqual: compare centavos explicitly. */
+export const plainProject = (project: StoredIntensiveProject | null) =>
+  project && {
+    ...project,
+    price: project.price.toCentavos(),
+    deposit: project.deposit.toCentavos(),
+  };
+
+export interface ProjectContractHarness {
+  readonly repo: IntensiveRepository;
+  /** Makes a seat request point at the project, as the public flow will. */
+  reference(intensiveId: string, projectId: string): Promise<void>;
+}
+
+const names = (projects: readonly StoredIntensiveProject[]) =>
+  projects.map((project) => project.name);
+
+/**
+ * Behavior every IntensiveRepository implementation must satisfy for the
+ * projects of an intensivo: order, append, edit, reorder and guarded delete.
+ */
+export function runIntensiveProjectContract(
+  create: () => Promise<ProjectContractHarness>,
+): void {
+  async function withProjects(count: number) {
+    const harness = await create();
+    await harness.repo.insert(buildStoredIntensive());
+    const ids = [PROJECT_1, PROJECT_2, PROJECT_3];
+    for (let index = 0; index < count; index += 1)
+      await harness.repo.addProject(
+        buildNewProject({
+          id: ids[index] ?? PROJECT_3,
+          name: `P${String(index + 1)}`,
+        }),
+      );
+    return harness;
+  }
+
+  describe("IntensiveRepository project contract", () => {
+    it("inserts the first project with the intensivo at position 0 and round-trips every field", async () => {
+      const { repo } = await create();
+      const first = buildNewProject({
+        name: "Ñandú & Árbol: ¡taza!",
+        image: { assetId: ASSET_1, alt: "Una taza" },
+        price: pesos(123_456_789),
+        deposit: pesos(100),
+      });
+
+      const inserted = await repo.insert(buildStoredIntensive(), first);
+
+      expect(inserted.ok).toBe(true);
+      const projects = await repo.listProjects(ID_A);
+      expect(projects.map(plainProject)).toEqual([
+        plainProject({ ...first, position: 0 }),
+      ]);
+      expect(projects[0]?.price.toCentavos()).toBe(12_345_678_900);
+      expect(plainProject(await repo.findProject(ID_A, PROJECT_1))).toEqual(
+        plainProject({ ...first, position: 0 }),
+      );
+    });
+
+    it("inserts an intensivo without projects and writes nothing on a slug conflict", async () => {
+      const { repo } = await create();
+      await repo.insert(buildStoredIntensive());
+
+      expect(await repo.listProjects(ID_A)).toEqual([]);
+
+      const conflict = await repo.insert(
+        buildStoredIntensive({ id: ID_B }),
+        buildNewProject({ id: PROJECT_2, intensiveId: ID_B }),
+      );
+      expect(conflict.ok).toBe(false);
+      expect(await repo.listProjects(ID_B)).toEqual([]);
+      expect(await repo.findProject(ID_B, PROJECT_2)).toBeNull();
+    });
+
+    it("appends projects in order, assigning increasing positions", async () => {
+      const { repo } = await withProjects(3);
+
+      const projects = await repo.listProjects(ID_A);
+
+      expect(names(projects)).toEqual(["P1", "P2", "P3"]);
+      expect(projects.map((project) => project.position)).toEqual([0, 1, 2]);
+    });
+
+    it("keeps the projects of one intensivo apart from another's", async () => {
+      const { repo } = await withProjects(2);
+      await repo.insert(
+        buildStoredIntensive({ id: ID_B, slug: "otro" }),
+        buildNewProject({
+          id: PROJECT_OTHER,
+          intensiveId: ID_B,
+          name: "De otro",
+        }),
+      );
+
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P1", "P2"]);
+      expect(names(await repo.listProjects(ID_B))).toEqual(["De otro"]);
+      expect(await repo.findProject(ID_A, PROJECT_OTHER)).toBeNull();
+    });
+
+    it("reports an append to an unknown intensivo", async () => {
+      const { repo } = await create();
+
+      const result = await repo.addProject(
+        buildNewProject({ intensiveId: ID_UNKNOWN }),
+      );
+
+      expect(result).toEqual({ ok: false, error: { kind: "not-found" } });
+    });
+
+    it("updates name, image, price, deposit and audit but not the position", async () => {
+      const { repo } = await withProjects(2);
+      const current = await repo.findProject(ID_A, PROJECT_2);
+      if (!current) throw new Error("missing project");
+      const changed: StoredIntensiveProject = {
+        ...current,
+        name: "Renombrado",
+        image: { assetId: ASSET_1, alt: "Foto" },
+        price: pesos(45000),
+        deposit: pesos(15000),
+        audit: {
+          updatedBy: "otra@example.com",
+          updatedAt: new Date("2026-11-03T09:30:00.456Z"),
+        },
+      };
+
+      const result = await repo.updateProject(changed);
+
+      expect(result.ok).toBe(true);
+      expect(plainProject(await repo.findProject(ID_A, PROJECT_2))).toEqual(
+        plainProject(changed),
+      );
+      expect(names(await repo.listProjects(ID_A))).toEqual([
+        "P1",
+        "Renombrado",
+      ]);
+    });
+
+    it("can remove the image of a project", async () => {
+      const { repo } = await create();
+      await repo.insert(
+        buildStoredIntensive(),
+        buildNewProject({ image: { assetId: ASSET_1, alt: "Foto" } }),
+      );
+      const current = await repo.findProject(ID_A, PROJECT_1);
+      if (!current) throw new Error("missing project");
+
+      await repo.updateProject({ ...current, image: null });
+
+      expect((await repo.findProject(ID_A, PROJECT_1))?.image).toBeNull();
+    });
+
+    it("reports an update of an unknown project or one of another intensivo", async () => {
+      const { repo } = await withProjects(1);
+      const current = await repo.findProject(ID_A, PROJECT_1);
+      if (!current) throw new Error("missing project");
+
+      const unknown = await repo.updateProject({ ...current, id: PROJECT_3 });
+      const foreign = await repo.updateProject({
+        ...current,
+        intensiveId: ID_B,
+      });
+
+      expect(unknown).toEqual({ ok: false, error: { kind: "not-found" } });
+      expect(foreign).toEqual({ ok: false, error: { kind: "not-found" } });
+    });
+
+    it("moves a project down and up by swapping with its neighbour", async () => {
+      const { repo } = await withProjects(3);
+
+      expect(await repo.moveProject(ID_A, PROJECT_1, "down")).toBe("moved");
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P2", "P1", "P3"]);
+
+      expect(await repo.moveProject(ID_A, PROJECT_3, "up")).toBe("moved");
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P2", "P3", "P1"]);
+    });
+
+    it("leaves the order alone at either edge and for an unknown project", async () => {
+      const { repo } = await withProjects(3);
+
+      expect(await repo.moveProject(ID_A, PROJECT_1, "up")).toBe("at-edge");
+      expect(await repo.moveProject(ID_A, PROJECT_3, "down")).toBe("at-edge");
+      expect(await repo.moveProject(ID_A, PROJECT_OTHER, "down")).toBe(
+        "not-found",
+      );
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P1", "P2", "P3"]);
+    });
+
+    it("keeps moving correctly after a project in the middle was deleted", async () => {
+      const { repo } = await withProjects(3);
+      expect(await repo.deleteProject(ID_A, PROJECT_2)).toBe("deleted");
+
+      expect(await repo.moveProject(ID_A, PROJECT_3, "up")).toBe("moved");
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P3", "P1"]);
+      const added = await repo.addProject(
+        buildNewProject({ id: PROJECT_2, name: "P4" }),
+      );
+      expect(added.ok).toBe(true);
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P3", "P1", "P4"]);
+    });
+
+    it("deletes a project that no request points at, keeping the rest in order", async () => {
+      const { repo } = await withProjects(3);
+
+      expect(await repo.deleteProject(ID_A, PROJECT_1)).toBe("deleted");
+
+      expect(names(await repo.listProjects(ID_A))).toEqual(["P2", "P3"]);
+      expect(await repo.findProject(ID_A, PROJECT_1)).toBeNull();
+    });
+
+    it("refuses to delete a project that a request points at", async () => {
+      const harness = await withProjects(2);
+      await harness.reference(ID_A, PROJECT_1);
+
+      expect(await harness.repo.deleteProject(ID_A, PROJECT_1)).toBe("in-use");
+
+      expect(names(await harness.repo.listProjects(ID_A))).toEqual([
+        "P1",
+        "P2",
+      ]);
+      expect(await harness.repo.deleteProject(ID_A, PROJECT_2)).toBe("deleted");
+    });
+
+    it("reports a delete of an unknown project or one of another intensivo", async () => {
+      const { repo } = await withProjects(1);
+      await repo.insert(
+        buildStoredIntensive({ id: ID_B, slug: "otro" }),
+        buildNewProject({ id: PROJECT_OTHER, intensiveId: ID_B }),
+      );
+
+      expect(await repo.deleteProject(ID_A, PROJECT_3)).toBe("not-found");
+      expect(await repo.deleteProject(ID_A, PROJECT_OTHER)).toBe("not-found");
+      expect(await repo.findProject(ID_B, PROJECT_OTHER)).not.toBeNull();
+    });
+
+    it("removes the projects with a deleted draft", async () => {
+      const { repo } = await withProjects(2);
+
+      expect(await repo.deleteDraft(ID_A)).toBe("deleted");
+
+      expect(await repo.listProjects(ID_A)).toEqual([]);
+      expect(await repo.findProject(ID_A, PROJECT_1)).toBeNull();
+    });
+  });
+}

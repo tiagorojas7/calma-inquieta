@@ -30,6 +30,30 @@ export interface StoredIntensive {
   readonly audit: Audit;
 }
 
+/**
+ * A selectable project of an intensivo as persisted. Projects share the
+ * workshop's schedule and capacity; `position` is their display order.
+ */
+export interface StoredIntensiveProject {
+  readonly id: string;
+  readonly intensiveId: string;
+  readonly position: number;
+  readonly name: string;
+  /** The cover picked from the media library, with its alt text. */
+  readonly image: ImageUseDraft | null;
+  readonly price: Money;
+  readonly deposit: Money;
+  readonly audit: Audit;
+}
+
+/** A project to append: the repository assigns its position. */
+export type NewIntensiveProject = Omit<StoredIntensiveProject, "position">;
+
+export type ProjectDirection = "up" | "down";
+export type MoveProjectOutcome = "moved" | "at-edge" | "not-found";
+/** `in-use`: a seat request still points at the project. */
+export type DeleteProjectOutcome = "deleted" | "in-use" | "not-found";
+
 /** The slug is already taken by another intensivo, archived ones included. */
 export interface SlugConflict {
   readonly kind: "slug-conflict";
@@ -44,7 +68,14 @@ export type DeleteDraftOutcome = "deleted" | "not-draft" | "not-found";
  * pre-check. A duplicate id is a defect and rejects.
  */
 export interface IntensiveRepository {
-  insert(intensive: StoredIntensive): Promise<Result<void, SlugConflict>>;
+  /**
+   * Inserts the intensivo and, in the same write, its first project at
+   * position 0 when one is given.
+   */
+  insert(
+    intensive: StoredIntensive,
+    firstProject?: NewIntensiveProject,
+  ): Promise<Result<void, SlugConflict>>;
   /** Replaces every field, the gallery included, in one atomic write. */
   update(
     intensive: StoredIntensive,
@@ -61,6 +92,35 @@ export interface IntensiveRepository {
   list(
     statuses: readonly IntensiveStatus[],
   ): Promise<readonly StoredIntensive[]>;
-  /** Deletes only a draft, atomically with the status check. */
+  /** Deletes only a draft, atomically with the status check; its projects go with it. */
   deleteDraft(id: string): Promise<DeleteDraftOutcome>;
+  /** The projects of an intensivo in position order (none: empty). */
+  listProjects(intensiveId: string): Promise<readonly StoredIntensiveProject[]>;
+  /** A project of that intensivo; one that belongs to another is not found. */
+  findProject(
+    intensiveId: string,
+    projectId: string,
+  ): Promise<StoredIntensiveProject | null>;
+  /** Appends after the last project, assigning its position atomically. */
+  addProject(
+    project: NewIntensiveProject,
+  ): Promise<Result<StoredIntensiveProject, NotFound>>;
+  /** Replaces name, image, price, deposit and audit; the position stays. */
+  updateProject(
+    project: StoredIntensiveProject,
+  ): Promise<Result<void, NotFound>>;
+  /** Swaps with the neighbour above or below, atomically. */
+  moveProject(
+    intensiveId: string,
+    projectId: string,
+    direction: ProjectDirection,
+  ): Promise<MoveProjectOutcome>;
+  /**
+   * Deletes a project unless a seat request still points at it, atomically
+   * with that check. Remaining projects keep their relative order.
+   */
+  deleteProject(
+    intensiveId: string,
+    projectId: string,
+  ): Promise<DeleteProjectOutcome>;
 }

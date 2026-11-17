@@ -387,7 +387,32 @@ export type IntensivePublishRule =
   | "price"
   | "deposit"
   | "capacity"
-  | "min-seats";
+  | "min-seats"
+  | "projects";
+/**
+ * A selectable project of a dated workshop. Every project shares the
+ * workshop's schedule and capacity; the price and deposit are its own.
+ */
+export interface IntensiveProject {
+  readonly id: string;
+  readonly intensiveId: string;
+  /** Display order, ascending; gaps are possible after a delete. */
+  readonly position: number;
+  readonly name: string;
+  readonly image: ImageUse | null;
+  readonly price: Money;
+  readonly deposit: Money;
+  readonly audit: Audit;
+}
+export interface IntensiveProjectDraft {
+  readonly name: string;
+  readonly price: string;
+  readonly deposit: string;
+  readonly image: ImageUseDraft | null;
+}
+export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
+/** Why a project cannot be deleted: a request chose it, or it is the last of a live workshop. */
+export type IntensiveProjectRule = "in-use" | "last-project";
 export interface IntensivesService {
   list(
     a: AdminActor,
@@ -440,6 +465,32 @@ export interface IntensivesService {
     id: string,
     d: Pick<IntensiveWorkshopDraft, "eventDate" | "startsAt" | "endsAt">,
   ): R<IntensiveWorkshop, Invalid<"eventDate" | "timeRange">>;
+  /** The projects of a workshop in display order. */
+  listProjects(a: AdminActor, id: string): R<readonly IntensiveProject[]>;
+  /** Appends a project after the last one. */
+  addProject(
+    a: AdminActor,
+    id: string,
+    d: IntensiveProjectDraft,
+  ): R<IntensiveProject, Invalid<IntensiveProjectField>>;
+  updateProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    d: IntensiveProjectDraft,
+  ): R<IntensiveProject, Invalid<IntensiveProjectField>>;
+  /** Swaps with the neighbour; moving past either end changes nothing. */
+  moveProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    direction: "up" | "down",
+  ): R<void>;
+  deleteProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+  ): R<void, RulesUnmet<IntensiveProjectRule>>;
 }
 
 /** Confirmed enrollment seats per period turno; infrastructure failures reject. */

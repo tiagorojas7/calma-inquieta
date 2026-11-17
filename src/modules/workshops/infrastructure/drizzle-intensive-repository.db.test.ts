@@ -6,6 +6,7 @@ import type {
   StoredIntensive,
 } from "~/modules/workshops/application/intensive-repository";
 import { createDbSessionFactory } from "~/platform/db/session";
+import { runIntensiveProjectContract } from "~/testing/contracts/intensive-project-repository.contract";
 import {
   ASSET_1,
   ASSET_2,
@@ -24,8 +25,10 @@ import {
 import { createDrizzleIntensiveRepository } from "./drizzle-intensive-repository";
 
 const created: TestDatabase[] = [];
+// One at a time: every drop opens its own connection and the test server
+// allows 50, which the contracts (one database per test) now exceed.
 afterAll(async () => {
-  await Promise.all(created.map((database) => database.drop()));
+  for (const database of created) await database.drop();
 });
 
 type OpenSession = ReturnType<typeof createDbSessionFactory>;
@@ -64,6 +67,32 @@ async function freshRepository() {
 }
 
 runIntensiveRepositoryContract(async () => (await freshRepository()).repo);
+
+runIntensiveProjectContract(async () => {
+  const { openSession, repo } = await freshRepository();
+  let requests = 0;
+  return {
+    repo,
+    async reference(intensiveId, projectId) {
+      requests += 1;
+      const tag = String(requests).padStart(4, "0");
+      const session = await openSession();
+      try {
+        await session.db.execute(sql`
+          INSERT INTO intensive_seat_request (
+            id, public_id, intensive_id, status, full_name, email, phone_digits,
+            policy_accepted_at, created_at, project_id
+          ) VALUES (
+            md5(${tag})::uuid, ${"req_" + tag}, ${intensiveId},
+            'pending_confirmation', 'Ana', ${tag + "@example.com"},
+            '5493515551234', now(), now(), ${projectId}
+          )`);
+      } finally {
+        await session.close();
+      }
+    },
+  };
+});
 
 function sqlState(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;

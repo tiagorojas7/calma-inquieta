@@ -15,6 +15,7 @@ const KNOWN_RULES = [
   "deposit",
   "capacity",
   "min-seats",
+  "projects",
 ] as const satisfies readonly IntensivePublishRule[];
 
 /**

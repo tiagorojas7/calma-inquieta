@@ -42,12 +42,18 @@ describe("createDrizzleIntensiveRequestRepository", () => {
             WHERE table_name = 'intensive_seat_request' ORDER BY column_name`,
       );
       expect(rows.map((row) => row.column_name)).toEqual([
+        "balance_at",
+        "balance_by",
+        "balance_centavos",
+        "balance_note",
+        "balance_paid_on",
         "cancel_reason",
         "cancelled_at",
         "cancelled_by",
         "confirmed_at",
         "confirmed_by",
         "created_at",
+        "deposit_centavos",
         "email",
         "full_name",
         "id",
@@ -57,6 +63,8 @@ describe("createDrizzleIntensiveRequestRepository", () => {
         "payment_note",
         "phone_digits",
         "policy_accepted_at",
+        "price_centavos",
+        "project_id",
         "public_id",
         "status",
       ]);

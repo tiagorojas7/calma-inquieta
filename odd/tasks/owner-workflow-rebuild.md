@@ -525,3 +525,11 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - Unit F1 (delegated, parallel): STU-1, the L96/L97 colours and the advisories above.
     - Unit F2 (delegated, after the DB suite ends, because it changes 0018): ENR-B1 / STK-1 with a per-line stock-taken mark.
 - L99 (2026-11-17): The full DB suite at `cc6adad` passed: 43 of 43 files, one per command. `catalog-import` exited 127 once and passed on retry. This covers the 17 files never rerun after T7. Log is in `...\scratchpad\t6\db-summary.txt`. Unit F2 (stock-taken mark in 0018) delegated now; F1 is still running.
+- L100 (2026-11-17): Unit F1 done (delegated, worker-high). Six commits, all inside the declared surfaces:
+  - `6a603d3`: STU-1. `deriveStudents` takes the name, phone and `lastRequestedAt` from the newest non-sale order.
+  - `e907732`: L96/L97. Each novelty and pending-payment card shows its section's `AreaChip`: enrollments, intensives, events and materials, next to the unchanged text label.
+  - `a641bc4`: PNL-A1. The legacy "Política aceptada" line shows only when there are no recorded versions and the creation audit actor is "public".
+  - `2bb5719`: PNL-A2. The error now reads "Tenés que aceptar las condiciones y la política de privacidad.".
+  - `20d3770`: WSP. A percentage posted for a workshop that is not the teacher's gets a 404 before any write.
+  - `1c838d8`: STK. The sale-cancel copy now says "vuelve al stock lo que todavía no se entregó".
+  - Evidence: RED then GREEN for every item. The `enrollment.ui.test.tsx` text edit has no RED, because that test passes the error as a prop. `pnpm typecheck` exit 0; eslint and prettier clean; unit 7 files / 144 plus students 25 passed; ui 3 files / 44 passed. The parent's full unit and ui run comes after F2.

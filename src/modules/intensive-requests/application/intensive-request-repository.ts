@@ -1,5 +1,51 @@
 import type { Money, NotFound, Result } from "~/modules/_shared";
-import type { IntensiveRequestStatus } from "../domain/intensive-request-core";
+import type {
+  InvalidRequestRefund,
+  IntensiveRequestStatus,
+  Refund,
+} from "../domain/intensive-request-core";
+
+/** Who moved stock and when; the stock row keeps it. */
+export interface RequestStockStamp {
+  readonly by: string;
+  readonly at: Date;
+}
+
+/**
+ * The stock movements a confirmed request makes, consumer-defined. They join
+ * the repository's transaction (`Tx` is that handle, opaque here), so the
+ * units move in the same transaction that confirms or cancels the request.
+ * Composition adapts the materials stock to this port.
+ */
+export interface RequestStockPort<Tx> {
+  /**
+   * Removes `quantity` units only while at least that many remain. Resolves
+   * true when taken and false when the stock is insufficient (nothing changed).
+   */
+  take(
+    tx: Tx,
+    variantId: string,
+    quantity: number,
+    stamp: RequestStockStamp,
+  ): Promise<boolean>;
+  /** Adds `quantity` units back. */
+  put(
+    tx: Tx,
+    variantId: string,
+    quantity: number,
+    stamp: RequestStockStamp,
+  ): Promise<void>;
+}
+
+/** The one full balance payment of a confirmed request. */
+export interface RequestBalance {
+  readonly amount: Money;
+  /** `YYYY-MM-DD`, a Córdoba calendar date. */
+  readonly paidOn: string;
+  readonly note: string | null;
+  readonly by: string;
+  readonly at: Date;
+}
 
 export interface StoredIntensiveRequest {
   readonly id: string;
@@ -27,6 +73,10 @@ export interface StoredIntensiveRequest {
   readonly price: Money | null;
   /** The project's deposit when the request was made. */
   readonly deposit: Money | null;
+  /** The full balance payment, once recorded; it stays after a cancellation. */
+  readonly balance: RequestBalance | null;
+  /** Set by a cancellation that had money to return, $0 included. */
+  readonly refund: Refund | null;
 }
 
 /** The same person already has a live request for this intensivo. */
@@ -54,11 +104,28 @@ export interface ConfirmInput {
   readonly at: Date;
 }
 
+/** The balance was already paid; a request takes one full payment. */
+export type BalanceAlreadyPaid = { readonly kind: "balance-already-paid" };
+
+export interface BalanceInput {
+  readonly id: string;
+  /** What the deposit left unpaid; the caller computed it from the snapshot. */
+  readonly amount: Money;
+  readonly paidOn: string;
+  readonly note: string | null;
+  readonly by: string;
+  readonly at: Date;
+}
+
 export interface CancelInput {
   readonly id: string;
   readonly reason: string;
   readonly by: string;
   readonly at: Date;
+  /** The Córdoba calendar day the refund date may not pass. */
+  readonly today: string;
+  /** Required from a confirmed request, refused from a pending one. */
+  readonly refund?: Refund;
 }
 
 export type RequestFilter = IntensiveRequestStatus | "all";
@@ -84,15 +151,40 @@ export interface IntensiveRequestRepository {
   confirmedSeats(intensiveId: string): Promise<number>;
   /**
    * Atomically confirms a pending request while confirmed seats stay under
-   * `capacity`. Two concurrent confirmations never exceed it.
+   * `capacity`. Two concurrent confirmations never exceed it. In the same
+   * transaction the chosen project's materials are copied to the request and
+   * taken from the studio stock (a line whose stock is short waits on a
+   * supplier order instead).
    */
   confirm(
     input: ConfirmInput,
   ): Promise<
     Result<StoredIntensiveRequest, NotFound | IllegalTransition | IntensiveFull>
   >;
-  /** Cancels a pending or confirmed request; a confirmed one frees its seat. */
+  /**
+   * Records the one full balance payment of a confirmed request. A pending or
+   * cancelled request refuses it, and so does a second payment.
+   */
+  recordBalance(
+    input: BalanceInput,
+  ): Promise<
+    Result<
+      StoredIntensiveRequest,
+      NotFound | IllegalTransition | BalanceAlreadyPaid
+    >
+  >;
+  /**
+   * Cancels a pending or confirmed request in one transaction: a confirmed
+   * one frees its seat, returns the units it took from the stock once and
+   * records the refund (checked against what it paid). Cancelling again
+   * changes nothing.
+   */
   cancel(
     input: CancelInput,
-  ): Promise<Result<StoredIntensiveRequest, NotFound | IllegalTransition>>;
+  ): Promise<
+    Result<
+      StoredIntensiveRequest,
+      NotFound | IllegalTransition | InvalidRequestRefund
+    >
+  >;
 }

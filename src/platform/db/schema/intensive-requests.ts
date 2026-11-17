@@ -52,6 +52,14 @@ export const intensiveSeatRequest = pgTable(
     balanceNote: text("balance_note"),
     balanceBy: text("balance_by"),
     balanceAt: timestamp("balance_at", { withTimezone: true }),
+    /**
+     * What a cancellation gave back (zero allowed), kept next to the payments
+     * that stay as history. Who and when come from `cancelled_by/at`.
+     */
+    refundCentavos: bigint("refund_centavos", { mode: "number" }),
+    // `YYYY-MM-DD` Córdoba calendar day, like `paid_on`.
+    refundedOn: text("refunded_on"),
+    refundNote: text("refund_note"),
   },
   (table) => [
     uniqueIndex("intensive_seat_request_public_id_unique").on(table.publicId),
@@ -81,8 +89,8 @@ export const intensiveSeatRequest = pgTable(
               AND ${table.priceCentavos} % 100 = 0
               AND ${table.depositCentavos} % 100 = 0)`,
     ),
-    // The balance is recorded all or nothing, only on a confirmed request,
-    // and for exactly what the deposit left unpaid.
+    // The balance is recorded all or nothing and for exactly what the deposit
+    // left unpaid (any positive amount while the snapshot is missing).
     check(
       "intensive_seat_request_balance_complete_check",
       sql`(${table.balanceCentavos} IS NULL AND ${table.balancePaidOn} IS NULL
@@ -91,15 +99,38 @@ export const intensiveSeatRequest = pgTable(
           OR (${table.balanceCentavos} IS NOT NULL AND ${table.balancePaidOn} IS NOT NULL
               AND ${table.balanceBy} IS NOT NULL AND ${table.balanceAt} IS NOT NULL)`,
     ),
+    // A cancelled request keeps the balance it paid, as history next to its
+    // refund. Every term is explicit: a CHECK that evaluates to NULL passes.
     check(
       "intensive_seat_request_balance_status_check",
-      sql`${table.balanceCentavos} IS NULL OR ${table.status} = 'confirmed'`,
+      sql`${table.balanceCentavos} IS NULL
+          OR (${table.status} IN ('confirmed', 'cancelled') AND ${table.paidCentavos} IS NOT NULL)`,
     ),
     check(
       "intensive_seat_request_balance_amount_check",
       sql`${table.balanceCentavos} IS NULL
-          OR (${table.priceCentavos} IS NOT NULL
-              AND ${table.balanceCentavos} = ${table.priceCentavos} - ${table.depositCentavos})`,
+          OR (${table.balanceCentavos} > 0
+              AND (${table.priceCentavos} IS NULL
+                   OR ${table.balanceCentavos} = ${table.priceCentavos} - ${table.depositCentavos}))`,
+    ),
+    // The refund is recorded all or nothing, only on a cancelled request, in
+    // whole pesos and never above what was paid (deposit plus balance).
+    check(
+      "intensive_seat_request_refund_complete_check",
+      sql`(${table.refundCentavos} IS NULL AND ${table.refundedOn} IS NULL
+            AND ${table.refundNote} IS NULL)
+          OR (${table.refundCentavos} IS NOT NULL AND ${table.refundedOn} IS NOT NULL)`,
+    ),
+    check(
+      "intensive_seat_request_refund_status_check",
+      sql`${table.refundCentavos} IS NULL OR ${table.status} = 'cancelled'`,
+    ),
+    check(
+      "intensive_seat_request_refund_amount_check",
+      sql`${table.refundCentavos} IS NULL
+          OR (${table.refundCentavos} >= 0 AND ${table.refundCentavos} % 100 = 0
+              AND ${table.paidCentavos} IS NOT NULL
+              AND ${table.refundCentavos} <= ${table.paidCentavos} + COALESCE(${table.balanceCentavos}, 0))`,
     ),
   ],
 );

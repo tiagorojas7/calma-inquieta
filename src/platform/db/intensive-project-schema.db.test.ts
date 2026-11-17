@@ -51,6 +51,11 @@ interface RequestValues {
   readonly balancePaidOn?: string | null;
   readonly balanceBy?: string | null;
   readonly balanceAt?: Date | null;
+  /** The deposit paid; a confirmed request defaults to 1.000.000 and the others to none. */
+  readonly paid?: number | null;
+  readonly refund?: number | null;
+  readonly refundedOn?: string | null;
+  readonly refundNote?: string | null;
 }
 
 const INSERT_REQUEST = `
@@ -58,23 +63,25 @@ const INSERT_REQUEST = `
     id, public_id, intensive_id, status, full_name, email, phone_digits,
     policy_accepted_at, created_at, paid_centavos, paid_on, project_id,
     price_centavos, deposit_centavos, balance_centavos, balance_paid_on,
-    balance_by, balance_at
+    balance_by, balance_at, refund_centavos, refunded_on, refund_note
   ) VALUES (
     $1, $2, $3, $4, 'Ana Perez', $5, '5493515551234', now(), now(), $6, $7,
-    $8, $9, $10, $11, $12, $13, $14
+    $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
   )`;
 
 function request(values: RequestValues = {}): unknown[] {
   const id = values.id ?? nextId();
   const confirmed = (values.status ?? "confirmed") === "confirmed";
+  const paid =
+    values.paid === undefined ? (confirmed ? 1000000 : null) : values.paid;
   return [
     id,
     `req_${id.slice(-12)}`,
     INTENSIVE,
     values.status ?? "confirmed",
     `${id.slice(-12)}@example.com`,
-    confirmed ? 1000000 : null,
-    confirmed ? "2026-11-01" : null,
+    paid,
+    paid === null ? null : "2026-11-01",
     values.projectId === undefined ? null : values.projectId,
     values.price === undefined ? 3000000 : values.price,
     values.deposit === undefined ? 1000000 : values.deposit,
@@ -82,6 +89,9 @@ function request(values: RequestValues = {}): unknown[] {
     values.balancePaidOn === undefined ? null : values.balancePaidOn,
     values.balanceBy === undefined ? null : values.balanceBy,
     values.balanceAt === undefined ? null : values.balanceAt,
+    values.refund === undefined ? null : values.refund,
+    values.refundedOn === undefined ? null : values.refundedOn,
+    values.refundNote === undefined ? null : values.refundNote,
   ];
 }
 
@@ -307,24 +317,36 @@ describe("workshop project schema", () => {
       code: "23514",
       constraint: "intensive_seat_request_balance_amount_check",
     });
-    await expect(
-      client.query(
-        INSERT_REQUEST,
-        request({
-          price: null,
-          deposit: null,
-          balance: 2000000,
-          balancePaidOn: "2026-12-01",
-          balanceBy: "admin@example.com",
-          balanceAt: new Date(),
-        }),
-      ),
-    ).rejects.toMatchObject({
-      constraint: "intensive_seat_request_balance_amount_check",
-    });
   });
 
-  it("rejects a balance unless the request is confirmed", async () => {
+  it("accepts a positive balance while the snapshot is missing and refuses a zero or negative one", async () => {
+    const paidBalance = (balance: number, price: number | null = null) =>
+      request({
+        price,
+        deposit: price,
+        balance,
+        balancePaidOn: "2026-12-01",
+        balanceBy: "admin@example.com",
+        balanceAt: new Date(),
+      });
+
+    await expect(
+      client.query(INSERT_REQUEST, paidBalance(2000000)),
+    ).resolves.toBeDefined();
+    for (const [balance, price] of [
+      [0, null],
+      [-100, null],
+      [0, 1000000],
+    ] as const)
+      await expect(
+        client.query(INSERT_REQUEST, paidBalance(balance, price)),
+      ).rejects.toMatchObject({
+        code: "23514",
+        constraint: "intensive_seat_request_balance_amount_check",
+      });
+  });
+
+  it("rejects a balance on a request that never paid its deposit", async () => {
     for (const status of ["pending_confirmation", "cancelled"])
       await expect(
         client.query(
@@ -343,6 +365,24 @@ describe("workshop project schema", () => {
       });
   });
 
+  it("keeps a paid balance on a cancelled request", async () => {
+    await expect(
+      client.query(
+        INSERT_REQUEST,
+        request({
+          status: "cancelled",
+          paid: 1000000,
+          balance: 2000000,
+          balancePaidOn: "2026-12-01",
+          balanceBy: "admin@example.com",
+          balanceAt: new Date(),
+          refund: 3000000,
+          refundedOn: "2026-12-02",
+        }),
+      ),
+    ).resolves.toBeDefined();
+  });
+
   it("takes the balance fields all or nothing", async () => {
     await expect(
       client.query(
@@ -358,6 +398,87 @@ describe("workshop project schema", () => {
     ).rejects.toMatchObject({
       constraint: "intensive_seat_request_balance_complete_check",
     });
+  });
+
+  it("accepts a refund of 0 up to deposit plus balance on a cancelled request", async () => {
+    const cancelled = (refund: number, balance: number | null = null) =>
+      request({
+        status: "cancelled",
+        paid: 1000000,
+        refund,
+        refundedOn: "2026-12-02",
+        refundNote: refund === 0 ? null : "parcial",
+        ...(balance === null
+          ? {}
+          : {
+              balance,
+              balancePaidOn: "2026-12-01",
+              balanceBy: "admin@example.com",
+              balanceAt: new Date(),
+            }),
+      });
+
+    for (const values of [
+      cancelled(0),
+      cancelled(1000000),
+      cancelled(3000000, 2000000),
+    ])
+      await expect(client.query(INSERT_REQUEST, values)).resolves.toBeDefined();
+  });
+
+  it("rejects a refund above what was paid, a fractional or negative one, and one with no deposit", async () => {
+    const refunded = (values: Partial<RequestValues>) =>
+      request({
+        status: "cancelled",
+        paid: 1000000,
+        refundedOn: "2026-12-02",
+        ...values,
+      });
+
+    for (const values of [
+      refunded({ refund: 1000100 }),
+      refunded({ refund: 50 }),
+      refunded({ refund: -100 }),
+      refunded({ refund: 3000000 }),
+      refunded({ paid: null, refund: 0 }),
+    ])
+      await expect(client.query(INSERT_REQUEST, values)).rejects.toMatchObject({
+        code: "23514",
+        constraint: "intensive_seat_request_refund_amount_check",
+      });
+  });
+
+  it("rejects a refund unless the request is cancelled", async () => {
+    for (const status of ["pending_confirmation", "confirmed"])
+      await expect(
+        client.query(
+          INSERT_REQUEST,
+          request({
+            status,
+            paid: 1000000,
+            refund: 0,
+            refundedOn: "2026-12-02",
+          }),
+        ),
+      ).rejects.toMatchObject({
+        code: "23514",
+        constraint: "intensive_seat_request_refund_status_check",
+      });
+  });
+
+  it("takes the refund fields all or nothing", async () => {
+    const half = (values: Partial<RequestValues>) =>
+      request({ status: "cancelled", paid: 1000000, ...values });
+
+    for (const values of [
+      half({ refund: 0 }),
+      half({ refundedOn: "2026-12-02" }),
+      half({ refundNote: "sin monto" }),
+    ])
+      await expect(client.query(INSERT_REQUEST, values)).rejects.toMatchObject({
+        code: "23514",
+        constraint: "intensive_seat_request_refund_complete_check",
+      });
   });
 
   it("guards the allocated materials of a request and removes them with it", async () => {

@@ -109,6 +109,7 @@ import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrast
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
 import { createOrderStockAdapter } from "./order-stock-adapter";
+import { createRequestStockAdapter } from "./request-stock-adapter";
 import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
@@ -439,7 +440,10 @@ export function createRequestServices(
     intensiveRequests: config.databaseUrl
       ? withIntensiveRequestEmails(
           createIntensiveRequestService({
-            repository: createDrizzleIntensiveRequestRepository(openSession),
+            repository: createDrizzleIntensiveRequestRepository(
+              openSession,
+              createRequestStockAdapter(stockStore),
+            ),
             offers: createIntensiveSeatOfferLookup({
               repository: intensiveRepository,
               media,

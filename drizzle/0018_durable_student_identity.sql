@@ -245,6 +245,9 @@ ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_paid_on" text;--> state
 ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_note" text;--> statement-breakpoint
 ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_by" text;--> statement-breakpoint
 ALTER TABLE "intensive_seat_request" ADD COLUMN "balance_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "refund_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "refunded_on" text;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "refund_note" text;--> statement-breakpoint
 ALTER TABLE "intensive_request_material" ADD CONSTRAINT "intensive_request_material_request_id_intensive_seat_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."intensive_seat_request"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "intensive_project" ADD CONSTRAINT "intensive_project_intensive_id_intensive_workshop_id_fk" FOREIGN KEY ("intensive_id") REFERENCES "public"."intensive_workshop"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "intensive_project" ADD CONSTRAINT "intensive_project_media_asset_id_media_asset_id_fk" FOREIGN KEY ("media_asset_id") REFERENCES "public"."media_asset"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
@@ -291,7 +294,17 @@ ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_bala
             AND "intensive_seat_request"."balance_note" IS NULL)
           OR ("intensive_seat_request"."balance_centavos" IS NOT NULL AND "intensive_seat_request"."balance_paid_on" IS NOT NULL
               AND "intensive_seat_request"."balance_by" IS NOT NULL AND "intensive_seat_request"."balance_at" IS NOT NULL));--> statement-breakpoint
-ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_status_check" CHECK ("intensive_seat_request"."balance_centavos" IS NULL OR "intensive_seat_request"."status" = 'confirmed');--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_status_check" CHECK ("intensive_seat_request"."balance_centavos" IS NULL
+          OR ("intensive_seat_request"."status" IN ('confirmed', 'cancelled') AND "intensive_seat_request"."paid_centavos" IS NOT NULL));--> statement-breakpoint
 ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_balance_amount_check" CHECK ("intensive_seat_request"."balance_centavos" IS NULL
-          OR ("intensive_seat_request"."price_centavos" IS NOT NULL
-              AND "intensive_seat_request"."balance_centavos" = "intensive_seat_request"."price_centavos" - "intensive_seat_request"."deposit_centavos"));
+          OR ("intensive_seat_request"."balance_centavos" > 0
+              AND ("intensive_seat_request"."price_centavos" IS NULL
+                   OR "intensive_seat_request"."balance_centavos" = "intensive_seat_request"."price_centavos" - "intensive_seat_request"."deposit_centavos")));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_refund_complete_check" CHECK (("intensive_seat_request"."refund_centavos" IS NULL AND "intensive_seat_request"."refunded_on" IS NULL
+            AND "intensive_seat_request"."refund_note" IS NULL)
+          OR ("intensive_seat_request"."refund_centavos" IS NOT NULL AND "intensive_seat_request"."refunded_on" IS NOT NULL));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_refund_status_check" CHECK ("intensive_seat_request"."refund_centavos" IS NULL OR "intensive_seat_request"."status" = 'cancelled');--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_refund_amount_check" CHECK ("intensive_seat_request"."refund_centavos" IS NULL
+          OR ("intensive_seat_request"."refund_centavos" >= 0 AND "intensive_seat_request"."refund_centavos" % 100 = 0
+              AND "intensive_seat_request"."paid_centavos" IS NOT NULL
+              AND "intensive_seat_request"."refund_centavos" <= "intensive_seat_request"."paid_centavos" + COALESCE("intensive_seat_request"."balance_centavos", 0)));

@@ -1,15 +1,24 @@
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { err, ok, Money } from "~/modules/_shared";
 import { intensiveSeatRequest } from "~/platform/db/schema/intensive-requests";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type {
+  BalanceInput,
   CancelInput,
   ConfirmInput,
   IntensiveRequestRepository,
   RequestFilter,
+  RequestStockPort,
   StoredIntensiveRequest,
 } from "../application/intensive-request-repository";
-import { isIntensiveRequestStatus } from "../domain/intensive-request-core";
+import {
+  checkRefund,
+  isIntensiveRequestStatus,
+} from "../domain/intensive-request-core";
+import {
+  allocateProjectMaterials,
+  returnRequestStock,
+} from "./request-material-lines";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type Row = typeof intensiveSeatRequest.$inferSelect;
@@ -17,6 +26,9 @@ type Row = typeof intensiveSeatRequest.$inferSelect;
 type ConfirmResult = Awaited<ReturnType<IntensiveRequestRepository["confirm"]>>;
 type InsertResult = Awaited<ReturnType<IntensiveRequestRepository["insert"]>>;
 type CancelResult = Awaited<ReturnType<IntensiveRequestRepository["cancel"]>>;
+type BalanceResult = Awaited<
+  ReturnType<IntensiveRequestRepository["recordBalance"]>
+>;
 
 const LIVE_EMAIL_INDEX = "intensive_seat_request_live_email_unique";
 
@@ -50,6 +62,28 @@ function toStored(row: Row): StoredIntensiveRequest {
     projectId: row.projectId,
     price: row.priceCentavos === null ? null : toMoney(row.priceCentavos),
     deposit: row.depositCentavos === null ? null : toMoney(row.depositCentavos),
+    // The columns are all or nothing (CHECK), so the amount decides.
+    balance:
+      row.balanceCentavos === null ||
+      row.balancePaidOn === null ||
+      row.balanceBy === null ||
+      row.balanceAt === null
+        ? null
+        : {
+            amount: toMoney(row.balanceCentavos),
+            paidOn: row.balancePaidOn,
+            note: row.balanceNote,
+            by: row.balanceBy,
+            at: row.balanceAt,
+          },
+    refund:
+      row.refundCentavos === null || row.refundedOn === null
+        ? null
+        : {
+            amount: toMoney(row.refundCentavos),
+            refundedOn: row.refundedOn,
+            note: row.refundNote,
+          },
   };
 }
 
@@ -71,9 +105,13 @@ function isLiveEmailConflict(error: unknown): boolean {
   return false;
 }
 
-/** One short-lived session per call. */
+/**
+ * One short-lived session per call. `stock` is the port confirm and cancel
+ * move the project materials through, inside their own transaction.
+ */
 export function createDrizzleIntensiveRequestRepository(
   openSession: DbSessionFactory,
+  stock: RequestStockPort<Db>,
 ): IntensiveRequestRepository {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -133,6 +171,14 @@ export function createDrizzleIntensiveRequestRepository(
               projectId: request.projectId,
               priceCentavos: request.price?.toCentavos() ?? null,
               depositCentavos: request.deposit?.toCentavos() ?? null,
+              balanceCentavos: request.balance?.amount.toCentavos() ?? null,
+              balancePaidOn: request.balance?.paidOn ?? null,
+              balanceNote: request.balance?.note ?? null,
+              balanceBy: request.balance?.by ?? null,
+              balanceAt: request.balance?.at ?? null,
+              refundCentavos: request.refund?.amount.toCentavos() ?? null,
+              refundedOn: request.refund?.refundedOn ?? null,
+              refundNote: request.refund?.note ?? null,
             });
             return ok(undefined);
           });
@@ -223,7 +269,16 @@ export function createDrizzleIntensiveRequestRepository(
             )
             .returning();
           const row = updated[0];
-          if (row) return ok(toStored(row));
+          if (row) {
+            // Same transaction as the seat: the units come out of the stock
+            // exactly when the request takes its place, or neither happens.
+            if (row.projectId !== null)
+              await allocateProjectMaterials(tx, stock, row.id, row.projectId, {
+                by: input.by,
+                at: input.at,
+              });
+            return ok(toStored(row));
+          }
           const latest = await byId(tx, input.id);
           if (!latest) return err({ kind: "not-found" as const });
           if (latest.status !== "pending_confirmation")
@@ -235,29 +290,89 @@ export function createDrizzleIntensiveRequestRepository(
         }),
       ),
 
+    recordBalance: (input: BalanceInput) =>
+      withSession((db) =>
+        db.transaction(async (tx): Promise<BalanceResult> => {
+          const [current] = await tx
+            .select()
+            .from(intensiveSeatRequest)
+            .where(eq(intensiveSeatRequest.id, input.id))
+            .for("update");
+          if (!current) return err({ kind: "not-found" as const });
+          const stored = toStored(current);
+          if (stored.status !== "confirmed")
+            return err({
+              kind: "illegal-transition" as const,
+              from: stored.status,
+            });
+          if (stored.balance !== null)
+            return err({ kind: "balance-already-paid" as const });
+          const [row] = await tx
+            .update(intensiveSeatRequest)
+            .set({
+              balanceCentavos: input.amount.toCentavos(),
+              balancePaidOn: input.paidOn,
+              balanceNote: input.note,
+              balanceBy: input.by,
+              balanceAt: input.at,
+            })
+            .where(eq(intensiveSeatRequest.id, input.id))
+            .returning();
+          if (!row) throw new Error("balance update lost its row");
+          return ok(toStored(row));
+        }),
+      ),
+
     cancel: (input: CancelInput) =>
-      withSession(async (db): Promise<CancelResult> => {
-        const updated = await db
-          .update(intensiveSeatRequest)
-          .set({
-            status: "cancelled",
-            cancelReason: input.reason,
-            cancelledBy: input.by,
-            cancelledAt: input.at,
-          })
-          .where(
-            and(
-              eq(intensiveSeatRequest.id, input.id),
-              ne(intensiveSeatRequest.status, "cancelled"),
-            ),
-          )
-          .returning();
-        const row = updated[0];
-        if (row) return ok(toStored(row));
-        const existing = await byId(db, input.id);
-        return existing
-          ? err({ kind: "illegal-transition", from: "cancelled" })
-          : err({ kind: "not-found" });
-      }),
+      withSession((db) =>
+        db.transaction(async (tx): Promise<CancelResult> => {
+          // The row lock makes a repeated or concurrent cancel see the result
+          // of the first, so the units go back to the stock exactly once.
+          const [current] = await tx
+            .select()
+            .from(intensiveSeatRequest)
+            .where(eq(intensiveSeatRequest.id, input.id))
+            .for("update");
+          if (!current) return err({ kind: "not-found" as const });
+          const stored = toStored(current);
+          if (stored.status === "cancelled")
+            return err({
+              kind: "illegal-transition" as const,
+              from: "cancelled" as const,
+            });
+          const refund = checkRefund(
+            {
+              status: stored.status,
+              deposit: stored.paidAmount,
+              depositPaidOn: stored.paidOn,
+              balance: stored.balance?.amount ?? null,
+              balancePaidOn: stored.balance?.paidOn ?? null,
+            },
+            input.refund,
+            input.today,
+          );
+          if (!refund.ok) return refund;
+          const [row] = await tx
+            .update(intensiveSeatRequest)
+            .set({
+              status: "cancelled",
+              cancelReason: input.reason,
+              cancelledBy: input.by,
+              cancelledAt: input.at,
+              refundCentavos: input.refund?.amount.toCentavos() ?? null,
+              refundedOn: input.refund?.refundedOn ?? null,
+              refundNote: input.refund?.note ?? null,
+            })
+            .where(eq(intensiveSeatRequest.id, input.id))
+            .returning();
+          if (!row) throw new Error("cancel update lost its row");
+          if (stored.status === "confirmed")
+            await returnRequestStock(tx, stock, input.id, {
+              by: input.by,
+              at: input.at,
+            });
+          return ok(toStored(row));
+        }),
+      ),
   };
 }

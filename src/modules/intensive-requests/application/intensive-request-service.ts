@@ -21,11 +21,16 @@ import {
 import { toWhatsAppDigits } from "~/modules/site-content";
 import {
   acceptsRequests,
+  balanceDue,
   cordobaDateOf,
+  parseRefund,
+  validateBalance,
   validateCancelReason,
   validateDeposit,
   type DepositField,
   type IntensiveRequestStatus,
+  type InvalidRequestRefund,
+  type RefundDraft,
 } from "../domain/intensive-request-core";
 import type {
   IntensiveOffer,
@@ -33,6 +38,7 @@ import type {
   IntensiveOfferProject,
 } from "./intensive-offer-lookup";
 import type {
+  BalanceAlreadyPaid,
   DuplicateRequest,
   IllegalTransition,
   IntensiveFull,
@@ -102,17 +108,36 @@ export interface ConfirmDepositInput {
   readonly note: string;
 }
 
+/** The deposit already covered the whole price: there is nothing to collect. */
+export type NoBalanceDue = { readonly kind: "no-balance-due" };
+
+export interface RecordBalanceInput {
+  readonly intensiveId: string;
+  readonly requestId: string;
+  readonly amount: string;
+  readonly paidOn: string;
+  readonly note: string;
+}
+
 export interface CancelRequestInput {
   readonly intensiveId: string;
   readonly requestId: string;
   readonly reason: string;
+  /** What a confirmed request gives back; a pending one records none. */
+  readonly refund?: RefundDraft;
 }
 
 type AdminFailure = Denied | NotFound | Unavailable;
 export type ConfirmDepositError =
   AdminFailure | Invalid<DepositField> | IllegalTransition | IntensiveFull;
+export type RecordBalanceError =
+  | AdminFailure
+  | Invalid<DepositField>
+  | IllegalTransition
+  | BalanceAlreadyPaid
+  | NoBalanceDue;
 export type CancelRequestError =
-  AdminFailure | Invalid<"reason"> | IllegalTransition;
+  AdminFailure | Invalid<"reason"> | InvalidRequestRefund | IllegalTransition;
 
 export interface IntensiveRequestUseCases {
   /** Public: whether the intensivo takes requests and what it asks for. */
@@ -142,6 +167,11 @@ export interface IntensiveRequestUseCases {
     actor: MaybeActor,
     input: ConfirmDepositInput,
   ): Promise<Result<StoredIntensiveRequest, ConfirmDepositError>>;
+  /** Records the one full balance payment of a confirmed request. */
+  recordBalance(
+    actor: MaybeActor,
+    input: RecordBalanceInput,
+  ): Promise<Result<StoredIntensiveRequest, RecordBalanceError>>;
   cancel(
     actor: MaybeActor,
     input: CancelRequestInput,
@@ -284,6 +314,8 @@ export function createIntensiveRequestService(
           projectId: project.id,
           price: project.price,
           deposit: project.deposit,
+          balance: null,
+          refund: null,
         }),
       );
       if (!inserted.ok) return inserted;
@@ -353,20 +385,19 @@ export function createIntensiveRequestService(
       if (!found.ok) return found;
       const intensivo = found.value;
       if (intensivo === null) return err({ kind: "not-found" });
-      const now = clock.now();
-      const deposit = validateDeposit(
-        input,
-        intensivo.deposit,
-        cordobaDateOf(now),
-      );
-      if (!deposit.ok) return deposit;
       const owned = await ownedRequest(input.intensiveId, input.requestId);
       if (!owned.ok) return owned;
+      // The deposit the person was quoted; a request made before projects
+      // existed has no snapshot and keeps the workshop's terms.
+      const due = owned.value.deposit ?? intensivo.deposit;
+      const now = clock.now();
+      const deposit = validateDeposit(input, due, cordobaDateOf(now));
+      if (!deposit.ok) return deposit;
       const confirmed = await unavailableOnReject(
         repository.confirm({
           id: input.requestId,
           capacity: intensivo.capacity,
-          amount: intensivo.deposit,
+          amount: due,
           paidOn: deposit.value.paidOn,
           note: deposit.value.note,
           by: authorized.value.email,
@@ -376,19 +407,68 @@ export function createIntensiveRequestService(
       return confirmed.ok ? confirmed.value : confirmed;
     },
 
+    async recordBalance(actor, input) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const found = await unavailableOnReject(
+        offers.findById(input.intensiveId),
+      );
+      if (!found.ok) return found;
+      const intensivo = found.value;
+      if (intensivo === null) return err({ kind: "not-found" });
+      const owned = await ownedRequest(input.intensiveId, input.requestId);
+      if (!owned.ok) return owned;
+      const request = owned.value;
+      if (request.status !== "confirmed")
+        return err({ kind: "illegal-transition", from: request.status });
+      if (request.balance !== null)
+        return err({ kind: "balance-already-paid" });
+      const due = balanceDue(
+        request.price ?? intensivo.price,
+        request.deposit ?? intensivo.deposit,
+      );
+      if (due.isZero() || due.isNegative())
+        return err({ kind: "no-balance-due" });
+      const now = clock.now();
+      const payment = validateBalance(
+        input,
+        due,
+        cordobaDateOf(now),
+        request.paidOn,
+      );
+      if (!payment.ok) return payment;
+      const recorded = await unavailableOnReject(
+        repository.recordBalance({
+          id: input.requestId,
+          amount: due,
+          paidOn: payment.value.paidOn,
+          note: payment.value.note,
+          by: authorized.value.email,
+          at: now,
+        }),
+      );
+      return recorded.ok ? recorded.value : recorded;
+    },
+
     async cancel(actor, input) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       const reason = validateCancelReason(input.reason);
       if (!reason.ok) return reason;
+      const refund =
+        input.refund === undefined ? undefined : parseRefund(input.refund);
+      if (refund !== undefined && !refund.ok) return refund;
       const owned = await ownedRequest(input.intensiveId, input.requestId);
       if (!owned.ok) return owned;
+      const now = clock.now();
       const cancelled = await unavailableOnReject(
         repository.cancel({
           id: input.requestId,
           reason: reason.value,
           by: authorized.value.email,
-          at: clock.now(),
+          at: now,
+          today: cordobaDateOf(now),
+          ...(refund === undefined ? {} : { refund: refund.value }),
         }),
       );
       return cancelled.ok ? cancelled.value : cancelled;
@@ -422,6 +502,7 @@ export function createUnavailableIntensiveRequestService(): IntensiveRequestUseC
     getRequestByPublicId: fail,
     overview: failAdmin,
     confirm: failAdmin,
+    recordBalance: failAdmin,
     cancel: failAdmin,
   };
 }

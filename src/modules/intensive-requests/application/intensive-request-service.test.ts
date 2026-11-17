@@ -92,6 +92,8 @@ function setup(intensivo: IntensiveOffer | null = offer()) {
 const ADMIN = testAdminActor("duena@example.com");
 const SLUG = "intensivo-de-ceramica";
 const DEPOSIT_FORM = { amount: "15000", paidOn: "2026-10-27", note: "" };
+const BALANCE_FORM = { amount: "25000", paidOn: "2026-10-28", note: "" };
+const REFUND_FORM = { amount: "0", refundedOn: "2026-10-28" };
 
 async function onlyRequestId(
   service: ReturnType<typeof setup>["service"],
@@ -542,6 +544,13 @@ describe("admin", () => {
       }),
     ).toEqual(denied);
     expect(
+      await service.recordBalance(null, {
+        intensiveId: INTENSIVE_ID,
+        requestId: "x",
+        ...BALANCE_FORM,
+      }),
+    ).toEqual(denied);
+    expect(
       await service.cancel(null, {
         intensiveId: INTENSIVE_ID,
         requestId: "x",
@@ -682,6 +691,7 @@ describe("admin", () => {
       intensiveId: INTENSIVE_ID,
       requestId,
       reason: "  no puede asistir ",
+      refund: REFUND_FORM,
     });
 
     expect(cancelled).toMatchObject({
@@ -707,5 +717,367 @@ describe("admin", () => {
       ok: false,
       error: { kind: "invalid", issues: [{ field: "reason" }] },
     });
+  });
+
+  it("cancels a pending request with no refund and leaves it unpaid", async () => {
+    const { service } = setup();
+    await pendingRequest(service);
+    const requestId = await onlyRequestId(service);
+
+    const cancelled = await service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "cambió de idea",
+    });
+
+    expect(cancelled).toMatchObject({
+      ok: true,
+      value: { status: "cancelled", refund: null, paidAmount: null },
+    });
+  });
+});
+
+/** A request that chose a project, confirmed with the deposit it was quoted. */
+async function confirmedRequest(
+  context: ReturnType<typeof setup>,
+  projectId = PROJECT_A.id,
+  deposit = "15000",
+) {
+  const sent = await context.service.requestSeat({
+    slug: SLUG,
+    projectId,
+    student: student(),
+  });
+  if (!sent.ok) throw new Error("request refused");
+  const requestId = await onlyRequestId(context.service);
+  const confirmed = await context.service.confirm(ADMIN, {
+    intensiveId: INTENSIVE_ID,
+    requestId,
+    ...DEPOSIT_FORM,
+    amount: deposit,
+  });
+  if (!confirmed.ok) throw new Error("confirm refused");
+  return requestId;
+}
+
+describe("confirming against the request snapshot", () => {
+  it("asks for the deposit the person was quoted, not the workshop's", async () => {
+    const context = setup(offer({ projects: [PROJECT_A, PROJECT_B] }));
+    await context.service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+    const requestId = await onlyRequestId(context.service);
+    const base = { intensiveId: INTENSIVE_ID, requestId, ...DEPOSIT_FORM };
+
+    const workshopDeposit = await context.service.confirm(ADMIN, base);
+    const quoted = await context.service.confirm(ADMIN, {
+      ...base,
+      amount: "10.000",
+    });
+
+    expect(workshopDeposit).toMatchObject({
+      ok: false,
+      error: { kind: "invalid", issues: [{ field: "amount" }] },
+    });
+    expect(quoted).toMatchObject({ ok: true, value: { status: "confirmed" } });
+    expect(quoted.ok && quoted.value.paidAmount?.toCentavos()).toBe(1_000_000);
+  });
+
+  it("keeps asking for the workshop deposit when the request has no snapshot", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+    const [stored] = [...repository.requests.values()];
+    if (!stored) throw new Error("no request");
+    repository.requests.set(stored.id, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const confirmed = await service.confirm(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId: stored.id,
+      ...DEPOSIT_FORM,
+    });
+
+    expect(confirmed.ok && confirmed.value.paidAmount?.toCentavos()).toBe(
+      1_500_000,
+    );
+  });
+});
+
+describe("recordBalance", () => {
+  const balanceOf = (
+    requestId: string,
+    over: Partial<typeof BALANCE_FORM> = {},
+  ) => ({
+    intensiveId: INTENSIVE_ID,
+    requestId,
+    ...BALANCE_FORM,
+    ...over,
+  });
+
+  it("records the snapshot price minus the snapshot deposit with who and when", async () => {
+    const context = setup(offer({ projects: [PROJECT_A, PROJECT_B] }));
+    const requestId = await confirmedRequest(context, PROJECT_B.id, "10000");
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { amount: "$ 20.000", note: " efectivo " }),
+    );
+
+    expect(paid).toMatchObject({
+      ok: true,
+      value: {
+        status: "confirmed",
+        balance: {
+          paidOn: "2026-10-28",
+          note: "efectivo",
+          by: "duena@example.com",
+          at: NOW,
+        },
+      },
+    });
+    expect(paid.ok && paid.value.balance?.amount.toCentavos()).toBe(2_000_000);
+  });
+
+  it("uses the workshop terms for a request without a snapshot", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    const stored = context.repository.requests.get(requestId);
+    if (!stored) throw new Error("no request");
+    context.repository.requests.set(requestId, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId),
+    );
+
+    expect(paid.ok && paid.value.balance?.amount.toCentavos()).toBe(2_500_000);
+  });
+
+  it("refuses an amount that is not the whole balance, a future date and a date before the deposit", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    const refused = async (over: Partial<typeof BALANCE_FORM>) => {
+      const result = await context.service.recordBalance(
+        ADMIN,
+        balanceOf(requestId, over),
+      );
+      return result.ok || result.error.kind !== "invalid"
+        ? []
+        : result.error.issues.map((issue) => issue.field);
+    };
+
+    expect(await refused({ amount: "10000" })).toEqual(["amount"]);
+    expect(await refused({ paidOn: "2026-10-29" })).toEqual(["paidOn"]);
+    expect(await refused({ paidOn: "2026-10-26" })).toEqual(["paidOn"]);
+    expect(context.repository.requests.get(requestId)?.balance).toBeNull();
+  });
+
+  it("refuses a second balance and keeps the first", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { note: "primero" }),
+    );
+
+    const again = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { note: "segundo" }),
+    );
+
+    expect(again).toEqual({
+      ok: false,
+      error: { kind: "balance-already-paid" },
+    });
+    expect(context.repository.requests.get(requestId)?.balance?.note).toBe(
+      "primero",
+    );
+  });
+
+  it("refuses the balance of a pending or cancelled request", async () => {
+    const context = setup();
+    await pendingRequest(context.service);
+    const requestId = await onlyRequestId(context.service);
+
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf(requestId)),
+    ).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "pending_confirmation" },
+    });
+    await context.service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "cambió de idea",
+    });
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf(requestId)),
+    ).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "cancelled" },
+    });
+  });
+
+  it("has no balance when the deposit already covered the price", async () => {
+    const whole = { ...PROJECT_A, price: pesos(15000), deposit: pesos(15000) };
+    const context = setup(offer({ projects: [whole] }));
+    const requestId = await confirmedRequest(context);
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId),
+    );
+
+    expect(paid).toEqual({ ok: false, error: { kind: "no-balance-due" } });
+  });
+
+  it("answers not-found for another intensivo and for an unknown request", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    expect(
+      await context.service.recordBalance(ADMIN, {
+        ...balanceOf(requestId),
+        intensiveId: "7c9d1a52-83f4-4b0e-a7a5-5f0e2c4b9a02",
+      }),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf("nope")),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
+  });
+});
+
+describe("cancelling a request that paid", () => {
+  const cancelWith = (
+    context: ReturnType<typeof setup>,
+    requestId: string,
+    refund?: { amount: string; refundedOn: string; note?: string },
+  ) =>
+    context.service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "no puede asistir",
+      ...(refund === undefined ? {} : { refund }),
+    });
+
+  it("records a zero refund and keeps the deposit as history", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    const cancelled = await cancelWith(context, requestId, REFUND_FORM);
+
+    expect(cancelled).toMatchObject({
+      ok: true,
+      value: { status: "cancelled", cancelledBy: "duena@example.com" },
+    });
+    expect(cancelled.ok && cancelled.value.refund?.amount.isZero()).toBe(true);
+    expect(cancelled.ok && cancelled.value.paidAmount?.toCentavos()).toBe(
+      1_500_000,
+    );
+  });
+
+  it("requires the refund, refuses one above what was paid, and leaves the request confirmed", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    expect(await cancelWith(context, requestId)).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "required" },
+    });
+    expect(
+      await cancelWith(context, requestId, { ...REFUND_FORM, amount: "15001" }),
+    ).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "above-paid" },
+    });
+    expect(context.repository.requests.get(requestId)?.status).toBe(
+      "confirmed",
+    );
+  });
+
+  it("lets a request that paid its balance get back up to deposit plus balance", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await context.service.recordBalance(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      ...BALANCE_FORM,
+    });
+
+    const above = await cancelWith(context, requestId, {
+      ...REFUND_FORM,
+      amount: "40001",
+    });
+    const all = await cancelWith(context, requestId, {
+      ...REFUND_FORM,
+      amount: "40.000",
+      note: " todo ",
+    });
+
+    expect(above).toMatchObject({ ok: false, error: { code: "above-paid" } });
+    expect(all.ok && all.value.refund).toEqual({
+      amount: pesos(40000),
+      refundedOn: "2026-10-28",
+      note: "todo",
+    });
+    expect(all.ok && all.value.balance?.amount.toCentavos()).toBe(2_500_000);
+  });
+
+  it("refuses a malformed amount, date or note, and any refund on a pending request", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    for (const [refund, field] of [
+      [{ ...REFUND_FORM, amount: "12,5" }, "amount"],
+      [{ ...REFUND_FORM, refundedOn: "ayer" }, "refundedOn"],
+      [{ ...REFUND_FORM, note: "x".repeat(301) }, "note"],
+    ] as const)
+      expect(await cancelWith(context, requestId, refund)).toMatchObject({
+        ok: false,
+        error: { kind: "invalid-refund", field },
+      });
+
+    const pending = setup();
+    await pendingRequest(pending.service);
+    expect(
+      await cancelWith(
+        pending,
+        await onlyRequestId(pending.service),
+        REFUND_FORM,
+      ),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "amount",
+        code: "not-refundable",
+      },
+    });
+  });
+
+  it("changes nothing on a second cancel", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await cancelWith(context, requestId, { ...REFUND_FORM, amount: "5000" });
+    const before = context.repository.requests.get(requestId);
+
+    const again = await cancelWith(context, requestId, REFUND_FORM);
+
+    expect(again).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "cancelled" },
+    });
+    expect(context.repository.requests.get(requestId)).toEqual(before);
   });
 });

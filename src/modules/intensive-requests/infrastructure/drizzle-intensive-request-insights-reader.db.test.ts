@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { buildStoredRequest } from "~/testing/contracts/intensive-request-repository.contract";
+import { createTestOrderStock } from "~/testing/db/order-stock";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -30,7 +31,10 @@ async function setup() {
     connectionString: database.url,
   });
   return {
-    repo: createDrizzleIntensiveRequestRepository(openSession),
+    repo: createDrizzleIntensiveRequestRepository(
+      openSession,
+      createTestOrderStock(openSession).port,
+    ),
     reader: createDrizzleIntensiveRequestInsightsReader(openSession),
   };
 }

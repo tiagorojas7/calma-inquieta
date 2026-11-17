@@ -1,12 +1,17 @@
 export * from "./domain/intensive-request-core";
 export type {
+  BalanceAlreadyPaid,
+  BalanceInput,
   CancelInput,
   ConfirmInput,
   DuplicateRequest,
   IllegalTransition,
   IntensiveFull,
   IntensiveRequestRepository,
+  RequestBalance,
   RequestFilter,
+  RequestStockPort,
+  RequestStockStamp,
   StoredIntensiveRequest,
   UnknownProject,
 } from "./application/intensive-request-repository";
@@ -20,6 +25,9 @@ export {
   type ConfirmDepositInput,
   type IntensiveRequestServiceDeps,
   type IntensiveRequestUseCases,
+  type NoBalanceDue,
+  type RecordBalanceError,
+  type RecordBalanceInput,
   type OfferError,
   type PublicRequestView,
   type RequestSeatError,

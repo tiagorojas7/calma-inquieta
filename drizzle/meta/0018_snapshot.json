@@ -1715,7 +1715,25 @@
                                                                                             "type":  "timestamp with time zone",
                                                                                             "primaryKey":  false,
                                                                                             "notNull":  false
-                                                                                        }
+                                                                                        },
+                                                                         "refund_centavos":  {
+                                                                                            "name":  "refund_centavos",
+                                                                                            "type":  "bigint",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                         },
+                                                                         "refunded_on":  {
+                                                                                            "name":  "refunded_on",
+                                                                                            "type":  "text",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                         },
+                                                                         "refund_note":  {
+                                                                                            "name":  "refund_note",
+                                                                                            "type":  "text",
+                                                                                            "primaryKey":  false,
+                                                                                            "notNull":  false
+                                                                         }
                                                                      },
                                                          "indexes":  {
                                                                          "intensive_seat_request_public_id_unique":  {
@@ -1814,12 +1832,24 @@
                                                                                                                                     },
                                                                                   "intensive_seat_request_balance_status_check":  {
                                                                                                                                       "name":  "intensive_seat_request_balance_status_check",
-                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL OR \"intensive_seat_request\".\"status\" = \u0027confirmed\u0027"
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"status\" IN ('confirmed', 'cancelled') AND \"intensive_seat_request\".\"paid_centavos\" IS NOT NULL)"
                                                                                                                                   },
                                                                                   "intensive_seat_request_balance_amount_check":  {
                                                                                                                                       "name":  "intensive_seat_request_balance_amount_check",
-                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"price_centavos\" IS NOT NULL\n              AND \"intensive_seat_request\".\"balance_centavos\" = \"intensive_seat_request\".\"price_centavos\" - \"intensive_seat_request\".\"deposit_centavos\")"
-                                                                                                                                  }
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"balance_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"balance_centavos\" > 0\n              AND (\"intensive_seat_request\".\"price_centavos\" IS NULL\n                   OR \"intensive_seat_request\".\"balance_centavos\" = \"intensive_seat_request\".\"price_centavos\" - \"intensive_seat_request\".\"deposit_centavos\"))"
+                                                                                                                                  },
+                                                                                  "intensive_seat_request_refund_complete_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_refund_complete_check",
+                                                                                                                                      "value":  "(\"intensive_seat_request\".\"refund_centavos\" IS NULL AND \"intensive_seat_request\".\"refunded_on\" IS NULL\n            AND \"intensive_seat_request\".\"refund_note\" IS NULL)\n          OR (\"intensive_seat_request\".\"refund_centavos\" IS NOT NULL AND \"intensive_seat_request\".\"refunded_on\" IS NOT NULL)"
+                                                                                  },
+                                                                                  "intensive_seat_request_refund_status_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_refund_status_check",
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"refund_centavos\" IS NULL OR \"intensive_seat_request\".\"status\" = 'cancelled'"
+                                                                                  },
+                                                                                  "intensive_seat_request_refund_amount_check":  {
+                                                                                                                                      "name":  "intensive_seat_request_refund_amount_check",
+                                                                                                                                      "value":  "\"intensive_seat_request\".\"refund_centavos\" IS NULL\n          OR (\"intensive_seat_request\".\"refund_centavos\" >= 0 AND \"intensive_seat_request\".\"refund_centavos\" % 100 = 0\n              AND \"intensive_seat_request\".\"paid_centavos\" IS NOT NULL\n              AND \"intensive_seat_request\".\"refund_centavos\" <= \"intensive_seat_request\".\"paid_centavos\" + COALESCE(\"intensive_seat_request\".\"balance_centavos\", 0))"
+                                                                                  }
                                                                               },
                                                          "isRLSEnabled":  false
                                                      },

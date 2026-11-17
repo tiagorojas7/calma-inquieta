@@ -442,6 +442,7 @@ export function createRequestServices(
             repository: createDrizzleIntensiveRequestRepository(openSession),
             offers: createIntensiveSeatOfferLookup({
               repository: intensiveRepository,
+              media,
               clock: systemClock,
             }),
             clock: systemClock,

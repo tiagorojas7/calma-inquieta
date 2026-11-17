@@ -6,7 +6,9 @@ import type { PublicIntensivo } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
 import {
   buildIntensiveOffer,
+  buildOfferProject,
   createInMemoryIntensiveRequests,
+  FAKE_SECOND_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
 import {
@@ -36,8 +38,14 @@ async function renderDetail(
   intensivos: readonly PublicIntensivo[],
   slug = "intensivo-demo",
   catalog = createFakePublicCatalog({ intensivos }),
+  intensiveRequests?: ReturnType<
+    typeof createInMemoryIntensiveRequests
+  >["service"],
 ) {
-  const services = createTestServices({ publicCatalog: catalog });
+  const services = createTestServices({
+    publicCatalog: catalog,
+    ...(intensiveRequests ? { intensiveRequests } : {}),
+  });
   const Stub = createRoutesStub([
     {
       path: "/",
@@ -125,6 +133,53 @@ describe("Intensivo detail", { timeout: 60_000 }, () => {
     });
     expect(breadcrumb.querySelector('a[href="/intensivos"]')).not.toBeNull();
     expect(container.querySelector("form")).toBeNull();
+    await expectNoAxeViolations(container, { page: true });
+  });
+
+  it("lists the projects with image, total and deposit instead of the workshop price", async () => {
+    const offer = buildIntensiveOffer({
+      slug: "intensivo-demo",
+      projects: [
+        buildOfferProject({
+          image: {
+            src: "/media/taza.webp",
+            alt: "Una taza",
+            width: 8,
+            height: 6,
+          },
+        }),
+        buildOfferProject({
+          id: FAKE_SECOND_PROJECT_ID,
+          name: "Plato hondo",
+          price: pesos(30000),
+          deposit: pesos(10000),
+        }),
+      ],
+    });
+    const { container } = await renderDetail(
+      [full],
+      "intensivo-demo",
+      undefined,
+      createInMemoryIntensiveRequests({ offer }).service,
+    );
+
+    const section = screen.getByRole("region", { name: "Proyectos" });
+    const items = within(section).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(
+      within(items[0] as HTMLElement).getByRole("heading", { level: 3 }),
+    ).toHaveTextContent("Taza de torno");
+    expect(items[0]?.textContent.replace(/\s/g, " ")).toContain("$ 40.000");
+    expect(items[0]?.textContent.replace(/\s/g, " ")).toContain("$ 15.000");
+    expect(within(items[0] as HTMLElement).getByRole("img")).toHaveAttribute(
+      "src",
+      "/media/taza.webp",
+    );
+    expect(items[1]?.textContent.replace(/\s/g, " ")).toContain("$ 30.000");
+    expect(items[1]?.querySelector("img")).toBeNull();
+    // The workshop price is replaced, so it cannot contradict a project's.
+    expect(container.textContent.replace(/\s/g, " ")).not.toContain("$ 58.000");
+    expectNoSkippedLevels(headingLevels());
     await expectNoAxeViolations(container, { page: true });
   });
 

@@ -1,6 +1,6 @@
 import type { IssueCode } from "~/modules/_shared";
 
-type StudentFieldName = "fullName" | "email" | "phone" | "policy";
+type StudentFieldName = "fullName" | "email" | "phone" | "policy" | "project";
 
 /** Public es-AR (voseo) copy of the workshop seat request pages. */
 export const intensiveRequestCopy = {
@@ -10,7 +10,9 @@ export const intensiveRequestCopy = {
     label: "Reservar mi lugar",
     intro:
       "Completá tus datos y dejamos tu solicitud registrada. Después coordinamos la seña por WhatsApp y tu lugar queda confirmado cuando la registramos.",
-    deposit: "Seña para confirmar tu lugar",
+    project: "Elegí tu proyecto",
+    projectTotal: "Total",
+    projectDeposit: "Seña para confirmar tu lugar",
     fullName: "Nombre y apellido",
     email: "Correo electrónico",
     phone: "WhatsApp o teléfono",
@@ -41,6 +43,8 @@ export const intensiveRequestCopy = {
       intensivo: "Workshop",
       date: "Fecha",
       time: "Horario",
+      project: "Proyecto",
+      price: "Total",
       deposit: "Seña",
     },
     stepsTitle: "Cómo seguir",
@@ -65,6 +69,7 @@ const MESSAGES: Record<StudentFieldName, string> = {
   email: "Ingresá un correo electrónico válido.",
   phone: "Ingresá un teléfono argentino válido.",
   policy: "Tenés que aceptar las condiciones y la política de privacidad.",
+  project: "Elegí un proyecto de la lista.",
 };
 
 const TOO_LONG: Partial<Record<StudentFieldName, string>> = {

@@ -4,7 +4,10 @@ import { InMemoryIntensiveRequestRepository } from "~/testing/fakes/in-memory-in
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import type { StudentDraft } from "~/modules/enrollments";
-import type { IntensiveOffer } from "./intensive-offer-lookup";
+import type {
+  IntensiveOffer,
+  IntensiveOfferProject,
+} from "./intensive-offer-lookup";
 import { createIntensiveRequestService } from "./intensive-request-service";
 
 const pesos = (amount: number): Money => {
@@ -15,6 +18,26 @@ const pesos = (amount: number): Money => {
 
 const INTENSIVE_ID = "0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01";
 const NOW = new Date("2026-10-28T15:00:00.000Z");
+
+const PROJECT_A: IntensiveOfferProject = {
+  id: "c0000000-0000-4000-8000-00000000000a",
+  name: "Taza de torno",
+  image: null,
+  price: pesos(40000),
+  deposit: pesos(15000),
+};
+const PROJECT_B: IntensiveOfferProject = {
+  id: "c0000000-0000-4000-8000-00000000000b",
+  name: "Plato hondo",
+  image: {
+    src: "/media/plato.webp",
+    alt: "Un plato",
+    width: 800,
+    height: 600,
+  },
+  price: pesos(30000),
+  deposit: pesos(10000),
+};
 
 function offer(overrides: Partial<IntensiveOffer> = {}): IntensiveOffer {
   return {
@@ -31,6 +54,7 @@ function offer(overrides: Partial<IntensiveOffer> = {}): IntensiveOffer {
     capacity: 2,
     minSeats: 4,
     policyText: "Si no llegamos al mínimo, devolvemos la seña.",
+    projects: [PROJECT_A],
     ...overrides,
   };
 }
@@ -85,6 +109,7 @@ async function pendingRequest(
 ) {
   const sent = await service.requestSeat({
     slug: SLUG,
+    projectId: PROJECT_A.id,
     student: student(overrides),
   });
   if (!sent.ok) throw new Error("request refused");
@@ -97,7 +122,11 @@ describe("requestSeat", () => {
   it("records a pending request with normalized contact data", async () => {
     const { service, repository } = setup();
 
-    const sent = await service.requestSeat({ slug: SLUG, student: student() });
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
 
     expect(sent.ok).toBe(true);
     const [stored] = [...repository.requests.values()];
@@ -118,6 +147,7 @@ describe("requestSeat", () => {
 
     const sent = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ honeypot: "http://spam" }),
     });
 
@@ -135,6 +165,7 @@ describe("requestSeat", () => {
 
     const sent = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({
         fullName: "",
         email: "x",
@@ -167,7 +198,11 @@ describe("requestSeat", () => {
   ] as const)("refuses %s", async (_name, intensivo, kind) => {
     const { service, repository } = setup(intensivo);
 
-    const sent = await service.requestSeat({ slug: SLUG, student: student() });
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
 
     expect(sent).toEqual({ ok: false, error: { kind } });
     expect(repository.requests.size).toBe(0);
@@ -185,6 +220,7 @@ describe("requestSeat", () => {
 
     const late = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ email: "bea@example.com" }),
     });
 
@@ -197,10 +233,93 @@ describe("requestSeat", () => {
 
     const again = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ email: "ana@example.com" }),
     });
 
     expect(again).toEqual({ ok: false, error: { kind: "duplicate-request" } });
+  });
+
+  it("stores the chosen project with a snapshot of its price and deposit", async () => {
+    const { service, repository } = setup(
+      offer({ projects: [PROJECT_A, PROJECT_B] }),
+    );
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+
+    expect(sent.ok).toBe(true);
+    const [stored] = [...repository.requests.values()];
+    expect(stored?.projectId).toBe(PROJECT_B.id);
+    expect(stored?.price?.toCentavos()).toBe(3_000_000);
+    expect(stored?.deposit?.toCentavos()).toBe(1_000_000);
+  });
+
+  it.each([
+    ["no project", "", "required"],
+    [
+      "an unknown project",
+      "c0000000-0000-4000-8000-0000000000ff",
+      "invalid-format",
+    ],
+  ] as const)(
+    "refuses %s and writes nothing",
+    async (_name, projectId, code) => {
+      const { service, repository } = setup(
+        offer({ projects: [PROJECT_A, PROJECT_B] }),
+      );
+
+      const sent = await service.requestSeat({
+        slug: SLUG,
+        projectId,
+        student: student(),
+      });
+
+      expect(sent).toEqual({
+        ok: false,
+        error: { kind: "invalid", issues: [{ field: "project", code }] },
+      });
+      expect(repository.requests.size).toBe(0);
+    },
+  );
+
+  it("refuses a project that belongs to another workshop", async () => {
+    const { service, repository } = setup(offer({ projects: [PROJECT_A] }));
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+
+    expect(sent).toMatchObject({
+      ok: false,
+      error: { kind: "invalid", issues: [{ field: "project" }] },
+    });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("answers invalid when the project disappears between the check and the write", async () => {
+    const { service, repository } = setup();
+    repository.insert = () =>
+      Promise.resolve({ ok: false, error: { kind: "unknown-project" } });
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "project", code: "invalid-format" }],
+      },
+    });
   });
 });
 
@@ -222,8 +341,72 @@ describe("getRequestByPublicId", () => {
         eventDate: "2026-11-14",
         startsAt: "10:00",
         endsAt: "14:00",
+        projectName: "Taza de torno",
+        price: pesos(40000),
         deposit: pesos(15000),
       },
+    });
+  });
+
+  it("reports the snapshot price and deposit, not the project's current ones", async () => {
+    const current = { ...PROJECT_A };
+    const catalog = { value: offer({ projects: [current] }) };
+    const repository = new InMemoryIntensiveRequestRepository();
+    const service = createIntensiveRequestService({
+      repository,
+      offers: {
+        findBySlug: () => Promise.resolve(catalog.value),
+        findById: () => Promise.resolve(catalog.value),
+      },
+      clock: fixedClock(NOW),
+      random: { bytes: (length) => new Uint8Array(length).fill(7) },
+    });
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: current.id,
+      student: student(),
+    });
+    if (!sent.ok) throw new Error("request refused");
+
+    catalog.value = offer({
+      projects: [
+        {
+          ...current,
+          name: "Renombrada",
+          price: pesos(90000),
+          deposit: pesos(50000),
+        },
+      ],
+    });
+    const view = await service.getRequestByPublicId(sent.value.publicId);
+
+    expect(view).toMatchObject({
+      ok: true,
+      value: {
+        projectName: "Renombrada",
+        price: pesos(40000),
+        deposit: pesos(15000),
+      },
+    });
+  });
+
+  it("falls back to the workshop terms for a request made before projects", async () => {
+    const { service, repository } = setup();
+    const publicId = await pendingRequest(service);
+    const [stored] = [...repository.requests.values()];
+    if (!stored) throw new Error("no request");
+    repository.requests.set(stored.id, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const view = await service.getRequestByPublicId(publicId);
+
+    expect(view).toMatchObject({
+      ok: true,
+      value: { projectName: null, price: pesos(40000), deposit: pesos(15000) },
     });
   });
 
@@ -250,7 +433,7 @@ describe("getOffer", () => {
       value: {
         slug: SLUG,
         name: "Intensivo de cerámica",
-        deposit: pesos(15000),
+        projects: [PROJECT_A],
         minSeats: 4,
         policyText: "Si no llegamos al mínimo, devolvemos la seña.",
         seatsLeft: 2,
@@ -286,6 +469,61 @@ describe("getOffer", () => {
     expect(await service.getOffer(SLUG)).toEqual({
       ok: false,
       error: { kind: "unavailable" },
+    });
+  });
+});
+
+describe("a workshop with a single project", () => {
+  it("takes a request from the form to a confirmed seat with the project's snapshot terms", async () => {
+    const { service, repository } = setup();
+    const publicId = await pendingRequest(service);
+
+    const confirmed = await service.confirm(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId: await onlyRequestId(service),
+      ...DEPOSIT_FORM,
+    });
+
+    expect(confirmed).toMatchObject({
+      ok: true,
+      value: { status: "confirmed", projectId: PROJECT_A.id },
+    });
+    expect([...repository.requests.values()][0]?.price?.toCentavos()).toBe(
+      4_000_000,
+    );
+    expect(await service.getRequestByPublicId(publicId)).toMatchObject({
+      ok: true,
+      value: {
+        status: "confirmed",
+        projectName: "Taza de torno",
+        price: pesos(40000),
+        deposit: pesos(15000),
+      },
+    });
+  });
+});
+
+describe("listProjects", () => {
+  it("lists the projects of a published or paused workshop, full ones included", async () => {
+    for (const intensivo of [
+      offer({ projects: [PROJECT_A, PROJECT_B] }),
+      offer({ status: "paused", projects: [PROJECT_A, PROJECT_B] }),
+      offer({ capacity: 0, projects: [PROJECT_A, PROJECT_B] }),
+    ])
+      expect(await setup(intensivo).service.listProjects(SLUG)).toEqual({
+        ok: true,
+        value: [PROJECT_A, PROJECT_B],
+      });
+  });
+
+  it.each([
+    ["an unknown slug", null],
+    ["a draft", offer({ status: "draft" })],
+    ["a past workshop", offer({ upcoming: false })],
+  ] as const)("answers not-found for %s", async (_name, intensivo) => {
+    expect(await setup(intensivo).service.listProjects(SLUG)).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
     });
   });
 });

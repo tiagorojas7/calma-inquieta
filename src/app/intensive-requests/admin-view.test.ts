@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import type { AdminIntensiveOverview } from "~/modules/intensive-requests";
 import { buildStoredRequest } from "~/testing/contracts/intensive-request-repository.contract";
-import { buildIntensiveOffer } from "~/testing/fakes/intensive-request-builders";
+import {
+  buildIntensiveOffer,
+  buildOfferProject,
+  FAKE_PROJECT_ID,
+  FAKE_SECOND_PROJECT_ID,
+} from "~/testing/fakes/intensive-request-builders";
 import { intensiveRequestsView } from "./admin-view";
 
 const paid = Money.fromCentavos(1_500_000);
@@ -29,6 +34,37 @@ describe("intensiveRequestsView", () => {
     });
     expect(view.intensivo.deposit.replace(/\s/g, " ")).toBe("$ 15.000");
     expect(view.intensivo.dateLine).toBe("Sábado 14 de noviembre");
+  });
+
+  it("names the project each request chose, and none for one made before projects", () => {
+    const view = intensiveRequestsView(
+      {
+        intensivo: buildIntensiveOffer({
+          projects: [
+            buildOfferProject(),
+            buildOfferProject({
+              id: FAKE_SECOND_PROJECT_ID,
+              name: "Plato hondo",
+            }),
+          ],
+        }),
+        confirmedSeats: 0,
+        requests: [
+          buildStoredRequest({ id: "a", projectId: FAKE_PROJECT_ID }),
+          buildStoredRequest({ id: "b", projectId: FAKE_SECOND_PROJECT_ID }),
+          buildStoredRequest({ id: "c", projectId: null }),
+        ],
+      },
+      "2026-10-28",
+    );
+
+    expect(
+      view.groups[0]?.rows.map((row) => [row.id, row.projectName]),
+    ).toEqual([
+      ["a", "Taza de torno"],
+      ["b", "Plato hondo"],
+      ["c", null],
+    ]);
   });
 
   it("groups requests by status in a fixed order", () => {

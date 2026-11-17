@@ -21,10 +21,19 @@ export interface StoredIntensiveRequest {
   readonly cancelReason: string | null;
   readonly cancelledBy: string | null;
   readonly cancelledAt: Date | null;
+  /** The chosen project; null on requests made before projects existed. */
+  readonly projectId: string | null;
+  /** The project's price when the request was made; later edits never change it. */
+  readonly price: Money | null;
+  /** The project's deposit when the request was made. */
+  readonly deposit: Money | null;
 }
 
 /** The same person already has a live request for this intensivo. */
 export type DuplicateRequest = { readonly kind: "duplicate-request" };
+
+/** The project is not one of the intensivo's (any more). */
+export type UnknownProject = { readonly kind: "unknown-project" };
 
 export type IllegalTransition = {
   readonly kind: "illegal-transition";
@@ -56,10 +65,14 @@ export type RequestFilter = IntensiveRequestStatus | "all";
 
 /** Persistence port for intensivo seat requests. */
 export interface IntensiveRequestRepository {
-  /** A live (not cancelled) request with the same email is a duplicate. */
+  /**
+   * A live (not cancelled) request with the same email is a duplicate. A
+   * request that names a project the intensivo does not have is refused, and
+   * the project cannot be deleted while the request is being written.
+   */
   insert(
     request: StoredIntensiveRequest,
-  ): Promise<Result<void, DuplicateRequest>>;
+  ): Promise<Result<void, DuplicateRequest | UnknownProject>>;
   findById(id: string): Promise<StoredIntensiveRequest | null>;
   findByPublicId(publicId: string): Promise<StoredIntensiveRequest | null>;
   /** Oldest first, then by id. */

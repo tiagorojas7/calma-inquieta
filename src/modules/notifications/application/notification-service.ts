@@ -46,6 +46,10 @@ export interface ReservationNotice {
   readonly intensivoName: string;
   /** `YYYY-MM-DD`, a Córdoba calendar date. */
   readonly eventDate: string;
+  /** The project the student chose; null for a request made before projects. */
+  readonly projectName: string | null;
+  /** Total price and deposit as they were when the request was made. */
+  readonly price: Money;
   readonly deposit: Money;
 }
 
@@ -184,6 +188,8 @@ export function createNotificationService(
     studentName: notice.studentName,
     intensivoName: notice.intensivoName,
     dateLabel: eventDateLabel(notice.eventDate),
+    projectName: notice.projectName,
+    price: formatPesos(notice.price),
     deposit: formatPesos(notice.deposit),
     reservationUrl: `${deps.siteUrl.replace(/\/+$/, "")}/reserva/${notice.publicId}`,
   });

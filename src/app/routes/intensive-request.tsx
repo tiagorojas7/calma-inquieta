@@ -39,8 +39,14 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     intensivo: {
       name: offer.name,
       dateLine: formatEventDate(offer.eventDate),
-      deposit: formatPesos(offer.deposit),
     },
+    projects: offer.projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      total: formatPesos(project.price),
+      deposit: formatPesos(project.deposit),
+      ...(project.image ? { image: project.image } : {}),
+    })),
     conditions: requestConditions({
       policyText: offer.policyText,
       minSeats: offer.minSeats,
@@ -55,7 +61,11 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const { values, student } = parseRequestForm(form);
   const result = await context
     .get(servicesContext)
-    .intensiveRequests.requestSeat({ slug: params.slug, student });
+    .intensiveRequests.requestSeat({
+      slug: params.slug,
+      projectId: values.projectId,
+      student,
+    });
   if (result.ok) return redirect(`/reserva/${result.value.publicId}`);
 
   const error = result.error;
@@ -109,6 +119,7 @@ export default function IntensiveRequestRoute() {
     <IntensivoRequestPage
       copy={{ title: copy.form.label, ...copy.form }}
       intensivo={loaded.intensivo}
+      projects={loaded.projects}
       conditions={loaded.conditions}
       backHref={loaded.backHref}
       values={rejected?.values ?? EMPTY_REQUEST_VALUES}

@@ -149,7 +149,7 @@ export function withIntensiveRequestEmails(
   notifier: NotificationService,
   defer: Defer,
 ): IntensiveRequestUseCases {
-  /** The public summary carries the intensivo name, date and deposit. */
+  /** The public summary carries the workshop, the project and the snapshot terms. */
   async function notice(publicId: string, studentEmail: string) {
     const found = await inner.getRequestByPublicId(publicId);
     if (!found.ok) return null;
@@ -160,6 +160,8 @@ export function withIntensiveRequestEmails(
       publicId: view.publicId,
       intensivoName: view.intensivoName,
       eventDate: view.eventDate,
+      projectName: view.projectName,
+      price: view.price,
       deposit: view.deposit,
     };
   }

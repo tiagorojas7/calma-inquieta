@@ -10,6 +10,7 @@ import {
   createInMemoryIntensiveRequests,
   FAKE_INTENSIVE_ID,
   FAKE_INTENSIVE_SLUG,
+  FAKE_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
 import { action, loader } from "./intensive-requests";
@@ -24,6 +25,7 @@ async function seeded(capacity = 2) {
   for (const email of ["ana@example.com", "bea@example.com"]) {
     await service.requestSeat({
       slug: FAKE_INTENSIVE_SLUG,
+      projectId: FAKE_PROJECT_ID,
       student: {
         fullName: email.startsWith("ana") ? "Ana Pérez" : "Bea Gómez",
         email,
@@ -82,6 +84,17 @@ describe("admin intensive requests loader", () => {
     expect(result.intensivo.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(result.groups.map((group) => group.rows.length)).toEqual([2, 0, 0]);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+
+  it("shows the project each request chose", async () => {
+    const { services } = await seeded();
+
+    const result = await load(FAKE_INTENSIVE_ID, services);
+
+    expect(result.groups[0]?.rows.map((row) => row.projectName)).toEqual([
+      "Taza de torno",
+      "Taza de torno",
+    ]);
   });
 
   it("answers 404 for a non-UUID or unknown intensivo, 403 for a non-admin and 503 when unavailable", async () => {

@@ -21,7 +21,10 @@ function byAt(by: string | null, at: Date | null): string | null {
   return by !== null && at !== null ? `${by}, ${dateTimeLabel(at)}` : null;
 }
 
-function requestRow(request: StoredIntensiveRequest): IntensiveRequestRow {
+function requestRow(
+  request: StoredIntensiveRequest,
+  projectNames: ReadonlyMap<string, string>,
+): IntensiveRequestRow {
   const whatsapp = buildWhatsAppUrl(request.phoneDigits, "");
   return {
     id: request.id,
@@ -29,6 +32,10 @@ function requestRow(request: StoredIntensiveRequest): IntensiveRequestRow {
     email: request.email,
     phone: request.phoneDigits,
     whatsappHref: whatsapp.ok ? whatsapp.value : undefined,
+    projectName:
+      request.projectId === null
+        ? null
+        : (projectNames.get(request.projectId) ?? null),
     reference: request.publicId.slice(0, REFERENCE_LENGTH),
     receivedAt: dateTimeLabel(request.createdAt),
     paidAmount:
@@ -47,6 +54,9 @@ export function intensiveRequestsView(
   today: string,
 ) {
   const { intensivo } = overview;
+  const projectNames = new Map(
+    intensivo.projects.map((project) => [project.id, project.name]),
+  );
   return {
     intensivo: {
       id: intensivo.id,
@@ -66,7 +76,7 @@ export function intensiveRequestsView(
       title: copy.groups[status],
       rows: overview.requests
         .filter((request) => request.status === status)
-        .map(requestRow),
+        .map((request) => requestRow(request, projectNames)),
     })),
   };
 }

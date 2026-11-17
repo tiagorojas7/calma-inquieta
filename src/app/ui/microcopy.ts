@@ -14,6 +14,11 @@ export const microcopy = {
   teacherLabel: "Profesora",
   bookingSummary: "Resumen",
   balanceLabel: "Saldo restante",
+  projects: {
+    heading: "Proyectos",
+    total: "Total",
+    deposit: "Seña",
+  },
   writeUs: "Escribinos",
   doubtsLabel: "¿Dudas? Escribinos",
   whatsappSuffix: " por WhatsApp",

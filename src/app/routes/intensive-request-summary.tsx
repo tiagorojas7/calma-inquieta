@@ -29,8 +29,10 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     status: request.status,
     statusLabel: copy.status[request.status],
     intensivoName: request.intensivoName,
+    projectName: request.projectName,
     date: formatEventDate(request.eventDate),
     time: formatTimeRange(request.startsAt, request.endsAt),
+    price: formatPesos(request.price),
     deposit: formatPesos(request.deposit),
     whatsappHref:
       request.status === "pending_confirmation"

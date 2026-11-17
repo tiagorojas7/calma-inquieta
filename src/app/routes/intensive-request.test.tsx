@@ -3,8 +3,11 @@ import type { IntensiveOffer } from "~/modules/intensive-requests";
 import { createTestServices } from "~/testing/fakes/app-services";
 import {
   buildIntensiveOffer,
+  buildOfferProject,
   createInMemoryIntensiveRequests,
   FAKE_INTENSIVE_SLUG,
+  FAKE_PROJECT_ID,
+  FAKE_SECOND_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import { action, loader, meta } from "./intensive-request";
@@ -31,6 +34,7 @@ const VALID = {
   email: "ana@example.com",
   phone: "351 555 0101",
   policy: "on",
+  project: FAKE_PROJECT_ID,
 };
 
 function post(
@@ -57,13 +61,20 @@ async function open(services: ReturnType<typeof createTestServices>) {
 }
 
 describe("intensive request loader", () => {
-  it("returns plain data with the deposit and the conditions visible", async () => {
+  it("returns plain data with the projects and the conditions visible", async () => {
     const { services } = setup();
 
     const result = await open(services);
 
     expect(result.intensivo.name).toBe("Intensivo de cerámica");
-    expect(result.intensivo.deposit.replace(/\s/g, " ")).toBe("$ 15.000");
+    expect(result.projects).toEqual([
+      {
+        id: FAKE_PROJECT_ID,
+        name: "Taza de torno",
+        total: expect.stringMatching(/^\$\s40\.000$/) as string,
+        deposit: expect.stringMatching(/^\$\s15\.000$/) as string,
+      },
+    ]);
     expect(result.conditions.policyText).toBe(
       "Si no llegamos al mínimo, devolvemos la seña.",
     );
@@ -71,6 +82,40 @@ describe("intensive request loader", () => {
     expect(result.conditions.minSeats).toContain("inasistencia");
     expect(result.backHref).toBe(`/intensivos/${FAKE_INTENSIVE_SLUG}`);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+
+  it("lists every project in admin order with its image, total and deposit", async () => {
+    const { services } = setup(
+      buildIntensiveOffer({
+        projects: [
+          buildOfferProject(),
+          buildOfferProject({
+            id: FAKE_SECOND_PROJECT_ID,
+            name: "Plato hondo",
+            image: {
+              src: "/media/plato.webp",
+              alt: "Un plato",
+              width: 800,
+              height: 600,
+            },
+          }),
+        ],
+      }),
+    );
+
+    const result = await open(services);
+
+    expect(result.projects.map((project) => project.name)).toEqual([
+      "Taza de torno",
+      "Plato hondo",
+    ]);
+    expect(result.projects[1]?.image).toEqual({
+      src: "/media/plato.webp",
+      alt: "Un plato",
+      width: 800,
+      height: 600,
+    });
+    expect(result.projects[0]).not.toHaveProperty("image");
   });
 
   it("answers the same bare 404 for an unknown or hidden intensivo", async () => {
@@ -122,7 +167,35 @@ describe("intensive request action", () => {
       email: "ana@example.com",
       phoneDigits: "5493515550101",
       status: "pending_confirmation",
+      projectId: FAKE_PROJECT_ID,
     });
+    expect(stored?.price?.toCentavos()).toBe(4_000_000);
+    expect(stored?.deposit?.toCentavos()).toBe(1_500_000);
+  });
+
+  it("refuses a missing, unknown or foreign project next to the choice and keeps the values", async () => {
+    for (const project of [undefined, "no-existe", FAKE_SECOND_PROJECT_ID]) {
+      const { repository, services } = setup();
+      const { fullName, email, phone, policy } = VALID;
+      const base = { fullName, email, phone, policy };
+      const fields = project === undefined ? base : { ...base, project };
+
+      const result = (await post(services, fields)) as unknown as {
+        data: {
+          values: Record<string, string>;
+          errors: Record<string, string>;
+        };
+        init: { status: number };
+      };
+
+      expect(result.init.status).toBe(422);
+      expect(result.data.errors).toEqual({
+        project: "Elegí un proyecto de la lista.",
+      });
+      expect(result.data.values.fullName).toBe("Ana Pérez");
+      expect(result.data.values.projectId).toBe(project ?? "");
+      expect(repository.requests.size).toBe(0);
+    }
   });
 
   it("answers a honeypot like success without storing", async () => {
@@ -148,7 +221,7 @@ describe("intensive request action", () => {
     };
 
     expect(result.init.status).toBe(422);
-    expect(result.data.values).toEqual(submitted);
+    expect(result.data.values).toEqual({ ...submitted, projectId: "" });
     expect(result.data.errors).toEqual({
       fullName: "Ingresá tu nombre completo.",
       email: "Ingresá un correo electrónico válido.",

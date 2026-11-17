@@ -22,17 +22,50 @@ const base = {
   intensivo: {
     name: "Intensivo de cerámica",
     dateLine: "sábado 14 de noviembre",
-    deposit: "$ 15.000",
   },
+  projects: [
+    {
+      id: "proyecto-taza",
+      name: "Taza de torno",
+      total: "$ 40.000",
+      deposit: "$ 15.000",
+    },
+  ],
   conditions: {
     label: "Condiciones",
     policyText: "Si no llegamos al mínimo, devolvemos la seña.",
     minSeats: "Si no se alcanza el mínimo de 4 personas, se cancela.",
   },
   backHref: "/intensivos/intensivo-de-ceramica",
-  values: { fullName: "Ana Pérez", email: "ana@example.com", phone: "351" },
+  values: {
+    fullName: "Ana Pérez",
+    email: "ana@example.com",
+    phone: "351",
+    projectId: "",
+  },
   errors: {},
 };
+
+const TWO_PROJECTS = [
+  {
+    id: "proyecto-taza",
+    name: "Taza de torno",
+    total: "$ 40.000",
+    deposit: "$ 15.000",
+  },
+  {
+    id: "proyecto-plato",
+    name: "Plato hondo",
+    total: "$ 30.000",
+    deposit: "$ 10.000",
+    image: {
+      src: "/media/plato.webp",
+      alt: "Un plato",
+      width: 800,
+      height: 600,
+    },
+  },
+];
 
 function renderForm(props: Partial<IntensivoRequestPageProps> = {}) {
   return render(
@@ -73,7 +106,6 @@ describe("IntensivoRequestPage", () => {
     expect(screen.getByLabelText("Correo electrónico")).toHaveValue(
       "ana@example.com",
     );
-    expect(screen.getByText("$ 15.000")).toBeVisible();
     expect(
       screen.getByText("Si no llegamos al mínimo, devolvemos la seña."),
     ).toBeVisible();
@@ -85,6 +117,64 @@ describe("IntensivoRequestPage", () => {
       screen.getByRole("link", { name: "Volver al workshop" }),
     ).toHaveAttribute("href", "/intensivos/intensivo-de-ceramica");
     await expectNoAxeViolations(container);
+  });
+
+  it("offers each project with its image, total and deposit, in order, as a required choice", () => {
+    renderForm({ projects: TWO_PROJECTS });
+
+    const group = screen.getByRole("group", { name: "Elegí tu proyecto" });
+    const options = within(group).getAllByRole("radio");
+    expect(options.map((option) => option.getAttribute("value"))).toEqual([
+      "proyecto-taza",
+      "proyecto-plato",
+    ]);
+    for (const option of options) {
+      expect(option).toHaveAttribute("name", "project");
+      expect(option).toBeRequired();
+    }
+    const plato = screen.getByRole("radio", { name: /Plato hondo/ });
+    expect(plato).toHaveAccessibleName(/\$ 30\.000/);
+    expect(plato).toHaveAccessibleName(/\$ 10\.000/);
+    expect(
+      within(group).getByRole("img", { name: "Un plato" }),
+    ).toHaveAttribute("src", "/media/plato.webp");
+    expect(within(group).getAllByRole("img")).toHaveLength(1);
+  });
+
+  it("preselects the only project, but leaves several unchosen until the visitor picks", () => {
+    const { unmount } = renderForm();
+    expect(screen.getByRole("radio", { name: /Taza de torno/ })).toBeChecked();
+    unmount();
+
+    const many = renderForm({ projects: TWO_PROJECTS });
+    for (const option of screen.getAllByRole("radio"))
+      expect(option).not.toBeChecked();
+    many.unmount();
+
+    renderForm({
+      projects: TWO_PROJECTS,
+      values: { ...base.values, projectId: "proyecto-plato" },
+    });
+    expect(screen.getByRole("radio", { name: /Plato hondo/ })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: /Taza de torno/ }),
+    ).not.toBeChecked();
+  });
+
+  it("shows the project error by the choice and links to it from the summary", () => {
+    renderForm({
+      projects: TWO_PROJECTS,
+      errors: { project: "Elegí un proyecto de la lista." },
+    });
+
+    expect(
+      screen.getByRole("link", { name: "Elegí un proyecto de la lista." }),
+    ).toHaveAttribute("href", "#project");
+    const first = screen.getAllByRole("radio")[0];
+    expect(first).toHaveAttribute("id", "project");
+    expect(
+      screen.getByRole("group", { name: "Elegí tu proyecto" }),
+    ).toHaveAccessibleDescription("Elegí un proyecto de la lista.");
   });
 
   it("lands on a linked summary after a failed submit, so a phone sees what went wrong", () => {
@@ -160,8 +250,10 @@ const summary: IntensivoRequestSummaryProps = {
   status: "pending_confirmation",
   statusLabel: "Pendiente de seña",
   intensivoName: "Intensivo de cerámica",
+  projectName: "Taza de torno",
   date: "sábado 14 de noviembre",
   time: "10:00 a 14:00",
+  price: "$ 40.000",
   deposit: "$ 15.000",
   whatsappHref: "https://wa.me/5493515550100?text=Hola",
   workshopsHref: "/intensivos",
@@ -193,6 +285,12 @@ describe("IntensivoRequestSummaryPage", () => {
       within(receipt).getByText("Workshop").nextElementSibling,
     ).toHaveTextContent("Intensivo de cerámica");
     expect(
+      within(receipt).getByText("Proyecto").nextElementSibling,
+    ).toHaveTextContent("Taza de torno");
+    expect(
+      within(receipt).getByText("Total").nextElementSibling,
+    ).toHaveTextContent("$ 40.000");
+    expect(
       within(receipt).getByText("Seña").nextElementSibling,
     ).toHaveTextContent("$ 15.000");
     const badge = screen
@@ -213,6 +311,13 @@ describe("IntensivoRequestSummaryPage", () => {
     expect(
       screen.getByRole("link", { name: /Enviar resumen por WhatsApp/ }),
     ).toHaveClass("w-full", "sm:w-fit");
+  });
+
+  it("leaves the project row out for a request made before projects", () => {
+    render(<IntensivoRequestSummaryPage {...summary} projectName={null} />);
+
+    expect(screen.queryByText("Proyecto")).toBeNull();
+    expect(screen.getByText("Total")).toBeVisible();
   });
 
   it("omits the link when the business number is unusable", () => {

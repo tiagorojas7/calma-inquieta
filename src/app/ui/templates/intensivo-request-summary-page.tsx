@@ -18,7 +18,10 @@ export interface IntensivoRequestSummaryProps {
   copy: {
     title: string;
     reference: string;
-    fields: Record<"intensivo" | "date" | "time" | "deposit", string>;
+    fields: Record<
+      "intensivo" | "project" | "date" | "time" | "price" | "deposit",
+      string
+    >;
     stepsTitle: string;
     steps: readonly string[];
     currentStep: string;
@@ -31,8 +34,11 @@ export interface IntensivoRequestSummaryProps {
   status: "pending_confirmation" | "confirmed" | "cancelled";
   statusLabel: string;
   intensivoName: string;
+  /** Null for a request made before projects. */
+  projectName: string | null;
   date: string;
   time: string;
+  price: string;
   deposit: string;
   whatsappHref: string | null;
   workshopsHref: string;
@@ -45,8 +51,10 @@ export function IntensivoRequestSummaryPage({
   status,
   statusLabel,
   intensivoName,
+  projectName,
   date,
   time,
+  price,
   deposit,
   whatsappHref,
   workshopsHref,
@@ -60,9 +68,15 @@ export function IntensivoRequestSummaryPage({
 
       <Receipt id="request-receipt" heading={copy.title}>
         <ReceiptFact label={copy.fields.intensivo}>{intensivoName}</ReceiptFact>
+        {projectName === null ? null : (
+          <ReceiptFact label={copy.fields.project}>{projectName}</ReceiptFact>
+        )}
         <ReceiptFact label={copy.fields.date}>{date}</ReceiptFact>
         <ReceiptFact label={copy.fields.time} numeric>
           {time}
+        </ReceiptFact>
+        <ReceiptFact label={copy.fields.price} numeric>
+          {price}
         </ReceiptFact>
         <ReceiptFact label={copy.fields.deposit} numeric>
           {deposit}

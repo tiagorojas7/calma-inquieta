@@ -2,12 +2,15 @@ import { Money } from "~/modules/_shared";
 import {
   createIntensiveRequestService,
   type IntensiveOffer,
+  type IntensiveOfferProject,
 } from "~/modules/intensive-requests";
 import { fixedClock } from "./fixed-clock";
 import { InMemoryIntensiveRequestRepository } from "./in-memory-intensive-request-repository";
 
 export const FAKE_INTENSIVE_ID = "0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01";
 export const FAKE_INTENSIVE_SLUG = "intensivo-de-ceramica";
+export const FAKE_PROJECT_ID = "c0000000-0000-4000-8000-00000000000a";
+export const FAKE_SECOND_PROJECT_ID = "c0000000-0000-4000-8000-00000000000b";
 
 const pesos = (amount: number): Money => {
   const money = Money.fromCentavos(amount * 100);
@@ -15,7 +18,21 @@ const pesos = (amount: number): Money => {
   return money.value;
 };
 
-/** A published, upcoming intensivo that asks for a 15.000 deposit. */
+/** A project of 40.000 with a 15.000 deposit, without a cover. */
+export function buildOfferProject(
+  overrides: Partial<IntensiveOfferProject> = {},
+): IntensiveOfferProject {
+  return {
+    id: FAKE_PROJECT_ID,
+    name: "Taza de torno",
+    image: null,
+    price: pesos(40000),
+    deposit: pesos(15000),
+    ...overrides,
+  };
+}
+
+/** A published, upcoming intensivo with one project that asks for a 15.000 deposit. */
 export function buildIntensiveOffer(
   overrides: Partial<IntensiveOffer> = {},
 ): IntensiveOffer {
@@ -33,6 +50,7 @@ export function buildIntensiveOffer(
     capacity: 2,
     minSeats: 4,
     policyText: "Si no llegamos al mínimo, devolvemos la seña.",
+    projects: [buildOfferProject()],
     ...overrides,
   };
 }

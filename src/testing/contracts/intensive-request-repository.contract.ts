@@ -41,6 +41,9 @@ export function buildStoredRequest(
     cancelReason: null,
     cancelledBy: null,
     cancelledAt: null,
+    projectId: null,
+    price: null,
+    deposit: null,
     ...overrides,
   };
 }

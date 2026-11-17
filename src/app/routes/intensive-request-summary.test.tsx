@@ -3,6 +3,7 @@ import { createTestServices } from "~/testing/fakes/app-services";
 import {
   createInMemoryIntensiveRequests,
   FAKE_INTENSIVE_SLUG,
+  FAKE_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import { headers, loader, meta } from "./intensive-request-summary";
@@ -11,6 +12,7 @@ async function pending() {
   const { service, repository } = createInMemoryIntensiveRequests();
   const sent = await service.requestSeat({
     slug: FAKE_INTENSIVE_SLUG,
+    projectId: FAKE_PROJECT_ID,
     student: {
       fullName: "Ana Pérez",
       email: "ana@example.com",
@@ -48,13 +50,17 @@ describe("intensive request summary loader", () => {
       status: "pending_confirmation",
       statusLabel: "Pendiente de seña",
       intensivoName: "Intensivo de cerámica",
+      projectName: "Taza de torno",
     });
+    expect(result.price.replace(/\s/g, " ")).toBe("$ 40.000");
     expect(result.deposit.replace(/\s/g, " ")).toBe("$ 15.000");
     const url = new URL(result.whatsappHref ?? "");
     expect(url.host).toBe("wa.me");
-    expect(url.searchParams.get("text")).toContain(
-      `Solicitud: ${publicId.slice(0, 8)}`,
-    );
+    const message = url.searchParams.get("text") ?? "";
+    expect(message).toContain(`Solicitud: ${publicId.slice(0, 8)}`);
+    expect(message).toContain("Proyecto: Taza de torno");
+    expect(message).toMatch(/Total: \$\s40\.000/);
+    expect(message).toMatch(/Seña: \$\s15\.000/);
     expect(JSON.stringify(result)).not.toContain("ana@example.com");
     expect(JSON.stringify(result)).not.toContain("5493515550101");
   });

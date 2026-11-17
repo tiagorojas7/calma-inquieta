@@ -371,6 +371,8 @@ describe("withIntensiveRequestEmails", () => {
   const actor = { kind: "admin-actor" as const, email: "owner@example.test" };
   const deposit = Money.fromCentavos(2_000_000);
   if (!deposit.ok) throw new Error("bad money");
+  const price = Money.fromCentavos(6_000_000);
+  if (!price.ok) throw new Error("bad money");
   const summary: PublicRequestView = {
     publicId: "res123",
     reference: "res123ab",
@@ -380,6 +382,8 @@ describe("withIntensiveRequestEmails", () => {
     eventDate: "2026-12-05",
     startsAt: "10:00",
     endsAt: "14:00",
+    projectName: "Bordado de aro",
+    price: price.value,
     deposit: deposit.value,
   };
   const expectedReservation = {
@@ -388,10 +392,13 @@ describe("withIntensiveRequestEmails", () => {
     publicId: "res123",
     intensivoName: "Bordado libre",
     eventDate: "2026-12-05",
+    projectName: "Bordado de aro",
+    price: price.value,
     deposit: deposit.value,
   };
   const seat = {
     slug: "bordado-libre",
+    projectId: "p1",
     student: {
       fullName: "Ana Pérez",
       email: " ana@example.com ",

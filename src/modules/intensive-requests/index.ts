@@ -8,6 +8,7 @@ export type {
   IntensiveRequestRepository,
   RequestFilter,
   StoredIntensiveRequest,
+  UnknownProject,
 } from "./application/intensive-request-repository";
 export {
   createIntensiveRequestService,
@@ -23,11 +24,13 @@ export {
   type PublicRequestView,
   type RequestSeatError,
   type SeatOffer,
+  type SeatProject,
 } from "./application/intensive-request-service";
 export { buildRequestWhatsAppLink } from "./application/request-whatsapp-link";
 export type {
   IntensiveOffer,
   IntensiveOfferLookup,
+  IntensiveOfferProject,
 } from "./application/intensive-offer-lookup";
 export type {
   IntensiveRegistrationRow,

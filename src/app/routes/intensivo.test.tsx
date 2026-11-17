@@ -15,7 +15,9 @@ import {
 } from "~/testing/fakes/public-catalog-builders";
 import {
   buildIntensiveOffer,
+  buildOfferProject,
   createInMemoryIntensiveRequests,
+  FAKE_SECOND_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createLoaderArgs } from "~/testing/react-router";
 import { loader, meta } from "./intensivo";
@@ -64,6 +66,73 @@ describe("intensivo loader", () => {
       href: "/intensivos/demo/reserva",
       label: "Reservar mi lugar",
     });
+  });
+
+  it("lists the projects with their prices, whether the workshop is open, paused or full", async () => {
+    const projects = [
+      buildOfferProject(),
+      buildOfferProject({
+        id: FAKE_SECOND_PROJECT_ID,
+        name: "Plato hondo",
+        image: {
+          src: "/media/plato.webp",
+          alt: "Un plato",
+          width: 8,
+          height: 6,
+        },
+      }),
+    ];
+    for (const [offer, status] of [
+      [buildIntensiveOffer({ slug: "demo", projects }), "open"],
+      [
+        buildIntensiveOffer({ slug: "demo", projects, status: "paused" }),
+        "paused",
+      ],
+      [buildIntensiveOffer({ slug: "demo", projects, capacity: 0 }), "open"],
+    ] as const) {
+      const services = createTestServices({
+        publicCatalog: createFakePublicCatalog({
+          intensivos: [buildPublicIntensivo({ slug: "demo", status })],
+        }),
+        intensiveRequests: createInMemoryIntensiveRequests({ offer }).service,
+      });
+
+      const result = await loader(args(services, "demo"));
+
+      expect(result.detail.projects).toEqual([
+        {
+          id: projects[0]?.id,
+          name: "Taza de torno",
+          total: expect.stringMatching(/^\$\s40\.000$/) as string,
+          deposit: expect.stringMatching(/^\$\s15\.000$/) as string,
+        },
+        {
+          id: FAKE_SECOND_PROJECT_ID,
+          name: "Plato hondo",
+          total: expect.stringMatching(/^\$\s40\.000$/) as string,
+          deposit: expect.stringMatching(/^\$\s15\.000$/) as string,
+          image: {
+            src: "/media/plato.webp",
+            alt: "Un plato",
+            width: 8,
+            height: 6,
+          },
+        },
+      ]);
+    }
+  });
+
+  it("shows the workshop prices alone when the projects cannot be read", async () => {
+    const services = createTestServices({
+      publicCatalog: createFakePublicCatalog({
+        intensivos: [buildPublicIntensivo({ slug: "demo" })],
+      }),
+    });
+
+    const result = await loader(args(services, "demo"));
+
+    expect(result.detail).not.toHaveProperty("projects");
+    expect(result.detail.price.amount).toBeTruthy();
   });
 
   it("keeps the WhatsApp inquiry when no seats are left", async () => {

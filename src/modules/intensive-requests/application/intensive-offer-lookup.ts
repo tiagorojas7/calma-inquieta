@@ -1,5 +1,19 @@
 import type { Money } from "~/modules/_shared";
 
+/** A selectable project of an intensivo, with its cover ready to show. */
+export interface IntensiveOfferProject {
+  readonly id: string;
+  readonly name: string;
+  readonly image: {
+    readonly src: string;
+    readonly alt: string;
+    readonly width: number;
+    readonly height: number;
+  } | null;
+  readonly price: Money;
+  readonly deposit: Money;
+}
+
 /** An intensivo as the seat-request flow sees it, whatever its status. */
 export interface IntensiveOffer {
   readonly id: string;
@@ -18,6 +32,8 @@ export interface IntensiveOffer {
   readonly capacity: number;
   readonly minSeats: number;
   readonly policyText: string;
+  /** In admin order; they share the schedule and the capacity. */
+  readonly projects: readonly IntensiveOfferProject[];
 }
 
 /** Consumer-defined port; `composition` wires the `workshops` lookup to it. */

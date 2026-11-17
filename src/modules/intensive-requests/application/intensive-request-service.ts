@@ -30,6 +30,7 @@ import {
 import type {
   IntensiveOffer,
   IntensiveOfferLookup,
+  IntensiveOfferProject,
 } from "./intensive-offer-lookup";
 import type {
   DuplicateRequest,
@@ -44,6 +45,9 @@ const REFERENCE_LENGTH = 8;
 
 type MaybeActor = AdminActor | null | undefined;
 
+/** A project the visitor can choose: name, cover, total price and deposit. */
+export type SeatProject = IntensiveOfferProject;
+
 /** The public offer behind the "Reservar mi lugar" form. */
 export interface SeatOffer {
   readonly slug: string;
@@ -51,7 +55,8 @@ export interface SeatOffer {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
-  readonly deposit: Money;
+  /** In admin order; one is chosen with the request. */
+  readonly projects: readonly SeatProject[];
   readonly minSeats: number;
   readonly policyText: string;
   readonly seatsLeft: number;
@@ -62,7 +67,7 @@ export type SeatsFull = { readonly kind: "seats-full" };
 export type OfferError = NotFound | RequestsClosed | SeatsFull | Unavailable;
 
 export type RequestSeatError =
-  Invalid<StudentField> | OfferError | DuplicateRequest;
+  Invalid<StudentField | "project"> | OfferError | DuplicateRequest;
 
 /** Allowlisted projection of a request: no email, phone or internal id. */
 export interface PublicRequestView {
@@ -75,6 +80,10 @@ export interface PublicRequestView {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
+  /** The chosen project's current name; null for a request made before projects. */
+  readonly projectName: string | null;
+  /** Total price and deposit as they were when the request was made. */
+  readonly price: Money;
   readonly deposit: Money;
 }
 
@@ -114,8 +123,14 @@ export interface IntensiveRequestUseCases {
    */
   requestSeat(input: {
     readonly slug: string;
+    /** The chosen project: required, and one of the intensivo's. */
+    readonly projectId: string;
     readonly student: StudentDraft;
   }): Promise<Result<{ readonly publicId: string }, RequestSeatError>>;
+  /** Public: the projects of a visible workshop, whether or not it takes requests. */
+  listProjects(
+    slug: string,
+  ): Promise<Result<readonly SeatProject[], NotFound | Unavailable>>;
   getRequestByPublicId(
     publicId: string,
   ): Promise<Result<PublicRequestView, NotFound | Unavailable>>;
@@ -147,6 +162,13 @@ const phoneDigits = (display: string): string | null => {
 };
 
 const unavailable: Unavailable = { kind: "unavailable" };
+
+const invalidProject = (
+  code: "required" | "invalid-format",
+): Invalid<"project"> => ({
+  kind: "invalid",
+  issues: [{ field: "project", code }],
+});
 
 /** Maps only a rejected dependency promise; programming errors escape. */
 async function unavailableOnReject<T>(
@@ -201,14 +223,26 @@ export function createIntensiveRequestService(
         eventDate: offer.eventDate,
         startsAt: offer.startsAt,
         endsAt: offer.endsAt,
-        deposit: offer.deposit,
+        projects: offer.projects,
         minSeats: offer.minSeats,
         policyText: offer.policyText,
         seatsLeft,
       });
     },
 
-    async requestSeat({ slug, student }) {
+    async listProjects(slug) {
+      const found = await unavailableOnReject(offers.findBySlug(slug));
+      if (!found.ok) return found;
+      const offer = found.value;
+      // Paused is still public; anything else is not.
+      return offer !== null &&
+        offer.upcoming &&
+        (offer.status === "published" || offer.status === "paused")
+        ? ok(offer.projects)
+        : err({ kind: "not-found" });
+    },
+
+    async requestSeat({ slug, projectId, student }) {
       const valid = validateStudentInput(student, phoneDigits);
       if (!valid.ok) {
         if (valid.error.kind === "honeypot")
@@ -219,6 +253,13 @@ export function createIntensiveRequestService(
       }
       const open = await openOffer(slug);
       if (!open.ok) return open;
+      const project = open.value.offer.projects.find(
+        (candidate) => candidate.id === projectId,
+      );
+      if (project === undefined)
+        return err(
+          invalidProject(projectId === "" ? "required" : "invalid-format"),
+        );
       const now = clock.now();
       const publicId = generatePublicId(random.bytes(PUBLIC_ID_BYTES));
       const inserted = await unavailableOnReject(
@@ -240,10 +281,18 @@ export function createIntensiveRequestService(
           cancelReason: null,
           cancelledBy: null,
           cancelledAt: null,
+          projectId: project.id,
+          price: project.price,
+          deposit: project.deposit,
         }),
       );
       if (!inserted.ok) return inserted;
-      return inserted.value.ok ? ok({ publicId }) : inserted.value;
+      if (inserted.value.ok) return ok({ publicId });
+      const refusal = inserted.value.error;
+      // The project was deleted after the check above.
+      return refusal.kind === "unknown-project"
+        ? err(invalidProject("invalid-format"))
+        : err(refusal);
     },
 
     async getRequestByPublicId(publicId) {
@@ -268,7 +317,13 @@ export function createIntensiveRequestService(
         eventDate: offer.value.eventDate,
         startsAt: offer.value.startsAt,
         endsAt: offer.value.endsAt,
-        deposit: offer.value.deposit,
+        projectName:
+          offer.value.projects.find(
+            (project) => project.id === request.projectId,
+          )?.name ?? null,
+        // A request made before projects has no snapshot: the workshop terms.
+        price: request.price ?? offer.value.price,
+        deposit: request.deposit ?? offer.value.deposit,
       });
     },
 
@@ -362,6 +417,7 @@ export function createUnavailableIntensiveRequestService(): IntensiveRequestUseC
   };
   return {
     getOffer: fail,
+    listProjects: fail,
     requestSeat: fail,
     getRequestByPublicId: fail,
     overview: failAdmin,

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { intensiveRequestsView } from "~/app/intensive-requests/admin-view";
 import { Money } from "~/modules/_shared";
 import { buildStoredRequest } from "~/testing/contracts/intensive-request-repository.contract";
-import { buildIntensiveOffer } from "~/testing/fakes/intensive-request-builders";
+import {
+  buildIntensiveOffer,
+  FAKE_PROJECT_ID,
+} from "~/testing/fakes/intensive-request-builders";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { IntensiveRequestsScreen } from "./intensive-requests";
 
@@ -15,7 +18,11 @@ const view = intensiveRequestsView(
     intensivo: buildIntensiveOffer(),
     confirmedSeats: 1,
     requests: [
-      buildStoredRequest({ id: "pending-1", fullName: "Ana Pérez" }),
+      buildStoredRequest({
+        id: "pending-1",
+        fullName: "Ana Pérez",
+        projectId: FAKE_PROJECT_ID,
+      }),
       buildStoredRequest({
         id: "confirmed-1",
         fullName: "Bea Gómez",
@@ -60,6 +67,17 @@ describe("IntensiveRequestsScreen", () => {
       "/admin/intensivos/0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01",
     );
     await expectNoAxeViolations(container);
+  });
+
+  it("shows the chosen project on each request that has one", () => {
+    render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
+
+    const card = screen.getByRole("article", { name: "Ana Pérez" });
+    expect(
+      within(card).getByText("Proyecto").nextElementSibling,
+    ).toHaveTextContent("Taza de torno");
+    const other = screen.getByRole("article", { name: "Bea Gómez" });
+    expect(within(other).queryByText("Proyecto")).toBeNull();
   });
 
   it("gives a pending request a confirm form prefilled with the deposit and a cancel form", () => {

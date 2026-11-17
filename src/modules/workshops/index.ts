@@ -42,6 +42,7 @@ export {
   createIntensiveSeatOfferLookup,
   type IntensiveSeatOffer,
   type IntensiveSeatOfferLookup,
+  type IntensiveSeatOfferProject,
   type IntensiveSeatOfferLookupDeps,
 } from "./application/intensive-seat-offer";
 export { createPublicIntensivosReader } from "./application/public-intensivos-reader";

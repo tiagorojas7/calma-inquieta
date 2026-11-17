@@ -41,6 +41,14 @@ export interface IntensivoDetailProps {
   materialsBadge?: string;
   conditions: { label: string; policyText: string; minSeats: string };
   gallery: (DetailImage & { id: string })[];
+  /** The selectable projects; when present they replace the workshop price. */
+  projects?: {
+    id: string;
+    name: string;
+    total: string;
+    deposit: string;
+    image?: DetailImage;
+  }[];
   /** A discreet text link for questions, only beside a reservation action. */
   doubts?: { href: string; label: string };
   action:
@@ -71,6 +79,7 @@ export function IntensivoDetailPage({
   materialsBadge,
   conditions,
   gallery,
+  projects,
   doubts,
   action,
 }: IntensivoDetailProps) {
@@ -90,11 +99,13 @@ export function IntensivoDetailPage({
       </header>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <BookingSummary>
-          <PricingSummary
-            total={price}
-            reservation={deposit}
-            {...(balance ? { balance } : {})}
-          />
+          {projects && projects.length > 0 ? null : (
+            <PricingSummary
+              total={price}
+              reservation={deposit}
+              {...(balance ? { balance } : {})}
+            />
+          )}
           {action.kind === "paused" ? (
             <PausedNotice text={action.text} link={action.link} />
           ) : (
@@ -130,6 +141,40 @@ export function IntensivoDetailPage({
               name={teacher.name}
               {...(teacher.bioLine ? { bioLine: teacher.bioLine } : {})}
             />
+          ) : null}
+          {projects && projects.length > 0 ? (
+            <section
+              aria-labelledby="intensivo-projects"
+              className="flex flex-col gap-4"
+            >
+              <Heading level={2} id="intensivo-projects">
+                {microcopy.projects.heading}
+              </Heading>
+              <ul className="flex flex-col gap-4">
+                {projects.map((project) => (
+                  <li
+                    key={project.id}
+                    className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-raised sm:flex-row sm:items-center"
+                  >
+                    {project.image ? (
+                      <Image
+                        {...project.image}
+                        className="w-full rounded-sm object-cover sm:size-28 sm:w-28"
+                      />
+                    ) : null}
+                    <div className="flex flex-col gap-1">
+                      <Heading level={3}>{project.name}</Heading>
+                      <p className="text-ink-700">
+                        {`${microcopy.projects.total}: ${project.total}`}
+                      </p>
+                      <p className="font-semibold text-ink-900">
+                        {`${microcopy.projects.deposit}: ${project.deposit}`}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
           <ConditionsNote {...conditions} level={2} />
           {gallery.length ? (

@@ -7,6 +7,9 @@ import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.intensiveRequests;
 
+/** Label of the project fact; the shared admin microcopy file is not edited here. */
+const PROJECT_LABEL = "Proyecto";
+
 /** Plain display strings of one request; the delivery layer builds them. */
 export interface IntensiveRequestRow {
   readonly id: string;
@@ -14,6 +17,8 @@ export interface IntensiveRequestRow {
   readonly email: string;
   readonly phone: string;
   readonly whatsappHref: string | undefined;
+  /** The project the person chose; null for a request made before projects. */
+  readonly projectName: string | null;
   readonly reference: string;
   readonly receivedAt: string;
   readonly paidAmount: string | null;
@@ -194,6 +199,9 @@ function RequestCard({
             </>
           ) : null}
         </Fact>
+        {row.projectName === null ? null : (
+          <Fact label={PROJECT_LABEL}>{row.projectName}</Fact>
+        )}
         <Fact label={copy.fields.received}>{row.receivedAt}</Fact>
         <Fact label={copy.fields.reference}>{row.reference}</Fact>
         {status === "confirmed" ? (

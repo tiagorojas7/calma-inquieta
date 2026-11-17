@@ -15,6 +15,7 @@ type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type Row = typeof intensiveSeatRequest.$inferSelect;
 
 type ConfirmResult = Awaited<ReturnType<IntensiveRequestRepository["confirm"]>>;
+type InsertResult = Awaited<ReturnType<IntensiveRequestRepository["insert"]>>;
 type CancelResult = Awaited<ReturnType<IntensiveRequestRepository["cancel"]>>;
 
 const LIVE_EMAIL_INDEX = "intensive_seat_request_live_email_unique";
@@ -46,6 +47,9 @@ function toStored(row: Row): StoredIntensiveRequest {
     cancelReason: row.cancelReason,
     cancelledBy: row.cancelledBy,
     cancelledAt: row.cancelledAt,
+    projectId: row.projectId,
+    price: row.priceCentavos === null ? null : toMoney(row.priceCentavos),
+    deposit: row.depositCentavos === null ? null : toMoney(row.depositCentavos),
   };
 }
 
@@ -92,26 +96,46 @@ export function createDrizzleIntensiveRequestRepository(
     insert: (request) =>
       withSession(async (db) => {
         try {
-          await db.insert(intensiveSeatRequest).values({
-            id: request.id,
-            publicId: request.publicId,
-            intensiveId: request.intensiveId,
-            status: request.status,
-            fullName: request.fullName,
-            email: request.email,
-            phoneDigits: request.phoneDigits,
-            policyAcceptedAt: request.policyAcceptedAt,
-            createdAt: request.createdAt,
-            paidCentavos: request.paidAmount?.toCentavos() ?? null,
-            paidOn: request.paidOn,
-            paymentNote: request.paymentNote,
-            confirmedBy: request.confirmedBy,
-            confirmedAt: request.confirmedAt,
-            cancelReason: request.cancelReason,
-            cancelledBy: request.cancelledBy,
-            cancelledAt: request.cancelledAt,
+          return await db.transaction(async (tx): Promise<InsertResult> => {
+            if (request.projectId !== null) {
+              // Share lock on the project row: `deleteProject` locks it
+              // `FOR UPDATE`, so the project cannot vanish until this request
+              // is written, and one deleted before is not found here. The
+              // table belongs to the workshops module, so its schema is not
+              // imported: only these two columns are read.
+              const project = await tx.execute(
+                sql`SELECT 1 FROM intensive_project
+                    WHERE id = ${request.projectId}
+                      AND intensive_id = ${request.intensiveId}
+                    FOR SHARE`,
+              );
+              if (project.rows.length === 0)
+                return err({ kind: "unknown-project" as const });
+            }
+            await tx.insert(intensiveSeatRequest).values({
+              id: request.id,
+              publicId: request.publicId,
+              intensiveId: request.intensiveId,
+              status: request.status,
+              fullName: request.fullName,
+              email: request.email,
+              phoneDigits: request.phoneDigits,
+              policyAcceptedAt: request.policyAcceptedAt,
+              createdAt: request.createdAt,
+              paidCentavos: request.paidAmount?.toCentavos() ?? null,
+              paidOn: request.paidOn,
+              paymentNote: request.paymentNote,
+              confirmedBy: request.confirmedBy,
+              confirmedAt: request.confirmedAt,
+              cancelReason: request.cancelReason,
+              cancelledBy: request.cancelledBy,
+              cancelledAt: request.cancelledAt,
+              projectId: request.projectId,
+              priceCentavos: request.price?.toCentavos() ?? null,
+              depositCentavos: request.deposit?.toCentavos() ?? null,
+            });
+            return ok(undefined);
           });
-          return ok(undefined);
         } catch (error) {
           if (isLiveEmailConflict(error))
             return err({ kind: "duplicate-request" as const });

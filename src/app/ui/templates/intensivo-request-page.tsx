@@ -1,21 +1,33 @@
 import { Button, ButtonLink } from "../atoms/button";
 import { Heading, Text } from "../atoms/heading";
 import { Icon } from "../atoms/icons";
+import { Image } from "../atoms/image";
 import { ConditionsNote } from "../molecules/conditions-note";
 import { ErrorSummary } from "../molecules/error-summary";
-import { PriceTag } from "../molecules/price-tag";
 import {
   PublicCheckboxField,
   PublicTextField,
 } from "../molecules/public-fields";
 
-type Field = "fullName" | "email" | "phone" | "policy";
+type Field = "fullName" | "email" | "phone" | "policy" | "project";
+
+export interface RequestProjectOption {
+  id: string;
+  name: string;
+  /** Already formatted total price. */
+  total: string;
+  /** Already formatted deposit. */
+  deposit: string;
+  image?: { src: string; alt: string; width: number; height: number };
+}
 
 export interface IntensivoRequestPageProps {
   copy: Record<
     | "title"
     | "intro"
-    | "deposit"
+    | "project"
+    | "projectTotal"
+    | "projectDeposit"
     | "fullName"
     | "email"
     | "phone"
@@ -26,10 +38,12 @@ export interface IntensivoRequestPageProps {
     | "errorsTitle",
     string
   >;
-  intensivo: { name: string; dateLine: string; deposit: string };
+  intensivo: { name: string; dateLine: string };
+  /** In admin order; one is chosen, and a single one comes preselected. */
+  projects: readonly RequestProjectOption[];
   conditions: { label: string; policyText: string; minSeats: string };
   backHref: string;
-  values: Record<"fullName" | "email" | "phone", string>;
+  values: Record<"fullName" | "email" | "phone" | "projectId", string>;
   errors: Partial<Record<Field, string>>;
   formError?: string | undefined;
 }
@@ -44,6 +58,7 @@ export interface IntensivoRequestPageProps {
 export function IntensivoRequestPage({
   copy,
   intensivo,
+  projects,
   conditions,
   backHref,
   values,
@@ -55,6 +70,7 @@ export function IntensivoRequestPage({
       ["fullName", errors.fullName],
       ["email", errors.email],
       ["phone", errors.phone],
+      ["project", errors.project],
       ["policy", errors.policy],
     ] as const
   ).flatMap(([fieldId, message]) => (message ? [{ fieldId, message }] : []));
@@ -71,7 +87,6 @@ export function IntensivoRequestPage({
         </p>
         <Text>{copy.intro}</Text>
       </header>
-      <PriceTag label={copy.deposit} amount={intensivo.deposit} />
       {formError ? (
         <p role="alert" className="font-semibold text-terracotta-700">
           {formError}
@@ -93,6 +108,58 @@ export function IntensivoRequestPage({
             type="text"
           />
         </div>
+        <fieldset
+          aria-describedby={errors.project ? "project-error" : undefined}
+          className="flex flex-col gap-3"
+        >
+          <legend className="mb-2 font-semibold text-ink-900">
+            {copy.project}
+          </legend>
+          {projects.map((project, index) => (
+            <label
+              key={project.id}
+              className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md border border-clay-600 p-3 has-[:checked]:border-2 has-[:checked]:border-clay-800"
+            >
+              <input
+                type="radio"
+                id={index === 0 ? "project" : `project-${String(index)}`}
+                name="project"
+                value={project.id}
+                required
+                defaultChecked={
+                  projects.length === 1 || values.projectId === project.id
+                }
+                className="mt-1 size-5 shrink-0 accent-clay-600"
+              />
+              {project.image ? (
+                <Image
+                  {...project.image}
+                  className="size-16 shrink-0 rounded-sm object-cover"
+                  intrinsicRatio={false}
+                />
+              ) : null}
+              <span className="flex flex-col gap-0.5">
+                <span className="font-semibold text-ink-900">
+                  {project.name}
+                </span>
+                <span className="text-sm text-ink-700">
+                  {`${copy.projectTotal}: ${project.total}`}
+                </span>
+                <span className="text-sm text-ink-700">
+                  {`${copy.projectDeposit}: ${project.deposit}`}
+                </span>
+              </span>
+            </label>
+          ))}
+          {errors.project ? (
+            <p
+              id="project-error"
+              className="text-sm font-semibold text-terracotta-700"
+            >
+              {errors.project}
+            </p>
+          ) : null}
+        </fieldset>
         <PublicTextField
           id="fullName"
           label={copy.fullName}

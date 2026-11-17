@@ -8,6 +8,7 @@ import type {
   IntensiveRequestRepository,
   RequestFilter,
   StoredIntensiveRequest,
+  UnknownProject,
 } from "~/modules/intensive-requests";
 
 type NotFound = { readonly kind: "not-found" };
@@ -18,7 +19,7 @@ export class InMemoryIntensiveRequestRepository implements IntensiveRequestRepos
 
   insert(
     request: StoredIntensiveRequest,
-  ): Promise<Result<void, DuplicateRequest>> {
+  ): Promise<Result<void, DuplicateRequest | UnknownProject>> {
     if (this.requests.has(request.id))
       return Promise.reject(new Error("intensive request already exists"));
     const live = [...this.requests.values()].some(

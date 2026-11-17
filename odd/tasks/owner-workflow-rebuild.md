@@ -35,7 +35,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 - [x] T3 (S6): selectable workshop projects, deposit/balance and material allocation; units T3-A to T3-E per L71 (delegated); T3-A done in `d0e7d78` + `5ebbcdd`; T3-C `af93d87`; T3-B `2c90a33`; T3-D `8570def` + `fff0b4c`; T3-E `89c9e86`; T3-F `3e3c1ea`; L78 `ab95a9f`; T3 done (L80); high risk items 1/3/4.
 - [x] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop settlement and margin done in T3-E `89c9e86` and `ab95a9f`, monthly margin in S-B; monthly settlement already counts only paid states and the fee (L16, re-checked L81); percentage warning and per-teacher percentage editing (L82, L85) in `0124d0c`; verification in T6; high risk items 1/3.
 - [ ] T7 (S2): remove materials from monthly periods. U-P (delegated, parallel): public flow without material step or gate. U-W (delegated, parallel): admin period and quick forms without the flag or material picker. The `materials_required` column and `period_material_offer` table stay dormant until a later migration slice; implemented, commits in L26; seam run in L27: unit/ui, lint, typecheck and format green, DB files that use T7 code green in L28; the other 17 run in T6.
-- [ ] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell `57c9fe0` + `d312eb4` (T5-N, L91); global policies `3b4dc0e` + `55d3feb` (T5-P, L92); complete mobile verification remains; high risk items 2/3 for consent and shared notifications.
+- [x] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell `57c9fe0` + `d312eb4` (T5-N, L91); global policies `3b4dc0e` + `55d3feb` (T5-P, L92); mobile verification at 390 px and copy fix `b0eb1b0` (L93); done, verification in T6; high risk items 2/3 for consent and shared notifications.
 - [ ] T6 (S1–S11): exhaustive final verification per L67 (per-area independent verifiers, full DB suite, 0018 rehearsal, differential, sliced native review, lint, typecheck, phone walkthrough); commit pending.
 
 ## Log
@@ -454,3 +454,29 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - The owner reviews both base texts before launch (L90).
     - Writer scratch: `...\scratchpad\t5p\` and `t5p-red-seed.log`.
   - Next: T5 mobile verification of the panel (S9), then T6.
+- L93 (2026-11-17): T5 mobile verification done (inline).
+  - Setup:
+    - Local embedded Postgres on 5432 (`calma_dev`), migrated with the current 0018 and seeded with `fullyPopulatedSeed`.
+    - `pnpm dev`, driven by headless Chrome over CDP at 390x844, DPR 2, touch on, since the Chrome extension disconnected.
+    - Scripts and screenshots are in `...\scratchpad\mobile\`.
+  - Pages covered, all at 390 px:
+    - Every admin list and form: home, novedades, inscripciones (+nueva, detalle, venta-nueva), talleres (+nuevo, detalle, turnos, período), intensivos (+nuevo, detalle, reservas), asistencia (+recuperaciones), profesores (+nuevo, detalle), alumnas (+detalle), eventos (+detalle), estadísticas, recordatorios, materiales (+nuevo, importar, precios, proveedores, nuevo proveedor), políticas.
+    - Public: `/condiciones`, `/privacidad`, the taller page, the enrollment form and `/eventos-privados`.
+  - Layout results:
+    - No page scrolls horizontally, and no element sits past the viewport.
+    - No admin tap target is under 24 px, except checkboxes labelled through `for` (`materialsIncluded`, `available`, `variantPriceOnRequest`, 20x24). The menu drawer, the bell and its badge render correctly.
+  - Flow, end to end on the phone viewport:
+    - Published the November period of Taller Demo.
+    - A public enrollment with the new checkbox (links open `/condiciones` and `/privacidad` in a new tab, hidden versions 1/1) created `CI-2026-0001` as pending.
+    - A private event request was accepted.
+    - The bell went "Novedades: 2 sin leer", then 1 after opening the enrollment, then 0 after opening the event.
+    - `/admin/novedades` listed both, plus the pending $45.000 fee.
+    - The enrollment detail shows "Aceptación: Condiciones v1 · Privacidad v1" inside "Más datos del pedido".
+  - Fixed inline: the policies history said "por migration 0018" for the seeded version. It now reads "Texto base inicial" (RED/GREEN in `policies.ui.test.tsx`, typecheck exit 0, `b0eb1b0`).
+  - For T6:
+    - The enrollment detail still shows "Política aceptada: 2026-10" (legacy `policy_version`) next to the new line.
+    - The public enrollment page has no `<title>`, already true at the baseline.
+    - Public footer links are 23 px tall, spaced well apart.
+    - The workshop seat-request form was not walked through: the seed has no published workshop.
+    - The owners' real-phone walkthrough stays in T6.
+  - T5 done. Next: T6.

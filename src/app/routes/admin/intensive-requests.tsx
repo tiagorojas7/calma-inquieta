@@ -7,6 +7,7 @@ import {
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { failureResponse } from "~/app/admin/failure-response";
+import { markOpened } from "~/app/admin/notifications-view";
 import { servicesContext } from "~/app/context";
 import { intensiveRequestsView } from "~/app/intensive-requests/admin-view";
 import {
@@ -29,10 +30,11 @@ export function meta() {
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   if (!isUuid(params.id)) throw data(null, { status: 404 });
-  const found = await context
-    .get(servicesContext)
-    .intensiveRequests.overview(actor, params.id);
+  const { intensiveRequests } = context.get(servicesContext);
+  const found = await intensiveRequests.overview(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
+  // Opening the reservations reads every request of this workshop for both owners.
+  await markOpened(() => intensiveRequests.markSeen(actor, params.id));
   return {
     ...intensiveRequestsView(found.value, cordobaDateOf(new Date())),
     done: feedbackCode(request, DONE),

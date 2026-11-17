@@ -3,6 +3,7 @@ import { servicesContext } from "~/app/context";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { failureResponse } from "~/app/admin/failure-response";
+import { markOpened } from "~/app/admin/notifications-view";
 import { privateEventDetail } from "~/app/private-events/admin-view";
 import { PrivateEventDetail } from "~/app/ui/admin/private-event-detail";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
@@ -19,10 +20,11 @@ export function meta() {
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   if (!isUuid(params.id)) throw data(null, { status: 404 });
-  const found = await context
-    .get(servicesContext)
-    .privateEvents.get(actor, params.id);
+  const { privateEvents } = context.get(servicesContext);
+  const found = await privateEvents.get(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
+  // Opening the request reads it for both owners.
+  await markOpened(() => privateEvents.markSeen(actor, params.id));
   return {
     ...privateEventDetail(found.value),
     feedback: feedbackCode(request, FEEDBACK),

@@ -1217,3 +1217,62 @@ describe("admin enrollment detail loader: material sales", () => {
     expect(result.feedback).toBe("sale-created");
   });
 });
+
+describe("opening an enrollment marks it read for both owners", () => {
+  it("marks the opened order once the page data loaded, with the opening admin", async () => {
+    const markSeen = vi.fn(() =>
+      Promise.resolve(ok({ kind: "seen" as const })),
+    );
+
+    await load({ detail: () => Promise.resolve(ok(detail)), markSeen });
+
+    expect(markSeen).toHaveBeenCalledTimes(1);
+    expect(markSeen).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
+    );
+  });
+
+  it("returns exactly the same page data whether or not the mark worked", async () => {
+    const detailOnly = { detail: () => Promise.resolve(ok(detail)) };
+    const plain = await load(detailOnly);
+
+    const marked = await load({
+      ...detailOnly,
+      markSeen: () => Promise.resolve(ok({ kind: "already-seen" as const })),
+    });
+    const refused = await load({
+      ...detailOnly,
+      markSeen: () => Promise.resolve(err({ kind: "unavailable" as const })),
+    });
+    const failing = await load({
+      ...detailOnly,
+      markSeen: () => Promise.reject(new Error("db down")),
+    });
+
+    expect(marked).toEqual(plain);
+    expect(refused).toEqual(plain);
+    expect(failing).toEqual(plain);
+  });
+
+  it("marks nothing for an unknown order, a bad id or a non-admin", async () => {
+    const markSeen = vi.fn(() =>
+      Promise.resolve(ok({ kind: "seen" as const })),
+    );
+
+    expect(
+      await thrownStatus(() =>
+        load({
+          detail: () => Promise.resolve(err({ kind: "not-found" as const })),
+          markSeen,
+        }),
+      ),
+    ).toBe(404);
+    expect(
+      await thrownStatus(() =>
+        load({ detail: () => Promise.resolve(ok(detail)), markSeen }, false),
+      ),
+    ).toBe(403);
+    expect(markSeen).not.toHaveBeenCalled();
+  });
+});

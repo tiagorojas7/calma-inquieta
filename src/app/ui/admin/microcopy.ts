@@ -1692,6 +1692,59 @@ export const adminMicrocopy = {
       failed: "Elegí un estado de la lista e intentá de nuevo.",
     },
   },
+  notifications: {
+    title: "Novedades",
+    subtitle:
+      "Lo nuevo que todavía nadie abrió y los pagos que siguen pendientes.",
+    bell: {
+      label: "Novedades",
+      unread: (n: number) => `Novedades: ${String(n)} sin leer`,
+      overflow: "99+",
+    },
+    newSection: {
+      title: "Nuevas",
+      description:
+        "Se marcan como leídas, para las dos, cuando abrís la inscripción, la reserva o la consulta.",
+      count: (n: number) =>
+        n === 1 ? "1 sin abrir" : `${String(n)} sin abrir`,
+      empty: {
+        title: "No hay nada nuevo",
+        message:
+          "Cuando llegue una inscripción, una reserva de workshop o una consulta de evento privado, la vas a ver acá hasta que la abras.",
+        action: "Ir al inicio",
+      },
+    },
+    paymentsSection: {
+      title: "Pagos pendientes",
+      description:
+        "Siguen acá hasta que se cobran. No tienen fecha de vencimiento.",
+      count: (n: number) =>
+        n === 1 ? "1 pago pendiente" : `${String(n)} pagos pendientes`,
+      empty: {
+        title: "No hay pagos pendientes",
+        message:
+          "Cuando una cuota, una seña, un saldo o una venta de materiales quede sin cobrar, la vas a ver acá.",
+        action: "Ver inscripciones",
+      },
+    },
+    kinds: {
+      enrollment: "Inscripción",
+      "workshop-request": "Reserva de workshop",
+      "private-event": "Evento privado",
+    },
+    owed: {
+      enrollment: "Cuota del mes",
+      "material-sale": "Venta de materiales",
+      "workshop-deposit": "Seña de workshop",
+      "workshop-balance": "Saldo de workshop",
+    },
+    received: "Recibida",
+    forDate: "Fecha deseada",
+    list: {
+      news: "Novedades sin abrir",
+      payments: "Pagos pendientes",
+    },
+  },
   attendance: {
     title: "Asistencia",
     filterLabel: "Elegir clases",

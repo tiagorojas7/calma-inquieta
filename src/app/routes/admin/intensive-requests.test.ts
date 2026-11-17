@@ -473,3 +473,44 @@ describe("admin intensive requests action", () => {
     });
   });
 });
+
+describe("opening the reservations of a workshop marks them read for both owners", () => {
+  it("stamps every request of that workshop with the opener and keeps the first mark", async () => {
+    const { repository, services, ids } = await seeded();
+
+    await load(FAKE_INTENSIVE_ID, services);
+    await load(FAKE_INTENSIVE_ID, services);
+
+    expect([...repository.seenMarks.keys()].sort()).toEqual([...ids].sort());
+    for (const mark of repository.seenMarks.values())
+      expect(mark.by).toBe("a@x.test");
+  });
+
+  it("returns the same page data as before the mark", async () => {
+    const { services } = await seeded();
+    const first = await load(FAKE_INTENSIVE_ID, services);
+
+    expect(await load(FAKE_INTENSIVE_ID, services)).toEqual(first);
+  });
+
+  it("marks nothing for an unknown workshop, a bad id or a non-admin", async () => {
+    const { repository, services } = await seeded();
+
+    expect(await thrownStatus(() => load(OTHER_ID, services))).toBe(404);
+    expect(await thrownStatus(() => load("no-uuid", services))).toBe(404);
+    expect(
+      await thrownStatus(() => load(FAKE_INTENSIVE_ID, services, false)),
+    ).toBe(403);
+    expect(repository.seenMarks.size).toBe(0);
+  });
+
+  it("still shows the reservations when marking them fails", async () => {
+    const { repository, services } = await seeded();
+    repository.markSeenForIntensive = () =>
+      Promise.reject(new Error("db down"));
+
+    const result = await load(FAKE_INTENSIVE_ID, services);
+
+    expect(result.groups.map((group) => group.rows.length)).toEqual([2, 0, 0]);
+  });
+});

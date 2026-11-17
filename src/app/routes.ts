@@ -58,6 +58,7 @@ export default [
     route("materiales/proveedores", "routes/admin/suppliers.tsx"),
     route("materiales/proveedores/nuevo", "routes/admin/supplier-new.tsx"),
     route("materiales/proveedores/:id", "routes/admin/supplier-detail.tsx"),
+    route("novedades", "routes/admin/notifications.tsx"),
     route("eventos", "routes/admin/private-events.tsx"),
     route("eventos/:id", "routes/admin/private-event-detail.tsx"),
     route("estadisticas", "routes/admin/statistics.tsx"),

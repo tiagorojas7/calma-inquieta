@@ -22,6 +22,7 @@ import {
   parseEnrollmentIntent,
   refusalResponse,
 } from "~/app/admin/enrollment-action-data";
+import { markOpened } from "~/app/admin/notifications-view";
 import { formatTimeRange } from "~/app/catalog/format";
 import {
   dateLabel,
@@ -164,6 +165,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const found = await services.enrollments.detail(actor, params.id);
   if (!found.ok) throw enrollmentFailureResponse(found.error);
+  // Opening the order reads it for both owners.
+  await markOpened(() => services.enrollments.markSeen(actor, params.id));
   const order = found.value;
   const paid = order.paidAt !== undefined && order.paidAmount !== undefined;
   const fulfillment = fulfillmentOf(order.lines);

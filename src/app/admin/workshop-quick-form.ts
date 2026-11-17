@@ -28,6 +28,7 @@ export interface QuickTurnoRow {
 /** What the one-page form shows, typed or saved. */
 export interface QuickValues {
   readonly name: string;
+  readonly summary: string;
   readonly description: string;
   readonly teacherId: string;
   readonly defaultFee: string;
@@ -91,8 +92,9 @@ const isBlank = (row: QuickTurnoRow) =>
 
 /**
  * The one-page taller form as a draft plus its turnos. The slug is left empty
- * so the flow derives a unique one; the summary comes from the description
- * and the technique falls back to a neutral word, so neither is asked. Rows
+ * so the flow derives a unique one, and the technique falls back to a neutral
+ * word. The card text ("Descripción") is asked like on the full form, so a
+ * blank one is the service's "required" error. Rows
  * that are completely empty are ignored; a half-filled row is reported before
  * anything is saved.
  */
@@ -138,6 +140,7 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
   const intent = text(form, "intent") === "publish" ? "publish" : "draft";
   const values: QuickValues = {
     name: text(form, "name"),
+    summary: text(form, "summary"),
     description,
     teacherId: text(form, "teacherId"),
     defaultFee: text(form, "defaultFee"),
@@ -150,7 +153,7 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     draft: {
       name: values.name,
       slug: "",
-      summary: text(form, "summary") || deriveSummary(description),
+      summary: values.summary,
       description,
       technique: text(form, "technique") || DEFAULT_TECHNIQUE,
       defaultFee: values.defaultFee,

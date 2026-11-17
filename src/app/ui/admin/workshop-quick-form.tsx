@@ -16,7 +16,13 @@ const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
 
 export type QuickWorkshopFormField =
-  "name" | "description" | "defaultFee" | "teacherId" | "percentage" | "images";
+  | "name"
+  | "summary"
+  | "description"
+  | "defaultFee"
+  | "teacherId"
+  | "percentage"
+  | "images";
 
 export interface QuickTurnoValues {
   readonly weekday: string;
@@ -27,6 +33,7 @@ export interface QuickTurnoValues {
 
 export interface QuickFormValues {
   readonly name: string;
+  readonly summary: string;
   readonly description: string;
   readonly teacherId: string;
   readonly defaultFee: string;
@@ -112,8 +119,8 @@ function TurnoRow({
 /**
  * The whole taller on one page: nothing else is needed to publish. A native
  * `<form method="post">`, never a router `Form` or fetcher, because the Worker
- * gate denies `/admin/**.data`. The slug, the summary and the technique are
- * not asked: they are derived. The percentage opens by itself for a
+ * gate denies `/admin/**.data`. Like the full form it asks for the card text
+ * and the full content; the slug and the technique are derived. The percentage opens by itself for a
  * third-party teacher and the server validates it either way. The first
  * submit button is the primary one, so Enter publishes.
  */
@@ -161,8 +168,16 @@ export function QuickWorkshopForm({
         error={errors.name}
         autoComplete="off"
       />
+      <TextField
+        label={copy.form.summary}
+        hint={copy.form.summaryHint}
+        name="summary"
+        defaultValue={values.summary}
+        error={errors.summary}
+      />
       <TextAreaField
         label={copy.form.description}
+        hint={copy.form.descriptionHint}
         name="description"
         rows={5}
         defaultValue={values.description}

@@ -30,6 +30,7 @@ function context(fixture: Fixture, options: { admin?: boolean } = {}) {
 
 const FIELDS = {
   name: "Cerámica Creativa",
+  summary: "Cerámica desde cero.",
   description: "Un taller para empezar de cero.",
   teacherId: "",
   defaultFee: "12000",
@@ -125,7 +126,8 @@ describe("admin workshop create action", () => {
       {
         slug: "ceramica-creativa",
         status: "published",
-        summary: "Un taller para empezar de cero.",
+        summary: "Cerámica desde cero.",
+        description: "Un taller para empezar de cero.",
         audit: { updatedBy: "a@x.test" },
       },
     ]);
@@ -190,6 +192,19 @@ describe("admin workshop create action", () => {
           defaultFee: "El formato no es válido. Revisalo.",
         },
         formError: "Revisá los campos marcados e intentá de nuevo.",
+      },
+    });
+    expect(fixture.repository.items.size).toBe(0);
+  });
+
+  it("asks for the Descripción of the card like the full form, storing nothing", async () => {
+    const fixture = workshopFlowFixture();
+    const result = await submit(fixture, { summary: "  ", intent: "publish" });
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        values: { summary: "", description: "Un taller para empezar de cero." },
+        errors: { summary: "Completá este campo." },
       },
     });
     expect(fixture.repository.items.size).toBe(0);

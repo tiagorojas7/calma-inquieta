@@ -96,6 +96,8 @@ describe("workshop contract helpers", () => {
       "reactivateTurno",
       "deleteTurno",
       "listAssignmentsOfTeacher",
+      "listForTeacher",
+      "setPercentage",
       "techniqueSuggestions",
     ] as const satisfies readonly (keyof MonthlyWorkshopsService)[];
     const periodKeys = [
@@ -107,7 +109,7 @@ describe("workshop contract helpers", () => {
       "close",
       "delete",
     ] as const satisfies readonly (keyof WorkshopPeriodsService)[];
-    expect(monthlyKeys).toHaveLength(17);
+    expect(monthlyKeys).toHaveLength(19);
     expect(periodKeys).toHaveLength(7);
     expectTypeOf<MonthlyWorkshopsService["delete"]>()
       .parameter(0)

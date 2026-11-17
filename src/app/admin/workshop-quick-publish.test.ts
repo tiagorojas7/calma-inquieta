@@ -16,6 +16,7 @@ function input(fields: Record<string, string | string[]>) {
   const data = new FormData();
   const base: Record<string, string | string[]> = {
     name: "Cerámica Creativa",
+    summary: "Cerámica desde cero.",
     description: "Un taller para empezar de cero.",
     defaultFee: "12000",
     teacherId: "",

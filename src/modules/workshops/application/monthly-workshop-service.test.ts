@@ -852,3 +852,131 @@ describe("a new turno joins the open months", () => {
     expect(turnos.joined).toEqual([]);
   });
 });
+
+describe("a teacher's workshops and their percentage", () => {
+  const otherActor = { kind: "admin-actor" as const, email: "b@example.com" };
+
+  it("lists the live workshops assigned to the teacher, by name, with each percentage", async () => {
+    const { service: subject } = service([
+      teacher(),
+      teacher({ id: "teacher-2", name: "Bea" }),
+    ]);
+    const seed = async (slug: string, name: string, teacherId: string) => {
+      const created = await subject.create(
+        actor,
+        draft({ slug, name, teacherId, percentage: "35,5" }),
+      );
+      if (!created.ok) throw new Error("seed failed");
+      return created.value.id;
+    };
+    const torno = await seed("torno", "Torno", "teacher-1");
+    const archived = await seed("viejo", "Viejo", "teacher-1");
+    await subject.archive(actor, archived);
+    await seed("ajeno", "Ajeno", "teacher-2");
+    const modelado = await seed("modelado", "Modelado", "teacher-1");
+
+    expect(await subject.listForTeacher(actor, "teacher-1")).toEqual({
+      ok: true,
+      value: [
+        {
+          id: modelado,
+          name: "Modelado",
+          status: "draft",
+          percentage: { basisPoints: 3550 },
+        },
+        {
+          id: torno,
+          name: "Torno",
+          status: "draft",
+          percentage: { basisPoints: 3550 },
+        },
+      ],
+    });
+    expect(await subject.listForTeacher(null, "teacher-1")).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+  });
+
+  it("changes only the percentage and stamps the actor", async () => {
+    const { service: subject, repository } = service([teacher()]);
+    const created = await subject.create(
+      actor,
+      draft({ teacherId: "teacher-1", percentage: "10" }),
+    );
+    if (!created.ok) throw new Error("seed failed");
+    const before = repository.items.get(created.value.id);
+
+    const saved = await subject.setPercentage(
+      otherActor,
+      created.value.id,
+      " 70 ",
+    );
+
+    expect(saved).toMatchObject({
+      ok: true,
+      value: { assignment: { percentage: { basisPoints: 7000 } } },
+    });
+    expect(repository.items.get(created.value.id)).toEqual({
+      ...before,
+      percentage: { basisPoints: 7000 },
+      audit: { updatedBy: otherActor.email, updatedAt: clock.now() },
+    });
+  });
+
+  it("refuses an invalid or inapplicable percentage and keeps the workshop", async () => {
+    const { service: subject, repository } = service([
+      teacher(),
+      teacher({ id: "own", modality: "own" }),
+    ]);
+    const third = await subject.create(
+      actor,
+      draft({ slug: "third", teacherId: "teacher-1", percentage: "10" }),
+    );
+    const own = await subject.create(
+      actor,
+      draft({ slug: "own", teacherId: "own" }),
+    );
+    const none = await subject.create(actor, draft({ slug: "none" }));
+    if (!third.ok || !own.ok || !none.ok) throw new Error("seed failed");
+    const snapshot = structuredClone([...repository.items.entries()]);
+
+    expect(await subject.setPercentage(actor, third.value.id, "120")).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "percentage", code: "out-of-range" }],
+      },
+    });
+    expect(await subject.setPercentage(actor, third.value.id, "")).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "percentage", code: "required" }],
+      },
+    });
+    expect(await subject.setPercentage(actor, own.value.id, "20")).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "percentage", code: "percentage-not-applicable" }],
+      },
+    });
+    expect(await subject.setPercentage(actor, none.value.id, "20")).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "teacherId", code: "required" }],
+      },
+    });
+    expect(await subject.setPercentage(actor, "missing", "20")).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+    expect(await subject.setPercentage(null, third.value.id, "20")).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    expect([...repository.items.entries()]).toEqual(snapshot);
+  });
+});

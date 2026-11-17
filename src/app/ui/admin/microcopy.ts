@@ -812,6 +812,15 @@ export const adminMicrocopy = {
       saved: { title: "Cambios guardados" },
       archived: { title: "Profesor archivado" },
       restored: { title: "Profesor reactivado" },
+      percentage: { title: "Porcentaje guardado" },
+    },
+    workshops: {
+      title: "Talleres asignados",
+      empty: "No tiene talleres asignados.",
+      percentage: "Porcentaje acordado",
+      save: "Guardar porcentaje",
+      formLabel: (name: string) => `Porcentaje de ${name}`,
+      ownNote: "Modalidad propia: sin porcentaje acordado.",
     },
     modalityHint:
       "Propia: no hay porcentaje acordado y no se calcula un importe. De terceros: la liquidación usa el porcentaje acordado de cada período.",
@@ -1037,6 +1046,8 @@ export const adminMicrocopy = {
       percentage: "Porcentaje acordado",
       percentageHint:
         "Solo para profesores de terceros, de 0 a 100 con hasta dos decimales. Ejemplo: 35,5.",
+      percentageNote:
+        "Los meses ya abiertos conservan su porcentaje; para cambiarlo, editá ese mes.",
       photosTitle: "Fotos",
       photosHint:
         "Hasta 4 fotos. La primera es la que se ve en la tarjeta del taller.",
@@ -1065,8 +1076,7 @@ export const adminMicrocopy = {
       percentageSummary: "Porcentaje (solo profesores de terceros)",
       publish: "Publicar y abrir inscripciones",
       saveDraft: "Guardar borrador",
-      derivedNote:
-        "El enlace se arma solo con el nombre. El resumen sale de la descripción.",
+      derivedNote: "El enlace se arma solo con el nombre.",
       techniqueDetails: "Más opciones",
     },
     failures: {

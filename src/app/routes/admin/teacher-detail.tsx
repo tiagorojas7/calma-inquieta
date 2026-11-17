@@ -2,12 +2,18 @@ import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { failureResponse } from "~/app/admin/failure-response";
-import { issueMessage } from "~/app/admin/issue-messages";
+import {
+  WORKSHOP_FIELD_MESSAGES,
+  fieldErrors,
+  issueMessage,
+} from "~/app/admin/issue-messages";
 import { invalidTeacherResponse } from "~/app/admin/teacher-action-data";
 import {
   parseTeacherDraft,
   parseTeacherIntent,
+  parseTeacherPercentage,
 } from "~/app/admin/teacher-form-data";
+import { formatPercentage } from "~/app/admin/workshop-form-data";
 import { toTeacherSettlement } from "~/app/admin/insights-view";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { TeacherSettlementPanel } from "~/app/ui/admin/teacher-settlement";
@@ -18,12 +24,13 @@ import {
   TeacherForm,
   TeacherStatePanel,
 } from "~/app/ui/admin/teacher-form";
+import { TeacherWorkshopsPanel } from "~/app/ui/admin/teacher-workshops";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/teacher-detail";
 
 const copy = adminMicrocopy.teachers;
 const LIST = "/admin/profesores";
-const FEEDBACK = ["archived", "restored"] as const;
+const FEEDBACK = ["archived", "restored", "percentage"] as const;
 
 export function meta() {
   return [{ title: "Editar profesor | Panel | Calma Inquieta" }];
@@ -49,6 +56,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     actor,
     isPeriod(month) ? { period: month } : {},
   );
+  // Her current workshops with their percentage; a failed read hides the block.
+  const workshops = await services.monthlyWorkshops.listForTeacher(
+    actor,
+    teacher.id,
+  );
   return {
     id: teacher.id,
     active: teacher.active,
@@ -63,6 +75,14 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       email: teacher.email ?? "",
       modality: teacher.modality,
     },
+    workshops: workshops.ok
+      ? workshops.value.map((workshop) => ({
+          id: workshop.id,
+          name: workshop.name,
+          status: workshop.status,
+          percentage: formatPercentage(workshop.percentage),
+        }))
+      : null,
     assignedTo: assignments?.ok
       ? [...assignments.value.monthly, ...assignments.value.intensives].map(
           (activity) => activity.name,
@@ -73,10 +93,37 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 export async function action({ request, context, params }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
-  const teachers = context.get(servicesContext).teachers;
+  const services = context.get(servicesContext);
+  const teachers = services.teachers;
   const form = await request.formData();
   const intent = parseTeacherIntent(form);
   if (intent === null) throw data(null, { status: 400 });
+
+  if (intent === "percentage") {
+    const input = parseTeacherPercentage(form);
+    const saved = await services.monthlyWorkshops.setPercentage(
+      actor,
+      input.workshopId,
+      input.percentage,
+    );
+    if (saved.ok)
+      return redirect(withFeedback(`${LIST}/${params.id}`, "percentage"));
+    if (saved.error.kind === "invalid") {
+      const errors = fieldErrors(saved.error.issues, WORKSHOP_FIELD_MESSAGES);
+      return data(
+        {
+          percentageError: {
+            workshopId: input.workshopId,
+            value: input.percentage,
+            message:
+              errors.percentage ?? errors.teacherId ?? copy.form.saveFailed,
+          },
+        },
+        { status: 422 },
+      );
+    }
+    throw failureResponse(saved.error);
+  }
 
   if (intent === "save") {
     const draft = parseTeacherDraft(form);
@@ -114,6 +161,10 @@ export default function AdminTeacherDetail() {
   const formRejected = rejected && "values" in rejected ? rejected : null;
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
+  const percentageError =
+    rejected && "percentageError" in rejected
+      ? rejected.percentageError
+      : undefined;
   const saved = teacher.feedback ? copy.feedback[teacher.feedback] : null;
   return (
     <section className="flex flex-col gap-6">
@@ -134,6 +185,13 @@ export default function AdminTeacherDetail() {
         <TeacherSettlementPanel
           teacherId={teacher.id}
           settlement={teacher.settlement}
+        />
+      )}
+      {teacher.workshops && (
+        <TeacherWorkshopsPanel
+          workshops={teacher.workshops}
+          percentageApplies={teacher.values.modality === "third_party"}
+          error={percentageError}
         />
       )}
       <TeacherForm

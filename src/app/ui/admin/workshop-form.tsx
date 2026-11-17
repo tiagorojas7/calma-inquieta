@@ -137,7 +137,7 @@ export function WorkshopForm({
         />
         <TextField
           label={copy.form.percentage}
-          hint={copy.form.percentageHint}
+          hint={`${copy.form.percentageHint} ${copy.form.percentageNote}`}
           name="percentage"
           inputMode="decimal"
           defaultValue={values.percentage}

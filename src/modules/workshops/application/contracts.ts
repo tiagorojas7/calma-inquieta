@@ -119,6 +119,13 @@ export interface MonthlyWorkshopSummary {
   readonly activeTurnos: number;
   readonly acceptsNewRequests: boolean;
 }
+/** A live monthly workshop as its teacher's detail lists it. */
+export interface TeacherWorkshop {
+  readonly id: string;
+  readonly name: string;
+  readonly status: WorkshopStatus;
+  readonly percentage: Percentage | null;
+}
 export interface MonthlyWorkshopDraft {
   readonly name: string;
   readonly slug: string;
@@ -229,6 +236,20 @@ export interface MonthlyWorkshopsService {
       AdminFailure
     >
   >;
+  /** The teacher's draft, published and paused workshops, by name. */
+  listForTeacher(
+    a: AdminActor,
+    teacherId: string,
+  ): Promise<Result<readonly TeacherWorkshop[], AdminFailure>>;
+  /**
+   * Changes only the workshop's agreed percentage. Opened months keep the
+   * percentage frozen in their snapshot.
+   */
+  setPercentage(
+    a: AdminActor,
+    id: string,
+    percentage: string,
+  ): R<MonthlyWorkshop, Invalid<"percentage" | "teacherId">>;
   techniqueSuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;

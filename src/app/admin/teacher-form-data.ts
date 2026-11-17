@@ -16,13 +16,27 @@ export function parseTeacherDraft(form: FormData): TeacherDraft {
   };
 }
 
-export type TeacherIntent = "save" | "archive" | "reactivate";
+export type TeacherIntent = "save" | "archive" | "reactivate" | "percentage";
 
 export function parseTeacherIntent(form: FormData): TeacherIntent | null {
   const intent = text(form, "intent");
-  return intent === "save" || intent === "archive" || intent === "reactivate"
+  return intent === "save" ||
+    intent === "archive" ||
+    intent === "reactivate" ||
+    intent === "percentage"
     ? intent
     : null;
+}
+
+/** One of her workshops and its new percentage; the service validates it. */
+export function parseTeacherPercentage(form: FormData): {
+  readonly workshopId: string;
+  readonly percentage: string;
+} {
+  return {
+    workshopId: text(form, "workshopId").trim(),
+    percentage: text(form, "percentage").trim(),
+  };
 }
 
 export type TeacherFilterKey = "activos" | "archivados" | "todos";

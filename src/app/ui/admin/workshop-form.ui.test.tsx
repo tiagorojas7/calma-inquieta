@@ -66,6 +66,64 @@ describe("card text versus full content", () => {
   });
 });
 
+describe("the agreed percentage", () => {
+  it("warns under the percentage that opened months keep theirs", () => {
+    stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Porcentaje acordado"),
+    ).toHaveAccessibleDescription(
+      /Los meses ya abiertos conservan su porcentaje; para cambiarlo, editá ese mes\./,
+    );
+  });
+});
+
+describe("the one-page form asks for both texts", () => {
+  const quickValues = {
+    name: "",
+    summary: "Cerámica desde cero.",
+    description: "Un taller para empezar de cero.",
+    teacherId: "",
+    defaultFee: "",
+    percentage: "",
+    images: [],
+    rows: [],
+  };
+
+  it("asks for the card Descripción before the Contenido interno and keeps what was typed", () => {
+    stub(
+      <QuickWorkshopForm
+        values={quickValues}
+        errors={{ summary: "Completá este campo." }}
+        turnoErrors={{}}
+        teachers={[]}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    const summary = screen.getByLabelText("Descripción");
+    const content = screen.getByLabelText("Contenido interno");
+    expect(summary).toHaveAttribute("name", "summary");
+    expect(summary).toHaveValue("Cerámica desde cero.");
+    expect(summary).toHaveAccessibleDescription(/tarjetas/);
+    expect(summary).toHaveAccessibleDescription(/Completá este campo\./);
+    expect(content).toHaveAttribute("name", "description");
+    expect(
+      summary.compareDocumentPosition(content) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByText(/El resumen sale de la descripción/)).toBeNull();
+  });
+});
+
 /** Records whether a submit reached the document (not cancelled by the router). */
 function submitReachesBrowser(form: HTMLFormElement | null) {
   const seen: { prevented: boolean | null } = { prevented: null };
@@ -242,6 +300,7 @@ describe("taller photos", () => {
       <QuickWorkshopForm
         values={{
           name: "",
+          summary: "",
           description: "",
           teacherId: "",
           defaultFee: "",
@@ -265,6 +324,7 @@ describe("taller photos", () => {
       <QuickWorkshopForm
         values={{
           name: "",
+          summary: "",
           description: "",
           teacherId: "",
           defaultFee: "",

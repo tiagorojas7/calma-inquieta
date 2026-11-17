@@ -26,6 +26,7 @@ const LIST = "/admin/talleres";
 
 const EMPTY: QuickValues = {
   name: "",
+  summary: "",
   description: "",
   teacherId: "",
   defaultFee: "",
@@ -41,6 +42,7 @@ const EMPTY: QuickValues = {
 
 const FORM_FIELDS = [
   "name",
+  "summary",
   "description",
   "defaultFee",
   "teacherId",

@@ -66,6 +66,26 @@ describe("intensiveRequestsView", () => {
     ]);
   });
 
+  it("shows the accepted document versions, or that there is no record", () => {
+    const view = intensiveRequestsView(
+      overview([
+        buildStoredRequest({
+          id: "a",
+          acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+        }),
+        buildStoredRequest({ id: "b" }),
+      ]),
+      "2026-10-28",
+    );
+
+    expect(view.groups[0]?.rows.map((row) => [row.id, row.acceptance])).toEqual(
+      [
+        ["a", "Condiciones v2 · Privacidad v3"],
+        ["b", "Sin registro de aceptación"],
+      ],
+    );
+  });
+
   it("groups requests by status in a fixed order", () => {
     const view = intensiveRequestsView(
       overview([

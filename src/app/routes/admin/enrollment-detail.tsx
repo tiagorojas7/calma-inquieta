@@ -1,6 +1,7 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { isUuid } from "~/app/admin/enrollment-ids";
+import { acceptanceLabel } from "~/app/admin/acceptance-label";
 import {
   cancelRefundValues,
   parseCancelRefund,
@@ -208,6 +209,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     turno: `${order.turnoLabel} · ${formatTimeRange(order.startsAt, order.endsAt)}`,
     requestedAt: dateTimeLabel(order.requestedAt),
     policyVersion: order.policyVersion,
+    acceptance: acceptanceLabel(order.acceptance),
     fee: formatPesos(order.fee),
     materialsTotal: formatPesos(order.materialsTotal),
     total: formatPesos(order.total),

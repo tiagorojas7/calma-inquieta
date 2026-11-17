@@ -10,15 +10,26 @@ import {
   FAKE_SECOND_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createLoaderArgs } from "~/testing/react-router";
+import {
+  buildPolicyVersion,
+  createInMemoryPolicies,
+} from "~/testing/fakes/policy-builders";
 import { action, loader, meta } from "./intensive-request";
 
 const PATH = `/intensivos/${FAKE_INTENSIVE_SLUG}/reserva`;
 
 function setup(offer: IntensiveOffer | null = buildIntensiveOffer()) {
-  const { service, repository } = createInMemoryIntensiveRequests({ offer });
+  // The documents the page shows are the ones the service accepts.
+  const policies = createInMemoryPolicies([
+    buildPolicyVersion({ kind: "conditions", version: 2, body: "Nueva." }),
+  ]).service;
+  const { service, repository } = createInMemoryIntensiveRequests({
+    offer,
+    policies,
+  });
   return {
     repository,
-    services: createTestServices({ intensiveRequests: service }),
+    services: createTestServices({ intensiveRequests: service, policies }),
   };
 }
 
@@ -35,6 +46,8 @@ const VALID = {
   phone: "351 555 0101",
   policy: "on",
   project: FAKE_PROJECT_ID,
+  conditionsVersion: "2",
+  privacyVersion: "1",
 };
 
 function post(
@@ -148,6 +161,69 @@ describe("intensive request loader", () => {
     await expect(loader(args(services))).rejects.toMatchObject({
       init: { status: 503 },
     });
+  });
+});
+
+describe("intensive request policy acceptance", () => {
+  it("hands the page the current version of each document to post back", async () => {
+    const { services } = setup();
+    expect((await open(services)).policies).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 1,
+    });
+  });
+
+  it("still renders the form, without versions, when the documents cannot be read", async () => {
+    const { service } = createInMemoryIntensiveRequests();
+    const services = createTestServices({ intensiveRequests: service });
+    const result = await open(services);
+    expect(result.policies).toBeNull();
+    expect(result.projects).toHaveLength(1);
+  });
+
+  it("stores the posted versions with the request", async () => {
+    const { repository, services } = setup();
+    await post(services, VALID);
+    const [stored] = [...repository.requests.values()];
+    expect(stored?.acceptance).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 1,
+    });
+    expect(stored?.policyAcceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("tells the visitor the documents changed when a version is unknown, and stores nothing", async () => {
+    const { repository, services } = setup();
+    const result = (await post(services, {
+      ...VALID,
+      conditionsVersion: "9",
+    })) as unknown as {
+      data: { values: Record<string, string>; errors: Record<string, string> };
+      init: { status: number };
+    };
+    expect(result.init.status).toBe(422);
+    expect(result.data.errors).toEqual({
+      policy: "Las condiciones cambiaron. Volvé a leerlas y aceptalas.",
+    });
+    expect(result.data.values.fullName).toBe("Ana Pérez");
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("fails closed with the unavailable message when the form carried no versions", async () => {
+    const { repository, raw } = createInMemoryIntensiveRequests();
+    const services = createTestServices({ intensiveRequests: raw });
+    const { fullName, email, phone, policy, project } = VALID;
+    const withoutVersions = { fullName, email, phone, policy, project };
+    const result = (await post(services, withoutVersions)) as unknown as {
+      data: { formError: string; errors: object };
+      init: { status: number };
+    };
+    expect(result.init.status).toBe(503);
+    expect(result.data.formError).toBe(
+      "No pudimos registrar tu solicitud. Probá de nuevo en un rato.",
+    );
+    expect(result.data.errors).toEqual({});
+    expect(repository.requests.size).toBe(0);
   });
 });
 

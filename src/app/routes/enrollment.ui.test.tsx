@@ -30,13 +30,69 @@ describe("EnrollmentPage", () => {
       "type",
       "tel",
     );
-    expect(screen.getByLabelText(/Acepto la política/u)).toHaveAttribute(
-      "type",
-      "checkbox",
-    );
+    expect(
+      screen.getByLabelText(
+        "Leí y acepto las condiciones y la política de privacidad",
+      ),
+    ).toHaveAttribute("type", "checkbox");
+    expect(screen.queryByLabelText(/^Acepto la política/u)).toBeNull();
     expect(container.querySelector('input[name="honeypot"]')).toHaveClass(
       "sr-only",
     );
+  });
+
+  it("links both documents and posts the versions it showed", () => {
+    const { container } = render(
+      <EnrollmentPage
+        state="open"
+        offer={{
+          workshopName: "Cerámica",
+          period: "2026-11",
+          periodLabel: "noviembre 2026",
+          fee: "$ 58.000",
+          turnos: [{ id: "a", label: "Martes" }],
+        }}
+        policies={{ conditionsVersion: 4, privacyVersion: 2 }}
+        values={{ fullName: "", email: "", phone: "", turnoId: "" }}
+        errors={{}}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: "las condiciones" }),
+    ).toHaveAttribute("href", "/condiciones");
+    expect(
+      screen.getByRole("link", { name: "la política de privacidad" }),
+    ).toHaveAttribute("href", "/privacidad");
+    expect(
+      container.querySelector('input[name="conditionsVersion"]'),
+    ).toHaveValue("4");
+    expect(container.querySelector('input[name="privacyVersion"]')).toHaveValue(
+      "2",
+    );
+  });
+
+  it("posts no versions when they could not be read, but still shows the checkbox", () => {
+    const { container } = render(
+      <EnrollmentPage
+        state="open"
+        offer={{
+          workshopName: "Cerámica",
+          period: "2026-11",
+          periodLabel: "noviembre 2026",
+          fee: "$ 58.000",
+          turnos: [{ id: "a", label: "Martes" }],
+        }}
+        policies={null}
+        values={{ fullName: "", email: "", phone: "", turnoId: "" }}
+        errors={{}}
+      />,
+    );
+    expect(
+      container.querySelector('input[name="conditionsVersion"]'),
+    ).toBeNull();
+    expect(
+      screen.getByRole("checkbox", { name: /Leí y acepto/u }),
+    ).toBeVisible();
   });
 
   it("shows the month in words and labels the fee, and posts the raw period", () => {

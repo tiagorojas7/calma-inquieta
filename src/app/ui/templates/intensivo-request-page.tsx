@@ -4,10 +4,8 @@ import { Icon } from "../atoms/icons";
 import { Image } from "../atoms/image";
 import { ConditionsNote } from "../molecules/conditions-note";
 import { ErrorSummary } from "../molecules/error-summary";
-import {
-  PublicCheckboxField,
-  PublicTextField,
-} from "../molecules/public-fields";
+import { PolicyAcceptanceField } from "../molecules/policy-acceptance-field";
+import { PublicTextField } from "../molecules/public-fields";
 
 type Field = "fullName" | "email" | "phone" | "policy" | "project";
 
@@ -32,7 +30,6 @@ export interface IntensivoRequestPageProps {
     | "email"
     | "phone"
     | "phoneHint"
-    | "policy"
     | "submit"
     | "back"
     | "errorsTitle",
@@ -42,6 +39,11 @@ export interface IntensivoRequestPageProps {
   /** In admin order; one is chosen, and a single one comes preselected. */
   projects: readonly RequestProjectOption[];
   conditions: { label: string; policyText: string; minSeats: string };
+  /**
+   * The versions of the conditions and privacy documents the page shows,
+   * posted back with the form; null when they could not be read.
+   */
+  policies?: { conditionsVersion: number; privacyVersion: number } | null;
   backHref: string;
   values: Record<"fullName" | "email" | "phone" | "projectId", string>;
   errors: Partial<Record<Field, string>>;
@@ -60,6 +62,7 @@ export function IntensivoRequestPage({
   intensivo,
   projects,
   conditions,
+  policies = null,
   backHref,
   values,
   errors,
@@ -195,13 +198,7 @@ export function IntensivoRequestPage({
           error={errors.phone}
         />
         <ConditionsNote {...conditions} level={2} />
-        <PublicCheckboxField
-          id="policy"
-          label={copy.policy}
-          name="policy"
-          required
-          error={errors.policy}
-        />
+        <PolicyAcceptanceField versions={policies} error={errors.policy} />
         <Button
           type="submit"
           variant="success"

@@ -34,6 +34,7 @@ const base: EnrollmentDetailProps = {
     turno: "Lunes · 10:00 a 12:00 h",
     requestedAt: "31/10/2026 12:30",
     policyVersion: "2026-10",
+    acceptance: "Condiciones v2 · Privacidad v3",
     fee: "$ 48.000",
     materialsTotal: "$ 10.000",
     total: "$ 58.000",
@@ -126,6 +127,17 @@ describe("EnrollmentDetail", () => {
       within(history as HTMLElement).getByText("public"),
     ).toBeInTheDocument();
     await expectNoAxeViolations(container);
+  });
+
+  it("lists the accepted conditions and privacy versions among the order data", () => {
+    render(<EnrollmentDetail {...base} />);
+    const more = screen.getByText("Más datos del pedido").closest("details");
+    expect(
+      within(more as HTMLElement).getByText("Aceptación"),
+    ).toBeInTheDocument();
+    expect(
+      within(more as HTMLElement).getByText("Condiciones v2 · Privacidad v3"),
+    ).toBeInTheDocument();
   });
 
   it("works in two columns: the job on the left, the facts on the right", () => {

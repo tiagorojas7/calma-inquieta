@@ -19,6 +19,7 @@ const MORE = [
   ["Eventos privados", "/admin/eventos"],
   ["Recordatorios", "/admin/recordatorios"],
   ["Estadísticas", "/admin/estadisticas"],
+  ["Políticas", "/admin/politicas"],
   ["Catálogo de materiales", "/admin/materiales"],
 ];
 
@@ -172,7 +173,7 @@ describe("AdminShell wayfinding", () => {
     );
     const sidebar = screen.getByRole("navigation", { name: "Secciones" });
     const links = within(sidebar).getAllByRole("link");
-    expect(links).toHaveLength(13);
+    expect(links).toHaveLength(14);
     for (const link of links) {
       const icon = link.querySelector("svg");
       expect(icon).not.toBeNull();

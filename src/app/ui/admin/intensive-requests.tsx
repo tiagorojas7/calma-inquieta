@@ -21,6 +21,8 @@ export interface IntensiveRequestRow {
   readonly projectName: string | null;
   readonly reference: string;
   readonly receivedAt: string;
+  /** "Condiciones v2 · Privacidad v3", or that there is no record. */
+  readonly acceptance: string;
   /** The terms the person was quoted: price, deposit and what the deposit left. */
   readonly price: string;
   readonly deposit: string;
@@ -327,6 +329,7 @@ function RequestCard({
         )}
         <Fact label={copy.fields.received}>{row.receivedAt}</Fact>
         <Fact label={copy.fields.reference}>{row.reference}</Fact>
+        <Fact label={copy.fields.acceptance}>{row.acceptance}</Fact>
         <Fact label={copy.fields.price}>{row.price}</Fact>
         {status === "pending_confirmation" ? (
           <Fact label={copy.summary.deposit}>{row.deposit}</Fact>

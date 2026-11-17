@@ -1,5 +1,10 @@
 import type { FieldIssue } from "~/modules/_shared";
-import type { StudentDraft, StudentField } from "~/modules/enrollments";
+import { acceptanceFrom } from "~/app/enrollment/policy-acceptance";
+import type {
+  PolicyAcceptance,
+  StudentDraft,
+  StudentField,
+} from "~/modules/enrollments";
 import { studentIssueMessage } from "./copy";
 
 export interface RequestFormValues {
@@ -30,6 +35,8 @@ function text(form: FormData, name: string): string {
 export function parseRequestForm(form: FormData): {
   values: RequestFormValues;
   student: StudentDraft;
+  /** The document versions the form showed; absent when it posted none. */
+  acceptance: PolicyAcceptance | undefined;
 } {
   const values: RequestFormValues = {
     fullName: text(form, "fullName"),
@@ -46,6 +53,7 @@ export function parseRequestForm(form: FormData): {
       policyAccepted: form.get("policy") === "on",
       honeypot: text(form, "honeypot"),
     },
+    acceptance: acceptanceFrom(form),
   };
 }
 

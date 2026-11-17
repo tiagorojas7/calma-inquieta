@@ -168,6 +168,29 @@ const confirmFields = {
   note: "Transferencia",
 };
 
+describe("admin enrollment detail acceptance", () => {
+  it("shows the versions of the conditions and privacy the student accepted", async () => {
+    const result = await load({
+      detail: () =>
+        Promise.resolve(
+          ok({
+            ...detail,
+            acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+          }),
+        ),
+    });
+    expect(result).toMatchObject({
+      acceptance: "Condiciones v2 · Privacidad v3",
+      policyVersion: "2026-10",
+    });
+  });
+
+  it("says there is no record when the order has no versions", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(detail)) });
+    expect(result).toMatchObject({ acceptance: "Sin registro de aceptación" });
+  });
+});
+
 describe("admin enrollment detail loader", () => {
   it("shows every stored field, including contact data, for an admin", async () => {
     const result = await load({ detail: () => Promise.resolve(ok(detail)) });

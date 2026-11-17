@@ -23,6 +23,7 @@ const view = intensiveRequestsView(
         id: "pending-1",
         fullName: "Ana Pérez",
         projectId: FAKE_PROJECT_ID,
+        acceptance: { conditionsVersion: 2, privacyVersion: 3 },
       }),
       buildStoredRequest({
         id: "confirmed-1",
@@ -79,6 +80,19 @@ describe("IntensiveRequestsScreen", () => {
     ).toHaveTextContent("Taza de torno");
     const other = screen.getByRole("article", { name: "Bea Gómez" });
     expect(within(other).queryByText("Proyecto")).toBeNull();
+  });
+
+  it("shows the accepted document versions on each request, or that there is no record", () => {
+    render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
+
+    const card = screen.getByRole("article", { name: "Ana Pérez" });
+    expect(
+      within(card).getByText("Aceptación").nextElementSibling,
+    ).toHaveTextContent("Condiciones v2 · Privacidad v3");
+    const other = screen.getByRole("article", { name: "Bea Gómez" });
+    expect(
+      within(other).getByText("Aceptación").nextElementSibling,
+    ).toHaveTextContent("Sin registro de aceptación");
   });
 
   it("gives a pending request a confirm form prefilled with the deposit and a cancel form", () => {

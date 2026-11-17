@@ -54,7 +54,32 @@ describe("parseRequestForm", () => {
   });
 });
 
+describe("parseRequestForm acceptance", () => {
+  it("reads the versions the form showed", () => {
+    expect(
+      parseRequestForm(form({ conditionsVersion: "3", privacyVersion: "2" }))
+        .acceptance,
+    ).toEqual({ conditionsVersion: 3, privacyVersion: 2 });
+  });
+
+  it("reads no acceptance when a version is missing or malformed", () => {
+    expect(parseRequestForm(form({})).acceptance).toBeUndefined();
+    expect(
+      parseRequestForm(form({ conditionsVersion: "3", privacyVersion: "x" }))
+        .acceptance,
+    ).toBeUndefined();
+  });
+});
+
 describe("requestFieldErrors", () => {
+  it("words an unknown policy version as a change of the documents", () => {
+    expect(
+      requestFieldErrors([{ field: "policy", code: "unknown-reference" }]),
+    ).toEqual({
+      policy: "Las condiciones cambiaron. Volvé a leerlas y aceptalas.",
+    });
+  });
+
   it("maps each issue to a voseo message and keeps the first per field", () => {
     expect(
       requestFieldErrors([

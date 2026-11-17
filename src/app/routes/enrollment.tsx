@@ -7,9 +7,17 @@ import {
 } from "react-router";
 import { servicesContext } from "~/app/context";
 import { monthLabel } from "~/app/enrollment/order-labels";
+import {
+  POLICY_CHANGED_MESSAGE,
+  acceptanceFrom,
+  shownVersions,
+} from "~/app/enrollment/policy-acceptance";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 import type { AppServices } from "~/composition/request-services";
-import type { RequestEnrollmentError } from "~/modules/enrollments";
+import type {
+  PolicyAcceptance,
+  RequestEnrollmentError,
+} from "~/modules/enrollments";
 
 type RouteArgs = {
   request: Request;
@@ -75,13 +83,15 @@ function studentErrors(error: RequestEnrollmentError): FieldErrors | null {
   return Object.fromEntries(
     error.issues.map((issue) => [
       issue.field,
-      issue.field === "fullName"
-        ? "Ingresá tu nombre completo."
-        : issue.field === "email"
-          ? "Ingresá un email válido."
-          : issue.field === "phone"
-            ? "Ingresá un teléfono argentino válido."
-            : "Tenés que aceptar la política de privacidad.",
+      issue.field === "policy" && issue.code === "unknown-reference"
+        ? POLICY_CHANGED_MESSAGE
+        : issue.field === "fullName"
+          ? "Ingresá tu nombre completo."
+          : issue.field === "email"
+            ? "Ingresá un email válido."
+            : issue.field === "phone"
+              ? "Ingresá un teléfono argentino válido."
+              : "Tenés que aceptar la política de privacidad.",
     ]),
   );
 }
@@ -122,6 +132,8 @@ export async function loader({ context, params, request }: RouteArgs) {
     params.slug ?? "",
   );
   return {
+    // The versions of the conditions and privacy documents this page shows.
+    policies: await shownVersions(services.policies),
     offer: {
       workshopName: offer.workshopName,
       period: offer.period,
@@ -147,6 +159,7 @@ function textField(form: FormData, name: string): string {
 export async function action({ request, context, params }: RouteArgs) {
   const form = await request.formData();
   const values = valuesFrom(form);
+  const acceptance = acceptanceFrom(form);
   const result = await context
     .get(servicesContext)
     .publicEnrollments.requestEnrollment({
@@ -161,6 +174,7 @@ export async function action({ request, context, params }: RouteArgs) {
         honeypot: textField(form, "honeypot"),
       },
       lines: [],
+      ...(acceptance === undefined ? {} : { acceptance }),
     });
   if (result.ok) return redirect(`/pedido/${result.value.publicId}`);
 
@@ -173,11 +187,19 @@ export async function action({ request, context, params }: RouteArgs) {
   } satisfies ActionFailure;
 }
 
+type PolicyVersions = PolicyAcceptance | null;
+
 type OpenOffer = NonNullable<
   ReturnType<typeof useLoaderData<typeof loader>>["offer"]
 >;
 
-function OpenEnrollment({ offer }: { offer: OpenOffer }) {
+function OpenEnrollment({
+  offer,
+  policies,
+}: {
+  offer: OpenOffer;
+  policies: PolicyVersions;
+}) {
   const rejected = useActionData<typeof action>();
   const { slug = "" } = useParams();
 
@@ -185,6 +207,7 @@ function OpenEnrollment({ offer }: { offer: OpenOffer }) {
     <EnrollmentPage
       state="open"
       offer={offer}
+      policies={policies}
       values={rejected?.values ?? EMPTY_VALUES}
       errors={rejected?.errors ?? {}}
       backHref={`/talleres/${slug}`}
@@ -194,7 +217,7 @@ function OpenEnrollment({ offer }: { offer: OpenOffer }) {
 }
 
 export default function EnrollmentRoute() {
-  const { offer } = useLoaderData<typeof loader>();
+  const { offer, policies } = useLoaderData<typeof loader>();
   if (offer === undefined) return <EnrollmentPage state="paused" />;
-  return <OpenEnrollment offer={offer} />;
+  return <OpenEnrollment offer={offer} policies={policies ?? null} />;
 }

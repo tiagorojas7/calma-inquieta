@@ -1,6 +1,7 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { formatEventDate, formatPesos } from "~/app/catalog/format";
+import { shownVersions } from "~/app/enrollment/policy-acceptance";
 import { requestConditions } from "~/app/intensive-requests/conditions";
 import {
   intensiveRequestCopy,
@@ -25,9 +26,8 @@ function gone(kind: "not-found" | "unavailable") {
 const backToDetail = (slug: string) => redirect(`/intensivos/${slug}`);
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-  const found = await context
-    .get(servicesContext)
-    .intensiveRequests.getOffer(params.slug);
+  const services = context.get(servicesContext);
+  const found = await services.intensiveRequests.getOffer(params.slug);
   if (!found.ok) {
     const kind = found.error.kind;
     if (kind === "requests-closed" || kind === "seats-full")
@@ -36,6 +36,8 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   }
   const offer = found.value;
   return {
+    // The versions of the conditions and privacy documents this page shows.
+    policies: await shownVersions(services.policies),
     intensivo: {
       name: offer.name,
       dateLine: formatEventDate(offer.eventDate),
@@ -58,13 +60,14 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 export async function action({ request, context, params }: Route.ActionArgs) {
   const form = await request.formData().catch(() => null);
   if (form === null) throw data(null, { status: 400 });
-  const { values, student } = parseRequestForm(form);
+  const { values, student, acceptance } = parseRequestForm(form);
   const result = await context
     .get(servicesContext)
     .intensiveRequests.requestSeat({
       slug: params.slug,
       projectId: values.projectId,
       student,
+      ...(acceptance === undefined ? {} : { acceptance }),
     });
   if (result.ok) return redirect(`/reserva/${result.value.publicId}`);
 
@@ -121,6 +124,7 @@ export default function IntensiveRequestRoute() {
       intensivo={loaded.intensivo}
       projects={loaded.projects}
       conditions={loaded.conditions}
+      policies={loaded.policies}
       backHref={loaded.backHref}
       values={rejected?.values ?? EMPTY_REQUEST_VALUES}
       errors={rejected?.errors ?? {}}

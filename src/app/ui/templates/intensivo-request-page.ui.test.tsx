@@ -75,6 +75,47 @@ function renderForm(props: Partial<IntensivoRequestPageProps> = {}) {
   );
 }
 
+describe("IntensivoRequestPage policy acceptance", () => {
+  it("ends with the one checkbox of both documents, linked, with the conditions note above it", () => {
+    const { container } = renderForm({
+      policies: { conditionsVersion: 2, privacyVersion: 5 },
+    });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Leí y acepto las condiciones y la política de privacidad",
+    });
+    expect(checkbox).toHaveAttribute("name", "policy");
+    expect(
+      screen.getByRole("link", { name: "las condiciones" }),
+    ).toHaveAttribute("href", "/condiciones");
+    expect(
+      screen.getByRole("link", { name: "la política de privacidad" }),
+    ).toHaveAttribute("href", "/privacidad");
+    expect(
+      container.querySelector('input[name="conditionsVersion"]'),
+    ).toHaveValue("2");
+    expect(container.querySelector('input[name="privacyVersion"]')).toHaveValue(
+      "5",
+    );
+    const note = screen.getByText(
+      "Si no llegamos al mínimo, devolvemos la seña.",
+    );
+    expect(
+      note.compareDocumentPosition(checkbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByLabelText(/^Leí las condiciones/)).toBeNull();
+  });
+
+  it("posts no versions when they could not be read, but still shows the checkbox", () => {
+    const { container } = renderForm({ policies: null });
+    expect(
+      container.querySelector('input[name="conditionsVersion"]'),
+    ).toBeNull();
+    expect(
+      screen.getByRole("checkbox", { name: /Leí y acepto/ }),
+    ).toBeVisible();
+  });
+});
+
 describe("IntensivoRequestPage", () => {
   it("marks name, email and phone with their own icons", () => {
     renderForm();
@@ -224,7 +265,9 @@ describe("IntensivoRequestPage", () => {
     expect(
       screen.getByLabelText("Correo electrónico"),
     ).toHaveAccessibleDescription("Ingresá un correo electrónico válido.");
-    expect(screen.getByLabelText(/Leí las condiciones/)).toBeInvalid();
+    expect(
+      screen.getByRole("checkbox", { name: /Leí y acepto/ }),
+    ).toBeInvalid();
     expect(screen.getAllByRole("alert")).toHaveLength(2);
     expect(
       screen.getByText("Ya tenés una solicitud activa para este workshop."),

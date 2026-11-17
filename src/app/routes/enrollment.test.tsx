@@ -4,6 +4,11 @@ import { createFakePublicCatalog } from "~/testing/fakes/fake-public-catalog";
 import type { PublicTaller } from "~/modules/workshops";
 import { createTestServices } from "~/testing/fakes/app-services";
 import { createLoaderArgs } from "~/testing/react-router";
+import {
+  buildPolicyVersion,
+  createInMemoryPolicies,
+} from "~/testing/fakes/policy-builders";
+import { createUnavailablePoliciesService } from "~/modules/policies";
 import { action, loader } from "./enrollment";
 
 function pesos(value: number): Money {
@@ -303,5 +308,132 @@ describe("enrollment route", () => {
         materialName: expect.anything() as unknown,
       }),
     );
+  });
+});
+
+describe("enrollment route policy acceptance", () => {
+  const openOffer = () => ({
+    getOffer: vi.fn().mockResolvedValue(ok(offer)),
+    requestEnrollment: vi.fn(),
+    getOrderByPublicId: vi.fn(),
+  });
+
+  it("hands the page the current version of each document to post back", async () => {
+    const { service } = createInMemoryPolicies([
+      buildPolicyVersion({ kind: "conditions", version: 2, body: "Nueva." }),
+    ]);
+    const services = createTestServices({
+      policies: service,
+      publicEnrollments: openOffer(),
+    });
+    const result = await loader(args(services));
+    expect(result).toMatchObject({
+      policies: { conditionsVersion: 2, privacyVersion: 1 },
+    });
+  });
+
+  it("still renders the form, without versions, when the documents cannot be read", async () => {
+    const services = createTestServices({
+      policies: createUnavailablePoliciesService(),
+      publicEnrollments: openOffer(),
+    });
+    const result = await loader(args(services));
+    expect(result).toMatchObject({
+      offer: { workshopName: "Cerámica inicial" },
+      policies: null,
+    });
+  });
+
+  const validForm = {
+    period: "2026-11",
+    turnoId: "turno-1",
+    fullName: "Ana Demo",
+    email: "ana@example.test",
+    phone: "+54 9 351 555 0000",
+    policy: "on",
+    honeypot: "",
+  };
+
+  it("sends the posted versions with the request", async () => {
+    const requestEnrollment = vi
+      .fn()
+      .mockResolvedValue(err({ kind: "unavailable" }));
+    const services = createTestServices({
+      publicEnrollments: { ...openOffer(), requestEnrollment },
+    });
+    await action({
+      ...args(services),
+      request: formRequest({
+        ...validForm,
+        conditionsVersion: "2",
+        privacyVersion: "1",
+      }),
+    });
+    expect(requestEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        acceptance: { conditionsVersion: 2, privacyVersion: 1 },
+      }),
+    );
+  });
+
+  it.each([
+    ["missing", {}],
+    ["not numbers", { conditionsVersion: "abc", privacyVersion: "1" }],
+    ["zero", { conditionsVersion: "0", privacyVersion: "1" }],
+    ["half", { conditionsVersion: "1" }],
+  ])(
+    "sends no acceptance when the posted versions are %s",
+    async (_name, extra) => {
+      const requestEnrollment = vi
+        .fn()
+        .mockResolvedValue(err({ kind: "unavailable" }));
+      const services = createTestServices({
+        publicEnrollments: { ...openOffer(), requestEnrollment },
+      });
+      const result = await action({
+        ...args(services),
+        request: formRequest({ ...validForm, ...extra }),
+      });
+      expect(requestEnrollment).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          acceptance: expect.anything() as unknown,
+        }),
+      );
+      expect(result).toEqual({
+        values: {
+          fullName: "Ana Demo",
+          email: "ana@example.test",
+          phone: "+54 9 351 555 0000",
+          turnoId: "turno-1",
+        },
+        errors: {},
+        formError: "Esta inscripción no está disponible.",
+      });
+    },
+  );
+
+  it("tells the visitor the documents changed when a posted version is unknown, as a field error", async () => {
+    const requestEnrollment = vi.fn().mockResolvedValue(
+      err({
+        kind: "invalid",
+        issues: [{ field: "policy", code: "unknown-reference" }],
+      }),
+    );
+    const services = createTestServices({
+      publicEnrollments: { ...openOffer(), requestEnrollment },
+    });
+    const result = await action({
+      ...args(services),
+      request: formRequest({
+        ...validForm,
+        conditionsVersion: "9",
+        privacyVersion: "9",
+      }),
+    });
+    expect(result).toMatchObject({
+      errors: {
+        policy: "Las condiciones cambiaron. Volvé a leerlas y aceptalas.",
+      },
+    });
   });
 });

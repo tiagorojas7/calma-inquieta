@@ -29,6 +29,8 @@ export interface EnrollmentDetailOrder {
   readonly turno: string;
   readonly requestedAt: string;
   readonly policyVersion: string;
+  /** "Condiciones v2 · Privacidad v3", or that there is no record. */
+  readonly acceptance: string;
   readonly fee: string;
   readonly materialsTotal: string;
   readonly total: string;
@@ -589,6 +591,7 @@ export function EnrollmentDetail({
             <dl className="mt-3 grid gap-4 md:grid-cols-2">
               <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
               <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
+              <Fact label={copy.acceptance}>{order.acceptance}</Fact>
               {isSale ? null : (
                 <Fact label={copy.order}>
                   {copy.seat(order.seat.confirmed, order.seat.capacity)}

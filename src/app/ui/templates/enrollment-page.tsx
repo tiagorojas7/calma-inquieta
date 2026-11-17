@@ -3,11 +3,8 @@ import { Icon } from "../atoms/icons";
 import { Heading } from "../atoms/heading";
 import { Text } from "../atoms/text";
 import { ErrorSummary } from "../molecules/error-summary";
-import {
-  PublicCheckboxField,
-  PublicSelectField,
-  PublicTextField,
-} from "../molecules/public-fields";
+import { PolicyAcceptanceField } from "../molecules/policy-acceptance-field";
+import { PublicSelectField, PublicTextField } from "../molecules/public-fields";
 import { StepIndicator } from "../molecules/step-indicator";
 
 export type EnrollmentPageProps =
@@ -35,6 +32,14 @@ export type EnrollmentPageProps =
         Record<"fullName" | "email" | "phone" | "policy", string>
       >;
       formError?: string;
+      /**
+       * The versions of the conditions and privacy documents the page shows,
+       * posted back with the form; null when they could not be read.
+       */
+      policies?: {
+        conditionsVersion: number;
+        privacyVersion: number;
+      } | null;
       /** Where the back link leads (the workshop being enrolled in). */
       backHref?: string;
     };
@@ -50,7 +55,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     );
   }
 
-  const { offer, values, errors, formError, backHref } = props;
+  const { offer, values, errors, formError, backHref, policies = null } = props;
   const steps = ["Tus datos", "Pedido"];
   const summary = (
     [
@@ -159,13 +164,7 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
             ]}
             required
           />
-          <PublicCheckboxField
-            id="policy"
-            label="Acepto la política de privacidad."
-            name="policy"
-            error={errors.policy}
-            required
-          />
+          <PolicyAcceptanceField versions={policies} error={errors.policy} />
           <Button type="submit" className="w-full sm:w-auto sm:self-start">
             Continuar
           </Button>

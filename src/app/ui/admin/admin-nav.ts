@@ -89,6 +89,12 @@ export const ADMIN_NAV_MORE: readonly AdminNavEntry[] = [
     icon: "statistics",
   },
   {
+    label: "Políticas",
+    href: "/admin/politicas",
+    area: "policies",
+    icon: "note",
+  },
+  {
     label: "Catálogo de materiales",
     href: "/admin/materiales",
     area: "catalog",

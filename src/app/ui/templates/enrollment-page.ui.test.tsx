@@ -126,7 +126,7 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     const name = screen.getByLabelText("Nombre completo");
     expect(name).toHaveAttribute("aria-invalid", "true");
     expect(name).toHaveAccessibleDescription("Ingresá tu nombre.");
-    expect(screen.getByLabelText(/Acepto la política/u)).toHaveAttribute(
+    expect(screen.getByLabelText(/Leí y acepto/u)).toHaveAttribute(
       "aria-invalid",
       "true",
     );
@@ -136,10 +136,13 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("keeps the privacy consent copy exactly as before (EN06 stays out)", () => {
+  it("asks for one acceptance of both documents instead of the privacy-only one (EN06 stays out)", () => {
     setup();
     expect(
-      screen.getByText("Acepto la política de privacidad."),
+      screen.getByRole("checkbox", {
+        name: "Leí y acepto las condiciones y la política de privacidad",
+      }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Acepto la política de privacidad.")).toBeNull();
   });
 });

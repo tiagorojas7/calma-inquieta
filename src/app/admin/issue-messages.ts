@@ -199,3 +199,8 @@ export function turnoRulesMessage(
 ): string {
   return rules.map((rule) => TURNO_RULE_MESSAGES[rule]).join(" ");
 }
+
+/** The document text: a duplicate is the same as the current version, not a name. */
+export const POLICY_FIELD_MESSAGES = {
+  body: { duplicate: adminMicrocopy.policies.errors.duplicate },
+} as const satisfies FieldMessages<"body">;

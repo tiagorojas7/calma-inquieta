@@ -1,4 +1,5 @@
 import type { IssueCode } from "~/modules/_shared";
+import { POLICY_CHANGED_MESSAGE } from "~/app/enrollment/policy-acceptance";
 
 type StudentFieldName = "fullName" | "email" | "phone" | "policy" | "project";
 
@@ -17,7 +18,6 @@ export const intensiveRequestCopy = {
     email: "Correo electrónico",
     phone: "WhatsApp o teléfono",
     phoneHint: "Con característica, por ejemplo 351 555 0101.",
-    policy: "Leí las condiciones y acepto la política de privacidad.",
     submit: "Enviar solicitud",
     back: "Volver al workshop",
     errorsTitle: "Revisá estos datos",
@@ -82,6 +82,8 @@ export function studentIssueMessage(
   field: StudentFieldName,
   code: IssueCode,
 ): string {
+  if (field === "policy" && code === "unknown-reference")
+    return POLICY_CHANGED_MESSAGE;
   if (code === "too-long") return TOO_LONG[field] ?? MESSAGES[field];
   return MESSAGES[field];
 }

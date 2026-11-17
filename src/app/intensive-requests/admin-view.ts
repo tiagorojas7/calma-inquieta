@@ -1,3 +1,4 @@
+import { acceptanceLabel } from "~/app/admin/acceptance-label";
 import { formatEventDate, formatPesos } from "~/app/catalog/format";
 import { dateLabel, dateTimeLabel } from "~/app/enrollment/order-labels";
 import type {
@@ -57,6 +58,7 @@ function requestRow(
         : (projectNames.get(request.projectId) ?? null),
     reference: request.publicId.slice(0, REFERENCE_LENGTH),
     receivedAt: dateTimeLabel(request.createdAt),
+    acceptance: acceptanceLabel(request.acceptance),
     price: formatPesos(price),
     deposit: formatPesos(deposit),
     depositInput: pesosInput(deposit),

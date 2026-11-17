@@ -244,6 +244,10 @@ export const adminMicrocopy = {
       turno: "Turno",
       requestedAt: "Solicitado",
       policyVersion: "Política aceptada",
+      acceptance: "Aceptación",
+      acceptanceLine: (conditions: number, privacy: number) =>
+        `Condiciones v${String(conditions)} · Privacidad v${String(privacy)}`,
+      noAcceptance: "Sin registro de aceptación",
       seat: (confirmed: number, capacity: number) =>
         `${String(confirmed)} de ${String(capacity)} lugares confirmados`,
       lines: "Materiales",
@@ -1561,6 +1565,7 @@ export const adminMicrocopy = {
       email: "Correo electrónico",
       phone: "Teléfono",
       received: "Recibida",
+      acceptance: "Aceptación",
       reference: "Número de solicitud",
       paidAmount: "Seña registrada",
       paidOn: "Fecha de pago",
@@ -1690,6 +1695,46 @@ export const adminMicrocopy = {
       field: "Estado",
       save: "Guardar estado",
       failed: "Elegí un estado de la lista e intentá de nuevo.",
+    },
+  },
+  policies: {
+    title: "Políticas",
+    subtitle:
+      "Las condiciones y la política de privacidad de todo el sitio. Cada cambio publica una versión nueva: las anteriores quedan guardadas.",
+    sections: {
+      conditions: {
+        title: "Condiciones",
+        description:
+          "Lo que ven y aceptan quienes se inscriben. Cada workshop muestra además sus propias condiciones.",
+      },
+      privacy: {
+        title: "Privacidad",
+        description:
+          "Cómo usamos los datos de quienes se inscriben. También se acepta al inscribirse.",
+      },
+    },
+    form: {
+      label: (title: string) => `Texto de ${title}`,
+      body: "Texto vigente",
+      bodyHint:
+        "Separá los párrafos con una línea en blanco. Al publicar se guarda como versión nueva.",
+      publish: "Publicar nueva versión",
+      current: (version: number) => `Versión vigente: ${String(version)}`,
+    },
+    history: {
+      title: "Versiones anteriores",
+      current: "Vigente",
+      publishedOn: (date: string) => `Publicada el ${date}`,
+      publishedBy: (name: string) => `por ${name}`,
+      read: "Leer el texto",
+    },
+    feedback: { published: "Nueva versión publicada" },
+    errors: {
+      duplicate:
+        "Es igual a la versión vigente. Cambiá el texto para publicar una nueva.",
+      conflict:
+        "Otra persona publicó al mismo tiempo. Recargá la página, revisá el texto vigente y volvé a intentar.",
+      saveFailed: "No pudimos publicar la versión. Probá de nuevo.",
     },
   },
   notifications: {

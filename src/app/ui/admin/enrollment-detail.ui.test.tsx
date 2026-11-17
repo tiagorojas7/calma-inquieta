@@ -140,6 +140,28 @@ describe("EnrollmentDetail", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the legacy policy version only when the order carries one", () => {
+    const { rerender } = render(<EnrollmentDetail {...base} />);
+    const more = () =>
+      screen.getByText("Más datos del pedido").closest("details");
+    expect(
+      within(more() as HTMLElement).getByText("Política aceptada"),
+    ).toBeInTheDocument();
+    expect(
+      within(more() as HTMLElement).getByText("2026-10"),
+    ).toBeInTheDocument();
+
+    rerender(
+      <EnrollmentDetail order={{ ...base.order, policyVersion: null }} />,
+    );
+    expect(
+      within(more() as HTMLElement).queryByText("Política aceptada"),
+    ).toBeNull();
+    expect(
+      within(more() as HTMLElement).getByText("Aceptación"),
+    ).toBeInTheDocument();
+  });
+
   it("works in two columns: the job on the left, the facts on the right", () => {
     render(<EnrollmentDetail {...base} />);
 

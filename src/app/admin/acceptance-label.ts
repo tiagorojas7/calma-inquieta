@@ -23,3 +23,23 @@ export function acceptanceLabel(
       )
     : copy.noAcceptance;
 }
+
+/**
+ * The month-based policy version stored before the documents were versioned.
+ * It only says something true for a web order with no recorded versions: an
+ * order an owner created by hand (its creation was logged by her, not by
+ * "public") accepted nothing, and one with versions has them in the acceptance
+ * line instead.
+ */
+export function legacyPolicyVersion(order: {
+  readonly policyVersion: string;
+  readonly acceptance?: unknown;
+  readonly audit: readonly {
+    readonly from: unknown;
+    readonly actor: string;
+  }[];
+}): string | null {
+  if (order.acceptance) return null;
+  const created = order.audit.find((entry) => entry.from === null);
+  return created?.actor === "public" ? order.policyVersion : null;
+}

@@ -181,13 +181,42 @@ describe("admin enrollment detail acceptance", () => {
     });
     expect(result).toMatchObject({
       acceptance: "Condiciones v2 · Privacidad v3",
-      policyVersion: "2026-10",
+      policyVersion: null,
     });
   });
 
   it("says there is no record when the order has no versions", async () => {
     const result = await load({ detail: () => Promise.resolve(ok(detail)) });
     expect(result).toMatchObject({ acceptance: "Sin registro de aceptación" });
+  });
+
+  it("keeps the legacy policy version only for a public order with no recorded versions", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(detail)) });
+    expect(result).toMatchObject({ policyVersion: "2026-10" });
+  });
+
+  it("hides the legacy policy version on an order an owner created by hand", async () => {
+    const result = await load({
+      detail: () =>
+        Promise.resolve(
+          ok({
+            ...detail,
+            audit: [
+              {
+                at: new Date("2026-10-31T15:30:00Z"),
+                actor: "owner@example.com",
+                from: null,
+                to: "pending_confirmation",
+                note: null,
+              },
+            ],
+          }),
+        ),
+    });
+    expect(result).toMatchObject({
+      acceptance: "Sin registro de aceptación",
+      policyVersion: null,
+    });
   });
 });
 

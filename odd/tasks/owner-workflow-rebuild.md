@@ -306,3 +306,17 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - native review split into slices under the lens budget;
     - full lint and typecheck;
     - a phone browser walkthrough.
+- L68 (2026-11-16): unit S-B (sales use stock) committed in `1673823`.
+  - What it does:
+    - Lines record `source` (`stock`/`supplier`) and `unit_cost_centavos`; the manual search shows "En stock: N" or "A pedir".
+    - Confirm and $0 creation take stock in the same transaction; a line whose stock ran out switches to `supplier`.
+    - Cancel or correction back to pending returns the units, except from `materials_received`.
+    - The consolidation counts `supplier` lines only, and a stock-only order may go `paid` → `materials_received`.
+    - Insights use the line cost, with the price as fallback.
+  - Writer evidence: RED for the unit, UI and DB checks; the DB stock tests were proven by mutation. Unit/ui 87 files / 1065 passed. DB admin store 75, order repository 30, insights 11, schema 49, request services 15. 8 concurrent confirms on 3 units give exactly 3 stock and 5 supplier. `drizzle-kit generate` reports no changes.
+  - Parent seam run at `1673823`: `--project unit` 298 files / 3628 passed; `--project ui` 124 files / 1080 passed.
+  - Gaps for T6:
+    - The new fields are optional ("absent means supplier").
+    - The detail-route stock-only actions have no route-level test.
+    - A `materials_received` order corrected back to pending and paid again takes its stock lines a second time.
+  - Per L67, no per-unit verifier or review.

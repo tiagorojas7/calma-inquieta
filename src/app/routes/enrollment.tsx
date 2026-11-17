@@ -91,7 +91,7 @@ function studentErrors(error: RequestEnrollmentError): FieldErrors | null {
             ? "Ingresá un email válido."
             : issue.field === "phone"
               ? "Ingresá un teléfono argentino válido."
-              : "Tenés que aceptar la política de privacidad.",
+              : "Tenés que aceptar las condiciones y la política de privacidad.",
     ]),
   );
 }

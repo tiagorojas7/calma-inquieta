@@ -244,7 +244,8 @@ describe("enrollment route", () => {
         fullName: "Ingresá tu nombre completo.",
         email: "Ingresá un email válido.",
         phone: "Ingresá un teléfono argentino válido.",
-        policy: "Tenés que aceptar la política de privacidad.",
+        policy:
+          "Tenés que aceptar las condiciones y la política de privacidad.",
       },
     });
     expect(requestEnrollment).toHaveBeenCalledWith(

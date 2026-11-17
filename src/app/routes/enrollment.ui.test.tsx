@@ -141,7 +141,8 @@ describe("EnrollmentPage", () => {
           fullName: "Ingresá tu nombre completo.",
           email: "Ingresá un email válido.",
           phone: "Ingresá un teléfono argentino válido.",
-          policy: "Tenés que aceptar la política de privacidad.",
+          policy:
+            "Tenés que aceptar las condiciones y la política de privacidad.",
         }}
       />,
     );
@@ -149,7 +150,7 @@ describe("EnrollmentPage", () => {
       "Ingresá tu nombre completo.",
       "Ingresá un email válido.",
       "Ingresá un teléfono argentino válido.",
-      "Tenés que aceptar la política de privacidad.",
+      "Tenés que aceptar las condiciones y la política de privacidad.",
     ])
       expect(screen.getAllByText(message)).toHaveLength(2);
     expect(screen.getByLabelText("Nombre completo")).toHaveValue("Ana");

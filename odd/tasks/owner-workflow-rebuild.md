@@ -274,3 +274,12 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - P1: deactivating and reactivating leaves orders, audit, note, attendance and student identity byte-identical. Public, free manual and phone-match enrollments reactivate the profile, while refusals (duplicate month, full turno, conflicting identity) leave it inactive.
   - The differential dump of enrollment and make-up flows is identical between baseline `1031e42` and `0845c73` (350 lines).
   - 0018 on legacy data with done and pending make-ups migrates, the new checks hold, and `drizzle-kit generate` reports no changes.
+- L64 (2026-11-16): native review over `6cc7d75..d078b52` (owner consent): approved, and the acknowledgement burned the authority.
+  - R3-001 (the student summary ignored missed make-ups) was fixed inline in a follow-up commit: `makeUpsMissed`, "Recuperaciones perdidas". RED was 3 failing tests; GREEN 62/62, with typecheck and eslint clean.
+  - R3-002 suggestion: deactivating one registry row also hides other emails linked to the same profile. This is intended, but no test pins it.
+  - T2 map (explorer):
+    - No cost or stock column exists.
+    - Saving a material deletes and re-inserts its variant rows, so stock must live in its own table.
+    - `order_line` already snapshots price and supplier.
+    - The order statuses `materials_requested` and `materials_received` and the "pedir"/"entregar" consolidation screen already cover S5 at order level.
+    - Proposed units: WU1 variant cost; WU2 `variant_stock` with adjustment; WU3 line source and cost snapshot; WU4 take and return stock at confirm, cancel and correction; WU5 insights with real cost; WU6-7 supplier purchases and idempotent receipt (optional).

@@ -35,7 +35,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 - [x] T3 (S6): selectable workshop projects, deposit/balance and material allocation; units T3-A to T3-E per L71 (delegated); T3-A done in `d0e7d78` + `5ebbcdd`; T3-C `af93d87`; T3-B `2c90a33`; T3-D `8570def` + `fff0b4c`; T3-E `89c9e86`; T3-F `3e3c1ea`; L78 `ab95a9f`; T3 done (L80); high risk items 1/3/4.
 - [x] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop settlement and margin done in T3-E `89c9e86` and `ab95a9f`, monthly margin in S-B; monthly settlement already counts only paid states and the fee (L16, re-checked L81); percentage warning and per-teacher percentage editing (L82, L85) in `0124d0c`; verification in T6; high risk items 1/3.
 - [ ] T7 (S2): remove materials from monthly periods. U-P (delegated, parallel): public flow without material step or gate. U-W (delegated, parallel): admin period and quick forms without the flag or material picker. The `materials_required` column and `period_material_offer` table stay dormant until a later migration slice; implemented, commits in L26; seam run in L27: unit/ui, lint, typecheck and format green, DB files that use T7 code green in L28; the other 17 run in T6.
-- [ ] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell `57c9fe0` + `d312eb4` (T5-N, L91); global policies and complete mobile verification remain; high risk items 2/3 for consent and shared notifications.
+- [ ] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell `57c9fe0` + `d312eb4` (T5-N, L91); global policies `3b4dc0e` + `55d3feb` (T5-P, L92); complete mobile verification remains; high risk items 2/3 for consent and shared notifications.
 - [ ] T6 (S1–S11): exhaustive final verification per L67 (per-area independent verifiers, full DB suite, 0018 rehearsal, differential, sliced native review, lint, typecheck, phone walkthrough); commit pending.
 
 ## Log
@@ -421,3 +421,36 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - `InMemoryAdminEnrollmentStore` is not sale-aware, so seen-on-sale is covered by DB only.
     - The writer's scratch is under `...\scratchpad\*.cjs` and `/tmp/dbrun/`; remove it.
   - Next: T5-P (global policies, L89-L90), delegated to one writer (long-session backstop).
+- L92 (2026-11-17): T5-P (global policies) done (delegated, worker-high) in `3b4dc0e` (module, schema, 0018 seed, service, composition, acceptance stored) and `55d3feb` (public forms, `/condiciones`, `/privacidad`, `/admin/politicas`, acceptance line in the enrollment detail and the workshop requests). The first commit alone leaves the public forms failing closed (T6 gap, like `8570def`).
+  - New `policies` module. `policy_version` (unique kind+version, `body ~ '[^[:space:]]'` CHECK) is folded into 0018, with version 1 of each document seeded by 'migration 0018'. `conditions_version`/`privacy_version` (both null or both set) were added to `enrollment_order` and `intensive_seat_request`. drizzle-kit printed "No schema changes".
+  - Both forms show one checkbox "Leí y acepto las condiciones y la política de privacidad", linking to each document in a new tab, and post the versions they showed.
+    - The server checks both versions through an enrollments-owned port, which the intensive-requests service reuses.
+    - An unknown version is refused with "Las condiciones cambiaron. Volvé a leerlas y aceptalas."
+    - If the policies read fails, the submit fails closed with the generic unavailable message.
+    - The workshop's own conditions stay above the checkbox.
+  - Owner-created orders store null versions; a material sale copies its parent's (parent assumptions for T6).
+  - Evidence: writer RED/GREEN per rule (exceptions in its report: the domain body validator, the form helpers, the policy-page template, the admin policies ui test, the order CHECK and the sale copy were written alongside). Each DB file ran alone and passed:
+
+    | DB file | Tests |
+    | --- | --- |
+    | `policy-seed` | 6 |
+    | `drizzle-policy-repository` | 5 |
+    | `enrollment-schema` | 53 |
+    | `drizzle-order-repository` | 35 |
+    | `drizzle-intensive-request-repository` | 20 |
+    | `drizzle-material-sale-store` | 20 |
+    | `request-services` | 18 |
+    | `migrate` | 7 |
+    | `drizzle-admin-enrollment-store` | 79 |
+
+    Parent: diff inside the allowed surfaces; `pnpm typecheck` exit 0; unit 318 files / 4037 passed; ui 132 files / 1175 passed.
+  - For T6:
+    - `enrollment_order.policy_version` is still written as "2026-10" and is redundant now.
+    - `/condiciones` and `/privacidad` are not in the menu or sitemap (`PUBLIC_PAGES` is asserted to be six items).
+    - "Políticas" borrows the catalog tint and the `note` icon.
+    - The shared helpers `policy-document.ts` and the version parsing live in `src/app/enrollment/`.
+    - There is no end-to-end DB test for the seat-request acceptance.
+    - The stale-version reload has not been checked in a browser.
+    - The owner reviews both base texts before launch (L90).
+    - Writer scratch: `...\scratchpad\t5p\` and `t5p-red-seed.log`.
+  - Next: T5 mobile verification of the panel (S9), then T6.

@@ -3,6 +3,7 @@ import {
   dateTimeLabel,
   monthLabel,
 } from "~/app/enrollment/order-labels";
+import type { AdminAreaKey } from "~/app/ui/admin/admin-areas";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { formatPesos } from "~/modules/enrollments";
 import type {
@@ -14,6 +15,8 @@ import type {
 const copy = adminMicrocopy.notifications;
 
 export interface NoveltyCard {
+  /** The menu section the notice belongs to, so it wears that section's colour. */
+  readonly area: AdminAreaKey;
   readonly key: string;
   /** The admin page that opens the request, and so marks it read. */
   readonly href: string;
@@ -26,6 +29,8 @@ export interface NoveltyCard {
 }
 
 export interface PaymentCard {
+  /** The menu section the notice belongs to, so it wears that section's colour. */
+  readonly area: AdminAreaKey;
   readonly key: string;
   readonly href: string;
   readonly name: string;
@@ -40,6 +45,21 @@ export interface NotificationsScreen {
   readonly novelties: readonly NoveltyCard[];
   readonly payments: readonly PaymentCard[];
 }
+
+/** Each kind of novelty wears the colour of its section in the menu. */
+const NOVELTY_AREA: Record<NoveltyItem["kind"], AdminAreaKey> = {
+  enrollment: "enrollments",
+  "workshop-request": "intensives",
+  "private-event": "events",
+};
+
+/** Fees are enrollments, deposits and balances are workshops, sales are materials. */
+const PAYMENT_AREA: Record<PendingPaymentItem["kind"], AdminAreaKey> = {
+  enrollment: "enrollments",
+  "material-sale": "materials",
+  "workshop-deposit": "intensives",
+  "workshop-balance": "intensives",
+};
 
 /** The page that lists the reservations of a workshop; the workshops list when it is gone. */
 const reservationsHref = (intensiveId: string | null): string =>
@@ -66,6 +86,7 @@ function noveltyCard(item: NoveltyItem): NoveltyCard {
         ? reservationsHref(item.intensiveId)
         : `/admin/eventos/${item.id}`;
   return {
+    area: NOVELTY_AREA[item.kind],
     key: `${item.kind}:${item.id}`,
     href,
     name: item.name,
@@ -87,6 +108,7 @@ function paymentCard(item: PendingPaymentItem): PaymentCard {
       ? reservationsHref(item.intensiveId)
       : `/admin/inscripciones/${item.id}`;
   return {
+    area: PAYMENT_AREA[item.kind],
     key: `${item.kind}:${item.id}`,
     href,
     name: item.name,

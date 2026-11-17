@@ -189,6 +189,36 @@ describe("notifications screen", () => {
     expect(screen.novelties[0]?.detail).toBeNull();
   });
 
+  it("colours each notice by the menu section it belongs to", () => {
+    const screen = toNotificationsScreen(
+      view(
+        [
+          novelty({}),
+          novelty({ kind: "workshop-request", period: null }),
+          novelty({ kind: "private-event", workshopName: null, period: null }),
+        ],
+        [
+          payment({}),
+          payment({ kind: "material-sale" }),
+          payment({ kind: "workshop-deposit" }),
+          payment({ kind: "workshop-balance" }),
+        ],
+      ),
+    );
+
+    expect(screen.novelties.map((card) => card.area)).toEqual([
+      "enrollments",
+      "intensives",
+      "events",
+    ]);
+    expect(screen.payments.map((card) => card.area)).toEqual([
+      "enrollments",
+      "materials",
+      "intensives",
+      "intensives",
+    ]);
+  });
+
   it("carries no due date or overdue wording", () => {
     const screen = toNotificationsScreen(view([novelty({})], [payment({})]));
 

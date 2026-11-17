@@ -1,4 +1,7 @@
+import type { PropsWithChildren } from "react";
 import { Text } from "../atoms/heading";
+import { AreaChip } from "./admin-area";
+import type { AdminAreaKey } from "./admin-areas";
 import { AdminPageHeader } from "./admin-page";
 import {
   ADMIN_CARD_TITLE,
@@ -8,6 +11,8 @@ import {
 import { adminMicrocopy } from "./microcopy";
 
 export interface NoveltyCardProps {
+  /** The menu section the notice belongs to: it picks the chip icon and tint. */
+  readonly area: AdminAreaKey;
   readonly key: string;
   readonly href: string;
   readonly name: string;
@@ -17,6 +22,8 @@ export interface NoveltyCardProps {
 }
 
 export interface PaymentCardProps {
+  /** The menu section the notice belongs to: it picks the chip icon and tint. */
+  readonly area: AdminAreaKey;
   readonly key: string;
   readonly href: string;
   readonly name: string;
@@ -31,6 +38,23 @@ export interface AdminNotificationsProps {
 }
 
 const copy = adminMicrocopy.notifications;
+
+/**
+ * The chip repeats the icon and tint of the section in the menu. It is
+ * decorative: the kind of notice is always written next to it, so colour is
+ * never the only signal.
+ */
+function NoticeBody({
+  area,
+  children,
+}: PropsWithChildren<{ area: AdminAreaKey }>) {
+  return (
+    <div className="flex items-start gap-3">
+      <AreaChip area={area} size={20} className="p-2" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">{children}</div>
+    </div>
+  );
+}
 
 /**
  * The bell page: what nobody opened yet, then every payment still owed. Plain
@@ -72,7 +96,7 @@ export function AdminNotifications({
             action: { href: "/admin", label: copy.newSection.empty.action },
           }}
           card={(row) => (
-            <>
+            <NoticeBody area={row.area}>
               <a href={row.href} className={ADMIN_CARD_TITLE}>
                 {row.name}
               </a>
@@ -81,7 +105,7 @@ export function AdminNotifications({
               <Text tone="muted">
                 {copy.received}: {row.receivedAt}
               </Text>
-            </>
+            </NoticeBody>
           )}
         />
       </AdminSection>
@@ -110,7 +134,7 @@ export function AdminNotifications({
             },
           }}
           card={(row) => (
-            <>
+            <NoticeBody area={row.area}>
               <a href={row.href} className={ADMIN_CARD_TITLE}>
                 {row.name}
               </a>
@@ -121,7 +145,7 @@ export function AdminNotifications({
                 </p>
               </div>
               {row.detail ? <Text tone="muted">{row.detail}</Text> : null}
-            </>
+            </NoticeBody>
           )}
         />
       </AdminSection>

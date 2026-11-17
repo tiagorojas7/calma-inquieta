@@ -1,9 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import { ADMIN_AREAS, type AdminAreaKey } from "./admin-areas";
 import { AdminNotifications } from "./notifications";
 
 const novelty = {
+  area: "enrollments" as AdminAreaKey,
   key: "enrollment:1",
   href: "/admin/inscripciones/1",
   name: "Ana Pérez",
@@ -13,6 +15,7 @@ const novelty = {
 };
 
 const payment = {
+  area: "enrollments" as AdminAreaKey,
   key: "enrollment:2",
   href: "/admin/inscripciones/2",
   name: "Bea Gómez",
@@ -88,5 +91,67 @@ describe("AdminNotifications", () => {
     for (const link of screen.getAllByRole("link", { name: /Ana|Bea/ }))
       expect(link).toHaveClass("min-h-11");
     expect(container.innerHTML).not.toMatch(/gradient/);
+  });
+
+  it("marks every card with the icon chip and tint of its menu section, never by colour alone", async () => {
+    const { container } = render(
+      <AdminNotifications
+        novelties={[
+          { ...novelty, key: "n1", name: "Ana", kindLabel: "Inscripción" },
+          {
+            ...novelty,
+            key: "n2",
+            area: "intensives",
+            name: "Bea",
+            kindLabel: "Reserva de workshop",
+          },
+          {
+            ...novelty,
+            key: "n3",
+            area: "events",
+            name: "Dora",
+            kindLabel: "Evento privado",
+          },
+        ]}
+        payments={[
+          { ...payment, key: "p1", name: "Eva", owedLabel: "Cuota del mes" },
+          {
+            ...payment,
+            key: "p2",
+            area: "intensives",
+            name: "Fani",
+            owedLabel: "Seña de workshop",
+          },
+          {
+            ...payment,
+            key: "p3",
+            area: "materials",
+            name: "Gina",
+            owedLabel: "Venta de materiales",
+          },
+        ]}
+      />,
+    );
+
+    const expected: readonly [string, AdminAreaKey, string][] = [
+      ["Ana", "enrollments", "Inscripción"],
+      ["Bea", "intensives", "Reserva de workshop"],
+      ["Dora", "events", "Evento privado"],
+      ["Eva", "enrollments", "Cuota del mes"],
+      ["Fani", "intensives", "Seña de workshop"],
+      ["Gina", "materials", "Venta de materiales"],
+    ];
+    for (const [name, area, label] of expected) {
+      const card = screen
+        .getByRole("link", { name })
+        .closest("li") as HTMLElement;
+      const chip = card.querySelector(`[data-area-chip="${area}"]`);
+      expect(chip, name).not.toBeNull();
+      for (const cls of ADMIN_AREAS[area].chip.split(" "))
+        expect(chip).toHaveClass(cls);
+      // The text label stays: colour is never the only signal.
+      expect(within(card).getByText(label)).toBeVisible();
+    }
+    await expectNoAxeViolations(container, { page: true });
   });
 });

@@ -100,6 +100,21 @@ describe("AdminPolicies", () => {
     expect(details).toHaveTextContent("Segundo párrafo.");
   });
 
+  it("names the seeded first version as the base text instead of the migration", () => {
+    render(
+      <AdminPolicies
+        sections={sections}
+        feedback={null}
+        rejected={undefined}
+      />,
+    );
+    const section = screen.getByRole("region", { name: "Condiciones" });
+    const seeded = within(section).getAllByRole("listitem")[1];
+
+    expect(seeded).toHaveTextContent("Texto base inicial");
+    expect(seeded).not.toHaveTextContent("migration 0018");
+  });
+
   it("shows the success title for a published version", () => {
     render(
       <AdminPolicies

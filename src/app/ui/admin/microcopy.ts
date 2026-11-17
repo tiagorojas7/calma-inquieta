@@ -1725,7 +1725,9 @@ export const adminMicrocopy = {
       title: "Versiones anteriores",
       current: "Vigente",
       publishedOn: (date: string) => `Publicada el ${date}`,
-      publishedBy: (name: string) => `por ${name}`,
+      // Migration 0018 seeds version 1 of each document; owners see it as the base text.
+      publishedBy: (name: string) =>
+        name === "migration 0018" ? "· Texto base inicial" : `por ${name}`,
       read: "Leer el texto",
     },
     feedback: { published: "Nueva versión publicada" },

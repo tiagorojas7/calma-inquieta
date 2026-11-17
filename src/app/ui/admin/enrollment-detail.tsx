@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminButtonLink } from "./admin-button-link";
 import { AdminDangerZone, AdminSection } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
 import {
@@ -57,7 +58,23 @@ export interface EnrollmentDetailOrder {
     refundedBy: string;
   } | null;
   readonly seat: { confirmed: number; capacity: number };
-  /** What the correction form offers; null once the order is cancelled. */
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: "enrollment" | "material_sale";
+  /** The monthly record a sale belongs to. */
+  readonly parent?: { readonly number: string; readonly href: string } | null;
+  /** The sales under a monthly record, oldest first. */
+  readonly sales?: readonly {
+    readonly id: string;
+    readonly number: string;
+    readonly href: string;
+    readonly status: string;
+    readonly statusLabel: string;
+    readonly total: string;
+    readonly requestedOn: string;
+  }[];
+  /** Where a new sale of this record starts; null when it cannot take one. */
+  readonly newSaleHref?: string | null;
+  /** What the correction form offers; null once the order is cancelled or for a sale. */
   readonly correction: CorrectionFormModel | null;
   readonly corrections: readonly CorrectionHistoryEntry[];
   readonly audit: readonly {
@@ -124,6 +141,9 @@ function hasCorrectionFeedback(form: EnrollmentDetailProps["form"]): boolean {
 
 const summaryClasses =
   "inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-900";
+
+const linkClasses =
+  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -195,18 +215,21 @@ function CancelOrderForm({
   form,
   refund,
   today,
+  isSale,
 }: {
   form: EnrollmentDetailProps["form"];
   refund: EnrollmentDetailOrder["cancelRefund"];
   today: string;
+  isSale: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const wording = isSale ? copy.sale.cancel : copy.cancel;
   return (
     <form
       ref={formRef}
       method="post"
-      aria-label={copy.cancel.title}
+      aria-label={wording.title}
       className="flex flex-col gap-3"
     >
       <input type="hidden" name="intent" value="cancel" />
@@ -258,16 +281,14 @@ function CancelOrderForm({
             setOpen(true);
           }}
         >
-          {copy.cancel.submit}
+          {wording.title}
         </Button>
       </div>
       <ConfirmDialog
         open={open}
-        title={copy.cancel.dialogTitle}
-        message={
-          refund ? copy.cancel.dialogMessageRefund : copy.cancel.dialogMessage
-        }
-        confirmLabel={copy.cancel.submit}
+        title={wording.dialogTitle}
+        message={refund ? wording.dialogMessageRefund : wording.dialogMessage}
+        confirmLabel={wording.title}
         tone="destructive"
         onCancel={() => {
           setOpen(false);
@@ -329,10 +350,13 @@ export function EnrollmentDetail({
   feedback = null,
 }: EnrollmentDetailProps) {
   const steps = progress(order);
+  const isSale = order.kind === "material_sale";
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
-        title={copy.title(order.number)}
+        title={
+          isSale ? copy.sale.title(order.number) : copy.title(order.number)
+        }
         breadcrumbs={[
           { label: "Panel", href: "/admin" },
           {
@@ -358,17 +382,24 @@ export function EnrollmentDetail({
         <div data-detail-facts className="flex flex-col gap-6 lg:order-2">
           <AdminSection title={copy.summary}>
             <dl className="flex flex-col gap-3">
+              {order.parent ? (
+                <Fact label={copy.sale.parentLabel}>
+                  <a href={order.parent.href} className={linkClasses}>
+                    {copy.sale.parent(order.parent.number)}
+                  </a>
+                </Fact>
+              ) : null}
               <Fact label={copy.name}>{order.studentName}</Fact>
               <Fact label={copy.email}>{order.email}</Fact>
               <Fact label={copy.phone}>{order.phone}</Fact>
               <Fact label={copy.workshop}>{order.workshopName}</Fact>
               <Fact label={copy.month}>{order.month}</Fact>
-              <Fact label={copy.turno}>{order.turno}</Fact>
+              {isSale ? null : <Fact label={copy.turno}>{order.turno}</Fact>}
             </dl>
           </AdminSection>
           <div className="flex flex-col gap-2 rounded-md bg-surface p-5 shadow-card lg:p-6">
             <dl className="flex flex-col gap-2">
-              <Fact label={copy.totals.fee}>{order.fee}</Fact>
+              {isSale ? null : <Fact label={copy.totals.fee}>{order.fee}</Fact>}
               <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
               <div
                 data-order-total
@@ -444,6 +475,49 @@ export function EnrollmentDetail({
             </details>
           ) : null}
 
+          {isSale ? null : (
+            <AdminSection
+              title={copy.sale.sectionTitle}
+              description={copy.sale.sectionHint}
+              actions={
+                order.newSaleHref ? (
+                  <AdminButtonLink href={order.newSaleHref} variant="outline">
+                    {copy.sale.newSale}
+                  </AdminButtonLink>
+                ) : undefined
+              }
+            >
+              {(order.sales ?? []).length === 0 ? (
+                <p>{copy.sale.empty}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-admin-line">
+                  {(order.sales ?? []).map((sale) => (
+                    <li
+                      key={sale.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex min-w-0 flex-col">
+                        <a href={sale.href} className={linkClasses}>
+                          {sale.number}
+                        </a>
+                        <span className="text-sm text-ink-700">
+                          {sale.requestedOn}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-ink-900">{sale.total}</span>
+                        <OrderStatusBadge
+                          status={sale.status}
+                          label={sale.statusLabel}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AdminSection>
+          )}
+
           <AdminSection title={copy.lines}>
             {order.lines.length === 0 ? (
               <p>{copy.noLines}</p>
@@ -515,9 +589,11 @@ export function EnrollmentDetail({
             <dl className="mt-3 grid gap-4 md:grid-cols-2">
               <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
               <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
-              <Fact label={copy.order}>
-                {copy.seat(order.seat.confirmed, order.seat.capacity)}
-              </Fact>
+              {isSale ? null : (
+                <Fact label={copy.order}>
+                  {copy.seat(order.seat.confirmed, order.seat.capacity)}
+                </Fact>
+              )}
             </dl>
           </details>
 
@@ -548,6 +624,7 @@ export function EnrollmentDetail({
                 form={form}
                 refund={order.cancelRefund}
                 today={order.today}
+                isSale={isSale}
               />
             </AdminDangerZone>
           ) : null}

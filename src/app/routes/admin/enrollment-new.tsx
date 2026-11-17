@@ -13,6 +13,7 @@ import {
   enrollmentCreateRefusal,
   enrollmentFailureResponse,
 } from "~/app/admin/enrollment-failure";
+import { loadMaterialChoices } from "./enrollment-material-choices";
 import { withFeedback } from "~/app/admin/feedback-code";
 import { monthLabel } from "~/app/enrollment/order-labels";
 import { AdminPageHeader } from "~/app/ui/admin/admin-page";
@@ -21,8 +22,6 @@ import {
   enrollmentNewCopy as copy,
   type EnrollmentNewOption,
 } from "~/app/ui/admin/enrollment-new-form";
-import type { EnrollmentMaterialChoice } from "~/app/ui/admin/enrollment-new-materials";
-import { formatPesos } from "~/modules/enrollments";
 import type { AppServices } from "~/composition/request-services";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-new";
@@ -86,35 +85,12 @@ async function loadOptions(services: AppServices, actor: Actor) {
   return options;
 }
 
-/** Active, available catalog variants that have a price: the only ones an owner may add. */
-async function loadMaterials(
-  services: AppServices,
-  actor: Actor,
-): Promise<EnrollmentMaterialChoice[]> {
-  const variants = await services.materials.listSaleVariants(actor);
-  if (!variants.ok) throw enrollmentFailureResponse(variants.error);
-  // A stock that cannot be read must not close the form: every variant is
-  // then offered as "a pedir", the supplier path that always works.
-  const onHand = await services.variantStock
-    .onHand(variants.value.map((variant) => variant.variantId))
-    .catch(() => new Map<string, number>());
-  return variants.value.map((variant) => ({
-    materialId: variant.materialId,
-    variantId: variant.variantId,
-    name: variant.materialName,
-    label: variant.variantLabel,
-    unitPrice: variant.unitPrice.toCentavos() / 100,
-    priceLabel: formatPesos(variant.unitPrice),
-    onHand: onHand.get(variant.variantId) ?? 0,
-  }));
-}
-
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const services = context.get(servicesContext);
   return {
     options: await loadOptions(services, actor),
-    materials: await loadMaterials(services, actor),
+    materials: await loadMaterialChoices(services, actor),
   };
 }
 

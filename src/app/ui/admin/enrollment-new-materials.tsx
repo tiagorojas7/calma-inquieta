@@ -84,12 +84,18 @@ export function EnrollmentNewMaterials({
   choices,
   initialLines = [],
   fee,
+  hint = copy.hint,
   error,
 }: {
   choices: readonly EnrollmentMaterialChoice[];
   initialLines?: readonly EnrollmentMaterialLine[];
-  /** The fee as typed in the form, to show one clear total. */
-  fee: string;
+  /**
+   * The fee as typed in the form, to show one clear total. Absent for a
+   * material sale, which has no fee: the materials are then its only total.
+   */
+  fee?: string | undefined;
+  /** What the legend explains; a sale words it its own way. */
+  hint?: string;
   error?: string | undefined;
 }) {
   const [lines, setLines] =
@@ -125,12 +131,12 @@ export function EnrollmentNewMaterials({
       ? sum + choice.unitPrice * Number(line.quantity)
       : sum;
   }, 0);
-  const feeAmount = feeOf(fee);
+  const feeAmount = fee === undefined ? null : feeOf(fee);
 
   return (
     <fieldset className="flex flex-col gap-3 border-t border-admin-line pt-4">
       <legend className="font-semibold text-ink-900">{copy.legend}</legend>
-      <p className="text-sm text-ink-700">{copy.hint}</p>
+      <p className="text-sm text-ink-700">{hint}</p>
       <TextField
         label={copy.search}
         hint={copy.searchHint}
@@ -267,10 +273,19 @@ export function EnrollmentNewMaterials({
               {feeAmount !== null && (
                 <SummaryRow label={copy.fee} value={pesos(feeAmount)} />
               )}
-              <SummaryRow
-                label={copy.materials}
-                value={pesos(materialsTotal)}
-              />
+              {fee === undefined ? null : (
+                <SummaryRow
+                  label={copy.materials}
+                  value={pesos(materialsTotal)}
+                />
+              )}
+              {fee === undefined && (
+                <SummaryRow
+                  label={copy.total}
+                  value={pesos(materialsTotal)}
+                  strong
+                />
+              )}
               {feeAmount !== null && (
                 <SummaryRow
                   label={copy.total}

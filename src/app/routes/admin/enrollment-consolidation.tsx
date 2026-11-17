@@ -6,6 +6,7 @@ import { isUuid } from "~/app/admin/enrollment-ids";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { whatsappHref } from "~/app/admin/whatsapp-href";
 import { monthLabel } from "~/app/enrollment/order-labels";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
   EnrollmentConsolidation,
   type DeliveryCardView,
@@ -43,7 +44,11 @@ function cardOf(order: DeliveryOrder): DeliveryCardView {
   return {
     id: order.id,
     studentName: order.studentName,
-    detail: `${order.workshopName} · ${order.turnoLabel}`,
+    // A sale has no turno of its own: it names the workshop of its record.
+    detail:
+      order.kind === "material_sale"
+        ? `${adminMicrocopy.enrollments.detail.sale.listLabel} · ${order.workshopName}`
+        : `${order.workshopName} · ${order.turnoLabel}`,
     lines: order.lines.map((line) => ({
       label: `${line.materialName} ${line.variantLabel}`,
       quantity: line.quantity,

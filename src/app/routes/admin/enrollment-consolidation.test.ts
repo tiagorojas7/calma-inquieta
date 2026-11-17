@@ -392,6 +392,30 @@ describe("admin supplier consolidation loader", () => {
     expect(result.counts).toEqual({ pedir: 2, entregar: 2 });
   });
 
+  it("hands over a material sale from the same list, named as a sale of its workshop", async () => {
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(
+      ok([
+        deliveryOrder({
+          id: "4f2d9052-8b7e-4dae-9eb2-5a6b7c8d9eaf",
+          kind: "material_sale",
+          status: "materials_requested",
+          studentName: "Ana Pérez",
+        }),
+      ]),
+    );
+
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar",
+      true,
+      deliveries,
+    );
+
+    expect(result.toDeliver).toMatchObject([
+      { studentName: "Ana Pérez", detail: "Venta de materiales · Cerámica" },
+    ]);
+  });
+
   it("hands over a paid order whose lines all come from stock, marked as such, and leaves paid supplier orders out", async () => {
     const stockLine = (source: "stock" | "supplier") => ({
       materialName: "Arcilla",

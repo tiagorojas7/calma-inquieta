@@ -18,6 +18,8 @@ export interface StudentActivityRow {
 export interface StudentOrderRow {
   readonly id: string;
   readonly number: string;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: "enrollment" | "material_sale";
   readonly workshop: string;
   readonly month: string;
   readonly status: string;
@@ -168,6 +170,9 @@ export function StudentDetail({
                 </a>
                 <OrderStatusBadge status={row.status} label={row.statusLabel} />
               </div>
+              {row.kind === "material_sale" ? (
+                <Text tone="muted">{copy.orders.sale}</Text>
+              ) : null}
               <Text tone="muted">
                 {row.workshop} - {row.month}
               </Text>

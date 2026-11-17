@@ -59,6 +59,44 @@ describe("StudentDetail", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("marks a material sale in the payment history, linked to its own page", () => {
+    render(
+      <StudentDetail
+        student={{
+          ...student,
+          orders: [
+            {
+              id: "s1",
+              number: "CI-2026-0009",
+              kind: "material_sale",
+              workshop: "Cerámica",
+              month: "noviembre 2026",
+              status: "pending_confirmation",
+              statusLabel: "Pendiente de confirmación",
+              total: "$ 10.000",
+              paidOn: null,
+            },
+            ...student.orders,
+          ],
+        }}
+      />,
+    );
+
+    const history = screen.getByRole("region", {
+      name: "Historial de pedidos y pagos",
+    });
+    const cards = within(history).getAllByRole("listitem");
+    const sale = cards[0] as HTMLElement;
+    expect(within(sale).getByText("Venta de materiales")).toBeVisible();
+    expect(
+      within(sale).getByRole("link", { name: "CI-2026-0009" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/s1");
+    expect(within(sale).getByText("Sin cobrar")).toBeVisible();
+    expect(
+      within(cards[1] as HTMLElement).queryByText("Venta de materiales"),
+    ).toBeNull();
+  });
+
   it("confirms a saved note with a status message", () => {
     render(<StudentDetail student={student} feedback="note-saved" />);
 

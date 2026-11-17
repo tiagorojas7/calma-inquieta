@@ -1067,3 +1067,153 @@ describe("admin enrollment detail corrections", () => {
     expect(correct).not.toHaveBeenCalled();
   });
 });
+
+describe("admin enrollment detail loader: material sales", () => {
+  const monthlyId = "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b";
+  const sale: AdminEnrollmentDetail = {
+    ...detail,
+    id: "9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f",
+    number: "CI-2026-0009",
+    kind: "material_sale",
+    parent: { id: monthlyId, number: "CI-2026-0007" },
+    fee: pesos(0),
+    materialsTotal: pesos(10_000),
+    total: pesos(10_000),
+  };
+
+  it("lists the sales of a monthly record with their state, and offers a new one", async () => {
+    const record: AdminEnrollmentDetail = {
+      ...detail,
+      status: "paid",
+      paidAt: new Date("2026-11-02T03:00:00Z"),
+      paidAmount: pesos(58_000),
+      kind: "enrollment",
+      sales: [
+        {
+          id: sale.id,
+          number: sale.number,
+          status: "pending_confirmation",
+          total: pesos(10_000),
+          requestedAt: new Date("2026-11-20T15:00:00Z"),
+        },
+        {
+          id: "aaaaaaaa-4a5b-4c6d-8e7f-0a1b2c3d4e5f",
+          number: "CI-2026-0010",
+          status: "paid",
+          total: pesos(4_000),
+          requestedAt: new Date("2026-11-21T15:00:00Z"),
+        },
+      ],
+    };
+
+    const result = await load({ detail: () => Promise.resolve(ok(record)) });
+
+    expect(result).toMatchObject({
+      kind: "enrollment",
+      parent: null,
+      newSaleHref: `/admin/inscripciones/${monthlyId}/venta-nueva`,
+      sales: [
+        {
+          id: sale.id,
+          number: "CI-2026-0009",
+          href: `/admin/inscripciones/${sale.id}`,
+          status: "pending_confirmation",
+          statusLabel: "Pendiente de confirmación",
+          total: "$ 10.000",
+          requestedOn: "20/11/2026",
+        },
+        {
+          number: "CI-2026-0010",
+          statusLabel: "Cobrado",
+          total: "$ 4.000",
+        },
+      ],
+      // The monthly total is the monthly record's own: sales never rewrite it.
+      total: "$ 58.000",
+    });
+  });
+
+  it("offers no new sale under a cancelled record, but still lists the ones it has", async () => {
+    const result = await load({
+      detail: () =>
+        Promise.resolve(
+          ok({
+            ...detail,
+            status: "cancelled",
+            kind: "enrollment",
+            sales: [
+              {
+                id: sale.id,
+                number: sale.number,
+                status: "paid",
+                total: pesos(10_000),
+                requestedAt: new Date("2026-11-20T15:00:00Z"),
+              },
+            ],
+          } satisfies AdminEnrollmentDetail),
+        ),
+    });
+
+    expect(result).toMatchObject({
+      newSaleHref: null,
+      sales: [{ number: "CI-2026-0009" }],
+    });
+  });
+
+  it("shows a sale with a link to its record, no correction, no new sale and the usual cancel and refund", async () => {
+    const paidSale: AdminEnrollmentDetail = {
+      ...sale,
+      status: "paid",
+      paidAt: new Date("2026-11-22T03:00:00Z"),
+      paidAmount: pesos(10_000),
+      confirmedBy: "admin@x.test",
+    };
+
+    const result = await load({ detail: () => Promise.resolve(ok(paidSale)) });
+
+    expect(result).toMatchObject({
+      kind: "material_sale",
+      number: "CI-2026-0009",
+      parent: {
+        number: "CI-2026-0007",
+        href: `/admin/inscripciones/${monthlyId}`,
+      },
+      correction: null,
+      newSaleHref: null,
+      sales: [],
+      total: "$ 10.000",
+      cancelRefund: { paid: "$ 10.000", paidPesos: "10000" },
+      actions: { cancel: true, confirm: false },
+    });
+    await expect(
+      load({ detail: () => Promise.resolve(ok(sale)) }),
+    ).resolves.toMatchObject({
+      actions: { confirm: true, cancel: true },
+      cancelRefund: null,
+    });
+  });
+
+  it("keeps a monthly record without the new fields as a monthly record", async () => {
+    const result = await load({ detail: () => Promise.resolve(ok(detail)) });
+
+    expect(result).toMatchObject({
+      kind: "enrollment",
+      parent: null,
+      sales: [],
+      newSaleHref: `/admin/inscripciones/${monthlyId}/venta-nueva`,
+    });
+    expect(result.correction).not.toBeNull();
+  });
+
+  it("accepts the sale-created feedback code", async () => {
+    const result = await loader({
+      request: getRequest(`/admin/inscripciones/${sale.id}?ok=sale-created`),
+      params: { id: sale.id },
+      context: adminContext(
+        services({ detail: () => Promise.resolve(ok(sale)) }),
+      ),
+    } as never);
+
+    expect(result.feedback).toBe("sale-created");
+  });
+});

@@ -29,6 +29,10 @@ export default [
       "inscripciones/materiales",
       "routes/admin/enrollment-consolidation.tsx",
     ),
+    route(
+      "inscripciones/:id/venta-nueva",
+      "routes/admin/enrollment-sale-new.tsx",
+    ),
     route("inscripciones/:id", "routes/admin/enrollment-detail.tsx"),
     route("alumnas", "routes/admin/students.tsx"),
     route("alumnas/:email", "routes/admin/student-detail.tsx"),

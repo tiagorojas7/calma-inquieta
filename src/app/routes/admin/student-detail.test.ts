@@ -101,6 +101,29 @@ describe("admin student detail route", () => {
     expect(result.orders[0]).toMatchObject({ total: "$ 58.000" });
   });
 
+  it("lists a material sale in the payment history with its kind and state, but not among her activities", async () => {
+    const { context, orders } = setup();
+    orders.orders.push(
+      studentOrder(3, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        status: "pending_confirmation",
+        kind: "material_sale",
+      }),
+    );
+
+    const result = await loader(loadArgs(context, "ana@example.com"));
+
+    expect(result.orders.map((o) => [o.number, o.kind, o.statusLabel])).toEqual(
+      [
+        ["CI-2026-0003", "material_sale", "Pendiente de confirmación"],
+        ["CI-2026-0002", "enrollment", "Cancelado"],
+        ["CI-2026-0001", "enrollment", "Cobrado"],
+      ],
+    );
+    expect(result.activities).toHaveLength(1);
+  });
+
   it("answers 404 for an unknown student and for a path that is not an email", async () => {
     const { context } = setup();
     expect(

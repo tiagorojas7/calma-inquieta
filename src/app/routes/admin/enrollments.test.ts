@@ -82,6 +82,23 @@ function listBy(byStatus: Partial<Record<string, readonly (typeof item)[]>>) {
   );
 }
 
+describe("admin enrollments list route: material sales", () => {
+  it("lists a sale among the payments to collect, marked as a sale of its workshop", async () => {
+    const sale = {
+      ...item,
+      id: "s1",
+      number: "CI-2026-0009",
+      kind: "material_sale" as const,
+    };
+    const result = await load(listBy({ pending_confirmation: [item, sale] }));
+
+    expect(result.rows.map((row) => [row.number, row.workshopName])).toEqual([
+      ["CI-2026-0007", "Cerámica"],
+      ["CI-2026-0009", "Venta de materiales · Cerámica"],
+    ]);
+  });
+});
+
 describe("admin enrollments list route", () => {
   it("opens on the Por cobrar tab and projects display rows", async () => {
     const list = listBy({ pending_confirmation: [item] });

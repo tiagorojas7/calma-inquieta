@@ -625,3 +625,152 @@ describe("EnrollmentDetail: where the materials come from", () => {
     ).toBeNull();
   });
 });
+
+describe("EnrollmentDetail: material sales", () => {
+  const sales: NonNullable<EnrollmentDetailProps["order"]["sales"]> = [
+    {
+      id: "s1",
+      number: "CI-2026-0009",
+      href: "/admin/inscripciones/s1",
+      status: "pending_confirmation",
+      statusLabel: "Pendiente de confirmación",
+      total: "$ 10.000",
+      requestedOn: "20/11/2026",
+    },
+    {
+      id: "s2",
+      number: "CI-2026-0010",
+      href: "/admin/inscripciones/s2",
+      status: "paid",
+      statusLabel: "Cobrado",
+      total: "$ 4.000",
+      requestedOn: "21/11/2026",
+    },
+  ];
+  const record: EnrollmentDetailProps["order"] = {
+    ...paidOrder,
+    kind: "enrollment",
+    parent: null,
+    sales,
+    newSaleHref: "/admin/inscripciones/o1/venta-nueva",
+  };
+  const sale: EnrollmentDetailProps["order"] = {
+    ...base.order,
+    id: "s1",
+    number: "CI-2026-0009",
+    kind: "material_sale",
+    parent: { number: "CI-2026-0007", href: "/admin/inscripciones/o1" },
+    fee: "$ 0",
+    materialsTotal: "$ 10.000",
+    total: "$ 10.000",
+    totalPesos: "10000",
+    correction: null,
+    sales: [],
+    newSaleHref: null,
+  };
+
+  it("lists the sales of a monthly record with their state and a way to add one", async () => {
+    const { container } = render(<EnrollmentDetail order={record} />);
+
+    const section = screen.getByRole("region", {
+      name: "Ventas de materiales",
+    });
+    const items = within(section).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(
+      within(items[0] as HTMLElement).getByRole("link", {
+        name: /CI-2026-0009/,
+      }),
+    ).toHaveAttribute("href", "/admin/inscripciones/s1");
+    expect(within(items[0] as HTMLElement).getByText("$ 10.000")).toBeVisible();
+    expect(
+      within(items[0] as HTMLElement).getByText("Pendiente de confirmación"),
+    ).toBeVisible();
+    expect(within(items[1] as HTMLElement).getByText("Cobrado")).toBeVisible();
+    expect(
+      within(section).getByRole("link", { name: "Nueva venta de materiales" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1/venta-nueva");
+    // The monthly facts stay the record's own.
+    expect(container.querySelector("[data-order-total]")).toHaveTextContent(
+      "$ 58.000",
+    );
+    await expectNoAxeViolations(container);
+  });
+
+  it("says there are no sales yet, and offers none on a record that cannot take one", () => {
+    const { rerender } = render(
+      <EnrollmentDetail order={{ ...record, sales: [] }} />,
+    );
+    expect(
+      screen.getByText(/Todavía no hay ventas de materiales/),
+    ).toBeVisible();
+
+    rerender(
+      <EnrollmentDetail order={{ ...record, sales: [], newSaleHref: null }} />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Nueva venta de materiales" }),
+    ).toBeNull();
+  });
+
+  it("shows a sale as its own sale: linked to its record, with no fee, seat, correction or sales section", async () => {
+    const { container } = render(<EnrollmentDetail order={sale} />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Venta de materiales CI-2026-0009",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Inscripción CI-2026-0007" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1");
+    expect(screen.queryByText("Cuota")).toBeNull();
+    expect(screen.queryByText(/lugares confirmados/)).toBeNull();
+    expect(screen.queryByText("Corregir inscripción")).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: "Ventas de materiales" }),
+    ).toBeNull();
+    expect(screen.getByRole("form", { name: "Confirmar cobro" })).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
+  it("cancels a paid sale by returning the stock, not by freeing a seat", async () => {
+    const user = userEvent.setup();
+    render(
+      <EnrollmentDetail
+        order={{
+          ...sale,
+          status: "paid",
+          statusLabel: "Cobrado",
+          actions: { ...sale.actions, confirm: false },
+          cancelRefund: { paid: "$ 10.000", paidPesos: "10000" },
+        }}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Cancelar venta" });
+    expect(within(form).getByLabelText("Monto devuelto")).toHaveValue("10000");
+    await user.click(
+      within(form).getByRole("button", { name: "Cancelar venta" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/vuelve al stock/)).toBeVisible();
+    expect(within(dialog).queryByText(/lugar del turno/)).toBeNull();
+  });
+
+  it("keeps cancelling a monthly record as it was", () => {
+    render(<EnrollmentDetail order={record} />);
+
+    expect(screen.getByRole("form", { name: "Cancelar pedido" })).toBeVisible();
+    expect(screen.getByText("Corregir inscripción")).toBeVisible();
+  });
+
+  it("shows the sale-created banner", () => {
+    render(<EnrollmentDetail order={sale} feedback="sale-created" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Venta creada. Falta confirmar el cobro.",
+    );
+  });
+});

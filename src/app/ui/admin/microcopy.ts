@@ -212,6 +212,27 @@ export const adminMicrocopy = {
           "Corrección guardada. El total subió: el pedido volvió a pendiente y falta confirmar el cobro del nuevo total.",
         "materials-requested": "Materiales marcados como solicitados",
         "materials-received": "Materiales marcados como recibidos",
+        "sale-created": "Venta creada. Falta confirmar el cobro.",
+      },
+      // A later material purchase under a monthly record.
+      sale: {
+        listLabel: "Venta de materiales",
+        title: (number: string) => `Venta de materiales ${number}`,
+        parent: (number: string) => `Inscripción ${number}`,
+        parentLabel: "Inscripción",
+        sectionTitle: "Ventas de materiales",
+        sectionHint:
+          "Compras de materiales después del pago del mes. Cada venta tiene su propio cobro y no cambia el total de la inscripción.",
+        empty: "Todavía no hay ventas de materiales para esta inscripción.",
+        newSale: "Nueva venta de materiales",
+        cancel: {
+          title: "Cancelar venta",
+          dialogTitle: "¿Cancelar esta venta?",
+          dialogMessage:
+            "Si la venta ya estaba cobrada, vuelve al stock lo que se descontó. Esto no se puede deshacer.",
+          dialogMessageRefund:
+            "Queda registrado el cobro y la devolución, y vuelve al stock lo que se descontó. Esto no se puede deshacer.",
+        },
       },
       student: "Alumno",
       name: "Nombre",
@@ -501,6 +522,7 @@ export const adminMicrocopy = {
           paidOn: "Cobrado el",
         },
         unpaid: "Sin cobrar",
+        sale: "Venta de materiales",
         emptyAction: "Ver inscripciones",
       },
       notes: {

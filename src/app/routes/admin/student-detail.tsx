@@ -57,6 +57,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     orders: student.orders.map((order) => ({
       id: order.id,
       number: order.number,
+      kind: order.kind ?? ("enrollment" as const),
       workshop: order.workshopName,
       month: monthLabel(order.period),
       status: order.status,

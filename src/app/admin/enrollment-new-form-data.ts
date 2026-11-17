@@ -70,7 +70,8 @@ function quantityOf(typed: string): number {
   return /^[0-9]+$/.test(typed) ? Number(typed) : Number.NaN;
 }
 
-function parseLines(form: FormData): {
+/** The chosen catalog variants of a form, as typed and as the server reads them. */
+export function parseMaterialLines(form: FormData): {
   lines: EnrollmentNewLineValue[];
   cartLines: CartLine[];
   malformed: boolean;
@@ -137,7 +138,7 @@ export function parseEnrollmentNewForm(form: FormData): {
   const parsedFee = parseWholePesos(values.fee);
   if (!parsedFee.ok)
     errors.fee = parsedFee.error === "required" ? REQUIRED : FEE_INVALID;
-  const chosen = parseLines(form);
+  const chosen = parseMaterialLines(form);
   if (chosen.malformed) errors.materials = MATERIAL_UNAVAILABLE;
   return {
     values,

@@ -57,7 +57,12 @@ const FEEDBACK = [
   "returned-to-pending",
   "materials-requested",
   "materials-received",
+  "sale-created",
 ] as const;
+
+/** The Córdoba calendar day of an instant, as the day label wants it. */
+const cordobaDay = (instant: Date) =>
+  new Date(instant.getTime() - CORDOBA_OFFSET_MS).toISOString().slice(0, 10);
 
 function lineTotal(unit: Money, quantity: number): string {
   return formatPesos(unit.multiply(quantity));
@@ -162,7 +167,31 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const order = found.value;
   const paid = order.paidAt !== undefined && order.paidAmount !== undefined;
   const fulfillment = fulfillmentOf(order.lines);
+  // A sale shares its record's student, workshop and month, but has no seat,
+  // fee or turno of its own to correct.
+  const isSale = order.kind === "material_sale";
   return {
+    kind: isSale ? ("material_sale" as const) : ("enrollment" as const),
+    parent:
+      isSale && order.parent !== undefined
+        ? {
+            number: order.parent.number,
+            href: `/admin/inscripciones/${order.parent.id}`,
+          }
+        : null,
+    sales: (order.sales ?? []).map((sale) => ({
+      id: sale.id,
+      number: sale.number,
+      href: `/admin/inscripciones/${sale.id}`,
+      status: sale.status,
+      statusLabel: ORDER_STATUS_LABELS[sale.status],
+      total: formatPesos(sale.total),
+      requestedOn: dateLabel(cordobaDay(sale.requestedAt)),
+    })),
+    newSaleHref:
+      !isSale && order.status !== "cancelled"
+        ? `/admin/inscripciones/${order.id}/venta-nueva`
+        : null,
     feedback: feedbackCode(request, FEEDBACK),
     id: order.id,
     number: order.number,
@@ -215,7 +244,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       : null,
     seat: order.seat,
     correction:
-      order.status === "cancelled"
+      order.status === "cancelled" || isSale
         ? null
         : {
             options: await loadCorrectionOptions(services, actor),

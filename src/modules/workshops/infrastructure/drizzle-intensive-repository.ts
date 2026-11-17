@@ -3,6 +3,7 @@ import { err, Money, ok } from "~/modules/_shared";
 import {
   intensiveImage,
   intensiveProject,
+  intensiveProjectMaterial,
   intensiveWorkshop,
 } from "~/platform/db/schema/workshops";
 import type { DbSessionFactory } from "~/platform/db/session";
@@ -10,6 +11,7 @@ import type { IntensiveStatus } from "../application/contracts";
 import type {
   IntensiveRepository,
   NewIntensiveProject,
+  NewProjectMaterial,
   StoredIntensive,
   StoredIntensiveProject,
 } from "../application/intensive-repository";
@@ -434,5 +436,122 @@ export function createDrizzleIntensiveRepository(
           return "deleted";
         }),
       ),
+
+    listProjectMaterials: (intensiveId) =>
+      withSession(async (db) => {
+        const rows = await db
+          .select({
+            projectId: intensiveProjectMaterial.projectId,
+            variantId: intensiveProjectMaterial.variantId,
+            quantity: intensiveProjectMaterial.quantity,
+            position: intensiveProjectMaterial.position,
+          })
+          .from(intensiveProjectMaterial)
+          .innerJoin(
+            intensiveProject,
+            eq(intensiveProject.id, intensiveProjectMaterial.projectId),
+          )
+          .where(eq(intensiveProject.intensiveId, intensiveId))
+          .orderBy(
+            asc(intensiveProject.position),
+            asc(intensiveProjectMaterial.position),
+          );
+        return rows;
+      }),
+
+    addProjectMaterial: (line: NewProjectMaterial) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          // The project row serializes concurrent edits of its list, so the
+          // duplicate check and the next position cannot interleave.
+          const owner = await tx
+            .select({ id: intensiveProject.id })
+            .from(intensiveProject)
+            .where(
+              and(
+                eq(intensiveProject.id, line.projectId),
+                eq(intensiveProject.intensiveId, line.intensiveId),
+              ),
+            )
+            .for("update");
+          if (owner.length === 0) return err({ kind: "not-found" as const });
+          const lines = await tx
+            .select({
+              variantId: intensiveProjectMaterial.variantId,
+              position: intensiveProjectMaterial.position,
+            })
+            .from(intensiveProjectMaterial)
+            .where(eq(intensiveProjectMaterial.projectId, line.projectId));
+          if (lines.some((existing) => existing.variantId === line.variantId))
+            return err({ kind: "duplicate-variant" as const });
+          const position =
+            lines.reduce(
+              (max, existing) => Math.max(max, existing.position),
+              -1,
+            ) + 1;
+          await tx.insert(intensiveProjectMaterial).values({
+            projectId: line.projectId,
+            position,
+            variantId: line.variantId,
+            quantity: line.quantity,
+          });
+          return ok({
+            projectId: line.projectId,
+            variantId: line.variantId,
+            quantity: line.quantity,
+            position,
+          });
+        }),
+      ),
+
+    setProjectMaterialQuantity: (intensiveId, projectId, variantId, quantity) =>
+      withSession(async (db) => {
+        const rows = await db
+          .update(intensiveProjectMaterial)
+          .set({ quantity })
+          .where(
+            and(
+              eq(intensiveProjectMaterial.projectId, projectId),
+              eq(intensiveProjectMaterial.variantId, variantId),
+              inArray(
+                intensiveProjectMaterial.projectId,
+                ownedProject(db, intensiveId, projectId),
+              ),
+            ),
+          )
+          .returning({ position: intensiveProjectMaterial.position });
+        return rows.length === 0 ? err({ kind: "not-found" }) : ok(undefined);
+      }),
+
+    removeProjectMaterial: (intensiveId, projectId, variantId) =>
+      withSession(async (db) => {
+        const rows = await db
+          .delete(intensiveProjectMaterial)
+          .where(
+            and(
+              eq(intensiveProjectMaterial.projectId, projectId),
+              eq(intensiveProjectMaterial.variantId, variantId),
+              inArray(
+                intensiveProjectMaterial.projectId,
+                ownedProject(db, intensiveId, projectId),
+              ),
+            ),
+          )
+          .returning({ position: intensiveProjectMaterial.position });
+        return rows.length === 0 ? err({ kind: "not-found" }) : ok(undefined);
+      }),
   };
+}
+
+/** The project's id when it belongs to that intensivo: a subquery for scoping a line. */
+function ownedProject(db: Db, intensiveId: string, projectId: string) {
+  return db
+    .select({ id: intensiveProject.id })
+    .from(intensiveProject)
+    .where(
+      and(
+        eq(intensiveProject.id, projectId),
+        eq(intensiveProject.intensiveId, intensiveId),
+      ),
+    );
 }

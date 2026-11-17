@@ -584,3 +584,248 @@ describe("absent actor", () => {
     },
   );
 });
+
+const VARIANT_A = "d0000000-0000-4000-8000-00000000000a";
+const VARIANT_B = "d0000000-0000-4000-8000-00000000000b";
+
+async function withProject() {
+  const ctx = await workshop();
+  const [project] = valueOf(await ctx.service.listProjects(owner, ctx.id));
+  if (!project) throw new Error("missing project");
+  return { ...ctx, projectId: project.id };
+}
+
+const linesOf = async (
+  service: ReturnType<typeof setup>["service"],
+  id: string,
+) =>
+  valueOf(await service.listProjectMaterials(owner, id)).map(
+    (line) => [line.projectId, line.variantId, line.quantity] as const,
+  );
+
+describe("project bill of materials", () => {
+  it("adds a variant with a quantity per participant and lists it", async () => {
+    const { service, id, projectId } = await withProject();
+
+    const added = await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_A,
+      quantity: " 3 ",
+    });
+
+    expect(added).toEqual({
+      ok: true,
+      value: { projectId, variantId: VARIANT_A, quantity: 3, position: 0 },
+    });
+    expect(await linesOf(service, id)).toEqual([[projectId, VARIANT_A, 3]]);
+  });
+
+  it.each(["", "0", "21", "1,5", "dos"])(
+    "refuses the quantity %j and stores nothing",
+    async (quantity) => {
+      const { service, id, projectId } = await withProject();
+
+      const refused = await service.addProjectMaterial(owner, id, projectId, {
+        variantId: VARIANT_A,
+        quantity,
+      });
+
+      expect(refused.ok).toBe(false);
+      if (!refused.ok)
+        expect(refused.error).toMatchObject({
+          kind: "invalid",
+          issues: [{ field: "quantity" }],
+        });
+      expect(await linesOf(service, id)).toEqual([]);
+    },
+  );
+
+  it("refuses a variant id that is not a catalog id", async () => {
+    const { service, id, projectId } = await withProject();
+
+    expect(
+      await service.addProjectMaterial(owner, id, projectId, {
+        variantId: "nope",
+        quantity: "1",
+      }),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "variantId", code: "unknown-reference" }],
+      },
+    });
+    expect(await linesOf(service, id)).toEqual([]);
+  });
+
+  it("refuses a variant already on the project, keeping its quantity", async () => {
+    const { service, id, projectId } = await withProject();
+    await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_A,
+      quantity: "2",
+    });
+
+    const again = await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_A,
+      quantity: "5",
+    });
+
+    expect(again).toEqual({
+      ok: false,
+      error: { kind: "rules-unmet", rules: ["duplicate-variant"] },
+    });
+    expect(await linesOf(service, id)).toEqual([[projectId, VARIANT_A, 2]]);
+  });
+
+  it("changes a quantity, validating it, and removes a line", async () => {
+    const { service, id, projectId } = await withProject();
+    await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_A,
+      quantity: "2",
+    });
+    await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_B,
+      quantity: "1",
+    });
+
+    expect(
+      await service.setProjectMaterialQuantity(
+        owner,
+        id,
+        projectId,
+        VARIANT_A,
+        "9",
+      ),
+    ).toEqual({ ok: true, value: undefined });
+    expect(
+      await service.setProjectMaterialQuantity(
+        owner,
+        id,
+        projectId,
+        VARIANT_A,
+        "0",
+      ),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "quantity", code: "out-of-range" }],
+      },
+    });
+    expect(await linesOf(service, id)).toEqual([
+      [projectId, VARIANT_A, 9],
+      [projectId, VARIANT_B, 1],
+    ]);
+
+    expect(
+      await service.removeProjectMaterial(owner, id, projectId, VARIANT_A),
+    ).toEqual({ ok: true, value: undefined });
+    expect(await linesOf(service, id)).toEqual([[projectId, VARIANT_B, 1]]);
+  });
+
+  it("reports an unknown intensivo, project or line as not found", async () => {
+    const { service, id, projectId } = await withProject();
+    const notFound = { ok: false, error: { kind: "not-found" } };
+    const line = { variantId: VARIANT_A, quantity: "1" };
+
+    expect(await service.listProjectMaterials(owner, "missing")).toEqual(
+      notFound,
+    );
+    expect(
+      await service.addProjectMaterial(owner, id, "missing", line),
+    ).toEqual(notFound);
+    expect(
+      await service.addProjectMaterial(owner, "missing", projectId, line),
+    ).toEqual(notFound);
+    expect(
+      await service.setProjectMaterialQuantity(
+        owner,
+        id,
+        projectId,
+        VARIANT_A,
+        "2",
+      ),
+    ).toEqual(notFound);
+    expect(
+      await service.removeProjectMaterial(owner, id, projectId, VARIANT_A),
+    ).toEqual(notFound);
+  });
+
+  it("keeps each project list apart and untouched while projects are edited, moved or deleted", async () => {
+    const { service, id, projectId } = await withProject();
+    const second = valueOf(await service.addProject(owner, id, projectDraft()));
+    await service.addProjectMaterial(owner, id, projectId, {
+      variantId: VARIANT_A,
+      quantity: "2",
+    });
+    await service.addProjectMaterial(owner, id, second.id, {
+      variantId: VARIANT_A,
+      quantity: "4",
+    });
+
+    // Existing project administration keeps working around the bill.
+    valueOf(
+      await service.updateProject(
+        owner,
+        id,
+        projectId,
+        projectDraft({ name: "Plato" }),
+      ),
+    );
+    expect((await service.moveProject(owner, id, second.id, "up")).ok).toBe(
+      true,
+    );
+    expect(await namesOf(service, id)).toEqual(["Taza de torno", "Plato"]);
+    expect(await linesOf(service, id)).toEqual([
+      [second.id, VARIANT_A, 4],
+      [projectId, VARIANT_A, 2],
+    ]);
+
+    expect((await service.deleteProject(owner, id, second.id)).ok).toBe(true);
+    expect(await linesOf(service, id)).toEqual([[projectId, VARIANT_A, 2]]);
+  });
+
+  it.each([null, undefined])(
+    "denies every bill use case for %s without touching a port",
+    async (actor) => {
+      const { repository, service } = setup();
+      const calls: string[] = [];
+      for (const method of [
+        "findById",
+        "listProjectMaterials",
+        "addProjectMaterial",
+        "setProjectMaterialQuantity",
+        "removeProjectMaterial",
+      ] as const) {
+        const original = repository[method].bind(repository) as (
+          ...args: never[]
+        ) => unknown;
+        Object.assign(repository, {
+          [method]: (...args: never[]) => {
+            calls.push(method);
+            return original(...args);
+          },
+        });
+      }
+      const denied = { ok: false, error: { kind: "denied" } };
+      const line = { variantId: VARIANT_A, quantity: "1" };
+
+      expect(await service.listProjectMaterials(actor, "id-1")).toEqual(denied);
+      expect(
+        await service.addProjectMaterial(actor, "id-1", "p", line),
+      ).toEqual(denied);
+      expect(
+        await service.setProjectMaterialQuantity(
+          actor,
+          "id-1",
+          "p",
+          VARIANT_A,
+          "2",
+        ),
+      ).toEqual(denied);
+      expect(
+        await service.removeProjectMaterial(actor, "id-1", "p", VARIANT_A),
+      ).toEqual(denied);
+      expect(calls).toEqual([]);
+    },
+  );
+});

@@ -1,8 +1,13 @@
 import type { FieldIssue } from "~/modules/_shared";
+import type { SaleVariantOption } from "~/modules/materials";
 import type {
   IntensiveProject,
   IntensiveProjectDraft,
   IntensiveProjectField,
+  IntensiveProjectMaterial,
+  IntensiveProjectMaterialDraft,
+  IntensiveProjectMaterialField,
+  IntensiveProjectMaterialRule,
   IntensiveProjectRule,
 } from "~/modules/workshops";
 import { formatPesos } from "~/app/catalog/format";
@@ -11,6 +16,7 @@ import type {
   ProjectFormValues,
   RejectedProject,
 } from "~/app/ui/admin/intensive-projects";
+import type { ProjectMaterialChoice } from "~/app/ui/admin/intensive-project-materials";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { fieldErrors, type FieldMessages } from "./issue-messages";
 import { formatWholePesos } from "./workshop-form-data";
@@ -83,9 +89,47 @@ export function rejectedProject(
   };
 }
 
-/** The project list the detail screen shows: money formatted, forms prefilled. */
+export function parseVariantId(form: FormData): string {
+  return text(form, "variantId");
+}
+
+export function parseQuantity(form: FormData): string {
+  return text(form, "quantity");
+}
+
+/** One bill line as submitted; the quantity stays as typed for the service to judge. */
+export function parseMaterialDraft(
+  form: FormData,
+): IntensiveProjectMaterialDraft {
+  return { variantId: parseVariantId(form), quantity: parseQuantity(form) };
+}
+
+/**
+ * The catalog variants an owner may add. `onHand` is null for all of them
+ * when stock could not be read, so the screen shows no stock rather than a
+ * misleading zero.
+ */
+export function materialChoices(
+  variants: readonly SaleVariantOption[],
+  onHand: ReadonlyMap<string, number> | null,
+): ProjectMaterialChoice[] {
+  return variants.map((variant) => ({
+    variantId: variant.variantId,
+    name: variant.materialName,
+    label: variant.variantLabel,
+    onHand: onHand === null ? null : (onHand.get(variant.variantId) ?? 0),
+  }));
+}
+
+/**
+ * The project list the detail screen shows: money formatted, forms prefilled
+ * and each project's bill of materials named from the catalog choices. A
+ * variant missing from the choices is shown as gone, still removable.
+ */
 export function projectCards(
   projects: readonly IntensiveProject[],
+  lines: readonly IntensiveProjectMaterial[] = [],
+  choices: readonly ProjectMaterialChoice[] = [],
 ): IntensiveProjectCard[] {
   return projects.map((project) => ({
     id: project.id,
@@ -109,7 +153,41 @@ export function projectCards(
           }
         : null,
     },
+    materials: lines
+      .filter((line) => line.projectId === project.id)
+      .map((line) => {
+        const choice = choices.find((c) => c.variantId === line.variantId);
+        return {
+          variantId: line.variantId,
+          name: choice?.name ?? null,
+          label: choice?.label ?? null,
+          quantity: line.quantity,
+          onHand: choice?.onHand ?? null,
+        };
+      }),
   }));
+}
+
+/** Why a bill line was refused as typed: the variant, or else the quantity. */
+export function materialIssueMessage(
+  issues: readonly FieldIssue<IntensiveProjectMaterialField>[],
+): string {
+  const errors = adminMicrocopy.intensives.projects.errors;
+  return issues.some((issue) => issue.field === "variantId")
+    ? errors.materialUnavailable
+    : errors.materialQuantity;
+}
+
+const MATERIAL_RULE_MESSAGES = {
+  "duplicate-variant":
+    adminMicrocopy.intensives.projects.errors.materialDuplicate,
+} as const satisfies Record<IntensiveProjectMaterialRule, string>;
+
+/** Why a bill line could not be added, in the owner's words. */
+export function materialRuleMessage(
+  rules: readonly IntensiveProjectMaterialRule[],
+): string {
+  return rules.map((rule) => MATERIAL_RULE_MESSAGES[rule]).join(" ");
 }
 
 const PROJECT_RULE_MESSAGES = {

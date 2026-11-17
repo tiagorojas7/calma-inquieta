@@ -54,6 +54,31 @@ export type MoveProjectOutcome = "moved" | "at-edge" | "not-found";
 /** `in-use`: a seat request still points at the project. */
 export type DeleteProjectOutcome = "deleted" | "in-use" | "not-found";
 
+/**
+ * One line of a project's bill of materials: units of a catalog variant per
+ * participant. The variant id is a plain reference to the materials catalog
+ * (no foreign key); `position` is the order the lines were added in.
+ */
+export interface StoredProjectMaterial {
+  readonly projectId: string;
+  readonly variantId: string;
+  readonly quantity: number;
+  readonly position: number;
+}
+
+/** A bill line to append: the repository assigns its position. */
+export interface NewProjectMaterial {
+  readonly intensiveId: string;
+  readonly projectId: string;
+  readonly variantId: string;
+  readonly quantity: number;
+}
+
+/** The variant is already on that project's list. */
+export interface DuplicateVariant {
+  readonly kind: "duplicate-variant";
+}
+
 /** The slug is already taken by another intensivo, archived ones included. */
 export interface SlugConflict {
   readonly kind: "slug-conflict";
@@ -123,4 +148,32 @@ export interface IntensiveRepository {
     intensiveId: string,
     projectId: string,
   ): Promise<DeleteProjectOutcome>;
+  /**
+   * Every bill line of the intensivo's projects: by project position, then by
+   * the order the lines were added (none: empty).
+   */
+  listProjectMaterials(
+    intensiveId: string,
+  ): Promise<readonly StoredProjectMaterial[]>;
+  /**
+   * Appends a line after the project's last one. A variant already on the
+   * project is refused, atomically with the check; a project of another
+   * intensivo is not found.
+   */
+  addProjectMaterial(
+    line: NewProjectMaterial,
+  ): Promise<Result<StoredProjectMaterial, NotFound | DuplicateVariant>>;
+  /** Changes the quantity of an existing line; the position stays. */
+  setProjectMaterialQuantity(
+    intensiveId: string,
+    projectId: string,
+    variantId: string,
+    quantity: number,
+  ): Promise<Result<void, NotFound>>;
+  /** Removes a line; the other lines keep their order. */
+  removeProjectMaterial(
+    intensiveId: string,
+    projectId: string,
+    variantId: string,
+  ): Promise<Result<void, NotFound>>;
 }

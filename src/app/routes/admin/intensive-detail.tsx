@@ -18,9 +18,15 @@ import {
   parseIntensiveSchedule,
 } from "~/app/admin/intensive-form-data";
 import {
+  materialChoices,
+  materialIssueMessage,
+  materialRuleMessage,
+  parseMaterialDraft,
   parseProjectDirection,
   parseProjectDraft,
   parseProjectId,
+  parseQuantity,
+  parseVariantId,
   projectCards,
   projectDeleteMessage,
   rejectedProject,
@@ -32,6 +38,7 @@ import {
 import type { FieldIssue } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import type { IntensivesService, IntensiveWorkshop } from "~/modules/workshops";
+import type { AppServices } from "~/composition/request-services";
 import { Heading } from "~/app/ui/atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
@@ -69,6 +76,9 @@ const FEEDBACK = [
   "projectSaved",
   "projectMoved",
   "projectDeleted",
+  "materialAdded",
+  "materialSaved",
+  "materialRemoved",
 ] as const;
 
 /** The projects section: where a project action returns the owner to. */
@@ -130,6 +140,16 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   if (!listed.ok) throw failureResponse(listed.error);
   const projects = await services.intensives.listProjects(actor, params.id);
   if (!projects.ok) throw failureResponse(projects.error);
+  const bill = await services.intensives.listProjectMaterials(actor, params.id);
+  if (!bill.ok) throw failureResponse(bill.error);
+  const variants = await services.materials.listSaleVariants(actor);
+  if (!variants.ok) throw failureResponse(variants.error);
+  // Stock is shown for information only: a read that fails must not close the
+  // screen, so it then shows no stock instead of a misleading zero.
+  const onHand = await services.variantStock
+    .onHand(variants.value.map((variant) => variant.variantId))
+    .catch(() => null);
+  const choices = materialChoices(variants.value, onHand);
   const assigned = intensive.assignment?.teacher.id;
   return {
     id: intensive.id,
@@ -137,7 +157,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     feedback: feedbackCode(request, FEEDBACK),
     missing: intensiveMissing(request),
     values: formValues(intensive),
-    projects: projectCards(projects.value),
+    projects: projectCards(projects.value, bill.value, choices),
+    materialChoices: choices,
     teachers: listed.value
       .filter((teacher) => teacher.active || teacher.id === assigned)
       .map((teacher) => ({
@@ -157,7 +178,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = parseIntensiveIntent(form);
   if (intent === null) throw data(null, { status: 400 });
-  const intensives = context.get(servicesContext).intensives;
+  const services = context.get(servicesContext);
+  const intensives = services.intensives;
 
   if (intent === "save") {
     const draft = parseIntensiveDraft(form);
@@ -184,6 +206,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     intent === "project-delete"
   )
     return projectAction(intent, form, actor, intensives, params.id);
+  if (
+    intent === "project-material-add" ||
+    intent === "project-material-set" ||
+    intent === "project-material-remove"
+  )
+    return materialAction(intent, form, actor, services, params.id);
   if (intent === "reschedule") {
     const schedule = parseIntensiveSchedule(form);
     const changed = await intensives.reschedule(actor, params.id, schedule);
@@ -298,6 +326,78 @@ async function projectAction(
   throw failureResponse(deleted.error);
 }
 
+type MaterialIntent =
+  "project-material-add" | "project-material-set" | "project-material-remove";
+
+/** A refused bill line, shown on the project it belongs to. */
+const refusedMaterial = (projectId: string, message: string) =>
+  data({ projectMaterial: { projectId, message } }, { status: 422 });
+
+async function materialAction(
+  intent: MaterialIntent,
+  form: FormData,
+  actor: AdminActor,
+  services: AppServices,
+  id: string,
+) {
+  const intensives = services.intensives;
+  const projectId = parseProjectId(form);
+  const done = (code: "materialAdded" | "materialSaved" | "materialRemoved") =>
+    redirect(withFeedback(projectsPath(id), code));
+  if (intent === "project-material-add") {
+    const draft = parseMaterialDraft(form);
+    // The workshops module never reads the catalog, so the variant is
+    // checked here against the same list the picker offers.
+    const variants = await services.materials.listSaleVariants(actor);
+    if (!variants.ok) throw failureResponse(variants.error);
+    if (!variants.value.some((v) => v.variantId === draft.variantId))
+      return refusedMaterial(
+        projectId,
+        adminMicrocopy.intensives.projects.errors.materialUnavailable,
+      );
+    const added = await intensives.addProjectMaterial(
+      actor,
+      id,
+      projectId,
+      draft,
+    );
+    if (added.ok) return done("materialAdded");
+    if (added.error.kind === "invalid")
+      return refusedMaterial(
+        projectId,
+        materialIssueMessage(added.error.issues),
+      );
+    if (added.error.kind === "rules-unmet")
+      return refusedMaterial(projectId, materialRuleMessage(added.error.rules));
+    throw failureResponse(added.error);
+  }
+  const variantId = parseVariantId(form);
+  if (intent === "project-material-set") {
+    const saved = await intensives.setProjectMaterialQuantity(
+      actor,
+      id,
+      projectId,
+      variantId,
+      parseQuantity(form),
+    );
+    if (saved.ok) return done("materialSaved");
+    if (saved.error.kind === "invalid")
+      return refusedMaterial(
+        projectId,
+        materialIssueMessage(saved.error.issues),
+      );
+    throw failureResponse(saved.error);
+  }
+  const removed = await intensives.removeProjectMaterial(
+    actor,
+    id,
+    projectId,
+    variantId,
+  );
+  if (removed.ok) return done("materialRemoved");
+  throw failureResponse(removed.error);
+}
+
 export default function AdminIntensiveDetail() {
   const intensive = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
@@ -308,6 +408,10 @@ export default function AdminIntensiveDetail() {
     rejected && "reschedule" in rejected ? rejected.reschedule : undefined;
   const projectsRejected =
     rejected && "projects" in rejected ? rejected.projects : undefined;
+  const materialRejected =
+    rejected && "projectMaterial" in rejected
+      ? rejected.projectMaterial
+      : undefined;
   const projectError =
     rejected && "projectError" in rejected ? rejected.projectError : undefined;
   const saved = intensive.feedback ? FEEDBACK_COPY[intensive.feedback] : null;
@@ -352,7 +456,9 @@ export default function AdminIntensiveDetail() {
       <div id={PROJECTS_ANCHOR} className="scroll-mt-4">
         <IntensiveProjects
           projects={intensive.projects}
+          materialChoices={intensive.materialChoices}
           rejected={projectsRejected}
+          rejectedMaterial={materialRejected}
           error={projectError}
         />
       </div>

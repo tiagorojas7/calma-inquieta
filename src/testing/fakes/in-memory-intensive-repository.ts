@@ -3,13 +3,16 @@ import type { IntensiveStatus } from "~/modules/workshops";
 import type {
   DeleteDraftOutcome,
   DeleteProjectOutcome,
+  DuplicateVariant,
   IntensiveRepository,
   MoveProjectOutcome,
   NewIntensiveProject,
+  NewProjectMaterial,
   ProjectDirection,
   SlugConflict,
   StoredIntensive,
   StoredIntensiveProject,
+  StoredProjectMaterial,
 } from "~/modules/workshops/application/intensive-repository";
 
 const compareText = (a: string, b: string): number =>
@@ -19,6 +22,8 @@ const compareText = (a: string, b: string): number =>
 export class InMemoryIntensiveRepository implements IntensiveRepository {
   readonly items = new Map<string, StoredIntensive>();
   readonly projects = new Map<string, StoredIntensiveProject>();
+  /** Bill of materials lines, by project id, in the order they were added. */
+  readonly materials = new Map<string, StoredProjectMaterial[]>();
   /** Projects a seat request points at; deleting one is refused. */
   readonly referencedProjects = new Set<string>();
 
@@ -84,7 +89,10 @@ export class InMemoryIntensiveRepository implements IntensiveRepository {
     if (!stored) return Promise.resolve("not-found");
     if (stored.status !== "draft") return Promise.resolve("not-draft");
     this.items.delete(id);
-    for (const project of this.ordered(id)) this.projects.delete(project.id);
+    for (const project of this.ordered(id)) {
+      this.projects.delete(project.id);
+      this.materials.delete(project.id);
+    }
     return Promise.resolve("deleted");
   }
 
@@ -161,6 +169,74 @@ export class InMemoryIntensiveRepository implements IntensiveRepository {
     if (this.referencedProjects.has(projectId))
       return Promise.resolve("in-use");
     this.projects.delete(projectId);
+    this.materials.delete(projectId);
     return Promise.resolve("deleted");
+  }
+
+  listProjectMaterials(
+    intensiveId: string,
+  ): Promise<readonly StoredProjectMaterial[]> {
+    return Promise.resolve(
+      this.ordered(intensiveId).flatMap(
+        (project) => this.materials.get(project.id) ?? [],
+      ),
+    );
+  }
+
+  addProjectMaterial(
+    line: NewProjectMaterial,
+  ): Promise<Result<StoredProjectMaterial, NotFound | DuplicateVariant>> {
+    if (this.projects.get(line.projectId)?.intensiveId !== line.intensiveId)
+      return Promise.resolve(err({ kind: "not-found" }));
+    const lines = this.materials.get(line.projectId) ?? [];
+    if (lines.some((existing) => existing.variantId === line.variantId))
+      return Promise.resolve(err({ kind: "duplicate-variant" }));
+    const stored: StoredProjectMaterial = {
+      projectId: line.projectId,
+      variantId: line.variantId,
+      quantity: line.quantity,
+      position: (lines.at(-1)?.position ?? -1) + 1,
+    };
+    this.materials.set(line.projectId, [...lines, stored]);
+    return Promise.resolve(ok(stored));
+  }
+
+  setProjectMaterialQuantity(
+    intensiveId: string,
+    projectId: string,
+    variantId: string,
+    quantity: number,
+  ): Promise<Result<void, NotFound>> {
+    const lines = this.materials.get(projectId) ?? [];
+    const index = lines.findIndex((line) => line.variantId === variantId);
+    const current = lines[index];
+    if (
+      this.projects.get(projectId)?.intensiveId !== intensiveId ||
+      current === undefined
+    )
+      return Promise.resolve(err({ kind: "not-found" }));
+    this.materials.set(
+      projectId,
+      lines.map((line, at) => (at === index ? { ...current, quantity } : line)),
+    );
+    return Promise.resolve(ok(undefined));
+  }
+
+  removeProjectMaterial(
+    intensiveId: string,
+    projectId: string,
+    variantId: string,
+  ): Promise<Result<void, NotFound>> {
+    const lines = this.materials.get(projectId) ?? [];
+    if (
+      this.projects.get(projectId)?.intensiveId !== intensiveId ||
+      !lines.some((line) => line.variantId === variantId)
+    )
+      return Promise.resolve(err({ kind: "not-found" }));
+    this.materials.set(
+      projectId,
+      lines.filter((line) => line.variantId !== variantId),
+    );
+    return Promise.resolve(ok(undefined));
   }
 }

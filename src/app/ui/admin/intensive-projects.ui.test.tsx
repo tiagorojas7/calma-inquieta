@@ -18,6 +18,15 @@ const taza: IntensiveProjectCard = {
     deposit: "10000",
     image: { assetId: "a1", src: "/imagenes/taza.webp", alt: "Una taza" },
   },
+  materials: [
+    {
+      variantId: "v-arcilla",
+      name: "Arcilla blanca",
+      label: "5 kg",
+      quantity: 2,
+      onHand: 7,
+    },
+  ],
 };
 const plato: IntensiveProjectCard = {
   id: "p2",
@@ -30,6 +39,7 @@ const plato: IntensiveProjectCard = {
     deposit: "15000",
     image: null,
   },
+  materials: [],
 };
 
 function listItem(index: number): HTMLElement {
@@ -213,6 +223,38 @@ describe("IntensiveProjects", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "ya hay solicitudes que eligieron este proyecto",
     );
+  });
+
+  it("gives every project its own bill of materials and shows a refused line only on its project", () => {
+    render(
+      <IntensiveProjects
+        projects={[taza, plato]}
+        materialChoices={[
+          { variantId: "v-barniz", name: "Barniz", label: "1 L", onHand: 3 },
+        ]}
+        rejectedMaterial={{
+          projectId: "p2",
+          message: "Ese material ya está en la lista de este proyecto.",
+        }}
+      />,
+    );
+
+    const first = within(
+      screen.getByRole("group", { name: "Materiales de Taza de torno" }),
+    );
+    expect(first.getByText("Arcilla blanca")).toBeVisible();
+    expect(
+      screen.queryByRole("group", { name: "Materiales de Plato hondo" }),
+    ).toBeNull();
+    expect(
+      within(listItem(1)).getByText(
+        "Este proyecto todavía no tiene materiales.",
+      ),
+    ).toBeVisible();
+    expect(within(listItem(1)).getByRole("alert")).toHaveTextContent(
+      "Ese material ya está en la lista de este proyecto.",
+    );
+    expect(within(listItem(0)).queryByRole("alert")).toBeNull();
   });
 
   it("has no accessibility violations", async () => {

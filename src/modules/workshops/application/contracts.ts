@@ -413,6 +413,25 @@ export interface IntensiveProjectDraft {
 export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
 /** Why a project cannot be deleted: a request chose it, or it is the last of a live workshop. */
 export type IntensiveProjectRule = "in-use" | "last-project";
+/**
+ * One line of a project's bill of materials: units of a catalog variant each
+ * participant uses. The price already covers them; nothing is sold again.
+ */
+export interface IntensiveProjectMaterial {
+  readonly projectId: string;
+  readonly variantId: string;
+  readonly quantity: number;
+  /** Order the lines were added in, per project. */
+  readonly position: number;
+}
+/** A line as the owner submits it; the quantity stays as typed. */
+export interface IntensiveProjectMaterialDraft {
+  readonly variantId: string;
+  readonly quantity: string;
+}
+export type IntensiveProjectMaterialField = "variantId" | "quantity";
+/** Why a line cannot be added: the project already lists that variant. */
+export type IntensiveProjectMaterialRule = "duplicate-variant";
 export interface IntensivesService {
   list(
     a: AdminActor,
@@ -491,6 +510,35 @@ export interface IntensivesService {
     id: string,
     projectId: string,
   ): R<void, RulesUnmet<IntensiveProjectRule>>;
+  /** The bill of materials of every project of a workshop, by project order. */
+  listProjectMaterials(
+    a: AdminActor,
+    id: string,
+  ): R<readonly IntensiveProjectMaterial[]>;
+  /** Adds a catalog variant with a quantity; a variant already listed is refused. */
+  addProjectMaterial(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    d: IntensiveProjectMaterialDraft,
+  ): R<
+    IntensiveProjectMaterial,
+    | Invalid<IntensiveProjectMaterialField>
+    | RulesUnmet<IntensiveProjectMaterialRule>
+  >;
+  setProjectMaterialQuantity(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    variantId: string,
+    quantity: string,
+  ): R<void, Invalid<"quantity">>;
+  removeProjectMaterial(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    variantId: string,
+  ): R<void>;
 }
 
 /** Confirmed enrollment seats per period turno; infrastructure failures reject. */

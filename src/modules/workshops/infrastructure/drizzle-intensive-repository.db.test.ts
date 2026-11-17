@@ -27,9 +27,10 @@ import { createDrizzleIntensiveRepository } from "./drizzle-intensive-repository
 const created: TestDatabase[] = [];
 // One at a time: every drop opens its own connection and the test server
 // allows 50, which the contracts (one database per test) now exceed.
+// Dropping one database per contract test takes longer than the default hook timeout.
 afterAll(async () => {
   for (const database of created) await database.drop();
-});
+}, 240_000);
 
 type OpenSession = ReturnType<typeof createDbSessionFactory>;
 

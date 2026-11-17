@@ -142,8 +142,18 @@ describe("intensives guided flow", () => {
                 deposit: "15000",
                 image: null,
               },
+              materials: [
+                {
+                  variantId: "v1",
+                  name: "Arcilla blanca",
+                  label: "5 kg",
+                  quantity: 2,
+                  onHand: 7,
+                },
+              ],
             },
           ],
+          materialChoices: [],
           teachers: [],
           audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
         }),
@@ -164,7 +174,83 @@ describe("intensives guided flow", () => {
     expect(
       screen.getByRole("button", { name: "Agregar proyecto" }).closest("form"),
     ).not.toBe(screen.getByLabelText("Nombre").closest("form"));
+    const bill = screen.getByRole("group", {
+      name: "Materiales de Taza de torno",
+    });
+    expect(within(bill).getByText("Arcilla blanca")).toBeVisible();
+    expect(within(bill).getByText(/En stock: 7/)).toBeVisible();
+    expect(
+      within(bill).getByRole("spinbutton", {
+        name: "Cantidad de Arcilla blanca 5 kg",
+      }),
+    ).toHaveValue(2);
     await expectNoAxeViolations(container);
+  });
+
+  it("detail confirms a bill change and shows a refused line on its project", async () => {
+    const loaderData = {
+      id: "i1",
+      status: "draft",
+      feedback: "materialSaved",
+      values,
+      projects: [
+        {
+          id: "p1",
+          name: "Taza de torno",
+          amounts: { price: "$ 45.000", deposit: "$ 15.000" },
+          image: null,
+          values: {
+            name: "Taza de torno",
+            price: "45000",
+            deposit: "15000",
+            image: null,
+          },
+          materials: [],
+        },
+      ],
+      materialChoices: [],
+      teachers: [],
+      audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
+    };
+    const Stub = createRoutesStub([
+      {
+        id: "detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => loaderData,
+      },
+    ]);
+
+    render(
+      <Stub
+        initialEntries={["/admin/intensivos/i1?ok=materialSaved"]}
+        hydrationData={{
+          loaderData: { detail: loaderData },
+          actionData: {
+            detail: {
+              projectMaterial: {
+                projectId: "p1",
+                message:
+                  "Ese material ya está en la lista de este proyecto. Cambiá su cantidad.",
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Cantidad guardada",
+    );
+    expect(
+      screen.getByText(
+        "Ese material ya está en la lista de este proyecto. Cambiá su cantidad.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Este proyecto todavía no tiene materiales."),
+    ).toBeVisible();
   });
 
   it("detail shows what a refused project action returned", async () => {
@@ -173,6 +259,7 @@ describe("intensives guided flow", () => {
       status: "draft",
       values,
       projects: [],
+      materialChoices: [],
       teachers: [],
       audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
     };

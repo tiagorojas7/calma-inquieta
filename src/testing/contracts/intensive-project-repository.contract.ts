@@ -4,6 +4,7 @@ import type {
   IntensiveRepository,
   NewIntensiveProject,
   StoredIntensiveProject,
+  StoredProjectMaterial,
 } from "~/modules/workshops/application/intensive-repository";
 import {
   ASSET_1,
@@ -285,6 +286,212 @@ export function runIntensiveProjectContract(
 
       expect(await repo.listProjects(ID_A)).toEqual([]);
       expect(await repo.findProject(ID_A, PROJECT_1)).toBeNull();
+    });
+
+    describe("bill of materials", () => {
+      const VARIANT_1 = "d0000000-0000-4000-8000-000000000001";
+      const VARIANT_2 = "d0000000-0000-4000-8000-000000000002";
+      const VARIANT_3 = "d0000000-0000-4000-8000-000000000003";
+      const line = (
+        projectId: string,
+        variantId: string,
+        quantity: number,
+        intensiveId = ID_A,
+      ) => ({ intensiveId, projectId, variantId, quantity });
+      const summary = (lines: readonly StoredProjectMaterial[]) =>
+        lines.map((l) => [l.projectId, l.variantId, l.quantity]);
+      const notFound = { ok: false, error: { kind: "not-found" } };
+
+      it("starts empty and appends lines in the order they were added, listed by project order", async () => {
+        const { repo } = await withProjects(2);
+        expect(await repo.listProjectMaterials(ID_A)).toEqual([]);
+
+        const first = await repo.addProjectMaterial(
+          line(PROJECT_2, VARIANT_1, 2),
+        );
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_2, 1));
+        await repo.addProjectMaterial(line(PROJECT_2, VARIANT_3, 20));
+
+        expect(first).toEqual({
+          ok: true,
+          value: {
+            projectId: PROJECT_2,
+            variantId: VARIANT_1,
+            quantity: 2,
+            position: 0,
+          },
+        });
+        const listed = await repo.listProjectMaterials(ID_A);
+        expect(summary(listed)).toEqual([
+          [PROJECT_1, VARIANT_2, 1],
+          [PROJECT_2, VARIANT_1, 2],
+          [PROJECT_2, VARIANT_3, 20],
+        ]);
+        expect(listed.map((l) => l.position)).toEqual([0, 0, 1]);
+      });
+
+      it("refuses a variant already on the project and leaves its line untouched, but allows it on another project", async () => {
+        const { repo } = await withProjects(2);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 3));
+
+        const again = await repo.addProjectMaterial(
+          line(PROJECT_1, VARIANT_1, 9),
+        );
+        const other = await repo.addProjectMaterial(
+          line(PROJECT_2, VARIANT_1, 9),
+        );
+
+        expect(again).toEqual({
+          ok: false,
+          error: { kind: "duplicate-variant" },
+        });
+        expect(other.ok).toBe(true);
+        expect(summary(await repo.listProjectMaterials(ID_A))).toEqual([
+          [PROJECT_1, VARIANT_1, 3],
+          [PROJECT_2, VARIANT_1, 9],
+        ]);
+      });
+
+      it("lets only one of two concurrent adds of the same variant through", async () => {
+        const { repo } = await withProjects(1);
+
+        const results = await Promise.all([
+          repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1)),
+          repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 2)),
+        ]);
+
+        expect(results.filter((r) => r.ok)).toHaveLength(1);
+        expect(await repo.listProjectMaterials(ID_A)).toHaveLength(1);
+      });
+
+      it("assigns distinct positions to concurrent adds of different variants", async () => {
+        const { repo } = await withProjects(1);
+
+        const results = await Promise.all([
+          repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1)),
+          repo.addProjectMaterial(line(PROJECT_1, VARIANT_2, 1)),
+          repo.addProjectMaterial(line(PROJECT_1, VARIANT_3, 1)),
+        ]);
+
+        expect(results.every((r) => r.ok)).toBe(true);
+        const positions = (await repo.listProjectMaterials(ID_A)).map(
+          (l) => l.position,
+        );
+        expect(positions).toEqual([0, 1, 2]);
+      });
+
+      it("treats a project that is unknown or belongs to another intensivo as not found, writing nothing", async () => {
+        const { repo } = await withProjects(1);
+        await repo.insert(
+          buildStoredIntensive({ id: ID_B, slug: "otro" }),
+          buildNewProject({ id: PROJECT_OTHER, intensiveId: ID_B }),
+        );
+
+        expect(
+          await repo.addProjectMaterial(line(PROJECT_OTHER, VARIANT_1, 1)),
+        ).toEqual(notFound);
+        expect(
+          await repo.addProjectMaterial(line(PROJECT_3, VARIANT_1, 1)),
+        ).toEqual(notFound);
+        expect(
+          await repo.addProjectMaterial(
+            line(PROJECT_1, VARIANT_1, 1, ID_UNKNOWN),
+          ),
+        ).toEqual(notFound);
+
+        expect(await repo.listProjectMaterials(ID_A)).toEqual([]);
+        expect(await repo.listProjectMaterials(ID_B)).toEqual([]);
+      });
+
+      it("changes the quantity of one line only, keeping its position", async () => {
+        const { repo } = await withProjects(2);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1));
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_2, 2));
+        await repo.addProjectMaterial(line(PROJECT_2, VARIANT_1, 3));
+
+        const changed = await repo.setProjectMaterialQuantity(
+          ID_A,
+          PROJECT_1,
+          VARIANT_1,
+          7,
+        );
+
+        expect(changed).toEqual({ ok: true, value: undefined });
+        const listed = await repo.listProjectMaterials(ID_A);
+        expect(summary(listed)).toEqual([
+          [PROJECT_1, VARIANT_1, 7],
+          [PROJECT_1, VARIANT_2, 2],
+          [PROJECT_2, VARIANT_1, 3],
+        ]);
+        expect(listed.map((l) => l.position)).toEqual([0, 1, 0]);
+      });
+
+      it("reports a quantity change of a missing line, or one reached through the wrong intensivo, as not found", async () => {
+        const { repo } = await withProjects(1);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1));
+
+        expect(
+          await repo.setProjectMaterialQuantity(ID_A, PROJECT_1, VARIANT_2, 5),
+        ).toEqual(notFound);
+        expect(
+          await repo.setProjectMaterialQuantity(ID_B, PROJECT_1, VARIANT_1, 5),
+        ).toEqual(notFound);
+        expect(
+          await repo.setProjectMaterialQuantity(ID_A, PROJECT_3, VARIANT_1, 5),
+        ).toEqual(notFound);
+
+        expect(summary(await repo.listProjectMaterials(ID_A))).toEqual([
+          [PROJECT_1, VARIANT_1, 1],
+        ]);
+      });
+
+      it("removes one line, keeps the order of the rest and appends later lines after them", async () => {
+        const { repo } = await withProjects(1);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1));
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_2, 2));
+
+        expect(
+          await repo.removeProjectMaterial(ID_A, PROJECT_1, VARIANT_1),
+        ).toEqual({ ok: true, value: undefined });
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_3, 3));
+
+        expect(summary(await repo.listProjectMaterials(ID_A))).toEqual([
+          [PROJECT_1, VARIANT_2, 2],
+          [PROJECT_1, VARIANT_3, 3],
+        ]);
+        // The removed variant may be added again.
+        expect(
+          (await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 4))).ok,
+        ).toBe(true);
+      });
+
+      it("reports a removal of a missing line, or one reached through the wrong intensivo, as not found", async () => {
+        const { repo } = await withProjects(1);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1));
+
+        expect(
+          await repo.removeProjectMaterial(ID_A, PROJECT_1, VARIANT_2),
+        ).toEqual(notFound);
+        expect(
+          await repo.removeProjectMaterial(ID_B, PROJECT_1, VARIANT_1),
+        ).toEqual(notFound);
+
+        expect(await repo.listProjectMaterials(ID_A)).toHaveLength(1);
+      });
+
+      it("drops a project's lines with the project and a draft's lines with the draft", async () => {
+        const { repo } = await withProjects(2);
+        await repo.addProjectMaterial(line(PROJECT_1, VARIANT_1, 1));
+        await repo.addProjectMaterial(line(PROJECT_2, VARIANT_2, 2));
+
+        await repo.deleteProject(ID_A, PROJECT_1);
+
+        expect(summary(await repo.listProjectMaterials(ID_A))).toEqual([
+          [PROJECT_2, VARIANT_2, 2],
+        ]);
+        await repo.deleteDraft(ID_A);
+        expect(await repo.listProjectMaterials(ID_A)).toEqual([]);
+      });
     });
   });
 }

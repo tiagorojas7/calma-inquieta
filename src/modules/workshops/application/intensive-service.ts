@@ -43,6 +43,7 @@ import {
   type IntensivesService,
   type Percentage,
 } from "./contracts";
+import { createIntensiveProjectMaterialsUseCases } from "./intensive-project-materials-use-cases";
 import { createIntensiveProjectUseCases } from "./intensive-project-use-cases";
 import type {
   IntensiveRepository,
@@ -392,6 +393,7 @@ export function createIntensivesService(
 
   return {
     ...createIntensiveProjectUseCases({ repository, media, clock, newId }),
+    ...createIntensiveProjectMaterialsUseCases({ repository }),
     async list(actor, filter) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;

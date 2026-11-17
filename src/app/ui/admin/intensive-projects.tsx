@@ -5,6 +5,11 @@ import { ConfirmedSubmit } from "./confirmed-submit";
 import { CheckboxField, FormError, TextField } from "./form-fields";
 import { ImageField } from "./image-field";
 import { uploadIntensiveImage } from "./intensive-form";
+import {
+  ProjectMaterials,
+  type ProjectMaterialChoice,
+  type ProjectMaterialLine,
+} from "./intensive-project-materials";
 import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.intensives.projects;
@@ -31,6 +36,8 @@ export interface IntensiveProjectCard {
   readonly amounts: { readonly price: string; readonly deposit: string };
   readonly image: { readonly src: string; readonly alt: string } | null;
   readonly values: ProjectFormValues;
+  /** The project's bill of materials, in the order the lines were added. */
+  readonly materials: readonly ProjectMaterialLine[];
 }
 
 /** A refused submission: which form it came from, what was typed and why it failed. */
@@ -40,6 +47,12 @@ export interface RejectedProject {
   readonly values: ProjectFormValues;
   readonly errors: ProjectErrors;
   readonly formError?: string | undefined;
+}
+
+/** A refused bill line: which project it belongs to and why it failed. */
+export interface RejectedMaterial {
+  readonly projectId: string;
+  readonly message: string;
 }
 
 const EMPTY_VALUES: ProjectFormValues = {
@@ -156,16 +169,21 @@ function MoveButton({
 /**
  * The selectable projects of a workshop, in display order: add, edit,
  * reorder (up and down) and delete, each a native post form of its own so
- * none nests inside the workshop form. The route owns the actions and the
- * formatting; this only presents.
+ * none nests inside the workshop form. Each project also carries its bill of
+ * materials. The route owns the actions and the formatting; this only presents.
  */
 export function IntensiveProjects({
   projects,
+  materialChoices = [],
   rejected,
+  rejectedMaterial,
   error,
 }: {
   projects: readonly IntensiveProjectCard[];
+  /** The catalog variants an owner may add to a project's list. */
+  materialChoices?: readonly ProjectMaterialChoice[];
   rejected?: RejectedProject | undefined;
+  rejectedMaterial?: RejectedMaterial | undefined;
   /** A refusal that belongs to no form, such as a project still in use. */
   error?: string | undefined;
 }) {
@@ -225,6 +243,17 @@ export function IntensiveProjects({
                     fields={{ projectId: project.id }}
                   />
                 </div>
+                <ProjectMaterials
+                  projectId={project.id}
+                  projectName={project.name}
+                  lines={project.materials}
+                  choices={materialChoices}
+                  error={
+                    rejectedMaterial?.projectId === project.id
+                      ? rejectedMaterial.message
+                      : undefined
+                  }
+                />
                 <details open={refused !== null || undefined}>
                   <summary className={SUMMARY}>{copy.editSummary}</summary>
                   <ProjectForm

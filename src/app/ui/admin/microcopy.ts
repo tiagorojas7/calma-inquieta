@@ -1238,7 +1238,36 @@ export const adminMicrocopy = {
         image: "Imagen del proyecto",
         removeImage: "Quitar la imagen",
       },
+      materials: {
+        title: "Materiales por participante",
+        hint: "Están incluidos en el precio del proyecto. No se venden aparte.",
+        listLabel: (project: string) => `Materiales de ${project}`,
+        empty: "Este proyecto todavía no tiene materiales.",
+        missing: "Material no disponible en el catálogo",
+        inStock: (units: number) => `En stock: ${String(units)}`,
+        quantity: "Cantidad por participante",
+        quantityName: (material: string) => `Cantidad de ${material}`,
+        saveQuantity: "Guardar cantidad",
+        saveQuantityName: (material: string) =>
+          `Guardar cantidad de ${material}`,
+        remove: "Quitar",
+        removeName: (material: string, project: string) =>
+          `Quitar ${material} de ${project}`,
+        addSummary: "Agregar material",
+        search: "Buscar material",
+        searchHint: "Buscá por nombre o por medida, por ejemplo: arcilla 5 kg.",
+        typeToSearch: "Escribí para buscar en el catálogo.",
+        noMatches: "No encontramos materiales con ese nombre.",
+        noCatalog: "No hay materiales en el catálogo para agregar.",
+        showing: (shown: number, total: number) =>
+          `Mostrando ${String(shown)} de ${String(total)}. Escribí más para afinar la búsqueda.`,
+        add: "Agregar",
+        addName: (material: string) => `Agregar ${material}`,
+      },
       feedback: {
+        materialAdded: { title: "Material agregado" },
+        materialSaved: { title: "Cantidad guardada" },
+        materialRemoved: { title: "Material quitado" },
         projectAdded: { title: "Proyecto agregado" },
         projectSaved: { title: "Proyecto guardado" },
         projectMoved: { title: "Orden de proyectos actualizado" },
@@ -1250,6 +1279,11 @@ export const adminMicrocopy = {
         lastProject:
           "Un workshop publicado necesita al menos un proyecto. Agregá otro antes de eliminar este.",
         invalid: "Revisá los campos marcados e intentá de nuevo.",
+        materialQuantity:
+          "La cantidad tiene que ser un número entero de 1 a 20.",
+        materialDuplicate:
+          "Ese material ya está en la lista de este proyecto. Cambiá su cantidad.",
+        materialUnavailable: "Ese material no está disponible en el catálogo.",
       },
     },
     form: {

@@ -77,6 +77,10 @@ export type {
   OrderHistoryReader,
   OrderHistoryRow,
 } from "./application/order-history";
+export type {
+  OrderStockPort,
+  OrderStockStamp,
+} from "./application/order-stock";
 export type { RandomBytes } from "./application/random-bytes";
 export type { StudentActivityStore } from "./application/student-activity";
 export type { SeatLedger } from "./application/seat-ledger";

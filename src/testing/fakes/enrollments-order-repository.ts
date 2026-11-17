@@ -30,12 +30,17 @@ import type {
   StoredOrder,
   TransitionContext,
 } from "~/modules/enrollments/application/enrollment-repository";
+import type {
+  OrderStockPort,
+  OrderStockStamp,
+} from "~/modules/enrollments/application/order-stock";
 import type { SeatLedger } from "~/modules/enrollments/application/seat-ledger";
 import {
   checkPaymentAmount,
   checkRefund,
   confirmOutcome,
   cancelOutcome,
+  fulfillmentOf,
   cordobaDateOf,
   cordobaDayStart,
   transition,
@@ -80,6 +85,25 @@ export interface CorrectableOrders {
   ): Result<StoredOrder, DuplicateOrder | NotFound>;
   corrections(orderId: string): Promise<readonly OrderCorrection[]>;
 }
+
+/**
+ * The stock movements the in-memory repository applies to the lines of a
+ * stored order, as the Drizzle transaction does. Test-only: the production
+ * `OrderRepository` port does not have them.
+ */
+export interface StockedOrders {
+  /** Takes every `stock` line once; a line that cannot be covered becomes a `supplier` line. */
+  takeStockLines(orderId: string, stamp: OrderStockStamp): Promise<void>;
+  /** Puts back the units of every `stock` line. */
+  returnStockLines(orderId: string, stamp: OrderStockStamp): Promise<void>;
+}
+
+const isStocked = (
+  orders: OrderRepository,
+): orders is OrderRepository & StockedOrders =>
+  "takeStockLines" in orders &&
+  typeof orders.takeStockLines === "function" &&
+  "returnStockLines" in orders;
 
 const PAYMENT_KEYS = new Set([
   "paidAt",
@@ -137,13 +161,48 @@ export class InMemoryOrderRepository
   private readonly seats: SeatLedger;
   /** Every enrollment, public or manual, leaves its profile active, like the transaction. */
   private readonly activity: InMemoryStudentActivityStore;
-  /** A free order created paid claims its seat from the same ledger the services read. */
+  private readonly stock: OrderStockPort<unknown> | undefined;
+  /**
+   * A free order created paid claims its seat from the same ledger the services
+   * read, and takes its stock lines from `stock` when one is given.
+   */
   constructor(
     seats: SeatLedger = new InMemorySeatLedger(),
     activity: InMemoryStudentActivityStore = new InMemoryStudentActivityStore(),
+    stock?: OrderStockPort<unknown>,
   ) {
     this.seats = seats;
     this.activity = activity;
+    this.stock = stock;
+  }
+  async takeStockLines(orderId: string, stamp: OrderStockStamp): Promise<void> {
+    const row = this.rows.find(({ order }) => order.id === orderId);
+    if (!row || !this.stock) return;
+    const lines = [...row.order.lines];
+    const byVariant = lines
+      .map((line, position) => ({ line, position }))
+      .filter(({ line }) => line.source === "stock")
+      .sort((a, b) => (a.line.variantId < b.line.variantId ? -1 : 1));
+    for (const { line, position } of byVariant) {
+      const taken = await this.stock.take(
+        undefined,
+        line.variantId,
+        line.quantity,
+        stamp,
+      );
+      if (!taken) lines[position] = { ...line, source: "supplier" };
+    }
+    row.order = { ...row.order, lines };
+  }
+  async returnStockLines(
+    orderId: string,
+    stamp: OrderStockStamp,
+  ): Promise<void> {
+    const row = this.rows.find(({ order }) => order.id === orderId);
+    if (!row || !this.stock) return;
+    for (const line of row.order.lines)
+      if (line.source === "stock")
+        await this.stock.put(undefined, line.variantId, line.quantity, stamp);
   }
   failNextCreateAfterNumbering(): void {
     this.failNext = true;
@@ -180,6 +239,16 @@ export class InMemoryOrderRepository
     }
     if (!stored.ok && paidOnCreation)
       await this.seats.release(draft.periodId, draft.turnoId);
+    if (stored.ok && paidOnCreation) {
+      await this.takeStockLines(stored.value.id, {
+        by: paidOnCreation.confirmedBy,
+        at: paidOnCreation.paidAt,
+      });
+      return ok(
+        this.rows.find(({ order }) => order.id === stored.value.id)?.order ??
+          stored.value,
+      );
+    }
     return stored;
   }
   private insert(draft: OrderDraft): Result<StoredOrder, DuplicateOrder> {
@@ -327,9 +396,11 @@ export class InMemoryOrderRepository
   ): Promise<Result<StoredOrder, IllegalTransition | NotFound>> {
     const row = this.rows.find(({ order }) => order.id === orderId);
     if (!row) return Promise.resolve(err({ kind: "not-found" }));
-    const moved = transition(row.order.status, to, {
-      hasMaterialLines: row.order.lines.length > 0,
-    });
+    const moved = transition(
+      row.order.status,
+      to,
+      fulfillmentOf(row.order.lines),
+    );
     if (!moved.ok) return Promise.resolve(moved);
     row.audit.push({
       at: context.at,
@@ -447,6 +518,11 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                 await this.seats.release(order.periodId, order.turnoId);
                 return moved;
               }
+              if (isStocked(this.orders))
+                await this.orders.takeStockLines(order.id, {
+                  by: input.actor.email,
+                  at: input.now,
+                });
               return ok({ kind: "confirmed" });
             } catch {
               await this.seats.release(order.periodId, order.turnoId);
@@ -511,7 +587,18 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                     ...recorded,
                   },
                 );
-                if (moved.ok) return ok({ kind: "cancelled" });
+                if (moved.ok) {
+                  // Received means used and handed over: those units do not come back.
+                  if (
+                    order.status !== "materials_received" &&
+                    isStocked(this.orders)
+                  )
+                    await this.orders.returnStockLines(order.id, {
+                      by: input.actor.email,
+                      at: input.now,
+                    });
+                  return ok({ kind: "cancelled" });
+                }
                 await this.seats.claim(
                   order.periodId,
                   order.turnoId,
@@ -699,6 +786,15 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
           }
           if (decided.seat !== "none")
             await this.seats.release(order.periodId, order.turnoId);
+          if (
+            decided.outcome === "returned-to-pending" &&
+            order.status !== "materials_received" &&
+            isStocked(orders)
+          )
+            await orders.returnStockLines(order.id, {
+              by: input.actor.email,
+              at: input.now,
+            });
           return { kind: "corrected" as const, outcome: decided.outcome };
         });
         return "outcome" in outcome ? ok(outcome) : err(outcome);
@@ -756,16 +852,17 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
         const rows = await this.orders.listForAdmin({ status, period, page });
         for (const order of rows)
           for (const line of order.lines)
-            lines.push({
-              orderId: order.id,
-              status,
-              supplierId: line.supplierId,
-              supplierName: line.supplierName,
-              materialName: line.materialName,
-              variantLabel: line.variantLabel,
-              quantity: line.quantity,
-              unitPrice: line.unitPrice,
-            });
+            if (line.source !== "stock")
+              lines.push({
+                orderId: order.id,
+                status,
+                supplierId: line.supplierId,
+                supplierName: line.supplierName,
+                materialName: line.materialName,
+                variantLabel: line.variantLabel,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+              });
         if (rows.length < 50) break;
       }
     }
@@ -806,6 +903,7 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                 quantity: line.quantity,
                 supplierName: line.supplierName,
                 unitPrice: line.unitPrice,
+                ...(line.source === undefined ? {} : { source: line.source }),
               })),
             });
         if (rows.length < 50) break;

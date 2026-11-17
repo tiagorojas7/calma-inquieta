@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
-import type { SaleCatalogReader } from "~/modules/materials";
+import type { SaleCatalogFactsReader } from "~/modules/materials";
 import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 
 function pesos(value: number): Money {
@@ -11,9 +11,9 @@ function pesos(value: number): Money {
 
 const reader = (
   overrides: Partial<
-    Awaited<ReturnType<SaleCatalogReader["listSaleCatalog"]>>[number]
+    Awaited<ReturnType<SaleCatalogFactsReader["listSaleCatalog"]>>[number]
   > = {},
-): SaleCatalogReader => ({
+): SaleCatalogFactsReader => ({
   listSaleCatalog: () =>
     Promise.resolve([
       {
@@ -29,8 +29,17 @@ const reader = (
             label: "1 kg",
             unitPrice: pesos(4000),
             available: true,
+            cost: pesos(2500),
+            onHand: 3,
           },
-          { variantId: "v-2", label: "5 kg", unitPrice: null, available: true },
+          {
+            variantId: "v-2",
+            label: "5 kg",
+            unitPrice: null,
+            available: true,
+            cost: null,
+            onHand: 0,
+          },
         ],
         ...overrides,
       },
@@ -53,8 +62,17 @@ describe("sale catalog adapter", () => {
             label: "1 kg",
             unitPrice: pesos(4000),
             available: true,
+            onHand: 3,
+            unitCost: pesos(2500),
           },
-          { variantId: "v-2", label: "5 kg", unitPrice: null, available: true },
+          {
+            variantId: "v-2",
+            label: "5 kg",
+            unitPrice: null,
+            available: true,
+            onHand: 0,
+            unitCost: null,
+          },
         ],
       },
     ]);

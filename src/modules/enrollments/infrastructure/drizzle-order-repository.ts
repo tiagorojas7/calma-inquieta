@@ -12,6 +12,7 @@ import {
   formatOrderNumber,
   transition,
   type IllegalTransition,
+  type LineSource,
   type OrderStatus,
 } from "../domain/order-core";
 import type {
@@ -19,6 +20,8 @@ import type {
   OrderRepository,
   StoredOrder,
 } from "../application/enrollment-repository";
+import type { OrderStockPort } from "../application/order-stock";
+import { takeStockLines } from "./order-stock-lines";
 import { claimSeat } from "./seat-claim";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
@@ -66,6 +69,9 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
       quantity: line.quantity,
       supplierId: line.supplierId,
       supplierName: line.supplierName,
+      source: line.source as LineSource,
+      unitCost:
+        line.unitCostCentavos === null ? null : money(line.unitCostCentavos),
     })),
     ...(row.paidAt
       ? {
@@ -153,9 +159,13 @@ function toAudit(row: AuditRow): AuditEntry {
 /** Thrown inside the create transaction to roll everything back when the turno is full. */
 class TurnoFullRollback extends Error {}
 
-/** Short-lived PostgreSQL sessions with atomic order creation and transitions. */
+/**
+ * Short-lived PostgreSQL sessions with atomic order creation and transitions.
+ * An order created already paid takes its stock lines in the same transaction.
+ */
 export function createDrizzleOrderRepository(
   openSession: DbSessionFactory,
+  stock: OrderStockPort<Db>,
 ): OrderRepository {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -288,11 +298,13 @@ export function createDrizzleOrderRepository(
                   quantity: line.quantity,
                   supplierId: line.supplierId,
                   supplierName: line.supplierName,
+                  source: line.source,
+                  unitCostCentavos: line.unitCost?.toCentavos() ?? null,
                 })),
               );
             }
-            // Last write before the audit row: a full turno rolls back the student,
-            // the number and the order with it.
+            // Last writes before the audit row: a full turno rolls back the
+            // student, the number, the order and the stock with it.
             if (
               paid &&
               !(await claimSeat(tx, {
@@ -302,6 +314,11 @@ export function createDrizzleOrderRepository(
               }))
             )
               throw new TurnoFullRollback();
+            if (paid)
+              await takeStockLines(tx, stock, id, {
+                by: paid.confirmedBy,
+                at: paid.paidAt,
+              });
             await tx.insert(orderAudit).values({
               id: crypto.randomUUID(),
               orderId: id,
@@ -395,11 +412,15 @@ export function createDrizzleOrderRepository(
             const current = rows[0];
             if (!current) return err({ kind: "not-found" });
             const lineCount = await tx
-              .select({ count: sql<number>`count(*)::int` })
+              .select({
+                count: sql<number>`count(*)::int`,
+                fromSupplier: sql<number>`(count(*) filter (where ${orderLine.source} = 'supplier'))::int`,
+              })
               .from(orderLine)
               .where(eq(orderLine.orderId, orderId));
             const moved = transition(current.status as OrderStatus, to, {
               hasMaterialLines: (lineCount[0]?.count ?? 0) > 0,
+              hasSupplierLines: (lineCount[0]?.fromSupplier ?? 0) > 0,
             });
             if (!moved.ok) return moved;
             await tx

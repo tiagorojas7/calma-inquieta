@@ -278,6 +278,12 @@ export function createInsightsService(
           (sum, row) => sum + row.materialsCentavos,
           0,
         );
+        // Each sale's own supplier cost; the price where none was loaded.
+        const materialsCostCentavos = income.reduce(
+          (sum, row) =>
+            sum + (row.materialsCostCentavos ?? row.materialsCentavos),
+          0,
+        );
         const own = snapshots.filter((row) => row.workshopId === workshopId);
         const teacher = own[0];
         // Each period rounds on its own: its share is what gets settled.
@@ -304,9 +310,8 @@ export function createInsightsService(
           teacherName: teacher?.teacherName ?? null,
           teacherModality: teacher?.modality ?? null,
           teacherPay: pesos(pay),
-          // No supplier cost is stored: the price paid by students is the cost.
-          materialsCost: pesos(materialsCentavos),
-          profit: pesos(collected - pay - materialsCentavos),
+          materialsCost: pesos(materialsCostCentavos),
+          profit: pesos(collected - pay - materialsCostCentavos),
         };
       },
     );
@@ -388,8 +393,16 @@ export function createInsightsService(
 
     const perSupplier = new Map<
       string,
-      { name: string; orders: number; units: number; amount: number }
+      {
+        name: string;
+        orders: number;
+        units: number;
+        amount: number;
+        cost: number;
+      }
     >();
+    let uncostedLines = 0;
+    let confirmedLines = 0;
     for (const row of materials) {
       if (!CONFIRMED.includes(row.status)) continue;
       const entry = perSupplier.get(row.supplierId) ?? {
@@ -397,11 +410,15 @@ export function createInsightsService(
         orders: 0,
         units: 0,
         amount: 0,
+        cost: 0,
       };
       entry.orders += row.orders;
       entry.units += row.units;
       entry.amount += row.amountCentavos;
+      entry.cost += row.costCentavos;
       perSupplier.set(row.supplierId, entry);
+      confirmedLines += 1;
+      uncostedLines += row.uncostedLines;
     }
     const suppliers = [...perSupplier.entries()]
       .map(([supplierId, entry]): SupplierMaterials => ({
@@ -410,7 +427,7 @@ export function createInsightsService(
         orders: entry.orders,
         units: entry.units,
         charged: pesos(entry.amount),
-        cost: pesos(entry.amount),
+        cost: pesos(entry.cost),
       }))
       .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "es"));
 
@@ -436,7 +453,8 @@ export function createInsightsService(
       },
       teachers: teacherRows,
       suppliers,
-      materialsAtCost: true,
+      // Once every sold line carries its own cost, the price no longer stands in for it.
+      materialsAtCost: confirmedLines === 0 || uncostedLines > 0,
     };
   }
 

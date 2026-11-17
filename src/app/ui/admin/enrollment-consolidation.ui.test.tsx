@@ -23,6 +23,13 @@ const bea: DeliveryCardView = {
   detail: "Cerámica · Martes 10:00",
   lines: [{ label: "Arcilla Grande", quantity: 1 }],
 };
+const eva: DeliveryCardView = {
+  id: "o4",
+  studentName: "Eva Stock",
+  detail: "Cerámica · Miércoles 10:00",
+  lines: [{ label: "Arcilla Grande", quantity: 2 }],
+  fromStock: true,
+};
 const cata: DeliveryCardView = {
   id: "o3",
   studentName: "Cata Díaz",
@@ -432,5 +439,47 @@ describe("EnrollmentConsolidation: Para entregar", () => {
     expect(
       screen.getByText("No hay materiales para entregar este mes"),
     ).toBeVisible();
+  });
+});
+
+describe("EnrollmentConsolidation: orders served from stock", () => {
+  it("shows a paid stock-only order as in stock and lets it be marked received without a request", () => {
+    render(
+      <EnrollmentConsolidation
+        {...base}
+        section="entregar"
+        toDeliver={[ana, eva]}
+      />,
+    );
+
+    const card = screen
+      .getByRole("heading", { name: "Eva Stock" })
+      .closest("li");
+    if (card === null) throw new Error("missing card");
+    expect(within(card).getByText("En stock")).toBeVisible();
+    expect(within(card).queryByText("Pedido")).toBeNull();
+    const form = within(card)
+      .getByRole("button", {
+        name: "Marcar como recibido el pedido de Eva Stock",
+      })
+      .closest("form");
+    expect(form?.querySelector('input[name="orderId"]')).toHaveValue("o4");
+  });
+
+  it("keeps the requested chip on an order that was asked from the supplier", () => {
+    render(
+      <EnrollmentConsolidation
+        {...base}
+        section="entregar"
+        toDeliver={[ana, eva]}
+      />,
+    );
+
+    const card = screen
+      .getByRole("heading", { name: "Ana Pérez" })
+      .closest("li");
+    if (card === null) throw new Error("missing card");
+    expect(within(card).getByText("Pedido")).toBeVisible();
+    expect(within(card).queryByText("En stock")).toBeNull();
   });
 });

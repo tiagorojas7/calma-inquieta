@@ -28,6 +28,8 @@ export interface DeliveryCardView {
   readonly detail: string;
   readonly lines: readonly { label: string; quantity: number }[];
   readonly whatsappHref?: string | undefined;
+  /** Paid order whose lines all come from the studio's stock: nothing was requested from a supplier. */
+  readonly fromStock?: boolean | undefined;
 }
 
 export type MaterialsSection = "pedir" | "entregar";
@@ -271,6 +273,7 @@ function DeliveryCard({
   period: string;
   status: "materials_requested" | "materials_received";
 }) {
+  const fromStock = card.fromStock === true && status !== "materials_received";
   return (
     <li className="flex flex-col gap-2 rounded-md bg-surface p-4 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -278,11 +281,13 @@ function DeliveryCard({
           {card.studentName}
         </Heading>
         <StatusChip
-          status={status}
+          status={fromStock ? "paid" : status}
           label={
             status === "materials_received"
               ? deliver.receivedStatus
-              : deliver.requestedStatus
+              : fromStock
+                ? deliver.stockStatus
+                : deliver.requestedStatus
           }
         />
       </div>

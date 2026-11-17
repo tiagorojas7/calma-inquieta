@@ -95,6 +95,9 @@ const material = (overrides: Partial<MaterialRow>): MaterialRow => ({
   orders: 1,
   units: 2,
   amountCentavos: 4_000_00,
+  // No cost loaded: the price counts as the cost.
+  costCentavos: overrides.amountCentavos ?? 4_000_00,
+  uncostedLines: 1,
   ...overrides,
 });
 

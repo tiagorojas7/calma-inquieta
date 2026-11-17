@@ -26,6 +26,7 @@ import {
 } from "./in-memory-site-content-source";
 import { fixedClock } from "./fixed-clock";
 import { InMemoryPrivateEventRepository } from "./in-memory-private-event-repository";
+import { InMemoryStockStore } from "./in-memory-stock-store";
 import { InMemorySupplierRepository } from "./in-memory-supplier-repository";
 
 const OK_VIEW: SystemStatusView = {
@@ -83,6 +84,7 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/materials").MaterialsService
       >(),
+    variantStock: new InMemoryStockStore(),
     enrollments: createUnavailableAdminEnrollmentService(),
     consolidation: createUnavailableSupplierConsolidationService(),
     students: createUnavailableStudentsService(),

@@ -83,6 +83,10 @@ export function createDrizzleEnrollmentInsightsReader(
             orders: count(),
             feeCentavos: sumOf(sql`${orders.feeCentavos}`),
             materialsCentavos: sumOf(sql`${orders.materialsCentavos}`),
+            // Each order's lines at their own cost, or at their price where none was loaded.
+            materialsCostCentavos: sumOf(
+              sql`(select coalesce(sum(${orderLine.quantity} * coalesce(${orderLine.unitCostCentavos}, ${orderLine.unitPriceCentavos})), 0) from ${orderLine} where ${orderLine.orderId} = ${orders.id})`,
+            ),
           })
           .from(orders)
           .where(
@@ -146,6 +150,13 @@ export function createDrizzleEnrollmentInsightsReader(
             amountCentavos: sumOf(
               sql`${orderLine.quantity} * ${orderLine.unitPriceCentavos}`,
             ),
+            costCentavos: sumOf(
+              sql`${orderLine.quantity} * coalesce(${orderLine.unitCostCentavos}, ${orderLine.unitPriceCentavos})`,
+            ),
+            uncostedLines:
+              sql`count(*) filter (where ${orderLine.unitCostCentavos} is null)`.mapWith(
+                Number,
+              ),
           })
           .from(orderLine)
           .innerJoin(orders, eq(orderLine.orderId, orders.id))

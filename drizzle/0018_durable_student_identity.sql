@@ -181,3 +181,8 @@ CREATE TABLE "variant_stock" (
 ALTER TABLE "material_variant" ADD COLUMN "cost_centavos" bigint;--> statement-breakpoint
 CREATE INDEX "stock_adjustment_variant_idx" ON "stock_adjustment" USING btree ("variant_id","at");--> statement-breakpoint
 ALTER TABLE "material_variant" ADD CONSTRAINT "material_variant_cost_check" CHECK ("material_variant"."cost_centavos" > 0);
+--> statement-breakpoint
+ALTER TABLE "order_line" ADD COLUMN "source" text DEFAULT 'supplier' NOT NULL;--> statement-breakpoint
+ALTER TABLE "order_line" ADD COLUMN "unit_cost_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "order_line" ADD CONSTRAINT "order_line_source_check" CHECK ("order_line"."source" IN ('stock', 'supplier'));--> statement-breakpoint
+ALTER TABLE "order_line" ADD CONSTRAINT "order_line_unit_cost_check" CHECK ("order_line"."unit_cost_centavos" > 0);

@@ -9,8 +9,10 @@ import {
   confirmOutcome,
   cordobaYearOf,
   formatOrderNumber,
+  fulfillmentOf,
   generatePublicId,
   isPublicId,
+  lineSourceFor,
   priceOrder,
   releasesSeat,
   seatClaim,
@@ -75,6 +77,47 @@ describe("order transitions", () => {
         from: "paid",
         to: "materials_requested",
       },
+    });
+  });
+
+  describe("an order with only stock lines", () => {
+    const stockOnly = { hasMaterialLines: true, hasSupplierLines: false };
+
+    it("goes from paid straight to received", () => {
+      expect(transition("paid", "materials_received", stockOnly)).toEqual({
+        ok: true,
+        value: "materials_received",
+      });
+    });
+
+    it("still may be marked requested", () => {
+      expect(transition("paid", "materials_requested", stockOnly).ok).toBe(
+        true,
+      );
+    });
+
+    it("keeps the supplier path while a supplier line exists", () => {
+      expect(
+        transition("paid", "materials_received", {
+          hasMaterialLines: true,
+          hasSupplierLines: true,
+        }).ok,
+      ).toBe(false);
+    });
+
+    it("never skips requested for an order without lines", () => {
+      expect(
+        transition("paid", "materials_received", {
+          hasMaterialLines: false,
+          hasSupplierLines: false,
+        }).ok,
+      ).toBe(false);
+    });
+
+    it("never skips the payment", () => {
+      expect(
+        transition("pending_confirmation", "materials_received", stockOnly).ok,
+      ).toBe(false);
     });
   });
 
@@ -388,5 +431,48 @@ describe("seat rules", () => {
   it("computes availability, never below zero", () => {
     expect(availableSeats(8, 5)).toBe(3);
     expect(availableSeats(5, 6)).toBe(0);
+  });
+});
+
+describe("line source", () => {
+  it("is stock when the units on hand cover the quantity", () => {
+    expect(lineSourceFor(5, 5)).toBe("stock");
+    expect(lineSourceFor(6, 2)).toBe("stock");
+  });
+
+  it("is supplier when the units on hand fall short or there is none", () => {
+    expect(lineSourceFor(1, 2)).toBe("supplier");
+    expect(lineSourceFor(0, 1)).toBe("supplier");
+  });
+});
+
+describe("fulfillment of the lines", () => {
+  it("has no material lines for an order without lines", () => {
+    expect(fulfillmentOf([])).toEqual({
+      hasMaterialLines: false,
+      hasSupplierLines: false,
+      stockOnly: false,
+    });
+  });
+
+  it("is stock only when every line comes from stock", () => {
+    expect(fulfillmentOf([{ source: "stock" }, { source: "stock" }])).toEqual({
+      hasMaterialLines: true,
+      hasSupplierLines: false,
+      stockOnly: true,
+    });
+  });
+
+  it("keeps the supplier path when any line is ordered", () => {
+    expect(
+      fulfillmentOf([{ source: "stock" }, { source: "supplier" }]),
+    ).toMatchObject({ hasSupplierLines: true, stockOnly: false });
+  });
+
+  it("counts a line without a source as ordered from the supplier", () => {
+    expect(fulfillmentOf([{}])).toMatchObject({
+      hasSupplierLines: true,
+      stockOnly: false,
+    });
   });
 });

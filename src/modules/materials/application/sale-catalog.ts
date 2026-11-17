@@ -1,3 +1,4 @@
+import type { Money } from "~/modules/_shared";
 import type {
   Material,
   SaleCatalogMaterial,
@@ -5,9 +6,31 @@ import type {
   SaleVariantOption,
 } from "./contracts";
 import type { MaterialRepository } from "./material-repository";
+import type { StockStore } from "./stock-store";
 
 export interface SaleCatalogReaderDeps {
   readonly materials: Pick<MaterialRepository, "list">;
+  /** Where the units on hand of each variant come from. */
+  readonly stock: Pick<StockStore, "onHand">;
+}
+
+/** A sale variant with the two facts an enrollment snapshots when it sells it. */
+export type SaleCatalogVariantFacts =
+  SaleCatalogMaterial["variants"][number] & {
+    /** The variant's current supplier cost; null when the owner has not loaded it. */
+    readonly cost: Money | null;
+    /** Units the studio holds; 0 when there is no stock row. */
+    readonly onHand: number;
+  };
+
+/** A catalog material whose variants carry their cost and stock. */
+export type SaleCatalogMaterialFacts = Omit<SaleCatalogMaterial, "variants"> & {
+  readonly variants: readonly SaleCatalogVariantFacts[];
+};
+
+/** `SaleCatalogReader` whose variants also carry their cost and units on hand. */
+export interface SaleCatalogFactsReader extends SaleCatalogReader {
+  listSaleCatalog(): Promise<readonly SaleCatalogMaterialFacts[]>;
 }
 
 /**
@@ -37,13 +60,21 @@ export function saleVariantsOf(
     );
 }
 
-/** Actorless read of the current sale facts, for the enrollment composition. */
+/**
+ * Actorless read of the current sale facts, for the enrollment composition:
+ * price, availability, the supplier cost and the units on hand of each variant.
+ */
 export function createSaleCatalogReader({
   materials,
-}: SaleCatalogReaderDeps): SaleCatalogReader {
+  stock,
+}: SaleCatalogReaderDeps): SaleCatalogFactsReader {
   return {
-    async listSaleCatalog(): Promise<readonly SaleCatalogMaterial[]> {
-      return (await materials.list({ state: "all" })).map((material) => ({
+    async listSaleCatalog(): Promise<readonly SaleCatalogMaterialFacts[]> {
+      const listed = await materials.list({ state: "all" });
+      const onHand = await stock.onHand(
+        listed.flatMap((material) => material.variants.map((v) => v.id)),
+      );
+      return listed.map((material) => ({
         materialId: material.id,
         name: material.name,
         active: material.active,
@@ -55,6 +86,8 @@ export function createSaleCatalogReader({
           label: variant.label,
           unitPrice: variant.price,
           available: variant.available,
+          cost: variant.cost,
+          onHand: onHand.get(variant.id) ?? 0,
         })),
       }));
     },

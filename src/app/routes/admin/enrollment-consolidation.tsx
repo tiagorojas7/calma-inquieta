@@ -11,7 +11,11 @@ import {
   type DeliveryCardView,
   type MaterialsSection,
 } from "~/app/ui/admin/enrollment-consolidation";
-import { formatPesos, type DeliveryOrder } from "~/modules/enrollments";
+import {
+  formatPesos,
+  fulfillmentOf,
+  type DeliveryOrder,
+} from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-consolidation";
 
@@ -45,8 +49,14 @@ function cardOf(order: DeliveryOrder): DeliveryCardView {
       quantity: line.quantity,
     })),
     whatsappHref: whatsappHref(order.phoneDigits),
+    ...(order.status === "paid" ? { fromStock: true } : {}),
   };
 }
+
+/** Handed over from here: asked from the supplier, or paid with every line in stock. */
+const toHandOver = (order: DeliveryOrder): boolean =>
+  order.status === "materials_requested" ||
+  (order.status === "paid" && fulfillmentOf(order.lines).stockOnly);
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
@@ -66,9 +76,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         : enrollmentFailureResponse(outcome.error);
   if (!found.ok || !delivered.ok) throw data(null, { status: 503 });
   const consolidation = found.value;
-  const toDeliver = delivered.value
-    .filter((order) => order.status === "materials_requested")
-    .map(cardOf);
+  const toDeliver = delivered.value.filter(toHandOver).map(cardOf);
   const requestable = new Set(
     consolidation.suppliers.flatMap(
       (supplier) => supplier.pendingRequestOrderIds,

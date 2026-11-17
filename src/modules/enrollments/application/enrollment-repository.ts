@@ -1,6 +1,7 @@
 import type { Money, NotFound, Result } from "~/modules/_shared";
 import type {
   IllegalTransition,
+  LineSource,
   OrderStatus,
   TurnoFull,
 } from "../domain/order-core";
@@ -15,6 +16,15 @@ export interface OrderLineDraft {
   readonly quantity: number;
   readonly supplierId: string;
   readonly supplierName: string;
+  /**
+   * Where the units come from, decided when the line is created: `stock` when
+   * the units on hand cover the quantity, otherwise `supplier`. Paying the
+   * order takes a `stock` line's units, or switches it to `supplier` when the
+   * stock ran out in the meantime. Absent means `supplier`, like the column default.
+   */
+  readonly source?: LineSource;
+  /** The variant's supplier cost when the line was created; absent or null when none was set. */
+  readonly unitCost?: Money | null;
 }
 
 export interface OrderDraft {

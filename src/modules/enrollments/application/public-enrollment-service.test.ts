@@ -720,6 +720,69 @@ describe("requestEnrollment catalog materials of a hand-made enrollment", () => 
     expect(stored?.total.equals(pesos(69000))).toBe(true);
   });
 
+  describe("line source and cost snapshot", () => {
+    const withStock = (
+      stock: Readonly<Record<string, { onHand?: number; cost?: number }>>,
+    ) =>
+      catalogSetup({
+        variants: materialFixture().variants.map((v) => {
+          const facts = stock[v.variantId] ?? {};
+          return {
+            ...v,
+            ...(facts.onHand === undefined ? {} : { onHand: facts.onHand }),
+            ...(facts.cost === undefined
+              ? {}
+              : { unitCost: pesos(facts.cost) }),
+          };
+        }),
+      });
+    const storedLines = async (
+      harness: ReturnType<typeof withStock>,
+      lines: ReturnType<typeof line>[],
+    ) => {
+      const result = await harness.service.requestEnrollment(
+        request({ lines }),
+        owner,
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      const stored = await harness.orders.findByPublicId(result.value.publicId);
+      return (stored?.lines ?? []).map((l) => ({
+        variantId: l.variantId,
+        source: l.source,
+        cost: l.unitCost ? l.unitCost.toCentavos() / 100 : null,
+      }));
+    };
+
+    it("takes a line from stock when the units on hand cover the quantity", async () => {
+      expect(
+        await storedLines(withStock({ "v-1": { onHand: 2, cost: 9000 } }), [
+          line("v-1", 2),
+        ]),
+      ).toEqual([{ variantId: "v-1", source: "stock", cost: 9000 }]);
+    });
+
+    it("orders a line from the supplier when the stock falls short or is empty", async () => {
+      expect(
+        await storedLines(
+          withStock({
+            "v-1": { onHand: 1, cost: 9000 },
+            "v-2": { cost: 2500 },
+          }),
+          [line("v-1", 2), line("v-2", 1)],
+        ),
+      ).toEqual([
+        { variantId: "v-1", source: "supplier", cost: 9000 },
+        { variantId: "v-2", source: "supplier", cost: 2500 },
+      ]);
+    });
+
+    it("stores no cost when the variant has none", async () => {
+      expect(
+        await storedLines(withStock({ "v-1": { onHand: 3 } }), [line("v-1")]),
+      ).toEqual([{ variantId: "v-1", source: "stock", cost: null }]);
+    });
+  });
+
   it("keeps a zero fee with materials pending for the materials amount", async () => {
     const { service, orders, seats } = setup({
       materials: new InMemoryOfferedMaterials(),

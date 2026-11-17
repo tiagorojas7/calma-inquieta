@@ -119,7 +119,10 @@ describe("sale catalog for hand-made enrollments", () => {
   });
 
   it("reads every material, archived and unavailable ones included, with the supplier snapshot facts", async () => {
-    const reader = createSaleCatalogReader({ materials: await catalog() });
+    const reader = createSaleCatalogReader({
+      materials: await catalog(),
+      stock: new InMemoryStockStore(),
+    });
     const all = await reader.listSaleCatalog();
     expect(all.map((m) => [m.materialId, m.active, m.available])).toEqual([
       ["m-clay", true, true],
@@ -140,15 +143,76 @@ describe("sale catalog for hand-made enrollments", () => {
           label: "1 kg",
           unitPrice: pesos(4000),
           available: true,
+          cost: null,
+          onHand: 0,
         },
-        { variantId: "v-2", label: "5 kg", unitPrice: null, available: true },
+        {
+          variantId: "v-2",
+          label: "5 kg",
+          unitPrice: null,
+          available: true,
+          cost: null,
+          onHand: 0,
+        },
         {
           variantId: "v-3",
           label: "10 kg",
           unitPrice: pesos(7000),
           available: false,
+          cost: null,
+          onHand: 0,
         },
       ],
     });
+  });
+
+  it("carries each variant's current cost and the units the studio holds", async () => {
+    const repository = new InMemoryMaterialRepository();
+    await repository.insert(
+      buildMaterial({
+        id: "m-clay",
+        name: "Arcilla",
+        supplier,
+        variants: [
+          buildMaterialVariant({
+            id: "v-1",
+            label: "1 kg",
+            price: pesos(4000),
+            cost: pesos(2500),
+            position: 1,
+          }),
+          buildMaterialVariant({
+            id: "v-2",
+            label: "5 kg",
+            price: pesos(15000),
+            position: 2,
+          }),
+        ],
+      }),
+    );
+    const stock = new InMemoryStockStore();
+    await stock.adjust({
+      variantId: "v-1",
+      delta: 3,
+      reason: "count",
+      by: "owner@example.com",
+      at: new Date("2026-11-16T12:00:00.000Z"),
+    });
+
+    const [material] = await createSaleCatalogReader({
+      materials: repository,
+      stock,
+    }).listSaleCatalog();
+
+    expect(
+      material?.variants.map((v) => [
+        v.variantId,
+        v.cost?.toCentavos() ?? null,
+        v.onHand,
+      ]),
+    ).toEqual([
+      ["v-1", 250000, 3],
+      ["v-2", null, 0],
+    ]);
   });
 });

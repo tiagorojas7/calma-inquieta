@@ -571,3 +571,57 @@ describe("EnrollmentDetail", () => {
     });
   });
 });
+
+describe("EnrollmentDetail: where the materials come from", () => {
+  const line = (source: "stock" | "supplier", label: string) => ({
+    label,
+    supplier: "Proveedor Sur",
+    quantity: 1,
+    unitPrice: "$ 5.000",
+    lineTotal: "$ 5.000",
+    source,
+  });
+
+  it("labels each line as in stock or to be ordered", () => {
+    render(
+      <EnrollmentDetail
+        order={{
+          ...paidOrder,
+          lines: [line("stock", "Arcilla 1 kg"), line("supplier", "Esmalte")],
+        }}
+      />,
+    );
+
+    const lines = within(screen.getByRole("list", { name: "Materiales" }));
+    const [stocked, ordered] = lines.getAllByRole("listitem");
+    expect(within(stocked as HTMLElement).getByText("En stock")).toBeVisible();
+    expect(within(ordered as HTMLElement).getByText("A pedir")).toBeVisible();
+  });
+
+  it("offers only the received step for a paid order whose lines all come from stock", () => {
+    render(
+      <EnrollmentDetail
+        order={{
+          ...paidOrder,
+          lines: [line("stock", "Arcilla 1 kg")],
+          actions: {
+            confirm: false,
+            cancel: true,
+            materialsRequested: false,
+            materialsReceived: true,
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Siguiente paso: marcar como entregado/),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Marcar como recibido" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Marcar como solicitado" }),
+    ).toBeNull();
+  });
+});

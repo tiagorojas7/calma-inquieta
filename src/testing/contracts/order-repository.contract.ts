@@ -54,6 +54,11 @@ export interface OrderRepositoryContractHarness {
   readonly repository: OrderRepository;
   /** Reads and writes the `active` flag of the profiles the repository creates. */
   readonly activity: StudentActivityStore;
+  /** The stock a paid order's transaction takes from: arrange and read units per variant. */
+  readonly stock: {
+    seed(variantId: string, units: number): Promise<void>;
+    onHand(variantId: string): Promise<number>;
+  };
   /** Confirmed seats of a turno, read from the same store the repository claims from. */
   readonly confirmedSeats: (
     periodId: string,
@@ -134,6 +139,99 @@ export function runOrderRepositoryContract(
           note: null,
         },
       ]);
+    });
+
+    describe("an order created already paid with stock lines", () => {
+      const paidWith = (
+        sources: readonly ("stock" | "supplier")[],
+        quantity: number,
+        capacity = 8,
+        paid = true,
+      ) =>
+        orderDraft({
+          fee: pesos(0),
+          materialsTotal: pesos(4000 * sources.length * quantity),
+          total: pesos(4000 * sources.length * quantity),
+          createdBy: "admin@example.com",
+          ...(paid
+            ? {
+                paidOnCreation: {
+                  paidAt: new Date("2026-10-19T03:00:00.000Z"),
+                  confirmedBy: "admin@example.com",
+                  capacity,
+                },
+              }
+            : {}),
+          lines: sources.map((source) => ({
+            materialId: "m-1",
+            variantId: "v-1",
+            materialName: "Arcilla",
+            variantLabel: "Grande",
+            unitPrice: pesos(4000),
+            quantity,
+            supplierId: "s-1",
+            supplierName: "Proveedor Uno",
+            source,
+            unitCost: pesos(2500),
+          })),
+        });
+
+      it("takes the units of the stock lines in the creation transaction", async () => {
+        const { repository: repo, stock } = await create();
+        await stock.seed(IDs.variant, 5);
+
+        const created = await repo.create(paidWith(["stock"], 2));
+
+        if (!created.ok) throw new Error("expected ok");
+        expect(created.value.status).toBe("paid");
+        expect(created.value.lines.map((line) => line.source)).toEqual([
+          "stock",
+        ]);
+        expect(await stock.onHand(IDs.variant)).toBe(3);
+      });
+
+      it("switches a line to the supplier when the stock ran out, and still stores the paid order", async () => {
+        const { repository: repo, stock } = await create();
+        await stock.seed(IDs.variant, 1);
+
+        const created = await repo.create(paidWith(["stock"], 2));
+
+        if (!created.ok) throw new Error("expected ok");
+        expect(created.value.status).toBe("paid");
+        expect(created.value.lines.map((line) => line.source)).toEqual([
+          "supplier",
+        ]);
+        expect(await stock.onHand(IDs.variant)).toBe(1);
+      });
+
+      it("takes nothing for supplier lines or for a pending order", async () => {
+        const { repository: repo, stock } = await create();
+        await stock.seed(IDs.variant, 5);
+
+        await repo.create(paidWith(["supplier"], 2));
+        await repo.create({
+          ...paidWith(["stock"], 2, 8, false),
+          publicId: "T".repeat(22),
+          student: other("pending@example.com"),
+        });
+
+        expect(await stock.onHand(IDs.variant)).toBe(5);
+      });
+
+      it("leaves the stock untouched when the full turno refuses the order", async () => {
+        const { repository: repo, stock } = await create();
+        await stock.seed(IDs.variant, 5);
+        const first = await repo.create(paidWith(["supplier"], 1, 1));
+        const refused = await repo.create({
+          ...paidWith(["stock"], 2, 1),
+          publicId: "S".repeat(22),
+          student: other("refused@example.com"),
+        });
+
+        expect(first.ok).toBe(true);
+        expect(refused).toEqual({ ok: false, error: { kind: "turno-full" } });
+        expect(await stock.onHand(IDs.variant)).toBe(5);
+      });
     });
 
     it("stores nothing, burns no number and claims no seat when a free paid order finds the turno full", async () => {
@@ -308,6 +406,8 @@ export function runOrderRepositoryContract(
             quantity: 2,
             supplierId: "s-1",
             supplierName: "Proveedor Uno",
+            source: "stock",
+            unitCost: pesos(9000),
           },
           {
             materialId: "m-2",
@@ -318,6 +418,8 @@ export function runOrderRepositoryContract(
             quantity: 1,
             supplierId: "s-2",
             supplierName: "Proveedor Dos",
+            source: "supplier",
+            unitCost: null,
           },
         ],
       });

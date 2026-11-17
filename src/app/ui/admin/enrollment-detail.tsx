@@ -38,6 +38,8 @@ export interface EnrollmentDetailOrder {
     quantity: number;
     unitPrice: string;
     lineTotal: string;
+    /** Where the units come from: the studio's stock or an order to the supplier. */
+    source?: "stock" | "supplier";
   }[];
   readonly payment: {
     paidOn: string;
@@ -314,6 +316,8 @@ function progress(order: EnrollmentDetailOrder) {
 function nextStepText(order: EnrollmentDetailOrder): string {
   if (order.status === "paid" && order.lines.length === 0)
     return copy.next.paidNoMaterials;
+  if (order.status === "paid" && order.actions.materialsReceived)
+    return copy.next.paidFromStock;
   const known: Record<string, string> = copy.next;
   return known[order.status] ?? copy.next.cancelled;
 }
@@ -457,6 +461,11 @@ export function EnrollmentDetail({
                       {line.label}
                     </span>
                     <span className="text-ink-700">{line.supplier}</span>
+                    {line.source === undefined ? null : (
+                      <span className="text-ink-700">
+                        {copy.lineSource[line.source]}
+                      </span>
+                    )}
                     <span className="text-ink-700">
                       {`${String(line.quantity)} × ${line.unitPrice}`}
                     </span>

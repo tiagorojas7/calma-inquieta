@@ -1032,7 +1032,20 @@
                                                                                    "type":  "text",
                                                                                    "primaryKey":  false,
                                                                                    "notNull":  true
-                                                                               }
+                                                                               },
+                                                             "source":  {
+                                                                            "name":  "source",
+                                                                            "type":  "text",
+                                                                            "primaryKey":  false,
+                                                                            "notNull":  true,
+                                                                            "default":  "\u0027supplier\u0027"
+                                                                        },
+                                                             "unit_cost_centavos":  {
+                                                                                        "name":  "unit_cost_centavos",
+                                                                                        "type":  "bigint",
+                                                                                        "primaryKey":  false,
+                                                                                        "notNull":  false
+                                                                                    }
                                                          },
                                              "indexes":  {
 
@@ -1079,7 +1092,15 @@
                                                                       "order_line_unit_price_check":  {
                                                                                                           "name":  "order_line_unit_price_check",
                                                                                                           "value":  "\"order_line\".\"unit_price_centavos\" \u003e 0 AND \"order_line\".\"unit_price_centavos\" % 100 = 0"
-                                                                                                      }
+                                                                                                      },
+                                                                      "order_line_source_check":  {
+                                                                                                      "name":  "order_line_source_check",
+                                                                                                      "value":  "\"order_line\".\"source\" IN (\u0027stock\u0027, \u0027supplier\u0027)"
+                                                                                                  },
+                                                                      "order_line_unit_cost_check":  {
+                                                                                                         "name":  "order_line_unit_cost_check",
+                                                                                                         "value":  "\"order_line\".\"unit_cost_centavos\" \u003e 0"
+                                                                                                     }
                                                                   },
                                              "isRLSEnabled":  false
                                          },

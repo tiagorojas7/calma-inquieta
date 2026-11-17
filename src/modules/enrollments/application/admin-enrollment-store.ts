@@ -5,6 +5,7 @@ import type {
 } from "../domain/order-correction";
 import type {
   IllegalTransition,
+  LineSource,
   OrderStatus,
   TurnoFull,
 } from "../domain/order-core";
@@ -121,7 +122,7 @@ export function snapshotOf(order: StoredOrder): CorrectionSnapshot {
   };
 }
 
-/** One order line that counts toward what the owner must buy for a month. */
+/** One supplier line that counts toward what the owner must buy for a month; stock lines never do. */
 export interface ConsolidationLine {
   readonly orderId: string;
   readonly status: "paid" | "materials_requested";
@@ -149,6 +150,8 @@ export interface DeliveryOrder {
     /** The supplier name snapshotted on the order line. */
     readonly supplierName: string;
     readonly unitPrice: Money;
+    /** `stock` lines come from the studio's own stock; absent means `supplier`, a line that is ordered. */
+    readonly source?: LineSource;
   }[];
 }
 
@@ -205,6 +208,10 @@ export interface AdminEnrollmentStore {
     readonly actor: AdminEnrollmentActor;
     readonly now: Date;
   }): Promise<Result<Corrected, AdminEnrollmentStoreError>>;
+  /**
+   * Moves a paid order along the material steps. An order whose lines all come
+   * from stock may go from `paid` straight to `materials_received`.
+   */
   markMaterials(input: {
     readonly orderId: string;
     readonly to: "materials_requested" | "materials_received";
@@ -220,9 +227,9 @@ export interface AdminEnrollmentStore {
     orderId: string,
   ): Promise<Result<AdminEnrollmentDetail, AdminEnrollmentStoreError>>;
   /**
-   * Lines of `paid` and `materials_requested` orders whose stored period is
-   * `period`, plus how many orders still await confirmation. Never carries
-   * student data.
+   * The `supplier` lines of `paid` and `materials_requested` orders whose
+   * stored period is `period` (lines served from stock are never ordered),
+   * plus how many orders still await confirmation. Never carries student data.
    */
   consolidationLines(period: string): Promise<{
     readonly lines: readonly ConsolidationLine[];

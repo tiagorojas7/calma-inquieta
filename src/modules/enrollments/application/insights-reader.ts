@@ -36,7 +36,13 @@ export interface IncomeRow {
   readonly period: string;
   readonly orders: number;
   readonly feeCentavos: number;
+  /** What the students paid for the materials. */
   readonly materialsCentavos: number;
+  /**
+   * What the materials cost the studio: each line's own supplier cost, or its
+   * price where none was loaded. Absent means the price counts as the cost.
+   */
+  readonly materialsCostCentavos?: number;
 }
 
 /**
@@ -66,7 +72,12 @@ export interface MaterialRow {
   readonly materialName: string;
   readonly orders: number;
   readonly units: number;
+  /** What the students paid. */
   readonly amountCentavos: number;
+  /** What the lines cost the studio: each line's own cost, or its price where none was loaded. */
+  readonly costCentavos: number;
+  /** Lines with no supplier cost, whose price stands in as the cost. */
+  readonly uncostedLines: number;
 }
 
 export interface ParticipationRow {

@@ -20,6 +20,7 @@ import {
   generatePublicId,
   isPublicId,
   availableSeats,
+  lineSourceFor,
   type OrderStatus,
   type TurnoFull,
 } from "../domain/order-core";
@@ -263,6 +264,8 @@ function resolveLines(
       quantity: line.quantity,
       supplierId: material.supplierId,
       supplierName: material.supplierName,
+      source: lineSourceFor(variant.onHand ?? 0, line.quantity),
+      unitCost: variant.unitCost ?? null,
     });
   }
   return ok(lines);

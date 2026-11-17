@@ -191,6 +191,14 @@ export const orderLine = pgTable(
     quantity: integer("quantity").notNull(),
     supplierId: uuid("supplier_id").notNull(),
     supplierName: text("supplier_name").notNull(),
+    /**
+     * Where the units come from: the studio's own stock or an order to the
+     * supplier. Decided when the line is created and switched to `supplier`
+     * when the stock ran out before the payment.
+     */
+    source: text("source").notNull().default("supplier"),
+    /** The variant's supplier cost when the line was created; null when none was set. */
+    unitCostCentavos: bigint("unit_cost_centavos", { mode: "number" }),
   },
   (table) => [
     primaryKey({
@@ -203,6 +211,11 @@ export const orderLine = pgTable(
       "order_line_unit_price_check",
       sql`${table.unitPriceCentavos} > 0 AND ${table.unitPriceCentavos} % 100 = 0`,
     ),
+    check(
+      "order_line_source_check",
+      sql`${table.source} IN ('stock', 'supplier')`,
+    ),
+    check("order_line_unit_cost_check", sql`${table.unitCostCentavos} > 0`),
   ],
 );
 

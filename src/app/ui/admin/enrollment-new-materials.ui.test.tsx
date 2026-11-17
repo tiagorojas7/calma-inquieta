@@ -12,6 +12,7 @@ const choices = [
     label: "1 kg",
     unitPrice: 4000,
     priceLabel: "$ 4.000",
+    onHand: 3,
   },
   {
     materialId: "m-1",
@@ -50,6 +51,32 @@ const posted = (container: HTMLElement) =>
   Object.fromEntries(
     new FormData(container.querySelector("form") as HTMLFormElement).entries(),
   );
+
+describe("EnrollmentNewMaterials stock labels", () => {
+  it("shows the units on hand of a variant that has them, and 'A pedir' for one that has none", async () => {
+    const user = userEvent.setup();
+    renderMaterials();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Buscar material" }),
+      "arcilla",
+    );
+    const [inStock, toOrder] = screen.getAllByRole("listitem");
+    expect(within(inStock as HTMLElement).getByText(/1 kg/)).toHaveTextContent(
+      "En stock: 3",
+    );
+    expect(within(toOrder as HTMLElement).getByText(/5 kg/)).toHaveTextContent(
+      "A pedir",
+    );
+    expect(within(toOrder as HTMLElement).queryByText(/En stock/)).toBeNull();
+  });
+
+  it("keeps the label on the chosen line", () => {
+    renderMaterials({
+      initialLines: [{ materialId: "m-1", variantId: "v-1", quantity: "1" }],
+    });
+    expect(screen.getByText(/1 kg/)).toHaveTextContent("En stock: 3");
+  });
+});
 
 describe("EnrollmentNewMaterials", () => {
   it("asks to type before listing anything, so the catalog never floods a phone", () => {

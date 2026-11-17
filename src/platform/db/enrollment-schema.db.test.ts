@@ -241,6 +241,76 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
+  describe("line source and cost", () => {
+    const BASE = `INSERT INTO order_line (
+          order_id, position, material_id, variant_id, material_name,
+          variant_label, unit_price_centavos, quantity, supplier_id,
+          supplier_name`;
+    const insertPlainLine = (orderId: string) =>
+      client.query(
+        `${BASE}) VALUES ($1, 0, $2, $3, 'Clay', 'White', 10000, 1, $4, 'Supplier')`,
+        [orderId, ids.material, ids.variant, ids.supplier],
+      );
+    const insertLine = (
+      orderId: string,
+      line: { source?: string; cost?: number },
+    ) =>
+      client.query(
+        `${BASE}, source, unit_cost_centavos)
+         VALUES ($1, 0, $2, $3, 'Clay', 'White', 10000, 1, $4, 'Supplier',
+           COALESCE($5, 'supplier'), $6)`,
+        [
+          orderId,
+          ids.material,
+          ids.variant,
+          ids.supplier,
+          line.source ?? null,
+          line.cost ?? null,
+        ],
+      );
+    const stored = async (orderId: string) =>
+      (
+        await client.query<{ source: string; cost: string | null }>(
+          `SELECT source, unit_cost_centavos AS cost FROM order_line
+           WHERE order_id = $1`,
+          [orderId],
+        )
+      ).rows[0];
+
+    it("defaults a line to the supplier with no cost", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000211";
+      await insertOrder({ id: orderId });
+      await insertPlainLine(orderId);
+      expect(await stored(orderId)).toEqual({ source: "supplier", cost: null });
+    });
+
+    it("keeps a stock line with its supplier cost", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000212";
+      await insertOrder({ id: orderId });
+      await insertLine(orderId, { source: "stock", cost: 6500 });
+      expect(await stored(orderId)).toEqual({ source: "stock", cost: "6500" });
+    });
+
+    it("rejects a source that is neither stock nor supplier", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000213";
+      await insertOrder({ id: orderId });
+      await expect(
+        insertLine(orderId, { source: "warehouse" }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("rejects a cost that is zero or negative", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000214";
+      await insertOrder({ id: orderId });
+      await expect(insertLine(orderId, { cost: 0 })).rejects.toMatchObject({
+        code: "23514",
+      });
+      await expect(insertLine(orderId, { cost: -100 })).rejects.toMatchObject({
+        code: "23514",
+      });
+    });
+  });
+
   it("allows one active order per student and month, and a cancelled one frees the month", async () => {
     await insertOrder({
       id: "00000000-0000-4000-8000-000000000301",

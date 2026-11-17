@@ -7,6 +7,7 @@ import {
   InMemoryOrderRepository,
 } from "./enrollments-order-repository";
 import { InMemorySeatLedger } from "./enrollments-seat-ledger";
+import { InMemoryStockStore } from "./in-memory-stock-store";
 
 const capacity = 2;
 
@@ -15,7 +16,8 @@ const periods = {
 };
 
 const setup = () => {
-  const orders = new InMemoryOrderRepository();
+  const stock = new InMemoryStockStore();
+  const orders = new InMemoryOrderRepository(undefined, undefined, stock);
   const seats = new InMemorySeatLedger();
   let nextOrder = 0;
 
@@ -44,6 +46,18 @@ const setup = () => {
       seats.confirmedSeats(order.periodId, order.turnoId),
     audit: (order: Awaited<ReturnType<typeof createOrder>>) =>
       orders.auditTrail(order.id),
+    fixtureStock: {
+      seed: async (units: number) => {
+        await stock.adjust({
+          variantId: "v-1",
+          delta: units,
+          reason: "test seed",
+          by: "test",
+          at: new Date("2026-10-01T12:00:00Z"),
+        });
+      },
+      onHand: () => Promise.resolve(stock.levels.get("v-1") ?? 0),
+    },
     failingAfterSeatMutation: () =>
       Promise.resolve(
         harness({

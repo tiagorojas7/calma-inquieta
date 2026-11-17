@@ -23,6 +23,11 @@ export interface AdminEnrollmentStoreContractHarness {
   createOrder(overrides?: Partial<OrderDraft>): Promise<StoredOrder>;
   seatCount(order: StoredOrder): Promise<number>;
   audit(order: StoredOrder): Promise<readonly AuditEntry[]>;
+  /** The stock of the one variant every fixture line points at. */
+  readonly fixtureStock: {
+    seed(units: number): Promise<void>;
+    onHand(): Promise<number>;
+  };
   /** A test-only fixture that fails after claiming a seat during confirmation. */
   failingAfterSeatMutation(): Promise<AdminEnrollmentStoreContractHarness>;
 }
@@ -64,6 +69,35 @@ const cancel = (
     actor,
     now,
   });
+
+const materialLine = (
+  source: "stock" | "supplier",
+  quantity: number,
+): OrderDraft["lines"][number] => ({
+  materialId: "m-1",
+  variantId: "v-1",
+  materialName: "Clay",
+  variantLabel: source === "stock" ? "Stocked" : "Ordered",
+  unitPrice: pesos(1),
+  quantity,
+  supplierId: "supplier-1",
+  supplierName: "Supplier",
+  source,
+  unitCost: pesos(1),
+});
+
+/** An order whose materials come from stock, from the supplier, or both. */
+const withMaterials = (
+  harness: AdminEnrollmentStoreContractHarness,
+  lines: readonly OrderDraft["lines"][number][],
+) => {
+  const materials = lines.reduce((sum, line) => sum + line.quantity, 0);
+  return harness.createOrder({
+    lines,
+    materialsTotal: pesos(materials),
+    total: pesos(58_000 + materials),
+  });
+};
 
 /** Behavior every transactional admin enrollment store implementation must share. */
 export function runAdminEnrollmentStoreContract(
@@ -666,6 +700,7 @@ export function runAdminEnrollmentStoreContract(
               quantity,
               supplierId: "supplier-1",
               supplierName: "Papelería Sur",
+              source: "supplier",
             },
           ],
           materialsTotal: pesos(1_000 * quantity),
@@ -743,6 +778,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 2,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -761,6 +797,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 1,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -779,6 +816,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 3,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -786,6 +824,136 @@ export function runAdminEnrollmentStoreContract(
       await expect(harness.store.deliveryOrders("2026-12")).resolves.toEqual(
         [],
       );
+    });
+
+    describe("stock movements of a paid order", () => {
+      it("takes the units of the stock lines once, and a retry takes nothing", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+
+        await confirm(harness.store, order);
+        await confirm(harness.store, order);
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+      });
+
+      it("switches a line to the supplier when the stock ran out, and still pays", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(1);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+
+        await expect(confirm(harness.store, order)).resolves.toEqual({
+          ok: true,
+          value: { kind: "confirmed" },
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(1);
+        const detail = await harness.store.detail(order.id);
+        if (!detail.ok) throw new Error("expected detail");
+        expect(detail.value.status).toBe("paid");
+        expect(detail.value.lines.map((line) => line.source)).toEqual([
+          "supplier",
+        ]);
+      });
+
+      it("puts the units back once on cancel, but not after the materials were received", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(6);
+        const cancelled = await withMaterials(harness, [
+          materialLine("stock", 2),
+        ]);
+        const received = await withMaterials(harness, [
+          materialLine("stock", 3),
+        ]);
+        await confirm(harness.store, cancelled);
+        await confirm(harness.store, received);
+        await harness.store.markMaterials({
+          orderId: received.id,
+          to: "materials_received",
+          actor,
+          now,
+        });
+
+        await cancel(harness.store, cancelled, fullRefund(cancelled));
+        await cancel(harness.store, cancelled, fullRefund(cancelled));
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+        await cancel(harness.store, received, fullRefund(received));
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+      });
+
+      it("puts the units back when a correction sends the order to pending", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+        await confirm(harness.store, order);
+
+        await expect(
+          harness.store.correct({
+            orderId: order.id,
+            fee: pesos(70_000),
+            actor,
+            now,
+          }),
+        ).resolves.toEqual({
+          ok: true,
+          value: { kind: "corrected", outcome: "returned-to-pending" },
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(5);
+      });
+
+      it("consolidates only the supplier lines but delivers every line, with its source", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [
+          materialLine("stock", 2),
+          materialLine("supplier", 1),
+        ]);
+        await confirm(harness.store, order);
+
+        const consolidated = await harness.store.consolidationLines("2026-10");
+        expect(
+          consolidated.lines.map((item) => [item.variantLabel, item.quantity]),
+        ).toEqual([["Ordered", 1]]);
+        const [delivery] = await harness.store.deliveryOrders("2026-10");
+        expect(
+          delivery?.lines.map((item) => [item.variantLabel, item.source]),
+        ).toEqual([
+          ["Stocked", "stock"],
+          ["Ordered", "supplier"],
+        ]);
+      });
+
+      it("lets an order with only stock lines go from paid straight to received, and no other", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const stockOnly = await withMaterials(harness, [
+          materialLine("stock", 1),
+        ]);
+        const mixed = await withMaterials(harness, [
+          materialLine("stock", 1),
+          materialLine("supplier", 1),
+        ]);
+        await confirm(harness.store, stockOnly);
+        await confirm(harness.store, mixed);
+        const receive = (order: StoredOrder) =>
+          harness.store.markMaterials({
+            orderId: order.id,
+            to: "materials_received",
+            actor,
+            now,
+          });
+
+        await expect(receive(stockOnly)).resolves.toEqual({
+          ok: true,
+          value: undefined,
+        });
+        await expect(receive(mixed)).resolves.toMatchObject({
+          ok: false,
+          error: { kind: "illegal-transition", from: "paid" },
+        });
+      });
     });
 
     it("allows different turnos to progress independently", async () => {

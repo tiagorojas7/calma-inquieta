@@ -7,6 +7,10 @@ export interface OfferedVariant {
   readonly unitPrice: Money | null;
   readonly available: boolean;
   readonly swatch?: string | null;
+  /** Units the studio holds; a hand-made enrollment takes the line from stock when they cover it. */
+  readonly onHand?: number;
+  /** The supplier cost the sale snapshots; absent or null when none is set. */
+  readonly unitCost?: Money | null;
 }
 
 export interface OfferedMaterialImage {

@@ -168,6 +168,7 @@ export const adminMicrocopy = {
         whatsappWith: (name: string) => `WhatsApp con ${name}`,
         requestedStatus: "Pedido",
         receivedStatus: "Recibido",
+        stockStatus: "En stock",
       },
     },
     detail: {
@@ -189,6 +190,8 @@ export const adminMicrocopy = {
           "Siguiente paso: confirmar el cobro cuando recibas el pago.",
         paid: "Siguiente paso: pedir los materiales al proveedor.",
         paidNoMaterials: "No hay materiales para pedir. El pedido está al día.",
+        paidFromStock:
+          "Siguiente paso: marcar como entregado cuando le des los materiales que tenés en stock.",
         materials_requested:
           "Siguiente paso: marcar como recibido cuando lleguen los materiales.",
         materials_received: "Pedido completo. No queda nada por hacer.",
@@ -217,6 +220,7 @@ export const adminMicrocopy = {
         `${String(confirmed)} de ${String(capacity)} lugares confirmados`,
       lines: "Materiales",
       noLines: "Sin materiales",
+      lineSource: { stock: "En stock", supplier: "A pedir" },
       lineColumns: {
         material: "Material",
         supplier: "Proveedor",

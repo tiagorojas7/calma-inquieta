@@ -286,6 +286,54 @@ describe("admin supplier consolidation loader", () => {
     expect(result.counts).toEqual({ pedir: 2, entregar: 2 });
   });
 
+  it("hands over a paid order whose lines all come from stock, marked as such, and leaves paid supplier orders out", async () => {
+    const stockLine = (source: "stock" | "supplier") => ({
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      supplierName: "Papelería Sur",
+      unitPrice: pesos(1_000),
+      source,
+    });
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(
+      ok([
+        deliveryOrder({
+          id: "4f2d9052-8b7e-4daf-9eb2-5a6b7c8d9eaf",
+          status: "paid",
+          studentName: "Eva Stock",
+          lines: [stockLine("stock")],
+        }),
+        deliveryOrder({
+          id: "5a3e0163-9c8f-4eb0-8fc3-6b7c8d9eafb0",
+          status: "paid",
+          studentName: "Fina Mixta",
+          lines: [stockLine("stock"), stockLine("supplier")],
+        }),
+        deliveryOrder({
+          id: "6b4f1274-ad90-4fc1-9ad4-7c8d9eafb0c1",
+          status: "materials_requested",
+          studentName: "Gina Pedida",
+          lines: [stockLine("stock"), stockLine("supplier")],
+        }),
+      ]),
+    );
+
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar",
+      true,
+      deliveries,
+    );
+
+    expect(
+      result.toDeliver.map((card) => [card.studentName, card.fromStock]),
+    ).toEqual([
+      ["Eva Stock", true],
+      ["Gina Pedida", undefined],
+    ]);
+    expect(result.counts.entregar).toBe(2);
+  });
+
   it.each([
     ["denied", 403],
     ["unavailable", 503],

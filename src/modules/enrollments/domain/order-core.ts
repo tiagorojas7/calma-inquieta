@@ -24,15 +24,56 @@ const ALLOWED: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = {
   cancelled: [],
 };
 
+/**
+ * What the order's lines say about its fulfillment. `hasSupplierLines` is
+ * true unless the caller knows every line comes from the studio's own stock.
+ */
+export interface TransitionLines {
+  readonly hasMaterialLines: boolean;
+  readonly hasSupplierLines?: boolean;
+}
+
 export function transition(
   from: OrderStatus,
   to: OrderStatus,
-  context: { readonly hasMaterialLines: boolean },
+  context: TransitionLines,
 ): Result<OrderStatus, IllegalTransition> {
+  // An order whose lines all come from stock has nothing to request from a
+  // supplier, so it may go from paid straight to received.
+  const stockOnly =
+    context.hasMaterialLines && context.hasSupplierLines === false;
   const allowed =
-    ALLOWED[from].includes(to) &&
-    (to !== "materials_requested" || context.hasMaterialLines);
+    (ALLOWED[from].includes(to) &&
+      (to !== "materials_requested" || context.hasMaterialLines)) ||
+    (from === "paid" && to === "materials_received" && stockOnly);
   return allowed ? ok(to) : err({ kind: "illegal-transition", from, to });
+}
+
+// Line source ---------------------------------------------------------------
+
+export const LINE_SOURCES = ["stock", "supplier"] as const;
+/** Where an order line's units come from: the studio's stock or the supplier. */
+export type LineSource = (typeof LINE_SOURCES)[number];
+
+/**
+ * What an order's lines say about its fulfillment. A line without a source is
+ * ordered from the supplier, like the column default. A stock-only order has
+ * nothing to request from a supplier.
+ */
+export function fulfillmentOf(
+  lines: readonly { readonly source?: LineSource }[],
+): Required<TransitionLines> & { readonly stockOnly: boolean } {
+  const hasSupplierLines = lines.some((line) => line.source !== "stock");
+  return {
+    hasMaterialLines: lines.length > 0,
+    hasSupplierLines,
+    stockOnly: lines.length > 0 && !hasSupplierLines,
+  };
+}
+
+/** A line is served from stock only when the units on hand cover its quantity. */
+export function lineSourceFor(onHand: number, quantity: number): LineSource {
+  return onHand >= quantity ? "stock" : "supplier";
 }
 
 export type ConfirmOutcome = "claim" | "already-confirmed" | "illegal";

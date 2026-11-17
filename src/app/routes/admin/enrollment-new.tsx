@@ -93,6 +93,11 @@ async function loadMaterials(
 ): Promise<EnrollmentMaterialChoice[]> {
   const variants = await services.materials.listSaleVariants(actor);
   if (!variants.ok) throw enrollmentFailureResponse(variants.error);
+  // A stock that cannot be read must not close the form: every variant is
+  // then offered as "a pedir", the supplier path that always works.
+  const onHand = await services.variantStock
+    .onHand(variants.value.map((variant) => variant.variantId))
+    .catch(() => new Map<string, number>());
   return variants.value.map((variant) => ({
     materialId: variant.materialId,
     variantId: variant.variantId,
@@ -100,6 +105,7 @@ async function loadMaterials(
     label: variant.variantLabel,
     unitPrice: variant.unitPrice.toCentavos() / 100,
     priceLabel: formatPesos(variant.unitPrice),
+    onHand: onHand.get(variant.variantId) ?? 0,
   }));
 }
 

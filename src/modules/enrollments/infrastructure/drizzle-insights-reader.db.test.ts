@@ -13,6 +13,7 @@ import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
+import { createTestOrderStock } from "~/testing/db/order-stock";
 import { createDrizzleEnrollmentInsightsReader } from "./drizzle-insights-reader";
 
 const created: TestDatabase[] = [];
@@ -44,10 +45,14 @@ async function fixture() {
     { readonly id: string; readonly phoneDigits: string }
   >();
   async function add(
-    overrides: Partial<Order> & { materials?: number } = {},
+    overrides: Partial<Order> & {
+      materials?: number;
+      /** Supplier cost per unit of the one material line; none when absent. */
+      unitCost?: number;
+    } = {},
   ): Promise<string> {
     next += 1;
-    const { materials = 0, ...rest } = overrides;
+    const { materials = 0, unitCost, ...rest } = overrides;
     const status = rest.status ?? "paid";
     const paid = status !== "pending_confirmation" ? new Date() : null;
     const total = 10_000_00 + materials;
@@ -114,6 +119,7 @@ async function fixture() {
           quantity: 2,
           supplierId: SUPPLIER,
           supplierName: "Arcilla SA",
+          ...(unitCost === undefined ? {} : { unitCostCentavos: unitCost }),
         });
       }
     } finally {
@@ -274,7 +280,35 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
       orders: 1,
       units: 2,
       amountCentavos: 4_000_00,
+      costCentavos: 4_000_00,
+      uncostedLines: 1,
     });
+  });
+
+  it("values the materials at each line's own cost, and at its price where none was loaded", async () => {
+    const { add, reader } = await fixture();
+    await add({ materials: 4_000_00, unitCost: 1_500_00 });
+    await add({ materials: 4_000_00 });
+
+    const [income] = await reader.income({ period: "2026-11" });
+    expect(income).toMatchObject({
+      materialsCentavos: 8_000_00,
+      materialsCostCentavos: 3_000_00 + 4_000_00,
+    });
+    const [row] = await reader.materials({ period: "2026-11" });
+    expect(row).toMatchObject({
+      amountCentavos: 8_000_00,
+      costCentavos: 3_000_00 + 4_000_00,
+      uncostedLines: 1,
+    });
+  });
+
+  it("counts no uncosted line when every line has a cost", async () => {
+    const { add, reader } = await fixture();
+    await add({ materials: 4_000_00, unitCost: 1_500_00 });
+
+    const [row] = await reader.materials({ period: "2026-11" });
+    expect(row).toMatchObject({ costCentavos: 3_000_00, uncostedLines: 0 });
   });
 
   it("counts the confirmed students of a period and those who also joined another one", async () => {
@@ -346,9 +380,11 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
     } finally {
       await session.close();
     }
-    const store = createDrizzleAdminEnrollmentStore(openSession, {
-      find: () => Promise.resolve({ status: "open", capacity: 8 }),
-    });
+    const store = createDrizzleAdminEnrollmentStore(
+      openSession,
+      { find: () => Promise.resolve({ status: "open", capacity: 8 }) },
+      createTestOrderStock(openSession).port,
+    );
     const pesos = (amount: number) => {
       const money = Money.fromCentavos(amount * 100);
       if (!money.ok) throw new Error("fixture money");

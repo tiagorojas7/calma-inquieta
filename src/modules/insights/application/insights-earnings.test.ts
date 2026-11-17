@@ -45,6 +45,9 @@ const material = (overrides: Partial<MaterialRow>): MaterialRow => ({
   orders: 1,
   units: 2,
   amountCentavos: 4_000_00,
+  // No cost loaded: the price counts as the cost.
+  costCentavos: overrides.amountCentavos ?? 4_000_00,
+  uncostedLines: 1,
   ...overrides,
 });
 
@@ -328,6 +331,115 @@ describe("insights earnings", () => {
       students: 10,
       recurring: 4,
       percent: 40,
+    });
+  });
+
+  describe("material cost", () => {
+    const withCosts = () => {
+      const fixture = earningsFixture();
+      fixture.orders.incomeRows = [
+        income({
+          orders: 4,
+          feeCentavos: 40_000_00,
+          materialsCentavos: 6_000_00,
+          materialsCostCentavos: 4_500_00,
+        }),
+        income({
+          workshopId: "w2",
+          workshopName: "Acuarela",
+          orders: 2,
+          feeCentavos: 20_000_00,
+        }),
+      ];
+      fixture.orders.materialRows = [
+        material({
+          orders: 2,
+          units: 3,
+          amountCentavos: 4_000_00,
+          costCentavos: 2_500_00,
+          uncostedLines: 0,
+        }),
+        material({
+          status: "materials_received",
+          materialName: "Esmalte",
+          amountCentavos: 2_000_00,
+          costCentavos: 2_000_00,
+          uncostedLines: 1,
+        }),
+      ];
+      return fixture;
+    };
+
+    it("takes the materials cost and margin from the line costs, not the price", async () => {
+      const { service } = withCosts();
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      const ceramica = result.value.activities.find(
+        (row) => row.name === "Ceramica",
+      );
+      expect(ceramica?.materialsCost.toCentavos()).toBe(4_500_00);
+      expect(ceramica?.profit.toCentavos()).toBe(
+        46_000_00 - 12_000_00 - 4_500_00,
+      );
+      expect(result.value.totals.materialsCost.toCentavos()).toBe(4_500_00);
+    });
+
+    it("charges the supplier cost per supplier while keeping what the students paid", async () => {
+      const { service } = withCosts();
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      expect(
+        result.value.suppliers.map((row) => [
+          row.charged.toCentavos(),
+          row.cost.toCentavos(),
+        ]),
+      ).toEqual([[6_000_00, 4_500_00]]);
+    });
+
+    it("keeps saying the price counts as the cost while some line has no cost", async () => {
+      const { service } = withCosts();
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      expect(result.value.materialsAtCost).toBe(true);
+    });
+
+    it("stops saying so once every line has a real cost", async () => {
+      const { orders, service } = withCosts();
+      orders.materialRows = orders.materialRows.map((row) => ({
+        ...row,
+        uncostedLines: 0,
+      }));
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      expect(result.value.materialsAtCost).toBe(false);
+    });
+
+    it("falls back to the price for an income row without a cost", async () => {
+      const { orders, service } = withCosts();
+      orders.incomeRows = [
+        income({
+          orders: 4,
+          feeCentavos: 40_000_00,
+          materialsCentavos: 6_000_00,
+        }),
+      ];
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      expect(
+        result.value.activities
+          .find((row) => row.name === "Ceramica")
+          ?.materialsCost.toCentavos(),
+      ).toBe(6_000_00);
     });
   });
 

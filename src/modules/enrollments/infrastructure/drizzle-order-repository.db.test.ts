@@ -6,6 +6,7 @@ import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
+import { createTestOrderStock } from "~/testing/db/order-stock";
 import { createDrizzleOrderRepository } from "./drizzle-order-repository";
 import { createDrizzleSeatLedger } from "./drizzle-seat-ledger";
 import { createDrizzleStudentActivityStore } from "./drizzle-student-activity-store";
@@ -24,9 +25,11 @@ async function freshRepository() {
     connectionString: database.url,
   });
   const seats = createDrizzleSeatLedger(openSession);
+  const stock = createTestOrderStock(openSession);
   return {
     openSession,
-    repository: createDrizzleOrderRepository(openSession),
+    stock,
+    repository: createDrizzleOrderRepository(openSession, stock.port),
     activity: createDrizzleStudentActivityStore(openSession),
     confirmedSeats: (periodId: string, turnoId: string) =>
       seats.confirmedSeats(periodId, turnoId),
@@ -34,11 +37,12 @@ async function freshRepository() {
 }
 
 runOrderRepositoryContract(async () => {
-  const { openSession, repository, activity, confirmedSeats } =
+  const { openSession, repository, activity, confirmedSeats, stock } =
     await freshRepository();
   return {
     repository,
     activity,
+    stock,
     confirmedSeats,
     failCreateAfterNumbering: async (draft) => {
       const session = await openSession();

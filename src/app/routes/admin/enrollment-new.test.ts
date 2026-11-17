@@ -5,7 +5,7 @@ import {
   type AdminEnrollmentUseCases,
   type PublicEnrollmentUseCases,
 } from "~/modules/enrollments";
-import type { MaterialsService } from "~/modules/materials";
+import type { MaterialsService, StockStore } from "~/modules/materials";
 import type {
   MonthlyWorkshopsService,
   WorkshopPeriodsService,
@@ -54,12 +54,20 @@ const saleVariants = [
   },
 ];
 
+/** The studio holds three units of the clay and none of the brush. */
+const onHandOf: StockStore["onHand"] = (variantIds) =>
+  Promise.resolve(
+    new Map(variantIds.map((id) => [id, id === "v-1" ? 3 : 0] as const)),
+  );
+
 function services(
   createPending: CreatePending = vi.fn(),
   listSaleVariants: MaterialsService["listSaleVariants"] = () =>
     Promise.resolve(ok(saleVariants)),
+  onHand: StockStore["onHand"] = onHandOf,
 ) {
   return {
+    variantStock: { onHand },
     materials: withOverrides(createUnavailableService<MaterialsService>(), {
       listSaleVariants,
     }),
@@ -163,6 +171,7 @@ describe("admin enrollment-new loader", () => {
           label: "1 kg",
           unitPrice: 4000,
           priceLabel: "$ 4.000",
+          onHand: 3,
         },
         {
           materialId: "m-2",
@@ -171,9 +180,42 @@ describe("admin enrollment-new loader", () => {
           label: "Chico",
           unitPrice: 12500,
           priceLabel: "$ 12.500",
+          onHand: 0,
         },
       ],
     });
+  });
+
+  it("asks the stock once for every variant it lists", async () => {
+    const onHand = vi.fn(onHandOf);
+    await loader({
+      request: getRequest("/admin/inscripciones/nueva"),
+      params: {},
+      context: adminContext(
+        services(vi.fn(), () => Promise.resolve(ok(saleVariants)), onHand),
+      ),
+    } as never);
+    expect(onHand).toHaveBeenCalledTimes(1);
+    expect(onHand).toHaveBeenCalledWith(["v-1", "v-2"]);
+  });
+
+  it("offers every variant as 'a pedir' when the stock cannot be read, instead of failing", async () => {
+    const result = await loader({
+      request: getRequest("/admin/inscripciones/nueva"),
+      params: {},
+      context: adminContext(
+        services(
+          vi.fn(),
+          () => Promise.resolve(ok(saleVariants)),
+          () => Promise.reject(new Error("stock unavailable")),
+        ),
+      ),
+    } as never);
+    expect(
+      (result as { materials: { onHand: number }[] }).materials.map(
+        (variant) => variant.onHand,
+      ),
+    ).toEqual([0, 0]);
   });
 
   it("offers only what the materials service lists as sellable, and nothing when none is", async () => {

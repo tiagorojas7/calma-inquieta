@@ -37,6 +37,7 @@ import { EnrollmentDetail } from "~/app/ui/admin/enrollment-detail";
 import { Money } from "~/modules/_shared";
 import {
   formatPesos,
+  fulfillmentOf,
   type CorrectionSnapshot,
   type OrderCorrection,
 } from "~/modules/enrollments";
@@ -160,6 +161,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   if (!found.ok) throw enrollmentFailureResponse(found.error);
   const order = found.value;
   const paid = order.paidAt !== undefined && order.paidAmount !== undefined;
+  const fulfillment = fulfillmentOf(order.lines);
   return {
     feedback: feedbackCode(request, FEEDBACK),
     id: order.id,
@@ -184,6 +186,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       quantity: line.quantity,
       unitPrice: formatPesos(line.unitPrice),
       lineTotal: lineTotal(line.unitPrice, line.quantity),
+      ...(line.source === undefined ? {} : { source: line.source }),
     })),
     payment: paid
       ? {
@@ -230,8 +233,12 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     actions: {
       confirm: order.status === "pending_confirmation",
       cancel: order.status !== "cancelled",
-      materialsRequested: order.status === "paid" && order.lines.length > 0,
-      materialsReceived: order.status === "materials_requested",
+      // A supplier line is requested first; an order served only from stock is handed over directly.
+      materialsRequested:
+        order.status === "paid" && fulfillment.hasSupplierLines,
+      materialsReceived:
+        order.status === "materials_requested" ||
+        (order.status === "paid" && fulfillment.stockOnly),
     },
     today: new Date(Date.now() - CORDOBA_OFFSET_MS).toISOString().slice(0, 10),
   };

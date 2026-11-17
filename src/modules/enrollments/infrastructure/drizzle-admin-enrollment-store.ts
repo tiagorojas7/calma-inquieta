@@ -26,6 +26,7 @@ import {
   cordobaDateOf,
   cordobaDayStart,
   transition,
+  type LineSource,
   type OrderStatus,
 } from "../domain/order-core";
 import { planCorrection } from "../domain/order-correction";
@@ -50,6 +51,8 @@ import type {
   AuditEntry,
   StoredOrder,
 } from "../application/enrollment-repository";
+import type { OrderStockPort } from "../application/order-stock";
+import { returnStockLines, takeStockLines } from "./order-stock-lines";
 import { claimSeat } from "./seat-claim";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
@@ -218,6 +221,9 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
       quantity: line.quantity,
       supplierId: line.supplierId,
       supplierName: line.supplierName,
+      source: line.source as LineSource,
+      unitCost:
+        line.unitCostCentavos === null ? null : money(line.unitCostCentavos),
     })),
     ...(row.paidAt
       ? {
@@ -271,11 +277,13 @@ function cordobaDate(instant: Date): string {
 /**
  * The sole PostgreSQL atomic boundary for administrative enrollment mutations.
  * Every mutation locks the order first; seat mutations then lock the counter,
- * update the order, and append the audit row last in that transaction.
+ * move the stock units of the order's `stock` lines, update the order, and
+ * append the audit row last in that transaction.
  */
 export function createDrizzleAdminEnrollmentStore(
   openSession: DbSessionFactory,
   periods: AdminEnrollmentPeriodLookup,
+  stock: OrderStockPort<Db>,
 ): AdminEnrollmentStore {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -361,6 +369,11 @@ export function createDrizzleAdminEnrollmentStore(
               capacity: period.capacity,
             });
             if (!claimed) return err({ kind: "turno-full" });
+            // A line whose stock ran out becomes a supplier line; the payment stands.
+            await takeStockLines(tx, stock, order.id, {
+              by: input.actor.email,
+              at: input.now,
+            });
 
             await tx
               .update(enrollmentOrder)
@@ -421,6 +434,12 @@ export function createDrizzleAdminEnrollmentStore(
 
             if (outcome === "cancel-release") {
               await releaseSeat(tx, order);
+              // Received means used and handed over: those units do not come back.
+              if (order.status !== "materials_received")
+                await returnStockLines(tx, stock, order.id, {
+                  by: input.actor.email,
+                  at: input.now,
+                });
             }
 
             await tx
@@ -563,6 +582,14 @@ export function createDrizzleAdminEnrollmentStore(
               });
             steps.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
             for (const step of steps) await step.run();
+            if (
+              decided.outcome === "returned-to-pending" &&
+              status !== "materials_received"
+            )
+              await returnStockLines(tx, stock, order.id, {
+                by: input.actor.email,
+                at: input.now,
+              });
 
             const location = retargeted ? target : undefined;
             await tx
@@ -697,11 +724,15 @@ export function createDrizzleAdminEnrollmentStore(
             const order = rows[0];
             if (!order) return err({ kind: "not-found" });
             const lines = await tx
-              .select({ count: sql<number>`count(*)::int` })
+              .select({
+                count: sql<number>`count(*)::int`,
+                fromSupplier: sql<number>`(count(*) filter (where ${orderLine.source} = 'supplier'))::int`,
+              })
               .from(orderLine)
               .where(eq(orderLine.orderId, order.id));
             const moved = transition(order.status as OrderStatus, input.to, {
               hasMaterialLines: (lines[0]?.count ?? 0) > 0,
+              hasSupplierLines: (lines[0]?.fromSupplier ?? 0) > 0,
             });
             if (!moved.ok) return moved;
             await tx
@@ -742,6 +773,7 @@ export function createDrizzleAdminEnrollmentStore(
             and(
               eq(enrollmentOrder.period, period),
               inArray(enrollmentOrder.status, ["paid", "materials_requested"]),
+              eq(orderLine.source, "supplier"),
             ),
           )
           .orderBy(asc(orderLine.orderId), asc(orderLine.position));
@@ -807,6 +839,7 @@ export function createDrizzleAdminEnrollmentStore(
               quantity: line.quantity,
               supplierName: line.supplierName,
               unitPrice: money(line.unitPriceCentavos),
+              source: line.source as LineSource,
             }));
           return lines.length === 0
             ? []

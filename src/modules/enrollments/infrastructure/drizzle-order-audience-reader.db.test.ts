@@ -6,6 +6,7 @@ import {
   type TestDatabase,
 } from "~/testing/db/test-database";
 import { Money } from "~/modules/_shared";
+import { createTestOrderStock } from "~/testing/db/order-stock";
 import { orderDraft } from "~/testing/fakes/enrollments-builders";
 import { createDrizzleOrderAudienceReader } from "./drizzle-order-audience-reader";
 import { createDrizzleOrderRepository } from "./drizzle-order-repository";
@@ -124,7 +125,10 @@ describe("drizzle order audience reader", () => {
     const openSession = createDbSessionFactory({
       connectionString: database.url,
     });
-    const repository = createDrizzleOrderRepository(openSession);
+    const repository = createDrizzleOrderRepository(
+      openSession,
+      createTestOrderStock(openSession).port,
+    );
     const reader = createDrizzleOrderAudienceReader(openSession);
     const requestedAt = new Date("2026-10-30T12:00:00.000Z");
     const free = Money.zero();

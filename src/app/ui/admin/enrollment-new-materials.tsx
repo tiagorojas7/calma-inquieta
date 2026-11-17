@@ -11,6 +11,8 @@ export interface EnrollmentMaterialChoice {
   /** Whole pesos. */
   readonly unitPrice: number;
   readonly priceLabel: string;
+  /** Units the studio holds; none or absent means the variant is ordered from the supplier. */
+  readonly onHand?: number;
 }
 
 /** A chosen variant as the form posts it: the quantity stays as typed. */
@@ -28,6 +30,8 @@ export const enrollmentMaterialsCopy = {
   typeToSearch: "Escribí para buscar en el catálogo.",
   noMatches: "No encontramos materiales con ese nombre.",
   noCatalog: "No hay materiales con precio en el catálogo.",
+  inStock: (units: number) => `En stock: ${String(units)}`,
+  toOrder: "A pedir",
   add: "Agregar",
   remove: "Quitar",
   quantity: "Cantidad",
@@ -64,6 +68,12 @@ function feeOf(typed: string): number | null {
 
 const keyOf = (line: { materialId: string; variantId: string }) =>
   `${line.materialId}:${line.variantId}`;
+
+/** "En stock: N" while the studio holds units, otherwise the supplier path. */
+const availabilityLabel = (choice: EnrollmentMaterialChoice): string =>
+  choice.onHand !== undefined && choice.onHand > 0
+    ? copy.inStock(choice.onHand)
+    : copy.toOrder;
 
 /**
  * Optional catalog materials of a hand-made enrollment. Each chosen variant is
@@ -153,7 +163,8 @@ export function EnrollmentNewMaterials({
                   {choice.name}
                 </span>
                 <span className="text-sm text-ink-700">
-                  {choice.label} · {choice.priceLabel}
+                  {choice.label} · {choice.priceLabel} ·{" "}
+                  {availabilityLabel(choice)}
                 </span>
               </div>
               <Button
@@ -203,7 +214,8 @@ export function EnrollmentNewMaterials({
                     </span>
                     {choice !== undefined && (
                       <span className="text-sm text-ink-700">
-                        {choice.label} · {choice.priceLabel}
+                        {choice.label} · {choice.priceLabel} ·{" "}
+                        {availabilityLabel(choice)}
                       </span>
                     )}
                   </div>

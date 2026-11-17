@@ -200,8 +200,9 @@ export interface EarningsView {
   readonly teachers: readonly TeacherToSettle[];
   readonly suppliers: readonly SupplierMaterials[];
   /**
-   * True while no supplier cost is stored: the students' price counts as
-   * the cost, so materials net to zero.
+   * True while some sold line has no supplier cost: its price counts as the
+   * cost, so that part of the materials nets to zero. False once every sold
+   * line carries a real cost.
    */
   readonly materialsAtCost: boolean;
 }

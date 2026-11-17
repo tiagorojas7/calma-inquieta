@@ -46,6 +46,7 @@ import {
   createMaterialsService,
   createSaleCatalogReader,
   createSuppliersService,
+  type StockStore,
   type SuppliersService,
   type MaterialsService,
 } from "~/modules/materials";
@@ -107,6 +108,7 @@ import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructu
 import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrastructure/drizzle-order-line-usage-lookup";
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
+import { createOrderStockAdapter } from "./order-stock-adapter";
 import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
@@ -149,6 +151,8 @@ export interface AppServices {
   readonly intensives: IntensivesService;
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
+  /** Units on hand per variant, for the hand-made enrollment's material search. */
+  readonly variantStock: Pick<StockStore, "onHand">;
   readonly enrollments: AdminEnrollmentUseCases;
   readonly consolidation: SupplierConsolidationUseCases;
   readonly publicEnrollments: PublicEnrollmentUseCases;
@@ -244,6 +248,7 @@ export function createRequestServices(
   // Variant stock. The same store is the port the paid-order flows join in
   // their own transaction (take on confirm, put on cancel); bind it there.
   const stockStore = createDrizzleStockStore(openSession);
+  const orderStock = createOrderStockAdapter(stockStore);
   const turnoRepository = createDrizzleTurnoRepository(openSession);
   const intensiveRepository = createDrizzleIntensiveRepository(openSession);
   const seats = config.databaseUrl
@@ -259,14 +264,20 @@ export function createRequestServices(
         clock: systemClock,
       })
     : createUnavailableService<WorkshopPeriodsService>();
-  const adminEnrollmentStore = createDrizzleAdminEnrollmentStore(openSession, {
-    async find(periodId, turnoId) {
-      const period = await periodRepository.findById(periodId);
-      if (!period) return null;
-      const turno = period.turnos.find((item) => item.turnoId === turnoId);
-      return turno ? { status: period.status, capacity: turno.capacity } : null;
+  const adminEnrollmentStore = createDrizzleAdminEnrollmentStore(
+    openSession,
+    {
+      async find(periodId, turnoId) {
+        const period = await periodRepository.findById(periodId);
+        if (!period) return null;
+        const turno = period.turnos.find((item) => item.turnoId === turnoId);
+        return turno
+          ? { status: period.status, capacity: turno.capacity }
+          : null;
+      },
     },
-  });
+    orderStock,
+  );
   const enrollmentOffers = createEnrollmentOfferAdapter(
     createWorkshopEnrollmentOfferLookup({
       workshops: workshopRepository,
@@ -281,9 +292,12 @@ export function createRequestServices(
         materials: { listForPeriod: () => Promise.resolve([]) },
         // Only an owner enrolling a student by hand may add catalog materials.
         adminMaterials: createSaleCatalogAdapter(
-          createSaleCatalogReader({ materials: materialRepository }),
+          createSaleCatalogReader({
+            materials: materialRepository,
+            stock: stockStore,
+          }),
         ),
-        orders: createDrizzleOrderRepository(openSession),
+        orders: createDrizzleOrderRepository(openSession, orderStock),
         seats,
         clock: systemClock,
         random: {
@@ -393,6 +407,7 @@ export function createRequestServices(
       clock: systemClock,
       stock: stockStore,
     }),
+    variantStock: stockStore,
     ...enrollmentServices,
     publicEnrollments: withEnrollmentEmails(
       enrollmentServices.publicEnrollments,

@@ -396,3 +396,12 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Evidence: RED then GREEN per layer (service 3, intent parser 1, route 6, panel UI 3, workshop form UI 2, quick parser 2, quick route 1); the quick publish fixture gained a `summary`. `pnpm typecheck` exit 0; `vitest run --project unit` 304 files / 3887 passed; `--project ui` 128 files / 1143 passed; eslint and prettier clean on the changed files.
   - For T6: `listAssignmentsOfTeacher` is a stub at the baseline (always empty), so the archived-teacher warning never names an activity; untouched. `setPercentage` rewrites the whole workshop row, the same read-modify-write as the workshop form save.
   - Next: T5.
+- L88 (2026-11-17, owner, verbatim, answering what the panel bell shows): "Novedades y pagos (Recommended)" (option text: "El número cuenta solo lo nuevo sin abrir (inscripciones web, reservas de workshop y eventos privados). Al abrir una, queda leída para las dos. Al tocar la campanita también ves la lista de pagos pendientes (cuotas, señas y saldos de workshops), que sigue ahí hasta que se paga, sin vencimientos.").
+  - Map (read-only explorer): there is no read state on any request, no notification table, and the counters live only on the home page (`insights.panel`, `privateEvents.list("nueva")`). `PanelView.alerts.pendingOverdue` (48 h) is an overdue concept nobody renders.
+  - Unit T5-N (bell), delegated to one writer (long-session backstop). Design:
+    - A shared `seen_at`/`seen_by` on `enrollment_order`, `intensive_seat_request` and `private_event_request`, folded into 0018. Legacy rows are backfilled as seen.
+    - Admin-created orders and sales are seen at creation.
+    - Opening `/admin/inscripciones/:id`, `/admin/eventos/:id` or `/admin/intensivos/:id/reservas` marks the opened request(s) seen. A failed mark never fails the page.
+    - The layout loader gives the shell the unseen count; a failed read hides the badge.
+    - The bell links to `/admin/novedades`, which lists the unseen novelties and the pending payments: monthly fees, workshop deposits, workshop balances, plus pending material sales (parent assumption for T6). There are no due dates; the unrendered `pendingOverdue` is left untouched.
+  - Then unit T5-P (global policies), after its product questions.

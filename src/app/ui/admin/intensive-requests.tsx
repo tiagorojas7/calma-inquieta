@@ -21,6 +21,29 @@ export interface IntensiveRequestRow {
   readonly projectName: string | null;
   readonly reference: string;
   readonly receivedAt: string;
+  /** The terms the person was quoted: price, deposit and what the deposit left. */
+  readonly price: string;
+  readonly deposit: string;
+  /** Whole pesos, as the confirm form prefills them. */
+  readonly depositInput: string;
+  /** The balance still owed after the deposit; null when the deposit covered it all. */
+  readonly balanceDue: string | null;
+  readonly balanceInput: string;
+  /** The one full balance payment, once recorded. */
+  readonly balance: {
+    readonly amount: string;
+    readonly paidOn: string;
+    readonly note: string | null;
+    readonly by: string | null;
+  } | null;
+  /** Deposit plus balance, as text and as whole pesos for the refund form. */
+  readonly paidTotal: string | null;
+  readonly paidTotalInput: string;
+  readonly refund: {
+    readonly amount: string;
+    readonly refundedOn: string;
+    readonly note: string | null;
+  } | null;
   readonly paidAmount: string | null;
   readonly paidOn: string | null;
   readonly paymentNote: string | null;
@@ -41,7 +64,6 @@ export interface IntensiveRequestsViewData {
     readonly name: string;
     readonly dateLine: string;
     readonly deposit: string;
-    readonly depositInput: string;
     readonly today: string;
     readonly seats: string;
     readonly minSeats: string;
@@ -52,10 +74,21 @@ export interface IntensiveRequestsViewData {
 /** What a rejected form sends back: only that request's forms show it. */
 export interface IntensiveRequestFeedback {
   readonly requestId: string;
-  readonly intent: "confirm" | "cancel";
+  readonly intent: "confirm" | "balance" | "cancel";
   readonly formError: string | undefined;
   readonly errors: Readonly<
-    Partial<Record<"amount" | "paidOn" | "note" | "reason", string>>
+    Partial<
+      Record<
+        | "amount"
+        | "paidOn"
+        | "note"
+        | "reason"
+        | "refundAmount"
+        | "refundedOn"
+        | "refundNote",
+        string
+      >
+    >
   >;
   readonly values: Readonly<Record<string, string>>;
 }
@@ -94,11 +127,65 @@ function ConfirmForm({
       <FormError message={shown?.formError} />
       <TextField
         label={f.amount}
-        hint={f.amountHint}
+        hint={f.amountHint(row.deposit)}
         name="amount"
         inputMode="numeric"
         required
-        defaultValue={shown?.values["amount"] ?? intensivo.depositInput}
+        defaultValue={shown?.values["amount"] ?? row.depositInput}
+        error={shown?.errors.amount}
+      />
+      <TextField
+        label={f.paidOn}
+        name="paidOn"
+        type="date"
+        max={intensivo.today}
+        required
+        defaultValue={shown?.values["paidOn"] ?? intensivo.today}
+        error={shown?.errors.paidOn}
+      />
+      <TextField
+        label={f.note}
+        name="note"
+        maxLength={500}
+        defaultValue={shown?.values["note"] ?? ""}
+        error={shown?.errors.note}
+      />
+      <div>
+        <Button type="submit" variant="success">
+          {f.submit}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function BalanceForm({
+  row,
+  intensivo,
+  feedback,
+}: {
+  row: IntensiveRequestRow;
+  intensivo: IntensiveRequestsViewData["intensivo"];
+  feedback: IntensiveRequestFeedback | undefined;
+}) {
+  const f = copy.balanceForm;
+  const shown = feedback?.intent === "balance" ? feedback : undefined;
+  return (
+    <form
+      method="post"
+      aria-label={`${f.label}: ${row.name}`}
+      className="flex max-w-prose flex-col gap-3"
+    >
+      <input type="hidden" name="intent" value="balance" />
+      <input type="hidden" name="requestId" value={row.id} />
+      <FormError message={shown?.formError} />
+      <TextField
+        label={f.amount}
+        hint={f.amountHint(row.balanceDue ?? "")}
+        name="amount"
+        inputMode="numeric"
+        required
+        defaultValue={shown?.values["amount"] ?? row.balanceInput}
         error={shown?.errors.amount}
       />
       <TextField
@@ -128,9 +215,13 @@ function ConfirmForm({
 
 function CancelForm({
   row,
+  status,
+  intensivo,
   feedback,
 }: {
   row: IntensiveRequestRow;
+  status: IntensiveRequestGroup["status"];
+  intensivo: IntensiveRequestsViewData["intensivo"];
   feedback: IntensiveRequestFeedback | undefined;
 }) {
   const f = copy.cancelForm;
@@ -154,6 +245,38 @@ function CancelForm({
         defaultValue={shown?.values["reason"] ?? ""}
         error={shown?.errors.reason}
       />
+      {status === "confirmed" ? (
+        <fieldset className="flex flex-col gap-3 rounded-md bg-sand-100 p-4">
+          <legend className="px-1 font-semibold text-ink-900">
+            {f.refundTitle}
+          </legend>
+          <TextField
+            label={f.refundAmount}
+            hint={f.refundAmountHint(row.paidTotal ?? "")}
+            name="refundAmount"
+            inputMode="numeric"
+            required
+            defaultValue={shown?.values["refundAmount"] ?? row.paidTotalInput}
+            error={shown?.errors.refundAmount}
+          />
+          <TextField
+            label={f.refundedOn}
+            name="refundedOn"
+            type="date"
+            max={intensivo.today}
+            required
+            defaultValue={shown?.values["refundedOn"] ?? intensivo.today}
+            error={shown?.errors.refundedOn}
+          />
+          <TextField
+            label={f.refundNote}
+            name="refundNote"
+            maxLength={300}
+            defaultValue={shown?.values["refundNote"] ?? ""}
+            error={shown?.errors.refundNote}
+          />
+        </fieldset>
+      ) : null}
       <div>
         <Button type="submit" variant="danger">
           {f.submit}
@@ -204,7 +327,11 @@ function RequestCard({
         )}
         <Fact label={copy.fields.received}>{row.receivedAt}</Fact>
         <Fact label={copy.fields.reference}>{row.reference}</Fact>
-        {status === "confirmed" ? (
+        <Fact label={copy.fields.price}>{row.price}</Fact>
+        {status === "pending_confirmation" ? (
+          <Fact label={copy.summary.deposit}>{row.deposit}</Fact>
+        ) : null}
+        {status !== "pending_confirmation" && row.paidAmount !== null ? (
           <>
             <Fact label={copy.fields.paidAmount}>{row.paidAmount}</Fact>
             <Fact label={copy.fields.paidOn}>{row.paidOn}</Fact>
@@ -216,11 +343,37 @@ function RequestCard({
             ) : null}
           </>
         ) : null}
+        {status === "confirmed" || row.balance !== null ? (
+          <Fact label={copy.fields.balance}>
+            {row.balance !== null
+              ? copy.balanceState.paid(row.balance.amount, row.balance.paidOn)
+              : row.balanceDue !== null
+                ? copy.balanceState.due(row.balanceDue)
+                : copy.balanceState.none}
+          </Fact>
+        ) : null}
+        {row.balance?.note ? (
+          <Fact label={copy.fields.balanceNote}>{row.balance.note}</Fact>
+        ) : null}
+        {row.balance?.by ? (
+          <Fact label={copy.fields.balanceBy}>{row.balance.by}</Fact>
+        ) : null}
         {status === "cancelled" ? (
           <>
             <Fact label={copy.fields.cancelReason}>{row.cancelReason}</Fact>
             {row.cancelledBy ? (
               <Fact label={copy.fields.cancelled}>{row.cancelledBy}</Fact>
+            ) : null}
+            {row.refund !== null ? (
+              <>
+                <Fact label={copy.fields.refund}>{row.refund.amount}</Fact>
+                <Fact label={copy.fields.refundedOn}>
+                  {row.refund.refundedOn}
+                </Fact>
+                {row.refund.note ? (
+                  <Fact label={copy.fields.refundNote}>{row.refund.note}</Fact>
+                ) : null}
+              </>
             ) : null}
           </>
         ) : null}
@@ -228,13 +381,23 @@ function RequestCard({
       {status === "pending_confirmation" ? (
         <ConfirmForm row={row} intensivo={intensivo} feedback={own} />
       ) : null}
+      {status === "confirmed" &&
+      row.balance === null &&
+      row.balanceDue !== null ? (
+        <BalanceForm row={row} intensivo={intensivo} feedback={own} />
+      ) : null}
       {status !== "cancelled" ? (
         <details open={own?.intent === "cancel"} className="max-w-prose">
           <summary className="inline-flex min-h-11 cursor-pointer items-center text-clay-800 underline underline-offset-4">
             {copy.cancelStep}
           </summary>
           <div className="pt-3">
-            <CancelForm row={row} feedback={own} />
+            <CancelForm
+              row={row}
+              status={status}
+              intensivo={intensivo}
+              feedback={own}
+            />
           </div>
         </details>
       ) : null}
@@ -311,7 +474,7 @@ export function IntensiveRequestsScreen({
         ) : (
           <details
             key={group.status}
-            open={feedback !== undefined && feedback.intent === "cancel"}
+            open={feedback !== undefined && feedback.intent !== "confirm"}
             className="flex flex-col gap-4"
           >
             <summary className="min-h-11 cursor-pointer">{heading}</summary>

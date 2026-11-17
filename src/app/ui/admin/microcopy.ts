@@ -1497,11 +1497,12 @@ export const adminMicrocopy = {
     title: "Reservas",
     feedback: {
       confirmed: "Seña registrada: el lugar quedó confirmado",
+      balance: "Saldo registrado: la reserva quedó paga",
       cancelled: "Solicitud cancelada",
     },
     cancelStep: "Cancelar esta solicitud",
     cancelConsequence:
-      "No se puede deshacer. Si estaba confirmada, libera el lugar.",
+      "No se puede deshacer. Si estaba confirmada, libera el lugar y los materiales vuelven al stock.",
     link: "Ver reservas",
     back: "Volver al workshop",
     summary: {
@@ -1526,33 +1527,71 @@ export const adminMicrocopy = {
       paidOn: "Fecha de pago",
       note: "Nota del pago",
       confirmed: "Confirmada por",
+      price: "Precio del proyecto",
+      balance: "Saldo",
+      balanceNote: "Nota del saldo",
+      balanceBy: "Saldo registrado por",
       cancelReason: "Motivo de la cancelación",
       cancelled: "Cancelada por",
+      refund: "Monto devuelto",
+      refundedOn: "Fecha de devolución",
+      refundNote: "Nota de la devolución",
+    },
+    balanceState: {
+      due: (amount: string) => `Pendiente: ${amount}`,
+      paid: (amount: string, paidOn: string) =>
+        `Cobrado: ${amount} el ${paidOn}`,
+      none: "No hay saldo: la seña cubrió el total",
     },
     whatsapp: "Escribirle por WhatsApp",
     confirmForm: {
       label: "Registrar la seña",
       amount: "Seña cobrada",
-      amountHint: "Tiene que ser la seña completa del workshop.",
+      amountHint: (deposit: string) =>
+        `Tiene que ser la seña de este proyecto (${deposit}).`,
       paidOn: "Fecha del pago",
       note: "Nota (opcional)",
       submit: "Registrar seña y confirmar lugar",
+    },
+    balanceForm: {
+      label: "Registrar el saldo",
+      amount: "Saldo cobrado",
+      amountHint: (due: string) =>
+        `Tiene que ser el saldo completo (${due}); se cobra una sola vez.`,
+      paidOn: "Fecha del pago",
+      note: "Nota (opcional)",
+      submit: "Registrar saldo",
     },
     cancelForm: {
       label: "Cancelar la solicitud",
       reason: "Motivo",
       reasonHint:
         "Entre 3 y 300 caracteres. Si estaba confirmada, libera el lugar.",
+      refundTitle: "Devolución",
+      refundAmount: "Monto devuelto",
+      refundAmountHint: (paid: string) =>
+        `Cobraste ${paid}. Poné 0 si no devolviste nada.`,
+      refundedOn: "Fecha de devolución",
+      refundNote: "Nota de la devolución (opcional)",
       submit: "Cancelar solicitud",
     },
     errors: {
-      amount: "Ingresá la seña completa del workshop, tal como figura arriba.",
+      amount:
+        "Ingresá la seña completa de este proyecto, tal como figura en la solicitud.",
+      balanceAmount:
+        "Ingresá el saldo completo, tal como figura en la solicitud.",
       paidOn: "Elegí una fecha válida, de hoy hacia atrás.",
+      balancePaidOn:
+        "Elegí una fecha válida, de hoy hacia atrás y no anterior a la seña.",
       note: "La nota puede tener hasta 500 caracteres.",
       reason: "Escribí un motivo de entre 3 y 300 caracteres.",
       full: "El workshop ya tiene todos sus lugares confirmados.",
       notPending: "Esta solicitud ya no está pendiente.",
       alreadyCancelled: "Esta solicitud ya estaba cancelada.",
+      notConfirmed:
+        "Solo se puede registrar el saldo de una reserva con la seña confirmada.",
+      balanceAlreadyPaid: "El saldo de esta reserva ya estaba registrado.",
+      noBalance: "Esta reserva no tiene saldo: la seña cubrió el total.",
       failed: "No pudimos guardar el cambio. Probá de nuevo.",
     },
   },

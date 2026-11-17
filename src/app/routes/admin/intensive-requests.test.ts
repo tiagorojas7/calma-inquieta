@@ -5,15 +5,24 @@ import {
   postRequest,
   thrownStatus,
 } from "~/testing/admin/route-kit";
+import { Money } from "~/modules/_shared";
 import {
   buildIntensiveOffer,
+  buildOfferProject,
   createInMemoryIntensiveRequests,
   FAKE_INTENSIVE_ID,
   FAKE_INTENSIVE_SLUG,
   FAKE_PROJECT_ID,
+  FAKE_SECOND_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
 import { action, loader } from "./intensive-requests";
+
+const pesos = (amount: number): Money => {
+  const money = Money.fromCentavos(amount * 100);
+  if (!money.ok) throw new Error("bad money");
+  return money.value;
+};
 
 const PATH = `/admin/intensivos/${FAKE_INTENSIVE_ID}/reservas`;
 const OTHER_ID = "7c9d1a52-83f4-4b0e-a7a5-5f0e2c4b9a02";
@@ -78,9 +87,12 @@ describe("admin intensive requests loader", () => {
 
     expect(result.intensivo).toMatchObject({
       name: "Intensivo de cerámica",
-      depositInput: "15000",
       seats: "0 de 2",
     });
+    expect(result.groups[0]?.rows.map((row) => row.depositInput)).toEqual([
+      "15000",
+      "15000",
+    ]);
     expect(result.intensivo.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(result.groups.map((group) => group.rows.length)).toEqual([2, 0, 0]);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
@@ -243,5 +255,221 @@ describe("admin intensive requests action", () => {
         }),
       ),
     ).toBe(403);
+  });
+
+  const REFUND = { refundAmount: "0", refundedOn: "2026-10-27" };
+
+  it("confirms against the deposit of the project the person chose", async () => {
+    const second = buildOfferProject({
+      id: FAKE_SECOND_PROJECT_ID,
+      name: "Plato hondo",
+      deposit: pesos(10000),
+    });
+    const context = createInMemoryIntensiveRequests({
+      offer: buildIntensiveOffer({ projects: [buildOfferProject(), second] }),
+    });
+    await context.service.requestSeat({
+      slug: FAKE_INTENSIVE_SLUG,
+      projectId: FAKE_SECOND_PROJECT_ID,
+      student: {
+        fullName: "Ana Pérez",
+        email: "ana@example.com",
+        phone: "351 555 0101",
+        policyAccepted: true,
+        honeypot: "",
+      },
+    });
+    const id = [...context.repository.requests.keys()][0] ?? "";
+    const services = { intensiveRequests: context.service };
+
+    const workshopDeposit = (await post(
+      { ...CONFIRM, requestId: id },
+      services,
+    )) as Rejected;
+    const quoted = (await post(
+      { ...CONFIRM, amount: "10000", requestId: id },
+      services,
+    )) as Response;
+
+    expect(workshopDeposit.init.status).toBe(422);
+    expect(workshopDeposit.data.feedback.errors["amount"]).toContain(
+      "seña completa",
+    );
+    expect(quoted.status).toBe(302);
+    expect(context.repository.requests.get(id)?.paidAmount?.toCentavos()).toBe(
+      1_000_000,
+    );
+  });
+
+  describe("balance", () => {
+    const BALANCE = {
+      intent: "balance",
+      amount: "25000",
+      paidOn: "2026-10-27",
+    };
+
+    async function confirmed() {
+      const context = await seeded();
+      const id = context.ids[0] ?? "";
+      await post({ ...CONFIRM, requestId: id }, context.services);
+      return { ...context, id };
+    }
+
+    it("records the full balance and redirects back with the banner code", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const response = (await post(
+        { ...BALANCE, requestId: id, note: "efectivo" },
+        services,
+      )) as Response;
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe(`${PATH}?ok=balance`);
+      expect(repository.requests.get(id)?.balance).toMatchObject({
+        paidOn: "2026-10-27",
+        note: "efectivo",
+        by: "a@x.test",
+      });
+      expect(repository.requests.get(id)?.balance?.amount.toCentavos()).toBe(
+        2_500_000,
+      );
+    });
+
+    it("rejects another amount next to the field and keeps the values", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const result = (await post(
+        { ...BALANCE, amount: "10000", requestId: id, note: "" },
+        services,
+      )) as Rejected;
+
+      expect(result.init.status).toBe(422);
+      expect(result.data.feedback).toMatchObject({
+        requestId: id,
+        intent: "balance",
+        values: { amount: "10000", paidOn: "2026-10-27" },
+      });
+      expect(result.data.feedback.errors["amount"]).toContain("saldo completo");
+      expect(repository.requests.get(id)?.balance).toBeNull();
+    });
+
+    it("rejects a date before the deposit, a second balance and a pending request", async () => {
+      const { services, ids, id } = await confirmed();
+
+      const early = (await post(
+        { ...BALANCE, paidOn: "2026-10-20", requestId: id },
+        services,
+      )) as Rejected;
+      expect(early.data.feedback.errors["paidOn"]).toContain(
+        "anterior a la seña",
+      );
+
+      await post({ ...BALANCE, requestId: id }, services);
+      const again = (await post(
+        { ...BALANCE, requestId: id },
+        services,
+      )) as Rejected;
+      expect(again.data.feedback.formError).toContain("ya estaba registrado");
+
+      const pending = (await post(
+        { ...BALANCE, requestId: ids[1] ?? "" },
+        services,
+      )) as Rejected;
+      expect(pending.init.status).toBe(422);
+      expect(pending.data.feedback.formError).toContain("seña confirmada");
+    });
+  });
+
+  describe("cancelling a confirmed request", () => {
+    async function confirmed() {
+      const context = await seeded();
+      const id = context.ids[0] ?? "";
+      await post({ ...CONFIRM, requestId: id }, context.services);
+      return { ...context, id };
+    }
+    const CANCEL = { intent: "cancel", reason: "no puede asistir" };
+
+    it("records the refund and redirects back", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const response = (await post(
+        {
+          ...CANCEL,
+          requestId: id,
+          ...REFUND,
+          refundAmount: "5.000",
+          refundNote: "parcial",
+        },
+        services,
+      )) as Response;
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe(`${PATH}?ok=cancelled`);
+      const stored = repository.requests.get(id);
+      expect(stored?.status).toBe("cancelled");
+      expect(stored?.refund).toMatchObject({
+        refundedOn: "2026-10-27",
+        note: "parcial",
+      });
+      expect(stored?.refund?.amount.toCentavos()).toBe(500_000);
+    });
+
+    it("accepts a refund of 0", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const response = (await post(
+        { ...CANCEL, requestId: id, ...REFUND },
+        services,
+      )) as Response;
+
+      expect(response.status).toBe(302);
+      expect(repository.requests.get(id)?.refund?.amount.isZero()).toBe(true);
+    });
+
+    it("asks for the refund when the form carries none, and keeps the request confirmed", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const result = (await post(
+        { ...CANCEL, requestId: id },
+        services,
+      )) as Rejected;
+
+      expect(result.init.status).toBe(422);
+      expect(result.data.feedback).toMatchObject({
+        requestId: id,
+        intent: "cancel",
+        values: { reason: "no puede asistir" },
+      });
+      expect(result.data.feedback.errors["refundAmount"]).toContain(
+        "cuánto devolviste",
+      );
+      expect(repository.requests.get(id)?.status).toBe("confirmed");
+    });
+
+    it("rejects a refund above what was paid and keeps what was typed", async () => {
+      const { repository, services, id } = await confirmed();
+
+      const result = (await post(
+        {
+          ...CANCEL,
+          requestId: id,
+          ...REFUND,
+          refundAmount: "15001",
+          refundNote: "x",
+        },
+        services,
+      )) as Rejected;
+
+      expect(result.data.feedback.errors["refundAmount"]).toContain(
+        "mayor que lo cobrado",
+      );
+      expect(result.data.feedback.values).toEqual({
+        reason: "no puede asistir",
+        refundAmount: "15001",
+        refundedOn: "2026-10-27",
+        refundNote: "x",
+      });
+      expect(repository.requests.get(id)?.status).toBe("confirmed");
+    });
   });
 });

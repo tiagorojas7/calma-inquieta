@@ -5,8 +5,11 @@ import type {
   IntensiveRequestRow,
 } from "~/app/ui/admin/intensive-requests";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import type { Money } from "~/modules/_shared";
 import {
+  balanceDue,
   INTENSIVE_REQUEST_STATUSES,
+  totalPaid,
   type AdminIntensiveOverview,
   type StoredIntensiveRequest,
 } from "~/modules/intensive-requests";
@@ -21,11 +24,27 @@ function byAt(by: string | null, at: Date | null): string | null {
   return by !== null && at !== null ? `${by}, ${dateTimeLabel(at)}` : null;
 }
 
+/** Whole pesos as a form field prefills them. */
+const pesosInput = (amount: Money): string => String(amount.toCentavos() / 100);
+
 function requestRow(
   request: StoredIntensiveRequest,
   projectNames: ReadonlyMap<string, string>,
+  workshop: { readonly price: Money; readonly deposit: Money },
 ): IntensiveRequestRow {
   const whatsapp = buildWhatsAppUrl(request.phoneDigits, "");
+  // The terms the person was quoted; a request made before projects existed
+  // has no snapshot and keeps the workshop terms.
+  const price = request.price ?? workshop.price;
+  const deposit = request.deposit ?? workshop.deposit;
+  const due = balanceDue(price, deposit);
+  const paid = totalPaid({
+    status: request.status,
+    deposit: request.paidAmount,
+    depositPaidOn: request.paidOn,
+    balance: request.balance?.amount ?? null,
+    balancePaidOn: request.balance?.paidOn ?? null,
+  });
   return {
     id: request.id,
     name: request.fullName,
@@ -38,6 +57,30 @@ function requestRow(
         : (projectNames.get(request.projectId) ?? null),
     reference: request.publicId.slice(0, REFERENCE_LENGTH),
     receivedAt: dateTimeLabel(request.createdAt),
+    price: formatPesos(price),
+    deposit: formatPesos(deposit),
+    depositInput: pesosInput(deposit),
+    balanceDue: due.isZero() || due.isNegative() ? null : formatPesos(due),
+    balanceInput: pesosInput(due),
+    balance:
+      request.balance === null
+        ? null
+        : {
+            amount: formatPesos(request.balance.amount),
+            paidOn: dateLabel(request.balance.paidOn),
+            note: request.balance.note,
+            by: byAt(request.balance.by, request.balance.at),
+          },
+    paidTotal: paid.isZero() ? null : formatPesos(paid),
+    paidTotalInput: pesosInput(paid),
+    refund:
+      request.refund === null
+        ? null
+        : {
+            amount: formatPesos(request.refund.amount),
+            refundedOn: dateLabel(request.refund.refundedOn),
+            note: request.refund.note,
+          },
     paidAmount:
       request.paidAmount === null ? null : formatPesos(request.paidAmount),
     paidOn: request.paidOn === null ? null : dateLabel(request.paidOn),
@@ -63,8 +106,6 @@ export function intensiveRequestsView(
       name: intensivo.name,
       dateLine: formatEventDate(intensivo.eventDate),
       deposit: formatPesos(intensivo.deposit),
-      /** Whole pesos as the confirm form prefills them. */
-      depositInput: String(intensivo.deposit.toCentavos() / 100),
       today,
       seats: copy.seatsValue
         .replace("{confirmed}", String(overview.confirmedSeats))
@@ -76,7 +117,7 @@ export function intensiveRequestsView(
       title: copy.groups[status],
       rows: overview.requests
         .filter((request) => request.status === status)
-        .map((request) => requestRow(request, projectNames)),
+        .map((request) => requestRow(request, projectNames, intensivo)),
     })),
   };
 }

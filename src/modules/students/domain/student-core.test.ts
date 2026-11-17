@@ -119,6 +119,49 @@ describe("deriveStudents and material sales", () => {
       "Cerámica inicial",
     ]);
   });
+
+  it("takes the name, phone and last request from the newest non-sale order, even when a sale is newer", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-10-05T15:00:00Z"),
+      }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        studentPhoneDigits: "5493515559999",
+        requestedAt: new Date("2026-10-28T15:00:00Z"),
+      }),
+      studentOrder(3, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-11-03T15:00:00Z"),
+        kind: "material_sale",
+      }),
+    ]);
+
+    expect(ana).toMatchObject({
+      fullName: "Ana Pérez",
+      phoneDigits: "5493515559999",
+      lastRequestedAt: new Date("2026-10-28T15:00:00Z"),
+    });
+    expect(ana?.orders[0]?.kind).toBe("material_sale");
+  });
+
+  it("falls back to the newest order when the student only has sales", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Sale",
+        kind: "material_sale",
+      }),
+    ]);
+
+    expect(ana?.fullName).toBe("Ana Sale");
+  });
 });
 
 describe("filterStudents", () => {

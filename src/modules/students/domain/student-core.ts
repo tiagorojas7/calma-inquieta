@@ -126,8 +126,9 @@ const newestFirst = (a: StudentSourceOrder, b: StudentSourceOrder) =>
   b.number.localeCompare(a.number);
 
 /**
- * Groups orders by normalized email into one profile each. The latest order
- * supplies the name and phone, so a corrected spelling wins over an old one.
+ * Groups orders by normalized email into one profile each. The latest
+ * enrollment (a material sale only when there is none) supplies the name and
+ * phone, so a corrected spelling wins over an old one.
  * Emails in `inactive` mark their profile inactive; every other one is active.
  */
 export function deriveStudents(
@@ -141,8 +142,12 @@ export function deriveStudents(
   }
   return [...groups.entries()].map(([email, group]) => {
     const sorted = [...group].sort(newestFirst);
-    const latest = sorted[0];
-    if (!latest) throw new Error("empty student group");
+    const newest = sorted[0];
+    if (!newest) throw new Error("empty student group");
+    // A sale copies its record's contact but is stamped when it was made, so
+    // it must not outrank a later correction of the enrollment itself.
+    const latest =
+      sorted.find((order) => order.kind !== "material_sale") ?? newest;
     const active = sorted.filter(
       (order) => order.status !== "cancelled" && order.kind !== "material_sale",
     );

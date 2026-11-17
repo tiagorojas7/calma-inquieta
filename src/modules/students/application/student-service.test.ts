@@ -80,6 +80,46 @@ describe("students service", () => {
     expect(detail.ok && detail.value.orders).toHaveLength(2);
   });
 
+  it("shows the corrected name and phone in the detail even when a newer material sale carries the old snapshot", async () => {
+    const { service, orders } = setup();
+    orders.orders.push(
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-10-05T15:00:00Z"),
+        period: "2026-10",
+      }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        studentPhoneDigits: "5493515559999",
+        requestedAt: new Date("2026-10-28T15:00:00Z"),
+        period: "2026-11",
+      }),
+      studentOrder(3, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-11-03T15:00:00Z"),
+        period: "2026-10",
+        kind: "material_sale",
+      }),
+    );
+
+    const detail = await service.detail(testAdminActor(), "ana@example.com");
+    const list = await service.list(testAdminActor());
+
+    expect(detail).toMatchObject({
+      ok: true,
+      value: { fullName: "Ana Pérez", phoneDigits: "5493515559999" },
+    });
+    expect(list).toMatchObject({
+      ok: true,
+      value: { items: [{ fullName: "Ana Pérez" }] },
+    });
+  });
+
   it("reports an unknown student as not found", async () => {
     const { service } = setup();
     const missing = { ok: false, error: { kind: "not-found" } };

@@ -67,8 +67,20 @@ export const intensiveSeatRequest = pgTable(
      */
     seenAt: timestamp("seen_at", { withTimezone: true }),
     seenBy: text("seen_by"),
+    /**
+     * The versions of the site-wide conditions and privacy documents the
+     * person accepted; both are null or both set (null for requests made
+     * before the documents were versioned). `policy_accepted_at` stays the
+     * moment of acceptance. No foreign key: the policies schema is independent.
+     */
+    conditionsVersion: integer("conditions_version"),
+    privacyVersion: integer("privacy_version"),
   },
   (table) => [
+    check(
+      "intensive_seat_request_acceptance_check",
+      sql`(${table.conditionsVersion} IS NULL) = (${table.privacyVersion} IS NULL)`,
+    ),
     check(
       "intensive_seat_request_seen_check",
       sql`(${table.seenAt} IS NULL) = (${table.seenBy} IS NULL)`,

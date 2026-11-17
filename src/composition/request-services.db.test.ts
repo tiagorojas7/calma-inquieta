@@ -346,6 +346,102 @@ describe("createRequestServices", () => {
     expect(pending.ok && pending.value.items).toEqual([]);
   });
 
+  it("stores the document versions a public enrollment accepted, refuses an unpublished one, and keeps none on a manual order", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                capacities: [{ turnoId: turno.id, capacity: 5 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+    const actor = testAdminActor();
+    const enrollment = (
+      n: number,
+      acceptance?: { conditionsVersion: number; privacyVersion: number },
+    ) => ({
+      slug: "ceramica",
+      period: "2099-01",
+      turnoId: turno.id,
+      student: {
+        fullName: `Alumna ${String(n)}`,
+        email: `alumna${String(n)}@example.com`,
+        phone: `351 555-100${String(n)}`,
+        policyAccepted: true,
+        honeypot: "",
+      },
+      lines: [],
+      ...(acceptance === undefined ? {} : { acceptance }),
+    });
+
+    const current = await services.policies.current();
+    expect(current.ok && current.value.conditions.version).toBe(1);
+    await services.policies.publish(actor, "conditions", "Condiciones nuevas.");
+
+    const accepted = await services.publicEnrollments.requestEnrollment(
+      enrollment(1, { conditionsVersion: 2, privacyVersion: 1 }),
+    );
+    const stale = await services.publicEnrollments.requestEnrollment(
+      enrollment(2, { conditionsVersion: 9, privacyVersion: 1 }),
+    );
+    const missing = await services.publicEnrollments.requestEnrollment(
+      enrollment(3),
+    );
+    const manual = await services.enrollments.createPending(
+      actor,
+      enrollment(4),
+    );
+
+    expect(accepted.ok).toBe(true);
+    expect(stale).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "policy", code: "unknown-reference" }],
+      },
+    });
+    expect(missing).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(manual.ok).toBe(true);
+    const listed = await services.enrollments.list(actor, {});
+    if (!listed.ok) throw new Error("no list");
+    const byName = new Map(
+      await Promise.all(
+        listed.value.items.map(async (item) => {
+          const detail = await services.enrollments.detail(actor, item.id);
+          return [
+            item.studentName,
+            detail.ok ? detail.value.acceptance : "failed",
+          ] as const;
+        }),
+      ),
+    );
+    // Only the two stored orders exist; the refused ones left nothing behind.
+    expect([...byName.keys()].sort()).toEqual(["Alumna 1", "Alumna 4"]);
+    expect(byName.get("Alumna 1")).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 1,
+    });
+    expect(byName.get("Alumna 4")).toBeUndefined();
+  });
+
   it("counts new public requests on the bell, marks them read when opened, and keeps pending payments until paid", async () => {
     const database = await newDatabase();
     const turno = seedTurno({ label: "Lunes" });
@@ -386,6 +482,8 @@ describe("createRequestServices", () => {
         honeypot: "",
       },
       lines: [],
+      // The form showed version 1 of each document (seeded by the migration).
+      acceptance: { conditionsVersion: 1, privacyVersion: 1 },
     });
     const asked = await services.publicEnrollments.requestEnrollment(
       enrollment(1),
@@ -610,9 +708,10 @@ describe("createRequestServices", () => {
       }),
     ).toMatchObject({ ok: false, error: { kind: "material-unavailable" } });
     expect(
-      await services.publicEnrollments.requestEnrollment(
-        manual(9, [chosen(1)]),
-      ),
+      await services.publicEnrollments.requestEnrollment({
+        ...manual(9, [chosen(1)]),
+        acceptance: { conditionsVersion: 1, privacyVersion: 1 },
+      }),
     ).toMatchObject({ ok: false, error: { kind: "material-not-offered" } });
     expect(await pending()).toBe(2);
   });

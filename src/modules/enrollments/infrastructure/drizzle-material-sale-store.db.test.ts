@@ -719,3 +719,44 @@ describe("DrizzleAdminEnrollmentStore panel read state", () => {
     }
   });
 });
+
+describe("DrizzleAdminEnrollmentStore accepted policy versions", () => {
+  it("gives a sale the versions its monthly record accepted, and leaves the record as it was", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const parent = await harness.monthly({
+      acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+    });
+
+    const saleId = await harness.saleId(parent, [line(ids.clay, 1)]);
+
+    expect(await harness.row(saleId)).toMatchObject({
+      conditions_version: 2,
+      privacy_version: 3,
+    });
+    const saleDetail = await harness.store.detail(saleId);
+    expect(saleDetail.ok && saleDetail.value.acceptance).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 3,
+    });
+    expect(await harness.row(parent.id)).toMatchObject({
+      conditions_version: 2,
+      privacy_version: 3,
+    });
+  });
+
+  it("leaves a sale without versions under a record that has none", async () => {
+    const harness = await freshHarness();
+    await harness.stock.seed(ids.clay, 5);
+    const parent = await harness.monthly();
+
+    const saleId = await harness.saleId(parent, [line(ids.clay, 1)]);
+
+    expect(await harness.row(saleId)).toMatchObject({
+      conditions_version: null,
+      privacy_version: null,
+    });
+    const saleDetail = await harness.store.detail(saleId);
+    expect(saleDetail.ok && saleDetail.value).not.toHaveProperty("acceptance");
+  });
+});

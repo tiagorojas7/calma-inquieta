@@ -453,6 +453,39 @@ export function runOrderRepositoryContract(
       expect(created.value).not.toHaveProperty("createdBy");
     });
 
+    it("stores the accepted policy versions with the order and reads them back", async () => {
+      const { repository: repo } = await create();
+      const created = await repo.create(
+        orderDraft({ acceptance: { conditionsVersion: 2, privacyVersion: 3 } }),
+      );
+      if (!created.ok) throw new Error("fixture");
+
+      expect(created.value.acceptance).toEqual({
+        conditionsVersion: 2,
+        privacyVersion: 3,
+      });
+      const found = await repo.findByPublicId(created.value.publicId);
+      expect(found?.acceptance).toEqual({
+        conditionsVersion: 2,
+        privacyVersion: 3,
+      });
+      const listed = await repo.listForAdmin({});
+      expect(listed[0]?.acceptance).toEqual({
+        conditionsVersion: 2,
+        privacyVersion: 3,
+      });
+    });
+
+    it("keeps no acceptance on an order created without one", async () => {
+      const { repository: repo } = await create();
+      const created = await repo.create(orderDraft());
+      if (!created.ok) throw new Error("fixture");
+
+      expect(created.value).not.toHaveProperty("acceptance");
+      const found = await repo.findForAdmin(created.value.id);
+      expect(found).not.toHaveProperty("acceptance");
+    });
+
     it("filters admin lists by status, period, workshop and text, newest first", async () => {
       const { repository: repo } = await create();
       const oldest = await repo.create(

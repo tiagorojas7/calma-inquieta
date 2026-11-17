@@ -118,6 +118,35 @@ export function runIntensiveRequestRepositoryContract(
       expect(await repo.findByPublicId("nope")).toBeNull();
     });
 
+    it("round-trips the accepted policy versions, and none for a request without them", async () => {
+      const repo = await create();
+      const accepted = buildStoredRequest({
+        acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+      });
+      await repo.insert(accepted);
+      await repo.insert(
+        buildStoredRequest({
+          id: REQUEST_2,
+          publicId: SECOND.publicId,
+          email: SECOND.email,
+        }),
+      );
+
+      expect((await repo.findById(REQUEST_1))?.acceptance).toEqual({
+        conditionsVersion: 2,
+        privacyVersion: 3,
+      });
+      expect(
+        (await repo.findByPublicId(accepted.publicId))?.acceptance,
+      ).toEqual({ conditionsVersion: 2, privacyVersion: 3 });
+      expect(await repo.findById(REQUEST_2)).not.toHaveProperty("acceptance");
+      const listed = await repo.listByIntensive(INTENSIVE_A, "all");
+      expect(listed.map((request) => request.acceptance)).toEqual([
+        { conditionsVersion: 2, privacyVersion: 3 },
+        undefined,
+      ]);
+    });
+
     it("refuses a second live request with the same email for an intensivo", async () => {
       const repo = await create();
       await repo.insert(buildStoredRequest());

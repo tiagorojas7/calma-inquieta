@@ -60,6 +60,14 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     materialsTotal: money(row.materialsCentavos),
     total: money(row.totalCentavos),
     policyVersion: row.policyVersion,
+    ...(row.conditionsVersion === null || row.privacyVersion === null
+      ? {}
+      : {
+          acceptance: {
+            conditionsVersion: row.conditionsVersion,
+            privacyVersion: row.privacyVersion,
+          },
+        }),
     lines: lines.map((line) => ({
       materialId: line.materialId,
       variantId: line.variantId,
@@ -265,6 +273,12 @@ export function createDrizzleOrderRepository(
               materialsCentavos: draft.materialsTotal.toCentavos(),
               totalCentavos: draft.total.toCentavos(),
               policyVersion: draft.policyVersion,
+              ...(draft.acceptance === undefined
+                ? {}
+                : {
+                    conditionsVersion: draft.acceptance.conditionsVersion,
+                    privacyVersion: draft.acceptance.privacyVersion,
+                  }),
               requestedAt: draft.requestedAt,
               // A request an admin created is read by its creator; a public one is new.
               ...(draft.createdBy === undefined

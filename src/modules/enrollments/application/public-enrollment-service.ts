@@ -49,6 +49,7 @@ import type {
   OfferedMaterial,
   OfferedMaterialsLookup,
 } from "./offered-materials";
+import type { PolicyAcceptance, PolicyVersionCheck } from "./policy-acceptance";
 import type { RandomBytes } from "./random-bytes";
 import type { SeatLedger } from "./seat-ledger";
 
@@ -61,6 +62,13 @@ export interface RequestEnrollmentInput {
   readonly turnoId: string;
   readonly student: StudentDraft;
   readonly lines: readonly CartLine[];
+  /**
+   * The versions of the conditions and privacy documents the form showed. A
+   * public request needs them (without them it is unavailable, so nothing is
+   * stored without a record of what was accepted); an owner enrolling a
+   * student by hand (`createdBy`) passes none and stores none.
+   */
+  readonly acceptance?: PolicyAcceptance;
 }
 
 /** Allowlisted projection of an order: no email, phone or internal id. */
@@ -131,6 +139,8 @@ export interface PublicEnrollmentServiceDeps {
   readonly random: RandomBytes;
   /** Version of the policy text the visitor accepts. */
   readonly policyVersion: string;
+  /** Tells whether a posted conditions or privacy version was ever published. */
+  readonly policies: PolicyVersionCheck;
 }
 
 export interface RequestEnrollmentOptions {
@@ -278,6 +288,28 @@ export function createPublicEnrollmentService(
   const newPublicId = (): string =>
     generatePublicId(deps.random.bytes(PUBLIC_ID_BYTES));
 
+  /** A public request must carry two published versions; anything else stores nothing. */
+  async function acceptedVersions(
+    posted: PolicyAcceptance | undefined,
+  ): Promise<
+    Result<PolicyAcceptance, DependencyUnavailable | Invalid<StudentField>>
+  > {
+    if (posted === undefined) return err(unavailable);
+    const known = await unavailableOnReject(
+      Promise.all([
+        deps.policies.isPublished("conditions", posted.conditionsVersion),
+        deps.policies.isPublished("privacy", posted.privacyVersion),
+      ]),
+    );
+    if (!known.ok) return known;
+    return known.value.every(Boolean)
+      ? ok(posted)
+      : err({
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        });
+  }
+
   return {
     async getOffer(query) {
       const foundOffer = await unavailableOnReject(
@@ -308,6 +340,13 @@ export function createPublicEnrollmentService(
           return ok(decoyView(newPublicId()));
         }
         return err(student.error);
+      }
+
+      let acceptance: PolicyAcceptance | undefined;
+      if (options.createdBy === undefined) {
+        const accepted = await acceptedVersions(input.acceptance);
+        if (!accepted.ok) return accepted;
+        acceptance = accepted.value;
       }
 
       const now = deps.clock.now();
@@ -370,6 +409,7 @@ export function createPublicEnrollmentService(
           materialsTotal: priced.value.materialsTotal,
           total: priced.value.total,
           policyVersion: deps.policyVersion,
+          ...(acceptance === undefined ? {} : { acceptance }),
           lines: lines.value,
           ...(options.createdBy === undefined
             ? {}

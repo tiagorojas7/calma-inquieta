@@ -50,6 +50,14 @@ function toStored(row: Row): StoredIntensiveRequest {
     email: row.email,
     phoneDigits: row.phoneDigits,
     policyAcceptedAt: row.policyAcceptedAt,
+    ...(row.conditionsVersion === null || row.privacyVersion === null
+      ? {}
+      : {
+          acceptance: {
+            conditionsVersion: row.conditionsVersion,
+            privacyVersion: row.privacyVersion,
+          },
+        }),
     createdAt: row.createdAt,
     paidAmount: row.paidCentavos === null ? null : toMoney(row.paidCentavos),
     paidOn: row.paidOn,
@@ -176,6 +184,8 @@ export function createDrizzleIntensiveRequestRepository(
               email: request.email,
               phoneDigits: request.phoneDigits,
               policyAcceptedAt: request.policyAcceptedAt,
+              conditionsVersion: request.acceptance?.conditionsVersion ?? null,
+              privacyVersion: request.acceptance?.privacyVersion ?? null,
               createdAt: request.createdAt,
               paidCentavos: request.paidAmount?.toCentavos() ?? null,
               paidOn: request.paidOn,

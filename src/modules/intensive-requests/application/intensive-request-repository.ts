@@ -1,4 +1,5 @@
 import type { Money, NotFound, Result } from "~/modules/_shared";
+import type { PolicyAcceptance } from "~/modules/enrollments";
 import type {
   InvalidRequestRefund,
   IntensiveRequestStatus,
@@ -56,6 +57,11 @@ export interface StoredIntensiveRequest {
   readonly email: string;
   readonly phoneDigits: string;
   readonly policyAcceptedAt: Date;
+  /**
+   * The conditions and privacy versions the person accepted at that moment;
+   * absent for a request made before the documents were versioned.
+   */
+  readonly acceptance?: PolicyAcceptance;
   readonly createdAt: Date;
   /** Deposit registered when the request is confirmed. */
   readonly paidAmount: Money | null;

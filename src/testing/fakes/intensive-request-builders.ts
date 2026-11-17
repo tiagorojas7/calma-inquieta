@@ -1,9 +1,12 @@
 import { Money } from "~/modules/_shared";
+import type { PolicyVersionCheck } from "~/modules/enrollments";
 import {
   createIntensiveRequestService,
   type IntensiveOffer,
   type IntensiveOfferProject,
+  type IntensiveRequestUseCases,
 } from "~/modules/intensive-requests";
+import { policyCheck } from "./enrollments-builders";
 import { fixedClock } from "./fixed-clock";
 import { InMemoryIntensiveRequestRepository } from "./in-memory-intensive-request-repository";
 
@@ -57,13 +60,19 @@ export function buildIntensiveOffer(
 
 /** The real seat-request service over an in-memory repository and one intensivo. */
 export function createInMemoryIntensiveRequests(
-  options: { offer?: IntensiveOffer | null; now?: Date } = {},
+  options: {
+    offer?: IntensiveOffer | null;
+    now?: Date;
+    /** Which document versions count as published; version 1 of each by default. */
+    policies?: PolicyVersionCheck;
+  } = {},
 ) {
   const offer =
     options.offer === undefined ? buildIntensiveOffer() : options.offer;
   const repository = new InMemoryIntensiveRequestRepository();
   let counter = 0;
-  const service = createIntensiveRequestService({
+  const raw = createIntensiveRequestService({
+    policies: options.policies ?? policyCheck(),
     repository,
     offers: {
       findBySlug: (slug) =>
@@ -78,5 +87,15 @@ export function createInMemoryIntensiveRequests(
     newId: () =>
       `00000000-0000-4000-8000-${String((counter += 1)).padStart(12, "0")}`,
   });
-  return { service, repository };
+  // The tests of this helper fill the form that showed version 1 of each document.
+  const service: IntensiveRequestUseCases = {
+    ...raw,
+    requestSeat: (input) =>
+      raw.requestSeat({
+        acceptance: { conditionsVersion: 1, privacyVersion: 1 },
+        ...input,
+      }),
+  };
+  // `raw` is the service as built: a request without versions is unavailable.
+  return { service, raw, repository };
 }

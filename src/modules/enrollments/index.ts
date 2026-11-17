@@ -61,6 +61,10 @@ export {
   type RequestEnrollmentInput,
 } from "./application/public-enrollment-service";
 export type {
+  PolicyAcceptance,
+  PolicyVersionCheck,
+} from "./application/policy-acceptance";
+export type {
   AuditEntry,
   DuplicateOrder,
   OrderDraft,

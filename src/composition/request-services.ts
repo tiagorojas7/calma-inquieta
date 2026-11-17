@@ -87,6 +87,8 @@ import {
 } from "~/modules/insights";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
 import { createDrizzleStudentActivityStore } from "~/modules/enrollments/infrastructure/drizzle-student-activity-store";
+import { createPoliciesService, type PolicyUseCases } from "~/modules/policies";
+import { createDrizzlePolicyRepository } from "~/modules/policies/infrastructure/drizzle-policy-repository";
 import {
   createPrivateEventService,
   type PrivateEventUseCases,
@@ -111,6 +113,7 @@ import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/dr
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
 import { createOrderStockAdapter } from "./order-stock-adapter";
 import { createRequestStockAdapter } from "./request-stock-adapter";
+import { createPolicyVersionAdapter } from "./policy-version-adapter";
 import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
@@ -168,6 +171,8 @@ export interface AppServices {
   /** True only when both the Resend key and the sender address are configured. */
   readonly emailEnabled: boolean;
   readonly intensiveRequests: IntensiveRequestUseCases;
+  /** The site-wide conditions and privacy documents, with their version history. */
+  readonly policies: PolicyUseCases;
 }
 
 export interface RuntimeConfig {
@@ -294,6 +299,13 @@ export function createRequestServices(
       stock: stockStore,
     }),
   );
+  // One service reads the documents for the public pages and answers both
+  // forms' check of the versions a person accepted.
+  const policies = createPoliciesService({
+    repository: createDrizzlePolicyRepository(openSession),
+    clock: systemClock,
+  });
+  const policyVersions = createPolicyVersionAdapter(policies);
   const publicEnrollments = seats
     ? createPublicEnrollmentService({
         offers: enrollmentOffers,
@@ -308,6 +320,7 @@ export function createRequestServices(
           bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
         },
         policyVersion: "2026-10",
+        policies: policyVersions,
       })
     : null;
   const enrollmentServices = publicEnrollments
@@ -469,11 +482,13 @@ export function createRequestServices(
             random: {
               bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
             },
+            policies: policyVersions,
           }),
           notifications,
           defer,
         )
       : createUnavailableIntensiveRequestService(),
+    policies,
     reminders: createRemindersService({
       orders: createDrizzleOrderHistoryReader(openSession),
       clock: systemClock,

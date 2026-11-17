@@ -7,6 +7,7 @@ import type {
   TurnoFull,
 } from "../domain/order-core";
 import type { StudentContact } from "../domain/student-input";
+import type { PolicyAcceptance } from "./policy-acceptance";
 
 export interface OrderLineDraft {
   readonly materialId: string;
@@ -47,6 +48,11 @@ export interface OrderDraft {
   readonly materialsTotal: Money;
   readonly total: Money;
   readonly policyVersion: string;
+  /**
+   * The conditions and privacy versions the student accepted; absent for an
+   * order an owner creates by hand and for orders made before they existed.
+   */
+  readonly acceptance?: PolicyAcceptance;
   /** Position is the array index. */
   readonly lines: readonly OrderLineDraft[];
   /** Admin email when an owner enrolls a student by hand; absent for the public form. */

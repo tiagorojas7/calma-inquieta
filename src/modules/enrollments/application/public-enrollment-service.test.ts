@@ -5,6 +5,7 @@ import {
   materialFixture,
   offerFixture,
   pesos,
+  policyCheck,
   studentDraft,
 } from "~/testing/fakes/enrollments-builders";
 import { InMemoryOfferLookup } from "~/testing/fakes/enrollments-offer-lookup";
@@ -13,6 +14,7 @@ import { InMemoryOrderRepository } from "~/testing/fakes/enrollments-order-repos
 import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
 import type { EnrollmentOffer } from "./offer-lookup";
 import type { OfferedMaterialsLookup } from "./offered-materials";
+import type { PolicyVersionCheck } from "./policy-acceptance";
 import {
   createPublicEnrollmentService,
   type RequestEnrollmentInput,
@@ -26,6 +28,7 @@ function setup(
     clock?: Clock;
     materials?: OfferedMaterialsLookup;
     adminMaterials?: OfferedMaterialsLookup;
+    policies?: PolicyVersionCheck;
   } = {},
 ) {
   const offers = new InMemoryOfferLookup([options.offer ?? offerFixture()]);
@@ -52,6 +55,7 @@ function setup(
       },
     },
     policyVersion: "2026-10",
+    policies: options.policies ?? policyCheck(),
   });
   return { service, offers, materials: defaultMaterials, seats, orders };
 }
@@ -64,8 +68,15 @@ const request = (
   turnoId: "t-1",
   student: studentDraft(),
   lines: [],
+  acceptance: { conditionsVersion: 1, privacyVersion: 1 },
   ...overrides,
 });
+
+/** The request as a form without versions (or an owner) would send it. */
+const withoutAcceptance = (): RequestEnrollmentInput => {
+  const { slug, period, turnoId, student, lines } = request();
+  return { slug, period, turnoId, student, lines };
+};
 
 const withPeriod = (
   patch: Partial<NonNullable<EnrollmentOffer["period"]>>,
@@ -310,6 +321,90 @@ describe("requestEnrollment student validation and honeypot", () => {
     expect(seatLookup).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
     expect(orders.size()).toBe(0);
+  });
+});
+
+describe("requestEnrollment policy acceptance", () => {
+  it("stores the accepted versions on the created order", async () => {
+    const { service, orders } = setup({
+      policies: policyCheck({ conditions: [1, 2], privacy: [1, 3] }),
+    });
+    const result = await service.requestEnrollment(
+      request({ acceptance: { conditionsVersion: 2, privacyVersion: 3 } }),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.acceptance).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 3,
+    });
+  });
+
+  it.each([
+    ["conditions", { conditionsVersion: 9, privacyVersion: 1 }],
+    ["privacy", { conditionsVersion: 1, privacyVersion: 9 }],
+  ] as const)(
+    "refuses an unknown %s version as a policy issue and stores nothing",
+    async (_kind, acceptance) => {
+      const { service, orders } = setup();
+      const result = await service.requestEnrollment(request({ acceptance }));
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        },
+      });
+      expect(orders.size()).toBe(0);
+    },
+  );
+
+  it("is unavailable, storing nothing, when the form carried no versions", async () => {
+    const { service, orders } = setup();
+    const withoutVersions = withoutAcceptance();
+    const result = await service.requestEnrollment(withoutVersions);
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("is unavailable, storing nothing, when the versions cannot be checked", async () => {
+    const { service, orders } = setup({
+      policies: { isPublished: () => Promise.reject(new Error("offline")) },
+    });
+    const result = await service.requestEnrollment(request());
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("still reports the missing checkbox as required, even with an unknown version", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(
+      request({
+        student: studentDraft({ policyAccepted: false }),
+        acceptance: { conditionsVersion: 9, privacyVersion: 9 },
+      }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "policy", code: "required" }],
+      },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("does not ask about versions for an order an owner creates by hand, and stores none", async () => {
+    const isPublished = vi.fn(() => Promise.resolve(false));
+    const { service, orders } = setup({ policies: { isPublished } });
+    const withoutVersions = withoutAcceptance();
+    const result = await service.requestEnrollment(withoutVersions, {
+      createdBy: "owner@example.com",
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.acceptance).toBeUndefined();
+    expect(isPublished).not.toHaveBeenCalled();
   });
 });
 

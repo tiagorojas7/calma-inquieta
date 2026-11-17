@@ -3,12 +3,27 @@ import { Money } from "~/modules/_shared";
 import { InMemoryIntensiveRequestRepository } from "~/testing/fakes/in-memory-intensive-request-repository";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
-import type { StudentDraft } from "~/modules/enrollments";
+import type { PolicyVersionCheck, StudentDraft } from "~/modules/enrollments";
+import { policyCheck } from "~/testing/fakes/enrollments-builders";
 import type {
   IntensiveOffer,
   IntensiveOfferProject,
 } from "./intensive-offer-lookup";
-import { createIntensiveRequestService } from "./intensive-request-service";
+import {
+  createIntensiveRequestService,
+  type IntensiveRequestUseCases,
+} from "./intensive-request-service";
+
+const ACCEPTED = { conditionsVersion: 1, privacyVersion: 1 };
+
+/** The form of the tests accepts version 1 of each document unless a call says otherwise. */
+const accepting = (
+  service: IntensiveRequestUseCases,
+): IntensiveRequestUseCases => ({
+  ...service,
+  requestSeat: (input) =>
+    service.requestSeat({ acceptance: ACCEPTED, ...input }),
+});
 
 const pesos = (amount: number): Money => {
   const money = Money.fromCentavos(amount * 100);
@@ -70,10 +85,14 @@ function student(overrides: Partial<StudentDraft> = {}): StudentDraft {
   };
 }
 
-function setup(intensivo: IntensiveOffer | null = offer()) {
+function setup(
+  intensivo: IntensiveOffer | null = offer(),
+  policies: PolicyVersionCheck = policyCheck(),
+) {
   const repository = new InMemoryIntensiveRequestRepository();
   let counter = 0;
-  const service = createIntensiveRequestService({
+  const raw = createIntensiveRequestService({
+    policies,
     repository,
     offers: {
       findBySlug: (slug) =>
@@ -86,7 +105,7 @@ function setup(intensivo: IntensiveOffer | null = offer()) {
     newId: () =>
       `00000000-0000-4000-8000-${String(++counter).padStart(12, "0")}`,
   });
-  return { service, repository };
+  return { service: accepting(raw), raw, repository };
 }
 
 const ADMIN = testAdminActor("duena@example.com");
@@ -119,6 +138,103 @@ async function pendingRequest(
   if (!view.ok) throw new Error("no view");
   return sent.value.publicId;
 }
+
+describe("requestSeat policy acceptance", () => {
+  it("stores the accepted versions and the moment on the request", async () => {
+    const { service, repository } = setup(
+      offer(),
+      policyCheck({ conditions: [1, 2], privacy: [1, 3] }),
+    );
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+      acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+    });
+
+    expect(sent.ok).toBe(true);
+    const [stored] = [...repository.requests.values()];
+    expect(stored).toMatchObject({
+      acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+      policyAcceptedAt: NOW,
+    });
+  });
+
+  it.each([
+    ["conditions", { conditionsVersion: 9, privacyVersion: 1 }],
+    ["privacy", { conditionsVersion: 1, privacyVersion: 9 }],
+  ] as const)(
+    "refuses an unknown %s version as a policy issue and stores nothing",
+    async (_kind, acceptance) => {
+      const { service, repository } = setup();
+
+      const sent = await service.requestSeat({
+        slug: SLUG,
+        projectId: PROJECT_A.id,
+        student: student(),
+        acceptance,
+      });
+
+      expect(sent).toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        },
+      });
+      expect(repository.requests.size).toBe(0);
+    },
+  );
+
+  it("is unavailable, storing nothing, when the form carried no versions", async () => {
+    const { raw, repository } = setup();
+
+    const sent = await raw.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("is unavailable, storing nothing, when the versions cannot be checked", async () => {
+    const { service, repository } = setup(offer(), {
+      isPublished: () => Promise.reject(new Error("offline")),
+    });
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("still reports the missing checkbox as required, even with an unknown version", async () => {
+    const { service, repository } = setup();
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student({ policyAccepted: false }),
+      acceptance: { conditionsVersion: 9, privacyVersion: 9 },
+    });
+
+    expect(sent).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "policy", code: "required" }],
+      },
+    });
+    expect(repository.requests.size).toBe(0);
+  });
+});
 
 describe("requestSeat", () => {
   it("records a pending request with normalized contact data", async () => {
@@ -355,6 +471,7 @@ describe("getRequestByPublicId", () => {
     const catalog = { value: offer({ projects: [current] }) };
     const repository = new InMemoryIntensiveRequestRepository();
     const service = createIntensiveRequestService({
+      policies: policyCheck(),
       repository,
       offers: {
         findBySlug: () => Promise.resolve(catalog.value),
@@ -363,7 +480,7 @@ describe("getRequestByPublicId", () => {
       clock: fixedClock(NOW),
       random: { bytes: (length) => new Uint8Array(length).fill(7) },
     });
-    const sent = await service.requestSeat({
+    const sent = await accepting(service).requestSeat({
       slug: SLUG,
       projectId: current.id,
       student: student(),
@@ -459,6 +576,7 @@ describe("getOffer", () => {
 
   it("is unavailable when a dependency fails", async () => {
     const service = createIntensiveRequestService({
+      policies: policyCheck(),
       repository: new InMemoryIntensiveRequestRepository(),
       offers: {
         findBySlug: () => Promise.reject(new Error("db down")),

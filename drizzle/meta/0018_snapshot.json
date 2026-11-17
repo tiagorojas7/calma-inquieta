@@ -511,7 +511,19 @@
                                                                                            "type":  "text",
                                                                                            "primaryKey":  false,
                                                                                            "notNull":  false
-                                                                   }
+                                                                   },
+                                    "conditions_version": {
+                                      "name": "conditions_version",
+                                      "type": "integer",
+                                      "primaryKey": false,
+                                      "notNull": false
+                                    },
+                                    "privacy_version": {
+                                      "name": "privacy_version",
+                                      "type": "integer",
+                                      "primaryKey": false,
+                                      "notNull": false
+                                    }
                                                                },
                                                    "indexes":  {
                                                        "enrollment_order_student_period_active_unique": {
@@ -655,7 +667,11 @@
                                                                             "enrollment_order_seen_check":  {
                                                                                                                 "name":  "enrollment_order_seen_check",
                                                                                                                 "value":  "(\"enrollment_order\".\"seen_at\" IS NULL) = (\"enrollment_order\".\"seen_by\" IS NULL)"
-                                                                            }
+                                                                            },
+                                    "enrollment_order_acceptance_check": {
+                                      "name": "enrollment_order_acceptance_check",
+                                      "value": "(\"enrollment_order\".\"conditions_version\" IS NULL) = (\"enrollment_order\".\"privacy_version\" IS NULL)"
+                                    }
                                                                         },
                                                    "isRLSEnabled":  false
                                                },
@@ -1795,7 +1811,19 @@
                                                                                             "type":  "text",
                                                                                             "primaryKey":  false,
                                                                                             "notNull":  false
-                                                                         }
+                                                                         },
+                                    "conditions_version": {
+                                      "name": "conditions_version",
+                                      "type": "integer",
+                                      "primaryKey": false,
+                                      "notNull": false
+                                    },
+                                    "privacy_version": {
+                                      "name": "privacy_version",
+                                      "type": "integer",
+                                      "primaryKey": false,
+                                      "notNull": false
+                                    }
                                                                      },
                                                          "indexes":  {
                                                                          "intensive_seat_request_public_id_unique":  {
@@ -1915,7 +1943,11 @@
                                                                                   "intensive_seat_request_seen_check":  {
                                                                                                                                       "name":  "intensive_seat_request_seen_check",
                                                                                                                                       "value":  "(\"intensive_seat_request\".\"seen_at\" IS NULL) = (\"intensive_seat_request\".\"seen_by\" IS NULL)"
-                                                                                  }
+                                                                                  },
+                                    "intensive_seat_request_acceptance_check": {
+                                      "name": "intensive_seat_request_acceptance_check",
+                                      "value": "(\"intensive_seat_request\".\"conditions_version\" IS NULL) = (\"intensive_seat_request\".\"privacy_version\" IS NULL)"
+                                    }
                                                                               },
                                                          "isRLSEnabled":  false
                                                      },
@@ -2570,6 +2602,90 @@
                                                                    },
                                               "isRLSEnabled":  false
                                           },
+                   "public.policy_version": {
+                     "name": "policy_version",
+                     "schema": "",
+                     "columns": {
+                       "id": {
+                         "name": "id",
+                         "type": "uuid",
+                         "primaryKey": true,
+                         "notNull": true
+                       },
+                       "kind": {
+                         "name": "kind",
+                         "type": "text",
+                         "primaryKey": false,
+                         "notNull": true
+                       },
+                       "version": {
+                         "name": "version",
+                         "type": "integer",
+                         "primaryKey": false,
+                         "notNull": true
+                       },
+                       "body": {
+                         "name": "body",
+                         "type": "text",
+                         "primaryKey": false,
+                         "notNull": true
+                       },
+                       "published_at": {
+                         "name": "published_at",
+                         "type": "timestamp with time zone",
+                         "primaryKey": false,
+                         "notNull": true
+                       },
+                       "published_by": {
+                         "name": "published_by",
+                         "type": "text",
+                         "primaryKey": false,
+                         "notNull": true
+                       }
+                     },
+                     "indexes": {
+                       "policy_version_kind_version_unique": {
+                         "name": "policy_version_kind_version_unique",
+                         "columns": [
+                           {
+                             "expression": "kind",
+                             "isExpression": false,
+                             "asc": true,
+                             "nulls": "last"
+                           },
+                           {
+                             "expression": "version",
+                             "isExpression": false,
+                             "asc": true,
+                             "nulls": "last"
+                           }
+                         ],
+                         "isUnique": true,
+                         "concurrently": false,
+                         "method": "btree",
+                         "with": {}
+                       }
+                     },
+                     "foreignKeys": {},
+                     "compositePrimaryKeys": {},
+                     "uniqueConstraints": {},
+                     "policies": {},
+                     "checkConstraints": {
+                       "policy_version_kind_check": {
+                         "name": "policy_version_kind_check",
+                         "value": "\"policy_version\".\"kind\" IN ('conditions', 'privacy')"
+                       },
+                       "policy_version_version_check": {
+                         "name": "policy_version_version_check",
+                         "value": "\"policy_version\".\"version\" > 0"
+                       },
+                       "policy_version_body_check": {
+                         "name": "policy_version_body_check",
+                         "value": "\"policy_version\".\"body\" ~ '[^[:space:]]'"
+                       }
+                     },
+                     "isRLSEnabled": false
+                   },
                    "public.private_event_request":  {
                                                         "name":  "private_event_request",
                                                         "schema":  "",

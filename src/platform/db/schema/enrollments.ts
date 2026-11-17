@@ -110,6 +110,14 @@ export const enrollmentOrder = pgTable(
      */
     seenAt: timestamp("seen_at", { withTimezone: true }),
     seenBy: text("seen_by"),
+    /**
+     * The versions of the site-wide conditions and privacy documents the
+     * student accepted; both are null or both set. Null for orders made before
+     * the documents were versioned and for the ones an owner creates by hand.
+     * No foreign key: the policies schema is independent.
+     */
+    conditionsVersion: integer("conditions_version"),
+    privacyVersion: integer("privacy_version"),
   },
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
@@ -121,6 +129,10 @@ export const enrollmentOrder = pgTable(
       .where(
         sql`${table.status} <> 'cancelled' AND ${table.kind} = 'enrollment'`,
       ),
+    check(
+      "enrollment_order_acceptance_check",
+      sql`(${table.conditionsVersion} IS NULL) = (${table.privacyVersion} IS NULL)`,
+    ),
     check(
       "enrollment_order_seen_check",
       sql`(${table.seenAt} IS NULL) = (${table.seenBy} IS NULL)`,

@@ -14,6 +14,8 @@ import {
   generatePublicId,
   isPublicId,
   validateStudentInput,
+  type PolicyAcceptance,
+  type PolicyVersionCheck,
   type RandomBytes,
   type StudentDraft,
   type StudentField,
@@ -151,6 +153,12 @@ export interface IntensiveRequestUseCases {
     /** The chosen project: required, and one of the intensivo's. */
     readonly projectId: string;
     readonly student: StudentDraft;
+    /**
+     * The versions of the conditions and privacy documents the form showed.
+     * Without them the request is unavailable, so nothing is stored without a
+     * record of what was accepted.
+     */
+    readonly acceptance?: PolicyAcceptance;
   }): Promise<Result<{ readonly publicId: string }, RequestSeatError>>;
   /** Public: the projects of a visible workshop, whether or not it takes requests. */
   listProjects(
@@ -192,6 +200,8 @@ export interface IntensiveRequestServiceDeps {
   readonly offers: IntensiveOfferLookup;
   readonly clock: Clock;
   readonly random: RandomBytes;
+  /** Tells whether a posted conditions or privacy version was ever published. */
+  readonly policies: PolicyVersionCheck;
   readonly newId?: () => string;
 }
 
@@ -281,7 +291,7 @@ export function createIntensiveRequestService(
         : err({ kind: "not-found" });
     },
 
-    async requestSeat({ slug, projectId, student }) {
+    async requestSeat({ slug, projectId, student, acceptance }) {
       const valid = validateStudentInput(student, phoneDigits);
       if (!valid.ok) {
         if (valid.error.kind === "honeypot")
@@ -290,6 +300,19 @@ export function createIntensiveRequestService(
           });
         return err(valid.error);
       }
+      if (acceptance === undefined) return err(unavailable);
+      const known = await unavailableOnReject(
+        Promise.all([
+          deps.policies.isPublished("conditions", acceptance.conditionsVersion),
+          deps.policies.isPublished("privacy", acceptance.privacyVersion),
+        ]),
+      );
+      if (!known.ok) return known;
+      if (!known.value.every(Boolean))
+        return err({
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        });
       const open = await openOffer(slug);
       if (!open.ok) return open;
       const project = open.value.offer.projects.find(
@@ -311,6 +334,7 @@ export function createIntensiveRequestService(
           email: valid.value.email,
           phoneDigits: valid.value.phoneDigits,
           policyAcceptedAt: now,
+          acceptance,
           createdAt: now,
           paidAmount: null,
           paidOn: null,

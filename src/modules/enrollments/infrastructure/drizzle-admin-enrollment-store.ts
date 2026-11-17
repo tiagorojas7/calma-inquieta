@@ -219,6 +219,14 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     materialsTotal: money(row.materialsCentavos),
     total: money(row.totalCentavos),
     policyVersion: row.policyVersion,
+    ...(row.conditionsVersion === null || row.privacyVersion === null
+      ? {}
+      : {
+          acceptance: {
+            conditionsVersion: row.conditionsVersion,
+            privacyVersion: row.privacyVersion,
+          },
+        }),
     lines: lines.map((line) => ({
       materialId: line.materialId,
       variantId: line.variantId,
@@ -383,6 +391,9 @@ export function createDrizzleAdminEnrollmentStore(
               materialsCentavos: total,
               totalCentavos: total,
               policyVersion: parent.policyVersion,
+              // The sale carries the acceptance of the record it belongs to.
+              conditionsVersion: parent.conditionsVersion,
+              privacyVersion: parent.privacyVersion,
               requestedAt: input.now,
               kind: "material_sale",
               parentOrderId: parent.id,

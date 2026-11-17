@@ -17,6 +17,7 @@ import {
 } from "~/modules/notifications";
 import { createUnavailableAttendanceService } from "~/modules/attendance";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
+import { createUnavailablePoliciesService } from "~/modules/policies";
 import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
@@ -99,6 +100,7 @@ export function createTestServices(
         Promise.resolve(err({ kind: "unavailable" as const })),
     },
     intensiveRequests: createUnavailableIntensiveRequestService(),
+    policies: createUnavailablePoliciesService(),
     publicCatalog: createFakePublicCatalog(),
     privateEvents: createPrivateEventService({
       repository: new InMemoryPrivateEventRepository(),

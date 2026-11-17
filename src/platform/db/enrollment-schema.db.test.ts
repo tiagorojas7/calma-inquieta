@@ -352,6 +352,45 @@ describe("enrollment schema", () => {
     ]);
   });
 
+  it("stores both accepted policy versions or none, and nothing by default", async () => {
+    const id = "00000000-0000-4000-8000-0000000000e1";
+    await insertOrder({ id, email: "accepted@example.com" });
+    const read = () =>
+      client.query<{
+        conditions_version: number | null;
+        privacy_version: number | null;
+      }>(
+        "SELECT conditions_version, privacy_version FROM enrollment_order WHERE id = $1",
+        [id],
+      );
+    expect((await read()).rows).toEqual([
+      { conditions_version: null, privacy_version: null },
+    ]);
+
+    await client.query(
+      "UPDATE enrollment_order SET conditions_version = 2, privacy_version = 1 WHERE id = $1",
+      [id],
+    );
+    expect((await read()).rows).toEqual([
+      { conditions_version: 2, privacy_version: 1 },
+    ]);
+
+    for (const half of [
+      "conditions_version = NULL",
+      "privacy_version = NULL",
+    ]) {
+      await expect(
+        client.query(`UPDATE enrollment_order SET ${half} WHERE id = $1`, [id]),
+      ).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_acceptance_check",
+      });
+    }
+    expect((await read()).rows).toEqual([
+      { conditions_version: 2, privacy_version: 1 },
+    ]);
+  });
+
   describe("material sales", () => {
     /** Copies a monthly record into a row of the given kind, as the sale store does. */
     const copyAs = (

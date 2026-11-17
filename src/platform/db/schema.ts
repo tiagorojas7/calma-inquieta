@@ -5,6 +5,7 @@ export * from "./schema/enrollments";
 export * from "./schema/intensive-requests";
 export * from "./schema/materials";
 export * from "./schema/media";
+export * from "./schema/policies";
 export * from "./schema/private-events";
 export * from "./schema/students";
 export * from "./schema/teachers";

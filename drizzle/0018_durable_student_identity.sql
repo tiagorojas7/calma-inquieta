@@ -335,3 +335,35 @@ UPDATE "private_event_request" SET "seen_at" = "created_at", "seen_by" = 'migrat
 ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_seen_check" CHECK (("enrollment_order"."seen_at" IS NULL) = ("enrollment_order"."seen_by" IS NULL));--> statement-breakpoint
 ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_seen_check" CHECK (("intensive_seat_request"."seen_at" IS NULL) = ("intensive_seat_request"."seen_by" IS NULL));--> statement-breakpoint
 ALTER TABLE "private_event_request" ADD CONSTRAINT "private_event_request_seen_check" CHECK (("private_event_request"."seen_at" IS NULL) = ("private_event_request"."seen_by" IS NULL));
+
+--> statement-breakpoint
+CREATE TABLE "policy_version" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"kind" text NOT NULL,
+	"version" integer NOT NULL,
+	"body" text NOT NULL,
+	"published_at" timestamp with time zone NOT NULL,
+	"published_by" text NOT NULL,
+	CONSTRAINT "policy_version_kind_check" CHECK ("policy_version"."kind" IN ('conditions', 'privacy')),
+	CONSTRAINT "policy_version_version_check" CHECK ("policy_version"."version" > 0),
+	CONSTRAINT "policy_version_body_check" CHECK ("policy_version"."body" ~ '[^[:space:]]')
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX "policy_version_kind_version_unique" ON "policy_version" USING btree ("kind","version");--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "conditions_version" integer;--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "privacy_version" integer;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "conditions_version" integer;--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD COLUMN "privacy_version" integer;--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_acceptance_check" CHECK (("enrollment_order"."conditions_version" IS NULL) = ("enrollment_order"."privacy_version" IS NULL));--> statement-breakpoint
+ALTER TABLE "intensive_seat_request" ADD CONSTRAINT "intensive_seat_request_acceptance_check" CHECK (("intensive_seat_request"."conditions_version" IS NULL) = ("intensive_seat_request"."privacy_version" IS NULL));--> statement-breakpoint
+INSERT INTO "policy_version" ("id", "kind", "version", "body", "published_at", "published_by") VALUES
+	(md5('policy_version:conditions:1')::uuid, 'conditions', 1, 'La cuota mensual se abona en un único pago. Tu inscripción queda pendiente hasta que confirmamos el pago.
+
+Por cada inasistencia podés recuperar una clase en otro turno del mismo taller.
+
+En los workshops, la seña asegura tu lugar.
+
+Si no se alcanza el mínimo de personas, el workshop se cancela y se devuelve lo que corresponde.
+
+Cada workshop también muestra sus propias condiciones.', now(), 'migration 0018'),
+	(md5('policy_version:privacy:1')::uuid, 'privacy', 1, 'Usamos tus datos (nombre, correo electrónico y teléfono) solo para gestionar tu inscripción y para escribirte sobre ella. No los compartimos con terceros. Si querés corregirlos, escribinos.', now(), 'migration 0018');

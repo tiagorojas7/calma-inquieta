@@ -31,7 +31,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 ## Tasks
 
 - [ ] T1 (S1–S3, S7): durable student/monthly lifecycle and financial rules; one active order per student and month, cancelled orders excluded (L32-L33); fee override with $0 scholarships (L35-L43); optional catalog materials in manual orders (L44-L45); delegated foundation implemented durable identity and one-student/month persistence, then corrected inline after independent verification; RED/GREEN evidence recorded in L5; commits `6c2c7bb` and generated snapshot `cbc5242`; manual creation use case `34d8547` (inline) and screen `907674e` (U-D, delegated); monthly administration, financial corrections/refunds, attendance and make-ups remain; high risk items 1/3/4.
-- [ ] T2 (S4–S5): catalog stock, immutable sale valuation, supplier ordering and receiving; route inline unless independent disjoint units can run in parallel; high risk items 1/3/4; commit pending.
+- [ ] T2 (S4–S5): catalog stock, immutable sale valuation, supplier ordering and receiving; simple scope per L60 and L65 (units S-A then S-B, delegated); high risk items 1/3/4.
 - [ ] T3 (S6): selectable workshop projects, deposit/balance and material allocation; route inline; high risk items 1/3/4; commit pending.
 - [ ] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop deposit settlement and material margin wait for T2/T3; high risk items 1/3.
 - [ ] T7 (S2): remove materials from monthly periods. U-P (delegated, parallel): public flow without material step or gate. U-W (delegated, parallel): admin period and quick forms without the flag or material picker. The `materials_required` column and `period_material_offer` table stay dormant until a later migration slice; implemented, commits in L26; seam run in L27: unit/ui, lint, typecheck and format green, DB files that use T7 code green in L28; the other 17 run in T6.
@@ -283,3 +283,9 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - `order_line` already snapshots price and supplier.
     - The order statuses `materials_requested` and `materials_received` and the "pedir"/"entregar" consolidation screen already cover S5 at order level.
     - Proposed units: WU1 variant cost; WU2 `variant_stock` with adjustment; WU3 line source and cost snapshot; WU4 take and return stock at confirm, cancel and correction; WU5 insights with real cost; WU6-7 supplier purchases and idempotent receipt (optional).
+- L65 (2026-11-16, owner, verbatim, answering whether the order-level "pedidos/recibidos" marks are enough or each supplier purchase should be recorded): "Alcanza, simple (Recommended)". Option text: "Sigue como hoy: marcás pedido y recibido por inscripción. Si le comprás unidades de más al proveedor, las sumás con "ajustar stock". Son 5 partes."
+  - T2 scope: WU1-WU5 only; there are no supplier purchase records. Stock changes stay folded into the unapplied 0018 with minimal snapshot edits.
+  - Parent assumptions:
+    - Units taken from stock return on cancel or on a correction back to pending, but not once the order is `materials_received` (received is terminal: used and handed over).
+    - Variants without a price stay unsellable, as today.
+  - Route: unit S-A (WU1+WU2, materials: cost, stock table, stock adjustment) first, then unit S-B (WU3-WU5, enrollments: line source and cost snapshot, stock take and return, manual form stock labels, insights with real cost).

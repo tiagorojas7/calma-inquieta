@@ -36,7 +36,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 - [ ] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop deposit settlement and material margin wait for T2/T3; high risk items 1/3.
 - [ ] T7 (S2): remove materials from monthly periods. U-P (delegated, parallel): public flow without material step or gate. U-W (delegated, parallel): admin period and quick forms without the flag or material picker. The `materials_required` column and `period_material_offer` table stay dormant until a later migration slice; implemented, commits in L26; seam run in L27: unit/ui, lint, typecheck and format green, DB files that use T7 code green in L28; the other 17 run in T6.
 - [ ] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell, global policies and complete mobile verification remain; high risk items 2/3 for consent and shared notifications.
-- [ ] T6 (S1–S11): integrated regression, migration rehearsal and mobile browser verification; route delegated only if a long suite or named high-risk verifier requires it; commit pending.
+- [ ] T6 (S1–S11): exhaustive final verification per L67 (per-area independent verifiers, full DB suite, 0018 rehearsal, differential, sliced native review, lint, typecheck, phone walkthrough); commit pending.
 
 ## Log
 
@@ -296,3 +296,13 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - The port `VariantStockPort` (`onHand`, `take(tx,…)`, `put(tx,…)`, with a `StockStamp`) is implemented by `createDrizzleStockStore`.
   - Writer evidence: RED observed for the unit, service, form and UI tests; the DB cost assertions have no separate RED. Unit/ui 18 files / 185 passed (an earlier full unit/ui run gave 4669). DB: material repository 20, stock store 10 (10 concurrent takes on 3 units give 3 successes), migrate 7, catalog import 4. `drizzle-kit generate` reports no changes, with 152 snapshot lines inserted and none deleted.
   - Unit S-B (line source and cost snapshot, stock take and return, manual form labels, insights cost) is delegated next. One seam run, verifier and review will cover S-A and S-B.
+- L67 (2026-11-16, owner, verbatim, answering whether to drop the per-unit independent verifier and native review): "Si, que corra una sola vez al final, de forma exhaustiva para ya avanzar mas rapido, la última verificacion final tiene que ser mas profunda, ya que al no hacerse ahora, al final tiene que ser mas detallada".
+  - From S-B onward, units run their own RED/GREEN tests and the full unit/ui seam, with no per-unit verifier and no per-unit native review.
+  - T6 becomes an exhaustive final verification over everything since the last reviewed boundary (`d078b52`, plus the fix `5dc581e`):
+    - independent verifiers per area: enrollments and payments, stock, attendance, students, workshop projects, panel;
+    - the 17 DB files never rerun after T7, and the full DB suite;
+    - a migration 0018 rehearsal on a copy of staging-shaped data;
+    - the differential against the baseline;
+    - native review split into slices under the lens budget;
+    - full lint and typecheck;
+    - a phone browser walkthrough.

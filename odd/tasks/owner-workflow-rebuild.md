@@ -269,3 +269,8 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - Deactivating a student with no `student` row returns not-found.
   - Seam run at `0845c73` (covers A2 and P1): `--project unit` 296 files / 3558 passed; `--project ui` 124 files / 1069 passed.
   - One independent verifier covers A2 and P1.
+- L63 (2026-11-16): independent verifier for A2 (`146f654`) and P1 (`0845c73`), all four items PASS.
+  - A2: missed and done make-ups are terminal for each other, rebooking returns `make-up-used`, and the raw-SQL checks accept only consistent who/when.
+  - P1: deactivating and reactivating leaves orders, audit, note, attendance and student identity byte-identical. Public, free manual and phone-match enrollments reactivate the profile, while refusals (duplicate month, full turno, conflicting identity) leave it inactive.
+  - The differential dump of enrollment and make-up flows is identical between baseline `1031e42` and `0845c73` (350 lines).
+  - 0018 on legacy data with done and pending make-ups migrates, the new checks hold, and `drizzle-kit generate` reports no changes.

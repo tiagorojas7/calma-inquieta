@@ -321,3 +321,16 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - A `materials_received` order corrected back to pending and paid again takes its stock lines a second time.
   - Per L67, no per-unit verifier or review.
 - L69 (2026-11-16, owner, verbatim, answering whether workshop projects take materials from stock): "Sí, simple (Recommended)" (option text: "Cada proyecto lista sus materiales por participante. Al confirmar la seña se descuentan del stock propio; lo que no hay aparece en la lista de pedidos al proveedor. Si se cancela, vuelven al stock."). T3 is planned after a read-only map of intensives and reservations.
+- L70 (2026-11-16): owner asked "Espera, no estas confundiendo talleres con worksho cierto?". Terminology confirmed: T3/S6 is about the dated one-off workshops (`intensive_workshop` in code, "workshops" on the public site), NOT the monthly "talleres". Read-only map of intensives:
+  - Each intensivo has one price and one deposit. Request statuses are pending, confirmed (deposit paid) and cancelled. Confirmation runs under an advisory lock with a capacity guard; cancel is not transactional.
+  - There is no project, no balance and no materials.
+  - Insights pay the teacher on deposits only.
+  - Proposed units:
+    - W1: schema in 0018 (`intensive_project`, `intensive_project_material`, `intensive_request_material`, request project, price and deposit snapshot, balance columns, backfill of one project per intensivo).
+    - W2: projects admin.
+    - W3: bill of materials editor.
+    - W4: public project choice.
+    - W5: atomic stock allocation at confirm and return at cancel.
+    - W6: balance payment.
+    - W7: settlement on full payment and material cost.
+    - W8: intensivo supplier lines in the "pedir" list.

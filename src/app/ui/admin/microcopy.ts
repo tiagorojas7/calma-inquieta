@@ -135,6 +135,12 @@ export const adminMicrocopy = {
         count === 1
           ? "1 pedido marcado como recibido."
           : `${String(count)} pedidos marcados como recibidos.`,
+      "workshop-requested": (count: number) =>
+        count === 1
+          ? "Se marcó 1 material del workshop como pedido."
+          : `Se marcaron ${String(count)} materiales del workshop como pedidos.`,
+      workshopConsequence:
+        "Marca como pedidos los materiales de este workshop y los saca de la lista.",
       columns: { material: "Material", quantity: "Cantidad", total: "Total" },
       itemsTitle: "Qué pedir",
       workshopOrigin: (name: string) => `Workshop: ${name}`,

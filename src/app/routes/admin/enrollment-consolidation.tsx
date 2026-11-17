@@ -23,7 +23,7 @@ const CORDOBA_OFFSET_MS = 10_800_000;
 const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_ORDERS = 200;
 const BASE_PATH = "/admin/inscripciones/materiales";
-const FEEDBACK = ["requested", "received"] as const;
+const FEEDBACK = ["requested", "received", "workshop-requested"] as const;
 
 export function meta() {
   return [{ title: "Materiales | Panel | Calma Inquieta" }];
@@ -86,7 +86,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const workshops = new Set(
     consolidation.suppliers.flatMap((supplier) =>
       supplier.materials.flatMap((item) =>
-        item.origin === undefined ? [] : [item.origin],
+        item.originId === undefined ? [] : [item.originId],
       ),
     ),
   );
@@ -114,7 +114,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         label: `${item.materialName} ${item.variantLabel}`,
         quantity: item.quantity,
         total: formatPesos(item.total),
-        ...(item.origin === undefined ? {} : { origin: item.origin }),
+        ...(item.origin === undefined || item.originId === undefined
+          ? {}
+          : { origin: item.origin, originId: item.originId }),
       })),
       total: formatPesos(supplier.total),
       summary: supplier.summary,
@@ -132,14 +134,40 @@ const INTENTS = {
   "mark-received": { code: "received", method: "markMaterialsReceivedBulk" },
 } as const;
 
+/** "Ya lo pedí" on a workshop row: its lines from that supplier leave the list. */
+async function markWorkshopRequested(
+  actor: ReturnType<typeof requireAdmin>,
+  form: FormData,
+  context: Route.ActionArgs["context"],
+  view: { period: string; section: MaterialsSection },
+) {
+  const workshopId = form.get("workshopId");
+  const supplierId = form.get("supplierId");
+  if (
+    typeof workshopId !== "string" ||
+    typeof supplierId !== "string" ||
+    !isUuid(workshopId) ||
+    !isUuid(supplierId)
+  )
+    throw data(null, { status: 400 });
+  const marked = await context
+    .get(servicesContext)
+    .consolidation.markWorkshopOrdered(actor, workshopId, supplierId);
+  if (!marked.ok) throw enrollmentFailureResponse(marked.error);
+  const back = `${BASE_PATH}?mes=${view.period}&seccion=${view.section}`;
+  // Pressed again (or by the other owner meanwhile): nothing moved, no notice.
+  return redirect(
+    marked.value.count === 0
+      ? back
+      : `${withFeedback(back, "workshop-requested")}&n=${String(marked.value.count)}`,
+  );
+}
+
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData().catch(() => null);
   if (form === null) throw data(null, { status: 400 });
   const intent = form.get("intent");
-  if (intent !== "mark-requested" && intent !== "mark-received")
-    throw data(null, { status: 400 });
-  const { code, method } = INTENTS[intent];
   const period = periodOf(
     typeof form.get("mes") === "string" ? (form.get("mes") as string) : null,
   );
@@ -148,6 +176,11 @@ export async function action({ request, context }: Route.ActionArgs) {
       ? (form.get("seccion") as string)
       : null,
   );
+  if (intent === "mark-workshop-requested")
+    return markWorkshopRequested(actor, form, context, { period, section });
+  if (intent !== "mark-requested" && intent !== "mark-received")
+    throw data(null, { status: 400 });
+  const { code, method } = INTENTS[intent];
   const orderIds = [
     ...new Set(
       form

@@ -16,6 +16,8 @@ export interface ConsolidatedMaterial {
   readonly total: Money;
   /** The workshop (intensivo) the units are for; absent on monthly lines. */
   readonly origin?: string;
+  /** The id of that workshop, present with `origin`. */
+  readonly originId?: string;
 }
 
 /**
@@ -23,6 +25,7 @@ export interface ConsolidatedMaterial {
  * could not cover. Another module owns them; composition wires the reader.
  */
 export interface WorkshopSupplierLine {
+  readonly workshopId: string;
   readonly workshopName: string;
   readonly supplierId: string;
   /** The name frozen on the request line, like the monthly lines. */
@@ -36,7 +39,13 @@ export interface WorkshopSupplierLine {
 
 /** The workshop lines of the workshops held in a month (`YYYY-MM`). */
 export interface WorkshopSupplierLines {
+  /** Only the lines not marked as ordered yet. */
   lines(period: string): Promise<readonly WorkshopSupplierLine[]>;
+  /**
+   * Marks the not-yet-ordered lines one supplier owes a workshop as ordered
+   * and returns how many moved; 0 when there was nothing left to mark.
+   */
+  markOrdered(workshopId: string, supplierId: string): Promise<number>;
 }
 
 export interface SupplierSection {
@@ -74,6 +83,15 @@ export interface SupplierConsolidationUseCases {
     actor: Actor,
     period: string,
   ): Promise<Result<readonly DeliveryOrder[], ConsolidationError>>;
+  /**
+   * The owner ordered a workshop's materials from one supplier: those lines
+   * leave the purchase list. Repeating it changes nothing (count 0).
+   */
+  markWorkshopOrdered(
+    actor: Actor,
+    workshopId: string,
+    supplierId: string,
+  ): Promise<Result<{ readonly count: number }, ConsolidationError>>;
 }
 
 const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -95,6 +113,8 @@ interface NeedLine {
   readonly unitPrice: Money;
   /** The workshop name; null on monthly lines. */
   readonly origin: string | null;
+  /** The workshop id; null on monthly lines. */
+  readonly originId: string | null;
   /** The paid order the bulk "requested" mark applies to; null on workshop lines. */
   readonly requestableOrderId: string | null;
 }
@@ -107,6 +127,7 @@ const monthlyNeed = (line: ConsolidationLine): NeedLine => ({
   quantity: line.quantity,
   unitPrice: line.unitPrice,
   origin: null,
+  originId: null,
   requestableOrderId: line.status === "paid" ? line.orderId : null,
 });
 
@@ -124,6 +145,7 @@ const workshopNeed = (line: WorkshopSupplierLine): NeedLine => {
     quantity: line.quantity,
     unitPrice: cost?.ok ? cost.value : Money.zero(),
     origin: line.workshopName,
+    originId: line.workshopId,
     requestableOrderId: null,
   };
 };
@@ -135,7 +157,7 @@ function groupMaterials(
 ): ConsolidatedMaterial[] {
   const groups = new Map<string, NeedLine[]>();
   for (const item of lines) {
-    const origin = byOrigin ? (item.origin ?? "") : "";
+    const origin = byOrigin ? (item.originId ?? "") : "";
     const key = `${item.materialName}\u0000${item.variantLabel}\u0000${origin}`;
     groups.set(key, [...(groups.get(key) ?? []), item]);
   }
@@ -150,14 +172,17 @@ function groupMaterials(
         total: sumOf(
           group.map((item) => item.unitPrice.multiply(item.quantity)),
         ),
-        ...(byOrigin && head.origin !== null ? { origin: head.origin } : {}),
+        ...(byOrigin && head.origin !== null && head.originId !== null
+          ? { origin: head.origin, originId: head.originId }
+          : {}),
       };
     })
     .sort(
       (a, b) =>
         byText(a.materialName, b.materialName) ||
         byText(a.variantLabel, b.variantLabel) ||
-        byText(a.origin ?? "", b.origin ?? ""),
+        byText(a.origin ?? "", b.origin ?? "") ||
+        byText(a.originId ?? "", b.originId ?? ""),
     );
 }
 
@@ -200,7 +225,11 @@ export function createUnavailableSupplierConsolidationService(): SupplierConsoli
       admin.ok ? err({ kind: "unavailable" as const }) : admin,
     );
   };
-  return { consolidate: unavailable, deliveries: unavailable };
+  return {
+    consolidate: unavailable,
+    deliveries: unavailable,
+    markWorkshopOrdered: unavailable,
+  };
 }
 
 export function createSupplierConsolidationService(deps: {
@@ -218,6 +247,18 @@ export function createSupplierConsolidationService(deps: {
       if (!PERIOD_KEY.test(period)) return err({ kind: "invalid" });
       try {
         return ok(await deps.store.deliveryOrders(period));
+      } catch {
+        return err({ kind: "unavailable" });
+      }
+    },
+    async markWorkshopOrdered(actor, workshopId, supplierId) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      if (!deps.workshopLines) return err({ kind: "unavailable" });
+      try {
+        return ok({
+          count: await deps.workshopLines.markOrdered(workshopId, supplierId),
+        });
       } catch {
         return err({ kind: "unavailable" });
       }

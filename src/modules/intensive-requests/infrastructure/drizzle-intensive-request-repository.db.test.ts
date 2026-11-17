@@ -23,6 +23,7 @@ import {
   type TestDatabase,
 } from "~/testing/db/test-database";
 import { createDrizzleIntensiveRequestRepository } from "./drizzle-intensive-request-repository";
+import { createDrizzleWorkshopSupplierLinesReader } from "./drizzle-workshop-supplier-lines-reader";
 
 const created: TestDatabase[] = [];
 afterAll(async () => {
@@ -676,6 +677,60 @@ describe("cancelling returns the allocated material", () => {
       "supplier",
       "stock",
     ]);
+  });
+
+  it("puts every unit of a request with only stock lines back, as before", async () => {
+    const { repo, stock } = await seedAllocation();
+    await stock.seed(KG, 5);
+    await stock.seed(HALF, 4);
+    await stock.seed(BRUSH, 3);
+    await repo.insert(pendingRequest(1));
+    await repo.confirm(confirmOf(requestNumber(1)));
+    expect([
+      await stock.onHand(KG),
+      await stock.onHand(HALF),
+      await stock.onHand(BRUSH),
+    ]).toEqual([3, 3, 2]);
+
+    expect((await repo.cancel(cancelOf(requestNumber(1), noRefund))).ok).toBe(
+      true,
+    );
+
+    expect([
+      await stock.onHand(KG),
+      await stock.onHand(HALF),
+      await stock.onHand(BRUSH),
+    ]).toEqual([5, 4, 3]);
+  });
+
+  it("puts the supplier lines already ordered into the stock once, and only those", async () => {
+    const { repo, stock, openSession } = await seedAllocation();
+    // No stock at all: the three lines wait on their suppliers.
+    await repo.insert(pendingRequest(1));
+    await repo.confirm(confirmOf(requestNumber(1)));
+    const marked = await createDrizzleWorkshopSupplierLinesReader(
+      openSession,
+    ).markOrdered(ID_A, SUPPLIER_A);
+    expect(marked).toBe(2);
+
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        repo.cancel(cancelOf(requestNumber(1), noRefund)),
+      ),
+    );
+
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    // Clay (supplier A, ordered): 1 kg x2 and 500 g x1. The brush (supplier B)
+    // was never ordered, so it is only released.
+    expect([
+      await stock.onHand(KG),
+      await stock.onHand(HALF),
+      await stock.onHand(BRUSH),
+    ]).toEqual([2, 1, 0]);
+    expect((await repo.cancel(cancelOf(requestNumber(1), noRefund))).ok).toBe(
+      false,
+    );
+    expect(await stock.onHand(KG)).toBe(2);
   });
 
   it("changes nothing when it is cancelled again, even at the same moment", async () => {

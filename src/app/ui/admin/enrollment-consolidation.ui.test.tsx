@@ -164,6 +164,7 @@ describe("EnrollmentConsolidation: workshop lines", () => {
             quantity: 2,
             total: "$ 600",
             origin: "Torno intensivo",
+            originId: "w1",
           },
         ],
       },
@@ -185,8 +186,75 @@ describe("EnrollmentConsolidation: workshop lines", () => {
     expect(rows[1]).toHaveTextContent("Workshop: Torno intensivo");
   });
 
-  it("offers nothing to mark as requested for a supplier that only has workshop lines", () => {
-    render(
+  it("gives each workshop of the supplier its own Ya lo pedí, apart from the monthly one", () => {
+    const { container } = render(
+      <EnrollmentConsolidation
+        {...mixed}
+        suppliers={[
+          {
+            ...first,
+            materials: [
+              ...first.materials,
+              {
+                label: "Arcilla Grande",
+                quantity: 2,
+                total: "$ 600",
+                origin: "Torno intensivo",
+                originId: "w1",
+              },
+              {
+                label: "Esmalte Azul",
+                quantity: 1,
+                total: "$ 100",
+                origin: "Torno intensivo",
+                originId: "w1",
+              },
+              {
+                label: "Arcilla Grande",
+                quantity: 4,
+                total: "$ 1.200",
+                origin: "Pintura intensiva",
+                originId: "w2",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const torno = screen.getByRole("form", {
+      name: "Workshop: Torno intensivo",
+    });
+    const pintura = screen.getByRole("form", {
+      name: "Workshop: Pintura intensiva",
+    });
+    expect(torno).toHaveAttribute("method", "post");
+    expect(
+      within(torno).getByRole("button", { name: "Ya lo pedí" }),
+    ).toBeVisible();
+    expect(
+      within(pintura).getByRole("button", { name: "Ya lo pedí" }),
+    ).toBeVisible();
+    expect(torno.querySelector('input[name="intent"]')).toHaveValue(
+      "mark-workshop-requested",
+    );
+    expect(torno.querySelector('input[name="workshopId"]')).toHaveValue("w1");
+    expect(pintura.querySelector('input[name="workshopId"]')).toHaveValue("w2");
+    expect(torno.querySelector('input[name="supplierId"]')).toHaveValue("s1");
+    expect(torno.querySelector('input[name="mes"]')).toHaveValue("2026-11");
+    expect(torno.querySelector('input[name="seccion"]')).toHaveValue("pedir");
+    expect(torno.querySelector('input[name="orderId"]')).toBeNull();
+    // The monthly form is still there, once, with its own orders.
+    expect(
+      container.querySelectorAll(
+        'input[name="intent"][value="mark-requested"]',
+      ),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll('input[name="orderId"]')).toHaveLength(2);
+  });
+
+  it("offers only the workshop's Ya lo pedí for a supplier that only has workshop lines", () => {
+    const { container } = render(
       <EnrollmentConsolidation
         {...mixed}
         suppliers={[
@@ -198,6 +266,7 @@ describe("EnrollmentConsolidation: workshop lines", () => {
                 quantity: 2,
                 total: "$ 600",
                 origin: "Torno intensivo",
+                originId: "w1",
               },
             ],
             orderIds: [],
@@ -206,8 +275,52 @@ describe("EnrollmentConsolidation: workshop lines", () => {
       />,
     );
 
-    expect(screen.getByText("Workshop: Torno intensivo")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Ya lo pedí" })).toBeNull();
+    expect(
+      screen.getByRole("form", { name: "Workshop: Torno intensivo" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Ya lo pedí" })).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelector('input[name="intent"][value="mark-requested"]'),
+    ).toBeNull();
+  });
+
+  it("announces the workshop lines just marked, with their count and no delivery link", () => {
+    render(
+      <EnrollmentConsolidation
+        {...mixed}
+        notice={{ kind: "workshop-requested", count: 3 }}
+      />,
+    );
+
+    expect(
+      screen
+        .getByText("Se marcaron 3 materiales del workshop como pedidos.")
+        .closest("[role=status]"),
+    ).not.toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Ir a Para entregar" }),
+    ).toBeNull();
+  });
+
+  it("announces a single line in the singular", () => {
+    render(
+      <EnrollmentConsolidation
+        {...mixed}
+        notice={{ kind: "workshop-requested", count: 1 }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Se marcó 1 material del workshop como pedido."),
+    ).toBeVisible();
+  });
+
+  it("has no accessibility violations with workshop forms", async () => {
+    const { container } = render(<EnrollmentConsolidation {...mixed} />);
+
+    await expectNoAxeViolations(container);
   });
 });
 

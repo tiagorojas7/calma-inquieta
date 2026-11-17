@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm";
 import { intensiveRequestMaterial } from "~/platform/db/schema/intensive-requests";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type {
@@ -74,8 +74,10 @@ export async function allocateProjectMaterials(
 
 /**
  * Puts back the units of a request's `stock` lines inside the caller's
- * transaction, once, when a confirmed request is cancelled. `supplier` lines
- * took nothing, so there is nothing to return for them.
+ * transaction, once, when a confirmed request is cancelled. A `supplier` line
+ * took nothing from the stock: while it was not ordered there is nothing to
+ * return, but once the owner marked it as ordered the units are hers, so they
+ * join the studio stock.
  */
 export async function returnRequestStock(
   tx: Db,
@@ -92,7 +94,13 @@ export async function returnRequestStock(
     .where(
       and(
         eq(intensiveRequestMaterial.requestId, requestId),
-        eq(intensiveRequestMaterial.source, "stock"),
+        or(
+          eq(intensiveRequestMaterial.source, "stock"),
+          and(
+            eq(intensiveRequestMaterial.source, "supplier"),
+            isNotNull(intensiveRequestMaterial.requestedAt),
+          ),
+        ),
       ),
     )
     .orderBy(

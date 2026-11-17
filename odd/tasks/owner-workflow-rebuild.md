@@ -500,3 +500,27 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - WSP: S6, S8, S11.
     - PNL: S9, S10.
   - Still to run: 0018 rehearsal on staging-shaped data, one correction batch for verifier blockers, native review slices, and the owners' real-phone walkthrough.
+- L96 (2026-11-17, owner, verbatim, new request during T6): "Me gustaria que las notificaciones varien de color segun lo que se este notificando". This reopens part of S9 (the bell and `/admin/novedades`). The colour scheme is asked next; the change will join the T6 correction batch.
+- L97 (2026-11-17, owner, verbatim, answering how the notification colours are chosen): "El color de cada sección (Recommended)" (option text: "Cada aviso usa el mismo color e ícono que su sección en el menú: inscripciones en lila (Inscripciones), reservas de workshop en el color de Workshops, consultas de eventos privados en el de Eventos. En \"Pagos pendientes\": cuotas en lila, señas y saldos en el color de Workshops, ventas de materiales en amarillo (Materiales). Lo reconocés de un vistazo porque ya lo ves en el menú.").
+- L98 (2026-11-17): T6 verifier verdicts, full notes in `...\scratchpad\t6\results.md`.
+
+  | Area | Specs | Verdict |
+  | --- | --- | --- |
+  | ATT | S7 | pass |
+  | STU | S1 profile | fail: STU-1 |
+  | ENR | S1, S2, S3 | S1 and S2 pass; S3 fails on ENR-B1 |
+  | STK | S4, S5 | S4 passes; S5 fails on STK-1 (same root as ENR-B1) |
+  | WSP | S6, S8, S11 | pass |
+  | PNL | S9, S10 | pass |
+
+  - Blockers:
+    - STU-1: a material sale copies its parent's contact snapshot but is stamped now, so the student detail shows a stale name and phone while the list shows the corrected ones.
+    - ENR-B1 / STK-1: a `materials_received` record corrected back to pending and paid again takes its stock lines a second time. With no units left, the delivered line also flips to `supplier`, so it is bought again.
+  - Advisories fixed in the same batch:
+    - PNL-A1 and L93: hide the legacy "Política aceptada: 2026-10" line on owner-created orders and on orders with recorded versions.
+    - PNL-A2: the monthly form's unchecked-box error names only privacy.
+    - WSP: the teacher-detail percentage post is not checked against the teacher in the URL.
+    - STK: the sale cancel copy promises a stock return that a received sale does not get.
+  - Correction batch:
+    - Unit F1 (delegated, parallel): STU-1, the L96/L97 colours and the advisories above.
+    - Unit F2 (delegated, after the DB suite ends, because it changes 0018): ENR-B1 / STK-1 with a per-line stock-taken mark.

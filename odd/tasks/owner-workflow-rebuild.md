@@ -489,3 +489,14 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - (5) Sales in Recordatorios: "No, quedan afuera (Recommended)" (option text: "Así funciona hoy: Recordatorios solo muestra las inscripciones del mes. Una venta pendiente se ve en la campanita y en su inscripción, pero no genera recordatorio de pago."). Confirmed, no change.
   - (6) Email on a sale's payment: "No, sin correo (Recommended)" (option text: "Así funciona hoy: la venta se registra y se cobra en el estudio; confirmar su pago no envía ningún correo. La inscripción del mes sigue mandando el suyo como siempre."). Confirmed, no change.
   - (7, L92 parent assumption) What an owner-created order records: "Sin registro de aceptación (Recommended)" (option text: "Así funciona hoy: la inscripción manual queda con \"Sin registro de aceptación\", porque la alumna no leyó ni aceptó nada en la web. Las ventas de materiales copian lo que aceptó su inscripción."). Confirmed, no change. All sales and policy assumptions now hold as built.
+- L95 (2026-11-17): T6 started.
+  - Lint: ESLint over the repository is clean except 5 parsing errors in the untracked `.agents/` folder (not ours, untouched). Prettier is clean after formatting this document (`cc6adad`). `pnpm typecheck` exit 0 at `b0eb1b0`. Unit 318/4037 and ui 132/1175 last ran green at `55d3feb`.
+  - Full DB suite (43 files, one per command, retried once on failure) running in the background; per-file log in `...\scratchpad\t6\db-summary.txt`.
+  - Six independent verifiers (worker-high) launched in parallel with a shared brief (`...\scratchpad\t6\verifier-brief.md`), each judging its area against baseline `d078b52` with probes and a differential:
+    - ENR: S1 enrollment side, S2, S3.
+    - STK: S4, S5.
+    - ATT: S7.
+    - STU: S1 student profile.
+    - WSP: S6, S8, S11.
+    - PNL: S9, S10.
+  - Still to run: 0018 rehearsal on staging-shaped data, one correction batch for verifier blockers, native review slices, and the owners' real-phone walkthrough.

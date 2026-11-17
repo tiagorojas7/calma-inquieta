@@ -97,6 +97,7 @@ describe("intensives guided flow", () => {
           status: "draft",
           feedback: "published",
           values,
+          projects: [],
           teachers: [],
           audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
         }),
@@ -116,5 +117,103 @@ describe("intensives guided flow", () => {
       "aria-current",
       "page",
     );
+  });
+
+  it("detail lists the projects of the workshop and confirms a project change", async () => {
+    const Stub = createRoutesStub([
+      {
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => ({
+          id: "i1",
+          status: "draft",
+          feedback: "projectAdded",
+          values,
+          projects: [
+            {
+              id: "p1",
+              name: "Taza de torno",
+              amounts: { price: "$ 45.000", deposit: "$ 15.000" },
+              image: null,
+              values: {
+                name: "Taza de torno",
+                price: "45000",
+                deposit: "15000",
+                image: null,
+              },
+            },
+          ],
+          teachers: [],
+          audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
+        }),
+      },
+    ]);
+    const { container } = render(
+      <Stub initialEntries={["/admin/intensivos/i1?ok=projectAdded"]} />,
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Proyecto agregado",
+    );
+    const list = screen.getByRole("list", { name: "Proyectos" });
+    expect(within(list).getByText("Taza de torno")).toBeVisible();
+    expect(
+      within(list).getByText("Precio $ 45.000 · Seña $ 15.000"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Agregar proyecto" }).closest("form"),
+    ).not.toBe(screen.getByLabelText("Nombre").closest("form"));
+    await expectNoAxeViolations(container);
+  });
+
+  it("detail shows what a refused project action returned", async () => {
+    const loaderData = {
+      id: "i1",
+      status: "draft",
+      values,
+      projects: [],
+      teachers: [],
+      audit: { updatedBy: "a@x.test", updatedAt: "1 dic 2026" },
+    };
+    const Stub = createRoutesStub([
+      {
+        id: "detail",
+        path: "/admin/intensivos/:id",
+        Component: AdminIntensiveDetail,
+        action: () => null,
+        loader: () => loaderData,
+      },
+    ]);
+
+    render(
+      <Stub
+        initialEntries={["/admin/intensivos/i1"]}
+        hydrationData={{
+          loaderData: { detail: loaderData },
+          actionData: {
+            detail: {
+              projects: {
+                target: "new",
+                values: {
+                  name: "",
+                  price: "1000",
+                  deposit: "2000",
+                  image: null,
+                },
+                errors: { name: "Completá este campo." },
+                formError: "Revisá los campos marcados e intentá de nuevo.",
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(await screen.findByText("Completá este campo.")).toBeVisible();
+    expect(screen.getByLabelText("Precio total (en pesos)")).toHaveValue(
+      "1000",
+    );
+    expect(screen.getByLabelText("Nombre")).toHaveValue("Cerámica de sábado");
   });
 });

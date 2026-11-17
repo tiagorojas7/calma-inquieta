@@ -77,6 +77,7 @@ function context(
     get?: IntensivesService["get"];
     update?: IntensivesService["update"];
     list?: TeachersService["list"];
+    listProjects?: IntensivesService["listProjects"];
   } = {},
 ) {
   return adminContext(
@@ -84,6 +85,9 @@ function context(
       intensives: withOverrides(createUnavailableService<IntensivesService>(), {
         ...(options.get ? { get: options.get } : {}),
         ...(options.update ? { update: options.update } : {}),
+        listProjects:
+          options.listProjects ??
+          (() => Promise.resolve({ ok: true as const, value: [] })),
       }),
       teachers: withOverrides(
         createUnavailableService<TeachersService>(),
@@ -133,6 +137,43 @@ function submitIntent(
     context: lifecycleContext(methods, admin),
   } as never);
 }
+
+const project = {
+  id: "p1",
+  intensiveId: "i1",
+  position: 0,
+  name: "Taza de torno",
+  image: {
+    assetId: "img-1",
+    alt: "Una taza",
+    asset: { src: "/imagenes/taza.webp" },
+  },
+  price: money(45000),
+  deposit: money(15000),
+  audit: {
+    updatedBy: "a@x.test",
+    updatedAt: new Date("2026-10-10T03:30:00.000Z"),
+  },
+};
+const plainProject = {
+  id: "p2",
+  intensiveId: "i1",
+  position: 1,
+  name: "Plato hondo",
+  image: null,
+  price: money(30000),
+  deposit: money(10000),
+  audit: project.audit,
+};
+const projectFields = {
+  intent: "project-add",
+  name: "Taza nueva",
+  price: "45000",
+  deposit: "15000",
+  imageAssetId: "img-1",
+  imageSrc: "/imagenes/taza.webp",
+  imageAlt: "Una taza",
+};
 
 describe("admin intensive detail", () => {
   it("loads every form value, the real gallery source, audit in Córdoba time, and only active or assigned archived teachers", async () => {
@@ -506,5 +547,254 @@ describe("admin intensive detail", () => {
           "No se puede guardar este workshop porque falta: un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
       },
     });
+  });
+
+  it("loads the projects as cards with formatted money and prefilled forms", async () => {
+    const get = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: intensive }),
+    );
+    const list = vi.fn(() => Promise.resolve({ ok: true as const, value: [] }));
+    const listProjects = vi.fn(() =>
+      Promise.resolve({
+        ok: true as const,
+        value: [project, plainProject] as never,
+      }),
+    );
+
+    const result = await load({ get, list, listProjects });
+
+    expect(listProjects).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+    );
+    expect(result.projects).toEqual([
+      {
+        id: "p1",
+        name: "Taza de torno",
+        amounts: { price: "$ 45.000", deposit: "$ 15.000" },
+        image: { src: "/imagenes/taza.webp", alt: "Una taza" },
+        values: {
+          name: "Taza de torno",
+          price: "45000",
+          deposit: "15000",
+          image: {
+            assetId: "img-1",
+            src: "/imagenes/taza.webp",
+            alt: "Una taza",
+          },
+        },
+      },
+      {
+        id: "p2",
+        name: "Plato hondo",
+        amounts: { price: "$ 30.000", deposit: "$ 10.000" },
+        image: null,
+        values: {
+          name: "Plato hondo",
+          price: "30000",
+          deposit: "10000",
+          image: null,
+        },
+      },
+    ]);
+  });
+
+  it("maps a failed project listing like any other failed read", async () => {
+    const get = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: intensive }),
+    );
+    const list = vi.fn(() => Promise.resolve({ ok: true as const, value: [] }));
+    const listProjects = vi.fn(() =>
+      Promise.resolve({
+        ok: false as const,
+        error: { kind: "unavailable" as const },
+      }),
+    );
+
+    await expect(
+      thrownStatus(() => load({ get, list, listProjects })),
+    ).resolves.toBe(503);
+  });
+
+  it("adds a project with the posted fields and returns to the projects section", async () => {
+    const addProject = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: project as never }),
+    );
+
+    const response = await submitIntent(projectFields, { addProject });
+
+    expect(addProject).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+      {
+        name: "Taza nueva",
+        price: "45000",
+        deposit: "15000",
+        image: { assetId: "img-1", alt: "Una taza" },
+      },
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1?ok=projectAdded#proyectos",
+    );
+  });
+
+  it("keeps what was typed and words each issue when a project is refused", async () => {
+    const refuse = (
+      issues: {
+        field: "name" | "deposit";
+        code: "required" | "exceeds-price";
+      }[],
+    ) =>
+      Promise.resolve({
+        ok: false as const,
+        error: { kind: "invalid" as const, issues },
+      });
+
+    const added = await submitIntent(
+      { ...projectFields, name: "" },
+      { addProject: () => refuse([{ field: "name", code: "required" }]) },
+    );
+    const saved = await submitIntent(
+      { ...projectFields, intent: "project-save", projectId: "p2" },
+      {
+        updateProject: () =>
+          refuse([{ field: "deposit", code: "exceeds-price" }]),
+      },
+    );
+
+    expect(added).toMatchObject({
+      init: { status: 422 },
+      data: {
+        projects: {
+          target: "new",
+          values: { name: "", price: "45000", deposit: "15000" },
+          errors: { name: "Completá este campo." },
+        },
+      },
+    });
+    expect(saved).toMatchObject({
+      init: { status: 422 },
+      data: {
+        projects: {
+          target: "p2",
+          errors: { deposit: "No puede superar el precio." },
+        },
+      },
+    });
+  });
+
+  it("saves one project by id", async () => {
+    const updateProject = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: project as never }),
+    );
+
+    const response = await submitIntent(
+      { ...projectFields, intent: "project-save", projectId: "p2" },
+      { updateProject },
+    );
+
+    expect(updateProject).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+      "p2",
+      expect.objectContaining({ name: "Taza nueva" }),
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1?ok=projectSaved#proyectos",
+    );
+  });
+
+  it("moves a project up or down and refuses any other direction before a service call", async () => {
+    const moveProject = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: undefined }),
+    );
+
+    const response = await submitIntent(
+      { intent: "project-move", projectId: "p2", direction: "up" },
+      { moveProject },
+    );
+
+    expect(moveProject).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+      "p2",
+      "up",
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1?ok=projectMoved#proyectos",
+    );
+    await expect(
+      thrownStatus(() =>
+        submitIntent(
+          { intent: "project-move", projectId: "p2", direction: "left" },
+          { moveProject },
+        ),
+      ),
+    ).resolves.toBe(400);
+    expect(moveProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes a project and explains a refusal in plain words", async () => {
+    const deleteProject = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: undefined }),
+    );
+
+    const response = await submitIntent(
+      { intent: "project-delete", projectId: "p2" },
+      { deleteProject },
+    );
+
+    expect(deleteProject).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      "i1",
+      "p2",
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/intensivos/i1?ok=projectDeleted#proyectos",
+    );
+    const refuse = (rule: "in-use" | "last-project") =>
+      submitIntent(
+        { intent: "project-delete", projectId: "p2" },
+        {
+          deleteProject: () =>
+            Promise.resolve({
+              ok: false as const,
+              error: { kind: "rules-unmet" as const, rules: [rule] },
+            }),
+        },
+      );
+    await expect(refuse("in-use")).resolves.toMatchObject({
+      init: { status: 422 },
+      data: {
+        projectError:
+          "No se puede eliminar: ya hay solicitudes que eligieron este proyecto.",
+      },
+    });
+    await expect(refuse("last-project")).resolves.toMatchObject({
+      data: {
+        projectError:
+          "Un workshop publicado necesita al menos un proyecto. Agregá otro antes de eliminar este.",
+      },
+    });
+  });
+
+  it("denies every project action before a service call", async () => {
+    const addProject = vi.fn();
+    const deleteProject = vi.fn();
+
+    await expect(
+      thrownStatus(() => submitIntent(projectFields, { addProject }, false)),
+    ).resolves.toBe(403);
+    await expect(
+      thrownStatus(() =>
+        submitIntent(
+          { intent: "project-delete", projectId: "p1" },
+          { deleteProject },
+          false,
+        ),
+      ),
+    ).resolves.toBe(403);
+    expect(addProject).not.toHaveBeenCalled();
+    expect(deleteProject).not.toHaveBeenCalled();
   });
 });

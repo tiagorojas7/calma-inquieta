@@ -18,15 +18,25 @@ import {
   parseIntensiveSchedule,
 } from "~/app/admin/intensive-form-data";
 import {
+  parseProjectDirection,
+  parseProjectDraft,
+  parseProjectId,
+  projectCards,
+  projectDeleteMessage,
+  rejectedProject,
+} from "~/app/admin/intensive-project-form-data";
+import {
   formatPercentage,
   formatWholePesos,
 } from "~/app/admin/workshop-form-data";
 import type { FieldIssue } from "~/modules/_shared";
-import type { IntensiveWorkshop } from "~/modules/workshops";
+import type { AdminActor } from "~/modules/admin-access";
+import type { IntensivesService, IntensiveWorkshop } from "~/modules/workshops";
 import { Heading } from "~/app/ui/atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
+import { IntensiveProjects } from "~/app/ui/admin/intensive-projects";
 import {
   intensiveHasPrimaryAction,
   IntensiveOtherActions,
@@ -38,6 +48,7 @@ import type { Route } from "./+types/intensive-detail";
 
 const LIST = "/admin/intensivos";
 const copy = adminMicrocopy.intensives;
+const FEEDBACK_COPY = { ...copy.feedback, ...copy.projects.feedback };
 
 function rescheduleErrors(
   issues: readonly FieldIssue<"eventDate" | "timeRange">[],
@@ -54,7 +65,15 @@ const FEEDBACK = [
   "archived",
   "restored",
   "rescheduled",
+  "projectAdded",
+  "projectSaved",
+  "projectMoved",
+  "projectDeleted",
 ] as const;
+
+/** The projects section: where a project action returns the owner to. */
+const PROJECTS_ANCHOR = "proyectos";
+const projectsPath = (id: string) => `${LIST}/${id}#${PROJECTS_ANCHOR}`;
 
 const INTENT_CODE = {
   publish: "published",
@@ -109,6 +128,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const intensive = found.value;
   const listed = await services.teachers.list(actor, "all");
   if (!listed.ok) throw failureResponse(listed.error);
+  const projects = await services.intensives.listProjects(actor, params.id);
+  if (!projects.ok) throw failureResponse(projects.error);
   const assigned = intensive.assignment?.teacher.id;
   return {
     id: intensive.id,
@@ -116,6 +137,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     feedback: feedbackCode(request, FEEDBACK),
     missing: intensiveMissing(request),
     values: formValues(intensive),
+    projects: projectCards(projects.value),
     teachers: listed.value
       .filter((teacher) => teacher.active || teacher.id === assigned)
       .map((teacher) => ({
@@ -155,6 +177,13 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       );
     throw failureResponse(saved.error);
   }
+  if (
+    intent === "project-add" ||
+    intent === "project-save" ||
+    intent === "project-move" ||
+    intent === "project-delete"
+  )
+    return projectAction(intent, form, actor, intensives, params.id);
   if (intent === "reschedule") {
     const schedule = parseIntensiveSchedule(form);
     const changed = await intensives.reschedule(actor, params.id, schedule);
@@ -212,6 +241,63 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   throw failureResponse(changed.error);
 }
 
+type ProjectIntent =
+  "project-add" | "project-save" | "project-move" | "project-delete";
+
+async function projectAction(
+  intent: ProjectIntent,
+  form: FormData,
+  actor: AdminActor,
+  intensives: IntensivesService,
+  id: string,
+) {
+  const projectId = parseProjectId(form);
+  if (intent === "project-add" || intent === "project-save") {
+    const draft = parseProjectDraft(form);
+    const saved =
+      intent === "project-add"
+        ? await intensives.addProject(actor, id, draft)
+        : await intensives.updateProject(actor, id, projectId, draft);
+    if (saved.ok)
+      return redirect(
+        withFeedback(
+          projectsPath(id),
+          intent === "project-add" ? "projectAdded" : "projectSaved",
+        ),
+      );
+    if (saved.error.kind === "invalid")
+      return data(
+        {
+          projects: rejectedProject(
+            intent === "project-add" ? "new" : projectId,
+            draft,
+            form,
+            saved.error.issues,
+          ),
+        },
+        { status: 422 },
+      );
+    throw failureResponse(saved.error);
+  }
+  if (intent === "project-move") {
+    const direction = parseProjectDirection(form);
+    if (direction === null) throw data(null, { status: 400 });
+    const moved = await intensives.moveProject(actor, id, projectId, direction);
+    if (moved.ok)
+      return redirect(withFeedback(projectsPath(id), "projectMoved"));
+    throw failureResponse(moved.error);
+  }
+  const deleted = await intensives.deleteProject(actor, id, projectId);
+  if (deleted.ok)
+    return redirect(withFeedback(projectsPath(id), "projectDeleted"));
+  if (deleted.error.kind === "rules-unmet")
+    return data(
+      { projectError: projectDeleteMessage(deleted.error.rules) },
+      { status: 422 },
+    );
+  throw failureResponse(deleted.error);
+}
+
 export default function AdminIntensiveDetail() {
   const intensive = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
@@ -220,7 +306,11 @@ export default function AdminIntensiveDetail() {
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const reschedule =
     rejected && "reschedule" in rejected ? rejected.reschedule : undefined;
-  const saved = intensive.feedback ? copy.feedback[intensive.feedback] : null;
+  const projectsRejected =
+    rejected && "projects" in rejected ? rejected.projects : undefined;
+  const projectError =
+    rejected && "projectError" in rejected ? rejected.projectError : undefined;
+  const saved = intensive.feedback ? FEEDBACK_COPY[intensive.feedback] : null;
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -259,6 +349,13 @@ export default function AdminIntensiveDetail() {
           intensiveHasPrimaryAction(intensive.status) ? "secondary" : "primary"
         }
       />
+      <div id={PROJECTS_ANCHOR} className="scroll-mt-4">
+        <IntensiveProjects
+          projects={intensive.projects}
+          rejected={projectsRejected}
+          error={projectError}
+        />
+      </div>
       <IntensiveOtherActions
         status={intensive.status}
         schedule={intensive.values}

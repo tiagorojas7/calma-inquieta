@@ -60,7 +60,7 @@ type Draft = {
   }[];
 };
 
-async function upload(file: File) {
+export async function uploadIntensiveImage(file: File) {
   try {
     const body = new FormData();
     body.append("file", file);
@@ -136,7 +136,7 @@ export function IntensiveForm({
       <ImageField
         name="gallery"
         label={copy.form.images}
-        upload={upload}
+        upload={uploadIntensiveImage}
         current={
           image?.src
             ? { assetId: image.assetId, src: image.src, alt: image.alt }

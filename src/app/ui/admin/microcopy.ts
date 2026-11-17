@@ -1206,6 +1206,52 @@ export const adminMicrocopy = {
       dangerTitle: "Cancelar, archivar o eliminar",
       rescheduleTitle: "Cambiar fecha y horario",
     },
+    projects: {
+      title: "Proyectos",
+      description:
+        "Cada proyecto tiene su propio precio, seña e imagen. Todos comparten la fecha y los cupos del workshop.",
+      empty:
+        "Todavía no hay proyectos. Agregá uno para poder publicar el workshop.",
+      amounts: (price: string, deposit: string) =>
+        `Precio ${price} · Seña ${deposit}`,
+      noImage: "Sin imagen",
+      addTitle: "Nuevo proyecto",
+      add: "Agregar proyecto",
+      edit: (name: string) => `Editar ${name}`,
+      editSummary: "Editar",
+      save: "Guardar proyecto",
+      moveUp: "Subir",
+      moveDown: "Bajar",
+      moveUpName: (name: string) => `Subir ${name}`,
+      moveDownName: (name: string) => `Bajar ${name}`,
+      delete: "Eliminar",
+      deleteName: (name: string) => `Eliminar ${name}`,
+      confirmDelete: {
+        title: "¿Eliminar el proyecto?",
+        message: (name: string) =>
+          `Se elimina "${name}" de este workshop. No se puede deshacer.`,
+      },
+      form: {
+        name: "Nombre del proyecto",
+        price: "Precio total (en pesos)",
+        deposit: "Seña (en pesos)",
+        image: "Imagen del proyecto",
+        removeImage: "Quitar la imagen",
+      },
+      feedback: {
+        projectAdded: { title: "Proyecto agregado" },
+        projectSaved: { title: "Proyecto guardado" },
+        projectMoved: { title: "Orden de proyectos actualizado" },
+        projectDeleted: { title: "Proyecto eliminado" },
+      },
+      errors: {
+        inUse:
+          "No se puede eliminar: ya hay solicitudes que eligieron este proyecto.",
+        lastProject:
+          "Un workshop publicado necesita al menos un proyecto. Agregá otro antes de eliminar este.",
+        invalid: "Revisá los campos marcados e intentá de nuevo.",
+      },
+    },
     form: {
       name: "Nombre",
       slug: "Enlace",

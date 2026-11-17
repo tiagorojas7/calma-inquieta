@@ -22,6 +22,10 @@ const INTENTS = [
   "restore",
   "delete",
   "reschedule",
+  "project-add",
+  "project-save",
+  "project-move",
+  "project-delete",
 ] as const;
 export type IntensiveIntent = (typeof INTENTS)[number];
 

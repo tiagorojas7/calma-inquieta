@@ -14,6 +14,8 @@ export interface ConsolidationSupplierView {
     label: string;
     quantity: number;
     total: string;
+    /** The workshop the units are for; absent on monthly lines. */
+    origin?: string | undefined;
   }[];
   readonly total: string;
   readonly summary: string;
@@ -162,11 +164,16 @@ function SupplierSection({
           >
             {supplier.materials.map((item) => (
               <li
-                key={item.label}
+                key={`${item.label}|${item.origin ?? ""}`}
                 className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 last:pb-0"
               >
                 <span className="min-w-0 flex-1 basis-full font-semibold text-ink-900 sm:basis-0">
                   {item.label}
+                  {item.origin === undefined ? null : (
+                    <span className="block text-sm font-normal text-ink-700">
+                      {copy.workshopOrigin(item.origin)}
+                    </span>
+                  )}
                 </span>
                 <span className="whitespace-nowrap text-ink-700">
                   {copy.quantity(item.quantity)}

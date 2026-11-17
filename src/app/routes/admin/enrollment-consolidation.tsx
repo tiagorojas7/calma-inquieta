@@ -82,11 +82,22 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       (supplier) => supplier.pendingRequestOrderIds,
     ),
   );
+  // A workshop with lines to buy counts once, like an order to request.
+  const workshops = new Set(
+    consolidation.suppliers.flatMap((supplier) =>
+      supplier.materials.flatMap((item) =>
+        item.origin === undefined ? [] : [item.origin],
+      ),
+    ),
+  );
   return {
     period: consolidation.period,
     periodLabel: monthLabel(consolidation.period),
     section: sectionOf(params.get("seccion")),
-    counts: { pedir: requestable.size, entregar: toDeliver.length },
+    counts: {
+      pedir: requestable.size + workshops.size,
+      entregar: toDeliver.length,
+    },
     grandTotal: formatPesos(consolidation.grandTotal),
     pendingOrders: consolidation.pendingOrders,
     notice:
@@ -103,6 +114,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         label: `${item.materialName} ${item.variantLabel}`,
         quantity: item.quantity,
         total: formatPesos(item.total),
+        ...(item.origin === undefined ? {} : { origin: item.origin }),
       })),
       total: formatPesos(supplier.total),
       summary: supplier.summary,

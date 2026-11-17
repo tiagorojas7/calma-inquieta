@@ -40,6 +40,8 @@ export {
   type SupplierConsolidation,
   type SupplierConsolidationUseCases,
   type SupplierSection,
+  type WorkshopSupplierLine,
+  type WorkshopSupplierLines,
 } from "./application/supplier-consolidation";
 export {
   createPublicEnrollmentService,

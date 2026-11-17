@@ -80,6 +80,7 @@ import { createDrizzleEnrollmentInsightsReader } from "~/modules/enrollments/inf
 import { createDrizzleWorkshopInsightsReader } from "~/modules/workshops/infrastructure/drizzle-insights-reader";
 import { createDrizzleIntensiveInsightsReader } from "~/modules/workshops/infrastructure/drizzle-intensive-insights-reader";
 import { createDrizzleIntensiveRequestInsightsReader } from "~/modules/intensive-requests/infrastructure/drizzle-intensive-request-insights-reader";
+import { createDrizzleWorkshopSupplierLinesReader } from "~/modules/intensive-requests/infrastructure/drizzle-workshop-supplier-lines-reader";
 import {
   createInsightsService,
   type InsightsUseCases,
@@ -328,6 +329,8 @@ export function createRequestServices(
         }),
         consolidation: createSupplierConsolidationService({
           store: adminEnrollmentStore,
+          // Workshop lines the stock could not cover join the monthly list.
+          workshopLines: createDrizzleWorkshopSupplierLinesReader(openSession),
         }),
       }
     : {

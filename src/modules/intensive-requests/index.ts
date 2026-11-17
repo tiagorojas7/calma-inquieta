@@ -44,3 +44,7 @@ export type {
   IntensiveRegistrationRow,
   IntensiveRequestInsightsReader,
 } from "./application/intensive-request-insights-reader";
+export type {
+  WorkshopSupplierLineRow,
+  WorkshopSupplierLinesReader,
+} from "./application/workshop-supplier-lines-reader";

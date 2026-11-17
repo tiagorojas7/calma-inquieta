@@ -174,6 +174,61 @@ describe("admin supplier consolidation loader", () => {
     });
   });
 
+  it("names the workshop on its lines, keeps monthly lines as they were and counts the workshop in Para pedir", async () => {
+    const withWorkshop: SupplierConsolidation = {
+      ...consolidation,
+      suppliers: [
+        {
+          supplierId: "s1",
+          supplierName: "Papelería Sur",
+          materials: [
+            ...(consolidation.suppliers[0]?.materials ?? []),
+            {
+              materialName: "Arcilla",
+              variantLabel: "Grande",
+              quantity: 2,
+              total: pesos(600),
+              origin: "Torno intensivo",
+            },
+          ],
+          total: pesos(3_600),
+          summary: "Pedido a Papelería Sur",
+          pendingRequestOrderIds: [],
+        },
+      ],
+      grandTotal: pesos(3_600),
+    };
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(withWorkshop)),
+    );
+
+    expect(result).toMatchObject({
+      counts: { pedir: 1, entregar: 0 },
+      suppliers: [
+        {
+          materials: [
+            { label: "Arcilla Grande", quantity: 3, total: "$ 3.000" },
+            {
+              label: "Arcilla Grande",
+              quantity: 2,
+              total: "$ 600",
+              origin: "Torno intensivo",
+            },
+          ],
+          orderIds: [],
+        },
+      ],
+    });
+    const monthly = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+    );
+    if (!("suppliers" in monthly)) throw new Error("expected data");
+    expect(monthly.suppliers[0]?.materials).toStrictEqual([
+      { label: "Arcilla Grande", quantity: 3, total: "$ 3.000" },
+    ]);
+    expect(monthly.counts.pedir).toBe(2);
+  });
+
   it("defaults to the current Córdoba month when none is given", async () => {
     const consolidate = vi
       .fn<Consolidate>()

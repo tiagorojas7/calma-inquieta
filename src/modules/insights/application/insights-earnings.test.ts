@@ -148,7 +148,12 @@ function earningsFixture() {
     },
   ];
   intensiveRequests.registrationRows = [
-    { intensiveId: "i1", confirmedSeats: 3, paidCentavos: 30_000_00 },
+    {
+      intensiveId: "i1",
+      confirmedSeats: 3,
+      settledCentavos: 30_000_00,
+      materialsCostCentavos: 0,
+    },
   ];
   orders.materialRows = [
     material({ status: "paid", orders: 2, units: 3, amountCentavos: 4_000_00 }),
@@ -440,6 +445,91 @@ describe("insights earnings", () => {
           .find((row) => row.name === "Ceramica")
           ?.materialsCost.toCentavos(),
       ).toBe(6_000_00);
+    });
+  });
+
+  describe("workshop settlement", () => {
+    it("settles the teacher on what the fully paid reservations received, not on the seats taken", async () => {
+      const { intensiveRequests, service } = earningsFixture();
+      // Three seats are confirmed but only two are paid in full: 12.000 + 12.000.
+      intensiveRequests.registrationRows = [
+        {
+          intensiveId: "i1",
+          confirmedSeats: 3,
+          settledCentavos: 24_000_00,
+          materialsCostCentavos: 0,
+        },
+      ];
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      const torno = result.value.activities.find((row) => row.name === "Torno");
+      expect(torno?.enrolled).toBe(3);
+      expect(torno?.collected.toCentavos()).toBe(24_000_00);
+      expect(torno?.teacherPay.toCentavos()).toBe(12_000_00);
+      expect(
+        result.value.teachers
+          .find((row) => row.teacherName === "Cleo")
+          ?.toSettle?.toCentavos(),
+      ).toBe(12_000_00);
+    });
+
+    it("takes the margin from the cost captured on the allocated materials", async () => {
+      const { intensiveRequests, service } = earningsFixture();
+      intensiveRequests.registrationRows = [
+        {
+          intensiveId: "i1",
+          confirmedSeats: 3,
+          settledCentavos: 30_000_00,
+          materialsCostCentavos: 2_500_00,
+        },
+      ];
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      const torno = result.value.activities.find((row) => row.name === "Torno");
+      expect(torno?.materialsCost.toCentavos()).toBe(2_500_00);
+      expect(torno?.profit.toCentavos()).toBe(30_000_00 - 15_000_00 - 2_500_00);
+      expect(result.value.totals.materialsCost.toCentavos()).toBe(
+        6_000_00 + 2_500_00,
+      );
+    });
+
+    it("shows an intensivo without any fully paid reservation as zero earnings", async () => {
+      const { intensiveRequests, service } = earningsFixture();
+      intensiveRequests.registrationRows = [];
+
+      const result = await service.earnings(actor, { period: "2026-10" });
+
+      if (!result.ok) throw new Error("expected earnings");
+      const torno = result.value.activities.find((row) => row.name === "Torno");
+      expect(torno).toMatchObject({ enrolled: 0 });
+      expect(torno?.collected.toCentavos()).toBe(0);
+      expect(torno?.teacherPay.toCentavos()).toBe(0);
+    });
+
+    it("leaves the monthly settlement of the teachers untouched", async () => {
+      const { intensiveRequests, service } = earningsFixture();
+      const before = await service.settlements(actor, { period: "2026-10" });
+      intensiveRequests.registrationRows = [
+        {
+          intensiveId: "i1",
+          confirmedSeats: 3,
+          settledCentavos: 90_000_00,
+          materialsCostCentavos: 9_000_00,
+        },
+      ];
+
+      const after = await service.settlements(actor, { period: "2026-10" });
+
+      expect(after).toEqual(before);
+      if (!after.ok) throw new Error("expected settlements");
+      expect(after.value.rows.map((row) => row.teacherName)).toEqual([
+        "Ana",
+        "Bea",
+      ]);
     });
   });
 

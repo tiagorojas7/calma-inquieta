@@ -7,6 +7,7 @@ import type {
 import {
   createSupplierConsolidationService,
   createUnavailableSupplierConsolidationService,
+  type WorkshopSupplierLine,
 } from "./supplier-consolidation";
 
 const pesos = (amount: number) => {
@@ -191,6 +192,163 @@ describe("supplier consolidation", () => {
     await expect(service.consolidate(admin, "2026-11")).resolves.toEqual({
       ok: false,
       error: { kind: "unavailable" },
+    });
+  });
+
+  describe("workshop supplier lines", () => {
+    const workshopLine = (
+      overrides: Partial<WorkshopSupplierLine> = {},
+    ): WorkshopSupplierLine => ({
+      workshopName: "Torno intensivo",
+      supplierId: "s1",
+      supplierName: "Papelería Sur",
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      unitCostCentavos: 300_000,
+      ...overrides,
+    });
+
+    function withWorkshops(
+      workshopLines: readonly WorkshopSupplierLine[],
+      lines: readonly ConsolidationLine[] = example,
+    ) {
+      const read = vi.fn(() => Promise.resolve(workshopLines));
+      return {
+        read,
+        service: createSupplierConsolidationService({
+          store: {
+            consolidationLines: () =>
+              Promise.resolve({ lines, pendingOrders: 0 }),
+            deliveryOrders: vi.fn(),
+          },
+          workshopLines: { lines: read },
+        }),
+      };
+    }
+
+    it("lists them under their supplier with the workshop as origin, apart from the monthly lines", async () => {
+      const { service, read } = withWorkshops([workshopLine()]);
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(read).toHaveBeenCalledWith("2026-11");
+      const south = result.value.suppliers.find((s) => s.supplierId === "s1");
+      expect(south?.materials).toEqual([
+        {
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 3,
+          total: pesos(3_000),
+        },
+        {
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 2,
+          total: pesos(6_000),
+          origin: "Torno intensivo",
+        },
+      ]);
+      expect(south?.total.toCentavos()).toBe(900_000);
+      expect(result.value.grandTotal.toCentavos()).toBe(1_150_000);
+    });
+
+    it("asks the supplier for one quantity per material, whatever the origin", async () => {
+      const { service } = withWorkshops([workshopLine()]);
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(result.value.suppliers[1]?.summary).toBe(
+        [
+          "Pedido a Papelería Sur",
+          "Mes: noviembre 2026",
+          "- Arcilla Grande x5",
+        ].join("\n"),
+      );
+    });
+
+    it("shows a supplier that only has workshop lines, with nothing to mark as requested", async () => {
+      const { service } = withWorkshops(
+        [
+          workshopLine({
+            supplierId: "s9",
+            supplierName: "Barro Oeste",
+            materialName: "Engobe",
+            variantLabel: "1 L",
+            unitCostCentavos: null,
+          }),
+        ],
+        [],
+      );
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(result.value.suppliers).toHaveLength(1);
+      expect(result.value.suppliers[0]).toMatchObject({
+        supplierName: "Barro Oeste",
+        pendingRequestOrderIds: [],
+        materials: [
+          {
+            materialName: "Engobe",
+            quantity: 2,
+            origin: "Torno intensivo",
+          },
+        ],
+      });
+      expect(result.value.suppliers[0]?.total.toCentavos()).toBe(0);
+    });
+
+    it("keeps the same material of two workshops on two rows", async () => {
+      const { service } = withWorkshops(
+        [workshopLine(), workshopLine({ workshopName: "Pintura intensiva" })],
+        [],
+      );
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(
+        result.value.suppliers[0]?.materials.map((item) => item.origin),
+      ).toEqual(["Pintura intensiva", "Torno intensivo"]);
+    });
+
+    it("leaves the monthly consolidation exactly as it was", async () => {
+      const without = serviceWith(example, 2).service;
+      const { service } = withWorkshops([]);
+
+      const a = await without.consolidate(admin, "2026-11");
+      const b = await service.consolidate(admin, "2026-11");
+
+      if (!a.ok || !b.ok) throw new Error("expected consolidations");
+      expect(b.value.pendingOrders).toBe(0);
+      expect({ ...b.value, pendingOrders: 2 }).toEqual(a.value);
+    });
+
+    it("rejects a malformed month before reading and fails closed when the read rejects", async () => {
+      const { service, read } = withWorkshops([workshopLine()]);
+      await expect(service.consolidate(admin, "noviembre")).resolves.toEqual({
+        ok: false,
+        error: { kind: "invalid" },
+      });
+      expect(read).not.toHaveBeenCalled();
+
+      const failing = createSupplierConsolidationService({
+        store: {
+          consolidationLines: () =>
+            Promise.resolve({ lines: example, pendingOrders: 0 }),
+          deliveryOrders: vi.fn(),
+        },
+        workshopLines: {
+          lines: () => Promise.reject(new Error("read failed")),
+        },
+      });
+      await expect(failing.consolidate(admin, "2026-11")).resolves.toEqual({
+        ok: false,
+        error: { kind: "unavailable" },
+      });
     });
   });
 

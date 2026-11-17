@@ -137,6 +137,7 @@ export const adminMicrocopy = {
           : `${String(count)} pedidos marcados como recibidos.`,
       columns: { material: "Material", quantity: "Cantidad", total: "Total" },
       itemsTitle: "Qué pedir",
+      workshopOrigin: (name: string) => `Workshop: ${name}`,
       stepsLabel: (supplier: string) => `Pasos para pedir a ${supplier}`,
       steps: {
         copy: "Copiá el pedido y mandalo por WhatsApp",

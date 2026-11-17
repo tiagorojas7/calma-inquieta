@@ -319,7 +319,9 @@ export function createInsightsService(
       const registration = paid.find(
         (item) => item.intensiveId === row.intensiveId,
       );
-      const collected = registration?.paidCentavos ?? 0;
+      // Only fully paid reservations settle, on what they actually received.
+      const collected = registration?.settledCentavos ?? 0;
+      const materialsCost = registration?.materialsCostCentavos ?? 0;
       const teacher =
         row.teacherId === null ? undefined : known.get(row.teacherId);
       const pay =
@@ -337,8 +339,8 @@ export function createInsightsService(
         teacherName: teacher?.name ?? null,
         teacherModality: teacher?.modality ?? null,
         teacherPay: pesos(pay),
-        materialsCost: pesos(0),
-        profit: pesos(collected - pay),
+        materialsCost: pesos(materialsCost),
+        profit: pesos(collected - pay - materialsCost),
       };
     });
     const byActivityName = (a: ActivityRow, b: ActivityRow) =>

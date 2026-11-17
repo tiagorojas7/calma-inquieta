@@ -148,6 +148,69 @@ describe("EnrollmentConsolidation: shell", () => {
   });
 });
 
+describe("EnrollmentConsolidation: workshop lines", () => {
+  const [first] = base.suppliers as [
+    EnrollmentConsolidationProps["suppliers"][number],
+  ];
+  const mixed: EnrollmentConsolidationProps = {
+    ...base,
+    suppliers: [
+      {
+        ...first,
+        materials: [
+          ...first.materials,
+          {
+            label: "Arcilla Grande",
+            quantity: 2,
+            total: "$ 600",
+            origin: "Torno intensivo",
+          },
+        ],
+      },
+    ],
+  };
+
+  it("shows which workshop a line is for, apart from the monthly line of the same material", () => {
+    render(<EnrollmentConsolidation {...mixed} />);
+
+    const list = screen.getByRole("list", {
+      name: "Papelería Sur: Material",
+    });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Arcilla Grande");
+    expect(rows[0]).toHaveTextContent("Cantidad: 3");
+    expect(within(rows[0] as HTMLElement).queryByText(/Workshop/)).toBeNull();
+    expect(rows[1]).toHaveTextContent("Cantidad: 2");
+    expect(rows[1]).toHaveTextContent("Workshop: Torno intensivo");
+  });
+
+  it("offers nothing to mark as requested for a supplier that only has workshop lines", () => {
+    render(
+      <EnrollmentConsolidation
+        {...mixed}
+        suppliers={[
+          {
+            ...first,
+            materials: [
+              {
+                label: "Arcilla Grande",
+                quantity: 2,
+                total: "$ 600",
+                origin: "Torno intensivo",
+              },
+            ],
+            orderIds: [],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Workshop: Torno intensivo")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Ya lo pedí" })).toBeNull();
+  });
+});
+
 describe("EnrollmentConsolidation: record", () => {
   it("links to the month's materials record in Estadísticas", () => {
     render(<EnrollmentConsolidation {...base} />);

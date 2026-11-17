@@ -97,6 +97,30 @@ describe("deriveStudents", () => {
   });
 });
 
+describe("deriveStudents and material sales", () => {
+  it("lists a sale in the order history with its kind, but never as a workshop or an activity", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, { studentEmail: "ana@example.com", status: "paid" }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        status: "pending_confirmation",
+        kind: "material_sale",
+        workshopId: "00000000-0000-4000-8000-0000000000bb",
+        workshopName: "Otro taller",
+      }),
+    ]);
+
+    expect(ana?.orders.map((order) => [order.number, order.kind])).toEqual([
+      ["CI-2026-0002", "material_sale"],
+      ["CI-2026-0001", undefined],
+    ]);
+    expect(ana?.activities).toHaveLength(1);
+    expect(ana?.workshops.map((workshop) => workshop.name)).toEqual([
+      "Cerámica inicial",
+    ]);
+  });
+});
+
 describe("filterStudents", () => {
   const acuarela = "00000000-0000-4000-8000-000000000099";
   const profiles = deriveStudents([

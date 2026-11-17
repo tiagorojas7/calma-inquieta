@@ -9,6 +9,18 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export const ORDER_KINDS = ["enrollment", "material_sale"] as const;
+/**
+ * What an order is: the monthly `enrollment`, or a `material_sale` that a
+ * student buys later under the same monthly record (no fee, no seat).
+ */
+export type OrderKind = (typeof ORDER_KINDS)[number];
+
+/** Only a monthly record holds a turno seat; a sale never claims or releases one. */
+export function holdsSeat(kind: OrderKind | undefined): boolean {
+  return kind !== "material_sale";
+}
+
 export type IllegalTransition = {
   readonly kind: "illegal-transition";
   readonly from: OrderStatus;

@@ -42,7 +42,21 @@ ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_student_id_stude
 --> statement-breakpoint
 DROP INDEX "enrollment_order_active_duplicate_unique";
 --> statement-breakpoint
-CREATE UNIQUE INDEX "enrollment_order_student_period_active_unique" ON "enrollment_order" USING btree ("student_id","period") WHERE "enrollment_order"."status" <> 'cancelled';
+ALTER TABLE "enrollment_order" ADD COLUMN "kind" text DEFAULT 'enrollment' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD COLUMN "parent_order_id" uuid;
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_parent_order_id_enrollment_order_id_fk" FOREIGN KEY ("parent_order_id") REFERENCES "public"."enrollment_order"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+CREATE UNIQUE INDEX "enrollment_order_student_period_active_unique" ON "enrollment_order" USING btree ("student_id","period") WHERE "enrollment_order"."status" <> 'cancelled' AND "enrollment_order"."kind" = 'enrollment';
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_kind_check" CHECK ("enrollment_order"."kind" IN ('enrollment', 'material_sale'));
+--> statement-breakpoint
+ALTER TABLE "enrollment_order" ADD CONSTRAINT "enrollment_order_sale_check" CHECK (("enrollment_order"."kind" = 'enrollment' AND "enrollment_order"."parent_order_id" IS NULL)
+          OR ("enrollment_order"."kind" = 'material_sale'
+            AND "enrollment_order"."parent_order_id" IS NOT NULL
+            AND "enrollment_order"."fee_centavos" = 0
+            AND "enrollment_order"."materials_centavos" > 0));
 --> statement-breakpoint
 ALTER TABLE "enrollment_order" DROP CONSTRAINT "enrollment_order_fee_check";
 --> statement-breakpoint

@@ -15,11 +15,16 @@ export type StudentOrderStatus =
   | "materials_received"
   | "cancelled";
 
+/** What an order is: the monthly record or a later material sale (mirrors the order table). */
+export type StudentOrderKind = "enrollment" | "material_sale";
+
 /** The facts about one enrollment order that the registry derives students from. */
 export interface StudentSourceOrder {
   readonly id: string;
   readonly number: string;
   readonly status: StudentOrderStatus;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: StudentOrderKind;
   readonly requestedAt: Date;
   readonly paidAt: Date | null;
   readonly total: Money;
@@ -45,6 +50,8 @@ export interface StudentOrderEntry {
   readonly id: string;
   readonly number: string;
   readonly status: StudentOrderStatus;
+  /** `material_sale` for a sale; absent means the monthly record. */
+  readonly kind?: StudentOrderKind;
   readonly workshopId: string;
   readonly workshopName: string;
   readonly period: string;
@@ -58,11 +65,11 @@ export interface StudentProfile {
   readonly email: string;
   readonly fullName: string;
   readonly phoneDigits: string;
-  /** Workshops of non-cancelled orders, one entry per workshop. */
+  /** Workshops of non-cancelled monthly records, one entry per workshop. */
   readonly workshops: readonly { id: string; name: string }[];
-  /** Every non-cancelled order, newest first. */
+  /** Every non-cancelled monthly record, newest first (a material sale is not an activity). */
   readonly activities: readonly StudentActivity[];
-  /** Every order, cancelled included, newest first. */
+  /** Every order, cancelled and material sales included, newest first. */
   readonly orders: readonly StudentOrderEntry[];
   readonly lastRequestedAt: Date;
   /**
@@ -136,7 +143,9 @@ export function deriveStudents(
     const sorted = [...group].sort(newestFirst);
     const latest = sorted[0];
     if (!latest) throw new Error("empty student group");
-    const active = sorted.filter((order) => order.status !== "cancelled");
+    const active = sorted.filter(
+      (order) => order.status !== "cancelled" && order.kind !== "material_sale",
+    );
     const workshops = new Map<string, string>();
     for (const order of active)
       if (!workshops.has(order.workshopId))
@@ -157,6 +166,7 @@ export function deriveStudents(
         id: order.id,
         number: order.number,
         status: order.status,
+        ...(order.kind === undefined ? {} : { kind: order.kind }),
         workshopId: order.workshopId,
         workshopName: order.workshopName,
         period: order.period,

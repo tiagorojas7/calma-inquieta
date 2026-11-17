@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { sql } from "drizzle-orm";
 import { createDbSessionFactory } from "~/platform/db/session";
 import { enrollmentOrder, student } from "~/platform/db/schema/enrollments";
 import { runOrderRepositoryContract } from "~/testing/contracts/order-repository.contract";
@@ -97,6 +98,45 @@ runOrderRepositoryContract(async () => {
       }
     },
   };
+});
+
+describe("material sales and the public order page", () => {
+  it("finds the monthly record by its public id, never a sale", async () => {
+    const { openSession, repository } = await freshRepository();
+    const created = await repository.create(
+      orderDraft({
+        workshopId: "00000000-0000-4000-8000-000000000001",
+        periodId: "00000000-0000-4000-8000-000000000011",
+        turnoId: "00000000-0000-4000-8000-000000000021",
+      }),
+    );
+    if (!created.ok) throw new Error("fixture order");
+    const salePublicId = "S".repeat(22);
+    const session = await openSession();
+    try {
+      await session.db.execute(sql`
+        insert into enrollment_order (
+          id, student_id, public_id, number, status, source, workshop_id,
+          period_id, period, turno_id, workshop_name, turno_label, weekday,
+          starts_at, ends_at, student_name, student_email,
+          student_phone_digits, fee_centavos, materials_centavos,
+          total_centavos, policy_version, requested_at, kind, parent_order_id
+        )
+        select gen_random_uuid(), student_id, ${salePublicId}, 'CI-2026-0900',
+          'pending_confirmation', source, workshop_id, period_id, period,
+          turno_id, workshop_name, turno_label, weekday, starts_at, ends_at,
+          student_name, student_email, student_phone_digits, 0, 400000, 400000,
+          policy_version, requested_at, 'material_sale', id
+        from enrollment_order where id = ${created.value.id}`);
+    } finally {
+      await session.close();
+    }
+
+    expect(await repository.findByPublicId(salePublicId)).toBeNull();
+    expect((await repository.findByPublicId(created.value.publicId))?.id).toBe(
+      created.value.id,
+    );
+  });
 });
 
 describe("student identity association", () => {

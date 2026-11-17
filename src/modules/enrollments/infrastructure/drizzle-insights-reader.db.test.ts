@@ -365,6 +365,77 @@ describe("createDrizzleEnrollmentInsightsReader", () => {
     ]);
   });
 
+  it("counts a paid material sale as materials income and cost of its workshop and month, never as an enrollment, a fee or a student", async () => {
+    const { add, reader } = await fixture();
+    const parent = await add({ studentEmail: "ana@example.com" });
+    const sale = (overrides: Partial<Order> = {}) =>
+      add({
+        studentEmail: "ana@example.com",
+        kind: "material_sale",
+        parentOrderId: parent,
+        feeCentavos: 0,
+        materials: 4_000_00,
+        totalCentavos: 4_000_00,
+        paidAmountCentavos: 4_000_00,
+        unitCost: 1_500_00,
+        ...overrides,
+      });
+    await sale();
+    await sale({
+      status: "pending_confirmation",
+      paidAt: null,
+      paidAmountCentavos: null,
+    });
+    await sale({ ...CANCELLED });
+
+    expect(await reader.income({ period: "2026-11" })).toEqual([
+      expect.objectContaining({
+        orders: 1,
+        feeCentavos: 10_000_00,
+        materialsCentavos: 4_000_00,
+        materialsCostCentavos: 3_000_00,
+      }),
+    ]);
+    const registrations = await reader.periodRegistrations("2026-11");
+    expect(registrations).toHaveLength(1);
+    expect(registrations[0]).toMatchObject({
+      orders: 1,
+      feeCentavos: 10_000_00,
+      studentEmails: ["ana@example.com"],
+    });
+    const counted = (await reader.ordersByStatus({ period: "2026-11" })).reduce(
+      (sum, row) => sum + row.orders,
+      0,
+    );
+    expect(counted).toBe(1);
+    expect(await reader.participation("2026-11")).toEqual({
+      students: 1,
+      recurring: 0,
+    });
+    // The sale's materials are the materials of its workshop and month.
+    const materials = await reader.materials({ period: "2026-11" });
+    expect(materials).toHaveLength(2);
+    expect(materials).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "paid",
+          workshopId: WORKSHOP_A,
+          amountCentavos: 4_000_00,
+          costCentavos: 3_000_00,
+        }),
+        expect.objectContaining({
+          status: "pending_confirmation",
+          workshopId: WORKSHOP_A,
+          amountCentavos: 4_000_00,
+        }),
+      ]),
+    );
+    // A pending sale is a payment still to collect, like a pending enrollment.
+    expect(
+      await reader.pendingSummary(new Date("2026-11-30T00:00:00Z")),
+    ).toEqual({ total: 1, older: 1 });
+  });
+
   it("counts a corrected order once with its current fee, and not while it awaits the new total", async () => {
     const { add, openSession, reader } = await fixture();
     const kept = await add({ studentEmail: "kept@example.com" });

@@ -18,6 +18,15 @@ afterAll(async () => {
 
 type Values = typeof enrollmentOrder.$inferInsert;
 const unpaid = { paidAt: null, paidAmountCentavos: null } as const;
+/** A later material purchase under the first record the test adds. */
+const sale = {
+  kind: "material_sale",
+  parentOrderId: "00000000-0000-4000-8000-000000000001",
+  feeCentavos: 0,
+  materialsCentavos: 400_000,
+  totalCentavos: 400_000,
+  paidAmountCentavos: 400_000,
+} as const;
 
 async function setup() {
   const database = await createTestDatabase();
@@ -77,10 +86,12 @@ async function setup() {
 }
 
 describe("drizzle order audience reader", () => {
-  it("lists paid orders of the weekday and period, with the time and the public id", async () => {
+  it("lists paid monthly records of the weekday and period, with the time and the public id, never a material sale", async () => {
     const { reader, add } = await setup();
     await add();
     await add({ status: "materials_received" });
+    await add({ ...sale });
+    await add({ ...sale, status: "materials_received" });
     await add({ status: "pending_confirmation", ...unpaid });
     await add({ status: "cancelled" });
     await add({ weekday: 3 });
@@ -98,7 +109,7 @@ describe("drizzle order audience reader", () => {
     expect(rows[0]?.total.toCentavos()).toBe(5_800_000);
   });
 
-  it("lists pending orders requested inside the window only", async () => {
+  it("lists pending monthly records requested inside the window only, never a pending material sale", async () => {
     const { reader, add } = await setup();
     const at = (iso: string) => ({
       status: "pending_confirmation",
@@ -110,6 +121,7 @@ describe("drizzle order audience reader", () => {
     await add(at("2026-10-31T12:00:00.000Z")); // to, excluded
     await add(at("2026-10-29T12:00:00.000Z")); // too old
     await add({ requestedAt: new Date("2026-10-30T18:00:00.000Z") }); // paid
+    await add({ ...sale, ...at("2026-10-30T18:00:00.000Z"), ...unpaid }); // a sale
 
     const rows = await reader.pendingRequestedBetween(
       new Date("2026-10-30T12:00:00.000Z"),

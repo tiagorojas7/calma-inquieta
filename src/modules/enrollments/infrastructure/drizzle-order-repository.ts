@@ -5,11 +5,9 @@ import {
   enrollmentOrder,
   orderAudit,
   orderLine,
-  orderNumberSequence,
   student,
 } from "~/platform/db/schema/enrollments";
 import {
-  formatOrderNumber,
   transition,
   type IllegalTransition,
   type LineSource,
@@ -21,6 +19,7 @@ import type {
   StoredOrder,
 } from "../application/enrollment-repository";
 import type { OrderStockPort } from "../application/order-stock";
+import { nextOrderNumber } from "./order-number";
 import { takeStockLines } from "./order-stock-lines";
 import { claimSeat } from "./seat-claim";
 
@@ -41,6 +40,7 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     publicId: row.publicId,
     number: row.number,
     status: row.status as OrderStatus,
+    ...(row.kind === "material_sale" ? { kind: row.kind } : {}),
     requestedAt: row.requestedAt,
     workshopId: row.workshopId,
     workshopName: row.workshopName,
@@ -240,19 +240,8 @@ export function createDrizzleOrderRepository(
                 })
                 .where(eq(student.id, studentId));
             }
-            const sequence = await tx
-              .insert(orderNumberSequence)
-              .values({ year: draft.year, last: 1 })
-              .onConflictDoUpdate({
-                target: orderNumberSequence.year,
-                set: { last: sql`${orderNumberSequence.last} + 1` },
-              })
-              .returning({ last: orderNumberSequence.last });
-            const last = sequence[0]?.last;
-            if (last === undefined)
-              throw new Error("order sequence unavailable");
+            const number = await nextOrderNumber(tx, draft.year);
             const id = crypto.randomUUID();
-            const number = formatOrderNumber(draft.year, last);
             await tx.insert(enrollmentOrder).values({
               id,
               studentId,
@@ -357,11 +346,15 @@ export function createDrizzleOrderRepository(
         }
       }),
 
+    // A sale is never reachable by a public link: the public page is the monthly record's.
     findByPublicId: (publicId) =>
       withSession(async (db) => {
         const values = await loadOrders(
           db,
-          eq(enrollmentOrder.publicId, publicId),
+          and(
+            eq(enrollmentOrder.publicId, publicId),
+            eq(enrollmentOrder.kind, "enrollment"),
+          ),
         );
         return values[0] ?? null;
       }),

@@ -352,6 +352,125 @@ describe("enrollment schema", () => {
     ]);
   });
 
+  describe("material sales", () => {
+    /** Copies a monthly record into a row of the given kind, as the sale store does. */
+    const copyAs = (
+      parentId: string,
+      id: string,
+      values: {
+        kind: string;
+        parent: string | null;
+        fee: number;
+        materials: number;
+      },
+    ) =>
+      client.query(
+        `INSERT INTO enrollment_order (
+           id, student_id, public_id, number, status, source, workshop_id,
+           period_id, period, turno_id, workshop_name, turno_label, weekday,
+           starts_at, ends_at, student_name, student_email,
+           student_phone_digits, fee_centavos, materials_centavos,
+           total_centavos, policy_version, requested_at, kind, parent_order_id
+         )
+         SELECT $2::uuid, student_id, 'sale_' || $2::text,
+           'CI-2026-' || right($2::text, 4),
+           'pending_confirmation', source, workshop_id, period_id, period,
+           turno_id, workshop_name, turno_label, weekday, starts_at, ends_at,
+           student_name, student_email, student_phone_digits, $3::bigint,
+           $4::bigint, $3::bigint + $4::bigint, policy_version, requested_at,
+           $5, $6::uuid
+         FROM enrollment_order WHERE id = $1`,
+        [
+          parentId,
+          id,
+          values.fee,
+          values.materials,
+          values.kind,
+          values.parent,
+        ],
+      );
+
+    it("lets a sale sit next to the active monthly record of its student and month, any number of times", async () => {
+      const parent = "00000000-0000-4000-8000-000000000a01";
+      await insertOrder({ id: parent, email: "sale@example.com" });
+      for (const id of [
+        "00000000-0000-4000-8000-000000000a02",
+        "00000000-0000-4000-8000-000000000a03",
+      ])
+        await copyAs(parent, id, {
+          kind: "material_sale",
+          parent,
+          fee: 0,
+          materials: 400000,
+        });
+      await expect(
+        insertOrder({
+          id: "00000000-0000-4000-8000-000000000a04",
+          email: "sale@example.com",
+        }),
+      ).rejects.toMatchObject({
+        code: "23505",
+        constraint: "enrollment_order_student_period_active_unique",
+      });
+      const stored = await client.query<{ kind: string }>(
+        "SELECT kind FROM enrollment_order WHERE student_email = $1 ORDER BY id",
+        ["sale@example.com"],
+      );
+      expect(stored.rows.map((row) => row.kind)).toEqual([
+        "enrollment",
+        "material_sale",
+        "material_sale",
+      ]);
+    });
+
+    it("rejects a sale without its monthly record or with a fee, an enrollment that points at a record, and an unknown kind", async () => {
+      const parent = "00000000-0000-4000-8000-000000000a11";
+      await insertOrder({ id: parent, email: "sale-checks@example.com" });
+      const sale = {
+        kind: "material_sale",
+        parent,
+        fee: 0,
+        materials: 400000,
+      };
+      const rejected = (id: string, values: typeof sale) =>
+        expect(copyAs(parent, id, values)).rejects.toMatchObject({
+          code: "23514",
+        });
+      await rejected("00000000-0000-4000-8000-000000000a12", {
+        ...sale,
+        parent: null as unknown as string,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a13", {
+        ...sale,
+        fee: 5800000,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a14", {
+        ...sale,
+        materials: 0,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a15", {
+        ...sale,
+        kind: "enrollment",
+      });
+      await rejected("00000000-0000-4000-8000-000000000a16", {
+        ...sale,
+        kind: "voucher",
+      });
+    });
+
+    it("defaults an order to a monthly record without a parent", async () => {
+      const id = "00000000-0000-4000-8000-000000000a21";
+      await insertOrder({ id, email: "default-kind@example.com" });
+      const { rows } = await client.query<{
+        kind: string;
+        parent_order_id: string | null;
+      }>("SELECT kind, parent_order_id FROM enrollment_order WHERE id = $1", [
+        id,
+      ]);
+      expect(rows).toEqual([{ kind: "enrollment", parent_order_id: null }]);
+    });
+  });
+
   it("enforces unique public ids and order numbers", async () => {
     await insertOrder({ id: "00000000-0000-4000-8000-000000000401" });
     await expect(
@@ -844,6 +963,8 @@ describe("enrollment schema", () => {
     `);
 
     expect(rows).toEqual([
+      // A material sale points at its monthly record.
+      { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "student" },
       { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },

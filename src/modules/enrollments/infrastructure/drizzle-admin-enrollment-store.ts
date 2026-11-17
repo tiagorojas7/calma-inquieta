@@ -25,8 +25,10 @@ import {
   confirmOutcome,
   cordobaDateOf,
   cordobaDayStart,
+  holdsSeat,
   transition,
   type LineSource,
+  type OrderKind,
   type OrderStatus,
 } from "../domain/order-core";
 import { planCorrection } from "../domain/order-correction";
@@ -45,6 +47,7 @@ import type {
   CorrectionSnapshot,
   CorrectionTarget,
   DeliveryOrder,
+  MaterialSaleStore,
   OrderCorrection,
 } from "../application/admin-enrollment-store";
 import type {
@@ -52,6 +55,7 @@ import type {
   StoredOrder,
 } from "../application/enrollment-repository";
 import type { OrderStockPort } from "../application/order-stock";
+import { nextOrderNumber } from "./order-number";
 import { returnStockLines, takeStockLines } from "./order-stock-lines";
 import { claimSeat } from "./seat-claim";
 
@@ -193,6 +197,7 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     publicId: row.publicId,
     number: row.number,
     status: row.status as OrderStatus,
+    ...(row.kind === "material_sale" ? { kind: row.kind } : {}),
     requestedAt: row.requestedAt,
     workshopId: row.workshopId,
     workshopName: row.workshopName,
@@ -284,7 +289,7 @@ export function createDrizzleAdminEnrollmentStore(
   openSession: DbSessionFactory,
   periods: AdminEnrollmentPeriodLookup,
   stock: OrderStockPort<Db>,
-): AdminEnrollmentStore {
+): AdminEnrollmentStore & MaterialSaleStore {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
     try {
@@ -328,6 +333,91 @@ export function createDrizzleAdminEnrollmentStore(
   }
 
   return {
+    async createSale(
+      input,
+    ): Promise<
+      Result<
+        { readonly id: string; readonly number: string },
+        AdminEnrollmentStoreError
+      >
+    > {
+      try {
+        return await withSession(async (db) =>
+          db.transaction(async (tx) => {
+            const rows = await tx
+              .select()
+              .from(enrollmentOrder)
+              .where(eq(enrollmentOrder.id, input.parentOrderId))
+              .for("update");
+            const parent = rows[0];
+            if (!parent) return err({ kind: "not-found" });
+            if (parent.kind !== "enrollment" || parent.status === "cancelled")
+              return err({ kind: "not-sellable" });
+            const number = await nextOrderNumber(tx, input.year);
+            const id = crypto.randomUUID();
+            const total = input.materialsTotal.toCentavos();
+            // The sale copies the monthly record's student, workshop, month and
+            // turno; it holds no seat and charges no fee.
+            await tx.insert(enrollmentOrder).values({
+              id,
+              studentId: parent.studentId,
+              publicId: input.publicId,
+              number,
+              status: "pending_confirmation",
+              source: "public",
+              workshopId: parent.workshopId,
+              periodId: parent.periodId,
+              period: parent.period,
+              turnoId: parent.turnoId,
+              workshopName: parent.workshopName,
+              turnoLabel: parent.turnoLabel,
+              weekday: parent.weekday,
+              startsAt: parent.startsAt,
+              endsAt: parent.endsAt,
+              studentName: parent.studentName,
+              studentEmail: parent.studentEmail,
+              studentPhoneDigits: parent.studentPhoneDigits,
+              feeCentavos: 0,
+              materialsCentavos: total,
+              totalCentavos: total,
+              policyVersion: parent.policyVersion,
+              requestedAt: input.now,
+              kind: "material_sale",
+              parentOrderId: parent.id,
+            });
+            await tx.insert(orderLine).values(
+              input.lines.map((line, position) => ({
+                orderId: id,
+                position,
+                materialId: line.materialId,
+                variantId: line.variantId,
+                materialName: line.materialName,
+                variantLabel: line.variantLabel,
+                unitPriceCentavos: line.unitPrice.toCentavos(),
+                quantity: line.quantity,
+                supplierId: line.supplierId,
+                supplierName: line.supplierName,
+                source: line.source ?? "supplier",
+                unitCostCentavos: line.unitCost?.toCentavos() ?? null,
+              })),
+            );
+            await tx.insert(orderAudit).values({
+              id: crypto.randomUUID(),
+              orderId: id,
+              at: input.now,
+              actor: input.actor.email,
+              from: null,
+              to: "pending_confirmation",
+              note: null,
+            });
+            return ok({ id, number });
+          }),
+        );
+      } catch {
+        return err({ kind: "unavailable" });
+      }
+    },
+
     async confirm(
       input,
     ): Promise<Result<Confirmed, AdminEnrollmentStoreError>> {
@@ -355,20 +445,24 @@ export function createDrizzleAdminEnrollmentStore(
               input.amount,
             );
             if (!amount.ok) return amount;
-            const period = await periods.find(order.periodId, order.turnoId);
-            if (!period) return err({ kind: "period-closed" });
-            const open = periodAcceptsOrders(
-              { status: period.status, period: order.period },
-              input.now,
-            );
-            if (!open.ok) return open;
+            // Only a monthly record holds a seat; a sale is paid whatever the
+            // turno's occupancy or the month's window.
+            if (holdsSeat(order.kind as OrderKind)) {
+              const period = await periods.find(order.periodId, order.turnoId);
+              if (!period) return err({ kind: "period-closed" });
+              const open = periodAcceptsOrders(
+                { status: period.status, period: order.period },
+                input.now,
+              );
+              if (!open.ok) return open;
 
-            const claimed = await claimSeat(tx, {
-              periodId: order.periodId,
-              turnoId: order.turnoId,
-              capacity: period.capacity,
-            });
-            if (!claimed) return err({ kind: "turno-full" });
+              const claimed = await claimSeat(tx, {
+                periodId: order.periodId,
+                turnoId: order.turnoId,
+                capacity: period.capacity,
+              });
+              if (!claimed) return err({ kind: "turno-full" });
+            }
             // A line whose stock ran out becomes a supplier line; the payment stands.
             await takeStockLines(tx, stock, order.id, {
               by: input.actor.email,
@@ -433,7 +527,8 @@ export function createDrizzleAdminEnrollmentStore(
             if (!checked.ok) return checked;
 
             if (outcome === "cancel-release") {
-              await releaseSeat(tx, order);
+              if (holdsSeat(order.kind as OrderKind))
+                await releaseSeat(tx, order);
               // Received means used and handed over: those units do not come back.
               if (order.status !== "materials_received")
                 await returnStockLines(tx, stock, order.id, {
@@ -488,6 +583,9 @@ export function createDrizzleAdminEnrollmentStore(
               .for("update");
             const order = rows[0];
             if (!order) return err({ kind: "not-found" });
+            // A sale has no workshop, turno or fee of its own to correct.
+            if (!holdsSeat(order.kind as OrderKind))
+              return err({ kind: "not-correctable" });
             const status = order.status as OrderStatus;
             const target: CorrectionTarget | undefined = input.target;
             const retargeted =
@@ -537,6 +635,7 @@ export function createDrizzleAdminEnrollmentStore(
                     and(
                       eq(enrollmentOrder.studentId, order.studentId),
                       eq(enrollmentOrder.period, target.period),
+                      eq(enrollmentOrder.kind, "enrollment"),
                       sql`${enrollmentOrder.status} <> 'cancelled'`,
                       sql`${enrollmentOrder.id} <> ${order.id}`,
                     ),
@@ -847,6 +946,9 @@ export function createDrizzleAdminEnrollmentStore(
                 {
                   id: order.id,
                   number: order.number,
+                  ...(order.kind === "material_sale"
+                    ? { kind: order.kind }
+                    : {}),
                   status: order.status as DeliveryOrder["status"],
                   studentName: order.studentName,
                   phoneDigits: order.studentPhoneDigits,
@@ -897,6 +999,7 @@ export function createDrizzleAdminEnrollmentStore(
         status: row.status as OrderStatus,
         total: money(row.totalCentavos),
         requestedOn: cordobaDate(row.requestedAt),
+        ...(row.kind === "material_sale" ? { kind: row.kind } : {}),
       }));
       return { items, page, pageSize: 50 as const };
     },
@@ -935,8 +1038,37 @@ export function createDrizzleAdminEnrollmentStore(
               ),
             );
           const stored = toOrder(order, lines);
+          const parent =
+            order.parentOrderId === null
+              ? undefined
+              : (
+                  await db
+                    .select({
+                      id: enrollmentOrder.id,
+                      number: enrollmentOrder.number,
+                    })
+                    .from(enrollmentOrder)
+                    .where(eq(enrollmentOrder.id, order.parentOrderId))
+                )[0];
+          const sales =
+            order.kind === "enrollment"
+              ? await db
+                  .select()
+                  .from(enrollmentOrder)
+                  .where(eq(enrollmentOrder.parentOrderId, order.id))
+                  .orderBy(enrollmentOrder.requestedAt, enrollmentOrder.id)
+              : [];
           return ok({
             ...stored,
+            kind: order.kind as OrderKind,
+            ...(parent === undefined ? {} : { parent }),
+            sales: sales.map((sale) => ({
+              id: sale.id,
+              number: sale.number,
+              status: sale.status as OrderStatus,
+              total: money(sale.totalCentavos),
+              requestedAt: sale.requestedAt,
+            })),
             email: stored.student.email,
             phoneDigits: stored.student.phoneDigits,
             seat: {

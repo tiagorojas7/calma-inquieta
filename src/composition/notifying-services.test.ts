@@ -307,6 +307,22 @@ describe("withPaymentEmails", () => {
     }
   });
 
+  it("sends no enrollment payment email for a material sale, which has no email of its own", async () => {
+    const { service, n, d, readDetail } = setup(ok({ kind: "confirmed" }));
+    readDetail.mockResolvedValueOnce({
+      ok: true as const,
+      value: { ...detail, kind: "material_sale" } as unknown as typeof detail,
+    });
+
+    await expect(service.confirmPayment(actor, input)).resolves.toEqual(
+      ok({ kind: "confirmed" }),
+    );
+    await d.settle();
+
+    expect(readDetail).toHaveBeenCalledWith(actor, "o1");
+    expect(n.paymentConfirmed).not.toHaveBeenCalled();
+  });
+
   it("never fails the flow when the detail read rejects", async () => {
     const { service, readDetail, d, n } = setup(ok({ kind: "confirmed" }));
     readDetail.mockRejectedValueOnce(new Error("db down"));

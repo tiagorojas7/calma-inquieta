@@ -17,6 +17,7 @@ function toSource(row: Row): OrderHistoryRow {
     id: row.id,
     number: row.number,
     status: row.status as OrderStatus,
+    ...(row.kind === "material_sale" ? { kind: row.kind } : {}),
     requestedAt: row.requestedAt,
     paidAt: row.paidAt,
     total: total.value,
@@ -44,7 +45,7 @@ export function createDrizzleOrderHistoryReader(
     try {
       const query = session.db.select().from(enrollmentOrder);
       const rows = await (email === undefined
-        ? query
+        ? query.where(eq(enrollmentOrder.kind, "enrollment"))
         : query.where(
             eq(
               sql`lower(btrim(${enrollmentOrder.studentEmail}))`,

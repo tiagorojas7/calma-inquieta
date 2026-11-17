@@ -6,6 +6,7 @@ import type {
 import type {
   IllegalTransition,
   LineSource,
+  OrderKind,
   OrderStatus,
   TurnoFull,
 } from "../domain/order-core";
@@ -13,12 +14,17 @@ import type { PeriodClosed, PeriodStatus } from "../domain/period-window";
 import type {
   AuditEntry,
   DuplicateOrder,
+  OrderLineDraft,
   OrderRepositoryListQuery,
   StoredOrder,
 } from "./enrollment-repository";
 
+/** The monthly record cannot take a material sale: it is cancelled or is itself a sale. */
+export type NotSellable = { readonly kind: "not-sellable" };
+
 export type AdminEnrollmentStoreError =
   | { readonly kind: "not-found" }
+  | NotSellable
   | { readonly kind: "unavailable" }
   | { readonly kind: "amount-mismatch" }
   | PeriodClosed
@@ -50,7 +56,18 @@ export type AdminListItem = Pick<
   readonly studentName: string;
   readonly phoneDigits: string;
   readonly requestedOn: string;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: OrderKind;
 };
+
+/** A material sale as its monthly record lists it. */
+export interface MaterialSaleSummary {
+  readonly id: string;
+  readonly number: string;
+  readonly status: OrderStatus;
+  readonly total: Money;
+  readonly requestedAt: Date;
+}
 export type AdminEnrollmentDetail = StoredOrder & {
   readonly email: string;
   readonly phoneDigits: string;
@@ -58,6 +75,12 @@ export type AdminEnrollmentDetail = StoredOrder & {
   readonly audit: readonly AuditEntry[];
   /** Every correction of the order, oldest first. */
   readonly corrections: readonly OrderCorrection[];
+  /** `material_sale` for a sale; `enrollment` for a monthly record. */
+  readonly kind?: OrderKind;
+  /** The monthly record a sale belongs to. */
+  readonly parent?: { readonly id: string; readonly number: string };
+  /** The material sales under a monthly record, oldest first. */
+  readonly sales?: readonly MaterialSaleSummary[];
 };
 
 /** Where an order sits: the workshop, month and turno of one record. */
@@ -138,6 +161,8 @@ export interface ConsolidationLine {
 export interface DeliveryOrder {
   readonly id: string;
   readonly number: string;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: OrderKind;
   readonly status: "paid" | "materials_requested" | "materials_received";
   readonly studentName: string;
   readonly phoneDigits: string;
@@ -240,6 +265,36 @@ export interface AdminEnrollmentStore {
    * one material line, one entry per order, sorted by student name then number.
    */
   deliveryOrders(period: string): Promise<readonly DeliveryOrder[]>;
+}
+
+/** A material sale to create under a monthly record, lines already resolved from the catalog. */
+export interface CreateSaleInput {
+  /** The monthly record the sale belongs to. */
+  readonly parentOrderId: string;
+  readonly publicId: string;
+  /** Córdoba year of `now`; selects the number sequence. */
+  readonly year: number;
+  /** The sum of the lines, in whole pesos; it is the sale total (a sale has no fee). */
+  readonly materialsTotal: Money;
+  readonly lines: readonly OrderLineDraft[];
+  readonly actor: AdminEnrollmentActor;
+  readonly now: Date;
+}
+
+/**
+ * Creates the sale as a pending order that copies the student, workshop, month
+ * and turno of its monthly record, never claiming a seat. The monthly record
+ * is locked while the sale is stored and is never changed by it.
+ */
+export interface MaterialSaleStore {
+  createSale(
+    input: CreateSaleInput,
+  ): Promise<
+    Result<
+      { readonly id: string; readonly number: string },
+      AdminEnrollmentStoreError
+    >
+  >;
 }
 
 export type AdminEnrollmentPeriodLookup = {

@@ -10,6 +10,9 @@ import type { OrderStatus } from "../domain/order-core";
 
 const CONFIRMED = ["paid", "materials_requested", "materials_received"];
 
+/** Enrollments, registrations and students count monthly records only, never a material sale. */
+const ENROLLMENT = eq(orders.kind, "enrollment");
+
 const sumOf = (expression: ReturnType<typeof sql>) =>
   sql`coalesce(sum(${expression}), 0)`.mapWith(Number);
 
@@ -45,7 +48,7 @@ export function createDrizzleEnrollmentInsightsReader(
             orders: count(),
           })
           .from(orders)
-          .where(inPeriod(period))
+          .where(and(ENROLLMENT, inPeriod(period)))
           .groupBy(
             orders.workshopId,
             orders.turnoId,
@@ -80,7 +83,11 @@ export function createDrizzleEnrollmentInsightsReader(
             workshopId: orders.workshopId,
             workshopName: sql<string>`max(${orders.workshopName})`,
             period: orders.period,
-            orders: count(),
+            // A material sale adds its materials to the month, not a registration.
+            orders:
+              sql`count(*) filter (where ${orders.kind} = 'enrollment')`.mapWith(
+                Number,
+              ),
             feeCentavos: sumOf(sql`${orders.feeCentavos}`),
             materialsCentavos: sumOf(sql`${orders.materialsCentavos}`),
             // Each order's lines at their own cost, or at their price where none was loaded.
@@ -113,7 +120,11 @@ export function createDrizzleEnrollmentInsightsReader(
           })
           .from(orders)
           .where(
-            and(inArray(orders.status, CONFIRMED), eq(orders.period, period)),
+            and(
+              ENROLLMENT,
+              inArray(orders.status, CONFIRMED),
+              eq(orders.period, period),
+            ),
           )
           .groupBy(orders.periodId);
         return rows;
@@ -186,7 +197,7 @@ export function createDrizzleEnrollmentInsightsReader(
           from (
             select ${email} as email, count(distinct ${orders.period}) as periods
             from ${orders}
-            where ${inArray(orders.status, CONFIRMED)}
+            where ${ENROLLMENT} and ${inArray(orders.status, CONFIRMED)}
             group by ${email}
             having bool_or(${orders.period} = ${period})
           ) as confirmed

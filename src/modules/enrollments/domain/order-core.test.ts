@@ -11,6 +11,7 @@ import {
   formatOrderNumber,
   fulfillmentOf,
   generatePublicId,
+  holdsSeat,
   isPublicId,
   lineSourceFor,
   priceOrder,
@@ -474,5 +475,13 @@ describe("fulfillment of the lines", () => {
       hasSupplierLines: true,
       stockOnly: false,
     });
+  });
+});
+
+describe("holdsSeat", () => {
+  it("is true for a monthly record and for an order without a kind, false only for a material sale", () => {
+    expect(holdsSeat("enrollment")).toBe(true);
+    expect(holdsSeat(undefined)).toBe(true);
+    expect(holdsSeat("material_sale")).toBe(false);
   });
 });

@@ -486,7 +486,20 @@
                                                                                        "type":  "text",
                                                                                        "primaryKey":  false,
                                                                                        "notNull":  false
-                                                                                   }
+                                                                                   },
+                                                                   "kind":  {
+                                                                                "name":  "kind",
+                                                                                "type":  "text",
+                                                                                "primaryKey":  false,
+                                                                                "notNull":  true,
+                                                                                "default":  "\u0027enrollment\u0027"
+                                                                            },
+                                                                   "parent_order_id":  {
+                                                                                           "name":  "parent_order_id",
+                                                                                           "type":  "uuid",
+                                                                                           "primaryKey":  false,
+                                                                                           "notNull":  false
+                                                                                       }
                                                                },
                                                    "indexes":  {
                                                        "enrollment_order_student_period_active_unique": {
@@ -506,7 +519,7 @@
                                                            }
                                                          ],
                                                          "isUnique": true,
-                                                         "where": "\"enrollment_order\".\"status\" <> 'cancelled'",
+                                                         "where": "\"enrollment_order\".\"status\" <> 'cancelled' AND \"enrollment_order\".\"kind\" = 'enrollment'",
                                                          "concurrently": false,
                                                          "method": "btree",
                                                          "with": {}
@@ -525,7 +538,20 @@
                                                                                                                                        ],
                                                                                                                          "onDelete":  "no action",
                                                                                                                          "onUpdate":  "no action"
-                                                                                                                     }
+                                                                                                                     },
+                                                                       "enrollment_order_parent_order_id_enrollment_order_id_fk":  {
+                                                                                                                                       "name":  "enrollment_order_parent_order_id_enrollment_order_id_fk",
+                                                                                                                                       "tableFrom":  "enrollment_order",
+                                                                                                                                       "tableTo":  "enrollment_order",
+                                                                                                                                       "columnsFrom":  [
+                                                                                                                                                           "parent_order_id"
+                                                                                                                                                       ],
+                                                                                                                                       "columnsTo":  [
+                                                                                                                                                         "id"
+                                                                                                                                                     ],
+                                                                                                                                       "onDelete":  "no action",
+                                                                                                                                       "onUpdate":  "no action"
+                                                                                                                                   }
                                                                    },
                                                    "compositePrimaryKeys":  {
 
@@ -605,7 +631,15 @@
                                                                             "enrollment_order_refund_state_check":  {
                                                                                                                         "name":  "enrollment_order_refund_state_check",
                                                                                                                         "value":  "(\"enrollment_order\".\"refunded_amount_centavos\" IS NULL\n            AND \"enrollment_order\".\"refunded_at\" IS NULL\n            AND \"enrollment_order\".\"refunded_by\" IS NULL\n            AND \"enrollment_order\".\"refund_note\" IS NULL)\n          OR (\"enrollment_order\".\"status\" = 'cancelled'\n            AND \"enrollment_order\".\"paid_at\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_amount_centavos\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_at\" IS NOT NULL\n            AND \"enrollment_order\".\"refunded_by\" IS NOT NULL)"
-                                                                                                                    }
+                                                                                                                    },
+                                                                            "enrollment_order_kind_check":  {
+                                                                                                                "name":  "enrollment_order_kind_check",
+                                                                                                                "value":  "\"enrollment_order\".\"kind\" IN (\u0027enrollment\u0027, \u0027material_sale\u0027)"
+                                                                                                            },
+                                                                            "enrollment_order_sale_check":  {
+                                                                                                                "name":  "enrollment_order_sale_check",
+                                                                                                                "value":  "(\"enrollment_order\".\"kind\" = \u0027enrollment\u0027 AND \"enrollment_order\".\"parent_order_id\" IS NULL)\n          OR (\"enrollment_order\".\"kind\" = \u0027material_sale\u0027\n            AND \"enrollment_order\".\"parent_order_id\" IS NOT NULL\n            AND \"enrollment_order\".\"fee_centavos\" = 0\n            AND \"enrollment_order\".\"materials_centavos\" > 0)"
+                                                                                                            }
                                                                         },
                                                    "isRLSEnabled":  false
                                                },

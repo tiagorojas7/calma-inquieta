@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -92,14 +93,40 @@ export const enrollmentOrder = pgTable(
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     refundNote: text("refund_note"),
     refundedBy: text("refunded_by"),
+    /**
+     * `enrollment` is the monthly record; `material_sale` is a later material
+     * purchase under that record's student and month (no fee, no seat, its
+     * own payment state).
+     */
+    kind: text("kind").notNull().default("enrollment"),
+    /** The monthly record a material sale belongs to; null for an enrollment. */
+    parentOrderId: uuid("parent_order_id").references(
+      (): AnyPgColumn => enrollmentOrder.id,
+    ),
   },
   (table) => [
     unique("enrollment_order_public_id_unique").on(table.publicId),
     unique("enrollment_order_number_unique").on(table.number),
-    // One active order per student and month; a cancelled order frees it.
+    // One active monthly record per student and month; a cancelled one frees
+    // it, and a material sale never counts toward it.
     uniqueIndex("enrollment_order_student_period_active_unique")
       .on(table.studentId, table.period)
-      .where(sql`${table.status} <> 'cancelled'`),
+      .where(
+        sql`${table.status} <> 'cancelled' AND ${table.kind} = 'enrollment'`,
+      ),
+    check(
+      "enrollment_order_kind_check",
+      sql`${table.kind} IN ('enrollment', 'material_sale')`,
+    ),
+    // A sale points at its monthly record, carries no fee and sells something.
+    check(
+      "enrollment_order_sale_check",
+      sql`(${table.kind} = 'enrollment' AND ${table.parentOrderId} IS NULL)
+          OR (${table.kind} = 'material_sale'
+            AND ${table.parentOrderId} IS NOT NULL
+            AND ${table.feeCentavos} = 0
+            AND ${table.materialsCentavos} > 0)`,
+    ),
     check(
       "enrollment_order_status_check",
       sql`${table.status} IN ('pending_confirmation', 'paid', 'materials_requested', 'materials_received', 'cancelled')`,

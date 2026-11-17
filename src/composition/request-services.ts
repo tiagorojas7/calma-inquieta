@@ -287,18 +287,20 @@ export function createRequestServices(
       clock: systemClock,
     }),
   );
+  // The catalog an owner picks from, for a hand-made enrollment and for a material sale.
+  const saleCatalog = createSaleCatalogAdapter(
+    createSaleCatalogReader({
+      materials: materialRepository,
+      stock: stockStore,
+    }),
+  );
   const publicEnrollments = seats
     ? createPublicEnrollmentService({
         offers: enrollmentOffers,
         // Monthly periods offer no materials, so a public request refuses any line.
         materials: { listForPeriod: () => Promise.resolve([]) },
         // Only an owner enrolling a student by hand may add catalog materials.
-        adminMaterials: createSaleCatalogAdapter(
-          createSaleCatalogReader({
-            materials: materialRepository,
-            stock: stockStore,
-          }),
-        ),
+        adminMaterials: saleCatalog,
         orders: createDrizzleOrderRepository(openSession, orderStock),
         seats,
         clock: systemClock,
@@ -316,6 +318,14 @@ export function createRequestServices(
           clock: systemClock,
           // A correction picks its new workshop, month and turno here too.
           offers: enrollmentOffers,
+          // A later material purchase under a monthly record, from the same catalog.
+          sales: {
+            store: adminEnrollmentStore,
+            catalog: saleCatalog,
+            random: {
+              bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+            },
+          },
           // Unwrapped on purpose: the manual-order emails are sent by
           // `withManualEnrollmentEmails`, by case (pending or free).
           createPending: (input, actorEmail, options) =>

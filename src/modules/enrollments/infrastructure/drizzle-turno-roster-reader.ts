@@ -23,6 +23,7 @@ export function createDrizzleTurnoRosterReader(
               eq(enrollmentOrder.periodId, periodId),
               eq(enrollmentOrder.turnoId, turnoId),
               ne(enrollmentOrder.status, "cancelled"),
+              eq(enrollmentOrder.kind, "enrollment"),
             ),
           )
           .orderBy(

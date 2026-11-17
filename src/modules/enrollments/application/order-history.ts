@@ -1,11 +1,13 @@
 import type { Money } from "~/modules/_shared";
-import type { OrderStatus } from "../domain/order-core";
+import type { OrderKind, OrderStatus } from "../domain/order-core";
 
 /** What other modules may read about an order: no lines, audit or payment notes. */
 export interface OrderHistoryRow {
   readonly id: string;
   readonly number: string;
   readonly status: OrderStatus;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: OrderKind;
   readonly requestedAt: Date;
   readonly paidAt: Date | null;
   readonly total: Money;
@@ -19,7 +21,12 @@ export interface OrderHistoryRow {
   readonly studentPhoneDigits: string;
 }
 
-/** Read-only order history. `byEmail` matches the email trimmed and lower-cased. */
+/**
+ * Read-only order history. `all` is every monthly record: the registry and the
+ * reminders derive from enrollments, never from a material sale. `byEmail`
+ * matches the email trimmed and lower-cased and is one student's own history,
+ * so it also lists her material sales, marked by `kind`.
+ */
 export interface OrderHistoryReader {
   all(): Promise<readonly OrderHistoryRow[]>;
   byEmail(email: string): Promise<readonly OrderHistoryRow[]>;

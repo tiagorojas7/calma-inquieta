@@ -1,12 +1,22 @@
 import {
   err,
+  Money,
+  ok,
   parseWholePesos,
   type Clock,
-  type Money,
   type Result,
 } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
 import {
+  buildCart,
+  priceCart,
+  type CartError,
+  type CartLine,
+  type PricingError,
+} from "../domain/cart-core";
+import {
+  cordobaYearOf,
+  generatePublicId,
   type InvalidRefund,
   type RefundField,
   type RefundIssueCode,
@@ -20,12 +30,17 @@ import type {
   Confirmed,
   Corrected,
   CorrectionTarget,
+  MaterialSaleStore,
 } from "./admin-enrollment-store";
 import type { EnrollmentOfferLookup } from "./offer-lookup";
-import type {
-  PublicOrderView,
-  RequestEnrollmentError,
-  RequestEnrollmentInput,
+import type { OfferedMaterialsLookup } from "./offered-materials";
+import type { RandomBytes } from "./random-bytes";
+import {
+  resolveLines,
+  type LineRefusal,
+  type PublicOrderView,
+  type RequestEnrollmentError,
+  type RequestEnrollmentInput,
 } from "./public-enrollment-service";
 
 type Actor = AdminActor | Record<string, unknown> | null | undefined;
@@ -58,12 +73,21 @@ export type CreatePendingEnrollment = (
   actorEmail: string,
   options?: CreatePendingRequest,
 ) => Promise<Result<PublicOrderView, RequestEnrollmentError>>;
+/** What a material sale needs besides the order store: the catalog to sell from and ids. */
+export interface MaterialSaleDeps {
+  readonly store: MaterialSaleStore;
+  /** The catalog an owner picks from; it is not tied to a period, so the record's period is only passed through. */
+  readonly catalog: OfferedMaterialsLookup;
+  readonly random: RandomBytes;
+}
 export interface AdminEnrollmentServiceDeps {
   readonly store: AdminEnrollmentStore;
   readonly clock: Clock;
   readonly createPending: CreatePendingEnrollment;
   /** Where a correction finds the workshop, month and turno an owner picks. */
   readonly offers: EnrollmentOfferLookup;
+  /** Without it, creating a material sale answers `unavailable`. */
+  readonly sales?: MaterialSaleDeps;
 }
 export interface ConfirmPaymentInput {
   readonly orderId: string;
@@ -104,7 +128,21 @@ export interface CorrectEnrollmentInput {
   readonly note?: string;
 }
 
+/** The catalog lines of a sale, as the owner picked them. */
+export interface CreateMaterialSaleInput {
+  /** The monthly record the sale belongs to. */
+  readonly orderId: string;
+  readonly lines: readonly CartLine[];
+}
+export type MaterialSaleError =
+  | AdminEnrollmentError
+  | CartError
+  | PricingError
+  | LineRefusal
+  | { readonly kind: "empty-sale" };
+
 const REFUND_NOTE_MAX = 300;
+const PUBLIC_ID_BYTES = 16;
 export type BulkOutcomes = readonly {
   readonly orderId: string;
   readonly result: Result<void, AdminEnrollmentError>;
@@ -137,6 +175,17 @@ export interface AdminEnrollmentUseCases {
     actor: Actor,
     input: CorrectEnrollmentInput,
   ): Promise<Result<Corrected, AdminEnrollmentError>>;
+  /**
+   * Creates a pending material sale under a monthly record, from catalog
+   * variants and quantities. The sale has its own total (the sum of its lines,
+   * no fee) and its own full payment, and never changes the monthly record.
+   */
+  createMaterialSale(
+    actor: Actor,
+    input: CreateMaterialSaleInput,
+  ): Promise<
+    Result<{ readonly id: string; readonly number: string }, MaterialSaleError>
+  >;
   markMaterialsRequested(
     actor: Actor,
     orderId: string,
@@ -262,6 +311,7 @@ export function createUnavailableAdminEnrollmentService(): AdminEnrollmentUseCas
     confirmPayment: fail,
     cancel: fail,
     correct: fail,
+    createMaterialSale: fail,
     markMaterialsRequested: fail,
     markMaterialsReceived: fail,
     markMaterialsRequestedBulk: unavailableBulk,
@@ -363,6 +413,45 @@ export function createAdminEnrollmentService(
         actor: admin.value,
         now: deps.clock.now(),
       });
+    },
+    async createMaterialSale(actor, input) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const sales = deps.sales;
+      if (sales === undefined) return err({ kind: "unavailable" });
+      const cart = buildCart(input.lines);
+      if (!cart.ok) return cart;
+      if (cart.value.length === 0) return err({ kind: "empty-sale" });
+      // The record gives the period the catalog is asked for and answers
+      // "not found" before anything else is read.
+      const parent = await deps.store.detail(input.orderId).catch(() => null);
+      if (parent === null) return err({ kind: "unavailable" });
+      if (!parent.ok) return parent;
+      let offered;
+      try {
+        offered = await sales.catalog.listForPeriod(parent.value.periodId);
+      } catch {
+        return err({ kind: "unavailable" });
+      }
+      const lines = resolveLines(cart.value, offered);
+      if (!lines.ok) return lines;
+      const priced = priceCart({
+        fee: Money.zero(),
+        lines: lines.value,
+        allowZeroFee: true,
+      });
+      if (!priced.ok) return priced;
+      const now = deps.clock.now();
+      const created = await sales.store.createSale({
+        parentOrderId: input.orderId,
+        publicId: generatePublicId(sales.random.bytes(PUBLIC_ID_BYTES)),
+        year: cordobaYearOf(now),
+        materialsTotal: priced.value.materialsTotal,
+        lines: lines.value,
+        actor: admin.value,
+        now,
+      });
+      return created.ok ? ok(created.value) : created;
     },
     async correct(actor, input) {
       const admin = requireAdminActor(actor);

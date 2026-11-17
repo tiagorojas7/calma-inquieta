@@ -2,6 +2,7 @@ import type { Money, NotFound, Result } from "~/modules/_shared";
 import type {
   IllegalTransition,
   LineSource,
+  OrderKind,
   OrderStatus,
   TurnoFull,
 } from "../domain/order-core";
@@ -73,6 +74,8 @@ export interface StoredOrder extends Omit<
   /** `CI-YYYY-NNNN`, assigned by the repository inside the create transaction. */
   readonly number: string;
   readonly status: OrderStatus;
+  /** Present only for a material sale; absent means the monthly `enrollment`. */
+  readonly kind?: OrderKind;
   readonly paidAt?: Date;
   readonly paidAmount?: Money;
   readonly confirmedBy?: string;

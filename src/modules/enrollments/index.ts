@@ -18,6 +18,9 @@ export {
   type CancelEnrollmentInput,
   type CancelRefundInput,
   type CorrectEnrollmentInput,
+  type CreateMaterialSaleInput,
+  type MaterialSaleDeps,
+  type MaterialSaleError,
 } from "./application/admin-enrollment-service";
 export type {
   AdminEnrollmentDetail,
@@ -30,6 +33,9 @@ export type {
   Corrected,
   CorrectionSnapshot,
   CorrectionTarget,
+  CreateSaleInput,
+  MaterialSaleStore,
+  MaterialSaleSummary,
   OrderCorrection,
 } from "./application/admin-enrollment-store";
 export {

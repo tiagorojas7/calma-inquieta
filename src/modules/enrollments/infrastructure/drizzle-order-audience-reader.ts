@@ -28,7 +28,10 @@ function toRow(row: Row): OrderAudienceRow {
   };
 }
 
-/** Reads the audiences of the scheduled notifications. */
+/**
+ * Reads the audiences of the scheduled notifications: monthly records only, a
+ * material sale is neither a class to attend nor an enrollment request.
+ */
 export function createDrizzleOrderAudienceReader(
   openSession: DbSessionFactory,
 ): OrderAudienceReader {
@@ -51,6 +54,7 @@ export function createDrizzleOrderAudienceReader(
     classesOn: (weekday, period) =>
       read(
         and(
+          eq(enrollmentOrder.kind, "enrollment"),
           inArray(enrollmentOrder.status, ATTENDING),
           eq(enrollmentOrder.weekday, weekday),
           eq(enrollmentOrder.period, period),
@@ -59,6 +63,7 @@ export function createDrizzleOrderAudienceReader(
     pendingRequestedBetween: (from, to) =>
       read(
         and(
+          eq(enrollmentOrder.kind, "enrollment"),
           eq(enrollmentOrder.status, "pending_confirmation"),
           gte(enrollmentOrder.requestedAt, from),
           lt(enrollmentOrder.requestedAt, to),

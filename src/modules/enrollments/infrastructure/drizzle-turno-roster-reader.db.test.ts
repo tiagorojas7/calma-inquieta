@@ -17,7 +17,7 @@ afterAll(async () => {
 });
 
 describe("createDrizzleTurnoRosterReader", () => {
-  it("lists the active orders of one period and turno by student name", async () => {
+  it("lists the active monthly records of one period and turno by student name, never a material sale", async () => {
     const database = await createTestDatabase();
     created.push(database);
     const openSession = createDbSessionFactory({
@@ -95,6 +95,20 @@ describe("createDrizzleTurnoRosterReader", () => {
         studentEmail: "otro@example.com",
         turnoId: OTHER_TURNO,
       });
+      // A later material purchase under the first record: never on the roster.
+      for (const status of ["paid", "pending_confirmation"] as const) {
+        await add({
+          studentName: `Venta ${status}`,
+          studentEmail: `venta-${status}@example.com`,
+          kind: "material_sale",
+          parentOrderId: "00000000-0000-4000-8000-000000000001",
+          status,
+          feeCentavos: 0,
+          materialsCentavos: 400_000,
+          totalCentavos: 400_000,
+          paidAmountCentavos: status === "paid" ? 400_000 : null,
+        });
+      }
     } finally {
       await session.close();
     }

@@ -232,12 +232,13 @@ function toView(order: StoredOrder): PublicOrderView {
   };
 }
 
-type LineRefusal = Extract<
+export type LineRefusal = Extract<
   RequestEnrollmentError,
   { kind: "material-not-offered" | "material-unavailable" }
 >;
 
-function resolveLines(
+/** The catalog lines of a cart as order lines: priced, costed and sourced from stock or the supplier. */
+export function resolveLines(
   cart: readonly CartLine[],
   offered: readonly OfferedMaterial[],
 ): Result<readonly OrderLineDraft[], LineRefusal> {

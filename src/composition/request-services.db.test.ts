@@ -512,6 +512,158 @@ describe("createRequestServices", () => {
     expect(await pending()).toBe(2);
   });
 
+  it("sells materials under a monthly record through the wired services, paying and voiding them without touching the month", async () => {
+    const database = await newDatabase();
+    const turno = seedTurno({ label: "Lunes" });
+    await seedCatalog(
+      createDbSessionFactory({ connectionString: database.url }),
+      buildSeed({
+        ...fullyPopulatedSeed(),
+        talleres: [
+          seedTaller({
+            slug: "ceramica",
+            teacherId: fullyPopulatedSeed().teachers[0]?.id ?? null,
+            turnos: [turno],
+            periods: [
+              seedPeriod({
+                period: "2099-01",
+                capacities: [{ turnoId: turno.id, capacity: 10 }],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const services = createRequestServices(
+      { databaseUrl: database.url, buildCommit: "abc", ...SITE },
+      {},
+      createIsolateState(),
+    );
+    const actor = testAdminActor();
+    const supplier = await services.suppliers.create(actor, {
+      name: "Casa Pincel",
+      phone: "",
+      email: "",
+      notes: "",
+    });
+    if (!supplier.ok) throw new Error("supplier fixture");
+    const material = await services.materials.create(actor, {
+      name: "Arcilla",
+      description: "Arcilla blanca",
+      category: "Arcillas",
+      supplierId: supplier.value.id,
+      available: true,
+      image: null,
+      variants: [{ label: "1 kg", price: "4000", available: true, swatch: "" }],
+    });
+    if (!material.ok) throw new Error("material fixture");
+    const variant = material.value.variants[0];
+    if (!variant) throw new Error("variant fixture");
+    const stocked = await services.materials.adjustStock(
+      actor,
+      material.value.id,
+      variant.id,
+      { delta: "5", reason: "test" },
+    );
+    expect(stocked).toEqual({ ok: true, value: { onHand: 5 } });
+    const fee = Money.fromCentavos(5_800_000);
+    if (!fee.ok) throw new Error("fee fixture");
+    const monthly = await services.enrollments.createPending(
+      actor,
+      {
+        slug: "ceramica",
+        period: "2099-01",
+        turnoId: turno.id,
+        student: {
+          fullName: "Alumna Uno",
+          email: "alumna1@example.com",
+          phone: "351 555-2001",
+          policyAccepted: true,
+          honeypot: "",
+        },
+        lines: [],
+      },
+      { fee: fee.value },
+    );
+    if (!monthly.ok) throw new Error(JSON.stringify(monthly.error));
+    const listed = await services.enrollments.list(actor, {});
+    const record = listed.ok ? listed.value.items[0] : undefined;
+    if (!record) throw new Error("record fixture");
+
+    const sale = await services.enrollments.createMaterialSale(actor, {
+      orderId: record.id,
+      lines: [
+        { materialId: material.value.id, variantId: variant.id, quantity: 2 },
+      ],
+    });
+    if (!sale.ok) throw new Error(JSON.stringify(sale.error));
+    const today = new Date(Date.now() - 3 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    // The sale is pending, takes nothing yet and leaves the month as it was.
+    expect(await services.variantStock.onHand([variant.id])).toEqual(
+      new Map([[variant.id, 5]]),
+    );
+    const month = await services.enrollments.detail(actor, record.id);
+    expect(month).toMatchObject({
+      ok: true,
+      value: {
+        status: "pending_confirmation",
+        sales: [{ id: sale.value.id, status: "pending_confirmation" }],
+      },
+    });
+    if (month.ok) expect(month.value.total.toCentavos()).toBe(5_800_000);
+    expect(
+      await services.enrollments.confirmPayment(actor, {
+        orderId: sale.value.id,
+        amount: "8000",
+        paidOn: today,
+      }),
+    ).toEqual({ ok: true, value: { kind: "confirmed" } });
+    expect(await services.variantStock.onHand([variant.id])).toEqual(
+      new Map([[variant.id, 3]]),
+    );
+    expect(
+      await services.enrollments.cancel(actor, {
+        orderId: sale.value.id,
+        reason: "devuelto",
+        refund: { amount: "8000", refundedOn: today },
+      }),
+    ).toEqual({ ok: true, value: { kind: "cancelled" } });
+    expect(await services.variantStock.onHand([variant.id])).toEqual(
+      new Map([[variant.id, 5]]),
+    );
+    const after = await services.enrollments.detail(actor, record.id);
+    expect(after).toMatchObject({
+      ok: true,
+      value: {
+        status: "pending_confirmation",
+        sales: [{ id: sale.value.id, status: "cancelled" }],
+      },
+    });
+    // A sale never takes the place of the monthly record in the month.
+    expect(
+      await services.enrollments.createPending(
+        actor,
+        {
+          slug: "ceramica",
+          period: "2099-01",
+          turnoId: turno.id,
+          student: {
+            fullName: "Alumna Uno",
+            email: "alumna1@example.com",
+            phone: "351 555-2001",
+            policyAccepted: true,
+            honeypot: "",
+          },
+          lines: [],
+        },
+        { fee: fee.value },
+      ),
+    ).toMatchObject({ ok: false, error: { kind: "duplicate-order" } });
+  });
+
   it("lets the admin save a taller with an uploaded photo", async () => {
     const database = await newDatabase();
     await seedCatalog(

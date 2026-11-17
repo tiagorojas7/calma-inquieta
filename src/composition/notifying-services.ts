@@ -99,6 +99,8 @@ export function withPaymentEmails(
           const found = await inner.detail(actor, input.orderId);
           if (!found.ok) return;
           const order = found.value;
+          // A material sale has no email of its own: the student paid her month already.
+          if (order.kind === "material_sale") return;
           await notifier.paymentConfirmed({
             studentEmail: order.email,
             studentName: order.student.fullName,

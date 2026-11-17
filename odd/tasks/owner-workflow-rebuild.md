@@ -289,3 +289,10 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - Units taken from stock return on cancel or on a correction back to pending, but not once the order is `materials_received` (received is terminal: used and handed over).
     - Variants without a price stay unsellable, as today.
   - Route: unit S-A (WU1+WU2, materials: cost, stock table, stock adjustment) first, then unit S-B (WU3-WU5, enrollments: line source and cost snapshot, stock take and return, manual form stock labels, insights with real cost).
+- L66 (2026-11-16): unit S-A (variant cost and stock) committed in `5a4ae34`.
+  - What it does:
+    - `material_variant.cost_centavos` (nullable, > 0) is edited in the form, kept across save, import and price raise, and shown.
+    - New `variant_stock` (`on_hand >= 0`, no FK) and `stock_adjustment` (non-zero delta, reason) tables. The detail shows "En stock: N" and an "Ajustar stock" form that is refused below zero.
+    - The port `VariantStockPort` (`onHand`, `take(tx,…)`, `put(tx,…)`, with a `StockStamp`) is implemented by `createDrizzleStockStore`.
+  - Writer evidence: RED observed for the unit, service, form and UI tests; the DB cost assertions have no separate RED. Unit/ui 18 files / 185 passed (an earlier full unit/ui run gave 4669). DB: material repository 20, stock store 10 (10 concurrent takes on 3 units give 3 successes), migrate 7, catalog import 4. `drizzle-kit generate` reports no changes, with 152 snapshot lines inserted and none deleted.
+  - Unit S-B (line source and cost snapshot, stock take and return, manual form labels, insights cost) is delegated next. One seam run, verifier and review will cover S-A and S-B.

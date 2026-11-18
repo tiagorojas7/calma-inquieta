@@ -5,6 +5,7 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import {
   CheckboxField,
   FormError,
+  ReturnToFields,
   SelectField,
   TextAreaField,
   TextField,
@@ -102,5 +103,62 @@ describe("FormError", () => {
     await expectNoAxeViolations(container);
     rerender(<FormError message={undefined} />);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("friendly form controls", () => {
+  it("makes text fields, selects and text areas at least 48 px tall", () => {
+    render(
+      <>
+        <TextField label="Nombre" name="n" />
+        <SelectField
+          label="Mes"
+          name="m"
+          options={[{ value: "a", label: "A" }]}
+        />
+        <TextAreaField label="Nota" name="t" />
+      </>,
+    );
+    for (const control of [
+      screen.getByLabelText("Nombre"),
+      screen.getByLabelText("Mes"),
+      screen.getByLabelText("Nota"),
+    ])
+      expect(control).toHaveClass("min-h-12", "text-lg");
+  });
+
+  it("gives a checkbox a 48 px row and a 24 px box", () => {
+    render(<CheckboxField label="Ya pagó" name="paid" />);
+    const box = screen.getByRole("checkbox", { name: "Ya pagó" });
+    expect(box).toHaveClass("size-6");
+    expect(box.parentElement).toHaveClass("min-h-12");
+  });
+});
+
+describe("ReturnToFields", () => {
+  it("posts where the form was and which item it acted on, as hidden fields", () => {
+    const { container } = render(
+      <form>
+        <ReturnToFields to="/admin/alumnas?q=ana" anchor="inscripcion-1" />
+      </form>,
+    );
+    const data = new FormData(
+      container.querySelector("form") as HTMLFormElement,
+    );
+    expect(data.get("returnTo")).toBe("/admin/alumnas?q=ana");
+    expect(data.get("anchor")).toBe("inscripcion-1");
+  });
+
+  it("leaves the anchor out when there is none", () => {
+    const { container } = render(
+      <form>
+        <ReturnToFields to="/admin/clases" />
+      </form>,
+    );
+    const data = new FormData(
+      container.querySelector("form") as HTMLFormElement,
+    );
+    expect(data.get("returnTo")).toBe("/admin/clases");
+    expect(data.has("anchor")).toBe(false);
   });
 });

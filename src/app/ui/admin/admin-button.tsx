@@ -6,7 +6,7 @@ export type AdminButtonVariant =
 const focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 const base =
-  "relative inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-6 py-3 font-sans text-base font-bold shadow-button transition-[transform,box-shadow,background-color] duration-200 ease-calm hover:shadow-lift motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0";
+  "relative inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-6 py-3 font-sans text-lg font-bold shadow-button transition-[transform,box-shadow,background-color] duration-200 ease-calm hover:shadow-lift motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0";
 const disabled =
   "disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 

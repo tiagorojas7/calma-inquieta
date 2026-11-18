@@ -15,7 +15,7 @@ interface FieldProps {
 }
 
 const controlClasses =
-  "min-h-11 w-full rounded-sm border border-clay-600 bg-surface px-3 py-2 text-base text-ink-900";
+  "min-h-12 w-full rounded-sm border border-clay-600 bg-surface px-3 py-2 text-lg text-ink-900";
 
 function describedByOf(id: string, { hint, error }: Partial<FieldProps>) {
   return (
@@ -166,14 +166,14 @@ export function CheckboxField({
   const id = useId();
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      <div className="flex min-h-12 items-center gap-3">
         <input
           {...props}
           id={id}
           type="checkbox"
           aria-describedby={describedByOf(id, { hint, error })}
           aria-invalid={error ? true : undefined}
-          className="size-5"
+          className="size-6"
         />
         <label htmlFor={id} className="text-ink-900">
           {label}
@@ -194,5 +194,27 @@ export function FormError({ message }: { message: string | undefined }) {
     >
       {message}
     </p>
+  );
+}
+
+/**
+ * Hidden fields that make a native post come back to the page it was on, at
+ * the item it acted on. The action reads them with `stayOnPage`
+ * (src/app/admin/return-to.ts): same names, validated there.
+ */
+export function ReturnToFields({
+  to,
+  anchor,
+}: {
+  /** The path of the current page, with its query: pathname + search. */
+  to: string;
+  /** The id of the item the form acts on. */
+  anchor?: string | undefined;
+}) {
+  return (
+    <>
+      <input type="hidden" name="returnTo" value={to} />
+      {anchor ? <input type="hidden" name="anchor" value={anchor} /> : null}
+    </>
   );
 }

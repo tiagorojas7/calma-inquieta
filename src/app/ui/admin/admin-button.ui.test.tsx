@@ -116,3 +116,24 @@ describe("AdminButtonLink icons", () => {
     expect(link).toHaveClass("min-h-12");
   });
 });
+
+describe("friendly button size", () => {
+  it.each(["primary", "secondary", "success", "danger"] as const)(
+    "makes the %s button at least 48 px tall with a large label",
+    (variant) => {
+      render(<AdminButton variant={variant}>Guardar</AdminButton>);
+      expect(screen.getByRole("button", { name: "Guardar" })).toHaveClass(
+        "min-h-12",
+        "text-lg",
+      );
+    },
+  );
+
+  it("gives the link button the same size", () => {
+    render(<AdminButtonLink href="/admin">Ir</AdminButtonLink>);
+    expect(screen.getByRole("link", { name: "Ir" })).toHaveClass(
+      "min-h-12",
+      "text-lg",
+    );
+  });
+});

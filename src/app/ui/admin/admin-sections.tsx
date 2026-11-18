@@ -102,6 +102,39 @@ export function AdminCardList<Row>({
 }
 
 /**
+ * The title of a section, with an optional few words under it and an action on
+ * the same row. `AdminSection` uses it, and screens that lay out their own
+ * surface (for example a list of cards) use it directly.
+ */
+export function AdminSectionHeading({
+  title,
+  description,
+  actions,
+  level = 2,
+  id,
+}: {
+  title: string;
+  description?: ReactNode | undefined;
+  actions?: ReactNode | undefined;
+  level?: 2 | 3;
+  id?: string | undefined;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1">
+        <Heading level={level} {...(id ? { id } : {})}>
+          {title}
+        </Heading>
+        {description ? (
+          <p className="text-sm text-ink-700">{description}</p>
+        ) : null}
+      </div>
+      {actions}
+    </div>
+  );
+}
+
+/**
  * A section on its own raised panel: the title, an optional subtitle and action
  * on one row, then the content. Sections read as separate surfaces on the page,
  * so a screen is not one flat run of headings and rows.
@@ -125,17 +158,12 @@ export function AdminSection({
       aria-labelledby={id}
       className={`flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6 ${className}`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <Heading level={2} id={id}>
-            {title}
-          </Heading>
-          {description ? (
-            <p className="text-sm text-ink-700">{description}</p>
-          ) : null}
-        </div>
-        {actions}
-      </div>
+      <AdminSectionHeading
+        id={id}
+        title={title}
+        description={description}
+        actions={actions}
+      />
       {children}
     </section>
   );

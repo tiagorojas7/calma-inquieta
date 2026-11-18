@@ -575,3 +575,22 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Finding, advisory: 0018 also fails if a legacy `intensive_workshop` has a price or deposit that is not whole pesos, or a blank name. The application has enforced trimmed non-blank names and whole pesos since the intensive module was created (`c0165cd`, `parseWholePesos` in `validateIntensiveCore`), so only a hand-written SQL row could trip it.
   - Pre-deploy check for the owner, read-only, in the same way as L25: `SELECT count(*) FILTER (WHERE price_centavos % 100 <> 0) AS price_cents, count(*) FILTER (WHERE deposit_centavos % 100 <> 0) AS deposit_cents, count(*) FILTER (WHERE btrim(name) = '') AS blank_names FROM intensive_workshop;` (all three must be 0).
   - Next: native review in slices.
+- L103 (2026-11-18, owner, verbatim, answering how to run the native review after the 4236-line stock slice hit `lens_context_budget_exceeded`): "retoma, 1".
+  - The answer picks option 1, "Solo commits de mayor riesgo" (option text: "Reviso de a uno los unos 8 commits que tocan la migración 0018, el stock o la concurrencia. Cada uno te pide consentimiento. Si alguno no entra en el límite, queda anotado como no revisable y cubierto por los verificadores.").
+  - Earlier in this step:
+    - The whole-range preflight STATUS hit `operation_timeout`; the untracked `.pnpm-store/` slows the inventory.
+    - Candidates therefore run in a detached worktree, `C:\Proyectos\TR_WebStudio\CalmaInquieta-worktrees\t6-review`.
+    - Each candidate is one commit, with its parent as base.
+  - Candidates, in order:
+
+    | Commit | Change |
+    | --- | --- |
+    | `5a4ae34` | stock tables |
+    | `1673823` | stock take and return |
+    | `d0e7d78` | workshop projects backfill |
+    | `8570def` | material allocation under locks |
+    | `7261962` | material sales, kind and index |
+    | `57c9fe0` | seen backfill |
+    | `3b4dc0e` | policy tables and acceptance |
+    | `6dfee21` | `stock_taken_at` |
+

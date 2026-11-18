@@ -86,7 +86,7 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
 
 ## Tasks
 
-- [ ] P1 (S1, S2, S8): the shell, the four-plus-Ajustes nav, and route skeletons with redirects from the old URLs. Friendly base styles: type scale, big buttons, cards, and the saved message. A shared "back to the same place" redirect helper. Route: delegated.
+- [x] P1 (S1, S2, S8): `7059b0b` + `95ef0da`; the shell, the four-plus-Ajustes nav, and route skeletons with redirects from the old URLs. Friendly base styles: type scale, big buttons, cards, and the saved message. A shared "back to the same place" redirect helper. Route: delegated.
 - [ ] P2 (S3, S2, S8): Hoy. Route: delegated after P1.
 - [ ] P3 (S4, S5, S2, S8): the Alumnas file, one-form enrollment with "Ya pagó", sales inside the file. Route: delegated after P1.
 - [ ] P4 (S6, S2, S8): Clases, with workshop reservations and attendance inline. Route: delegated after P1.
@@ -121,3 +121,14 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
 
 - L6 (2026-11-18, owner, verbatim, sent with that answer): "aparte al cargar una venta de materiales, se esta cargando como un nuevo turno, se tiene que cargar en la misma ficha del cliente, y la ux and ui tiene que ser mas amigable en todo sentido tambien."
 - L7 (2026-11-18, owner, verbatim): "si, la verdad que hay que simplificar todo, ajustar los textosm botones, hay demasiado informacion, aca se busca el balance perfecto entre simplicidad y funcionalidad, lo veo demasiado cargado actualmente, hasta yo mismo me pierdo, imaginate ellas, asi que hay que meter una mejora exponencial en simplificar este poryecto del lado del panel admin". This adds S10 (an information and copy diet on every admin screen) and task P7.
+- L8 (2026-11-18): P1 done (delegated, worker-high) in `7059b0b` + `95ef0da`, inside its surfaces.
+  - Navigation: Hoy, Alumnas, Clases, Materiales, Ajustes, with the active section matched by the longest prefix.
+  - Pages: Ajustes hub with 7 cards, and a temporary Clases hub.
+  - Admin base: 18px text and 48px controls.
+  - Primitives: `AdminActionCard`, `AdminHubCard`, `SavedBanner`, `MoreOptions`, `AdminSectionHeading`, `ReturnToFields`.
+  - Copy: per-section files `src/app/ui/admin/copy/*`.
+  - Helper: `stayOnPage(form, { fallback, code })`, with an open-redirect guard in `src/app/admin/return-to.ts`.
+  - Evidence: RED then GREEN. Typecheck, eslint and prettier clean. Unit `src/app` plus architecture 146/1505; ui admin 51/496.
+  - The parent restarted the dev server; all five sections return 200.
+  - For P6: check the 18px visually. `adminMicrocopy.shell.more` is unused.
+  - Next: P2–P5 in parallel.

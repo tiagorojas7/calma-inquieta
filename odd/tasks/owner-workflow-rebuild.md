@@ -557,3 +557,21 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Parent seam run after F1 + F2: `pnpm typecheck` exit 0; unit 318 files / 4045 passed; ui 132 files / 1178 passed. The probes of both blockers are now committed regression tests and pass; this is the bounded recheck.
   - Advisory for the owner, not a rule today: after a received record is corrected and paid again, a later cancel returns the delivered units, because only the status check protects them (the same as before F2).
   - Next: 0018 rehearsal, native review slices, then the owners' real-phone walkthrough.
+- L102 (2026-11-17): 0018 rehearsal done (delegated, worker-high) in `f31b124`. It is a permanent DB test, `src/platform/db/migration-0018-rehearsal.db.test.ts`, with helpers `src/testing/db/legacy-0017-dataset.ts` and `legacy-migrations.ts` (`migrateDatabaseUpTo`). 19 tests pass.
+  - Dataset at 0017:
+    - 95 orders in every legacy status over 3 months and 5 workshops, with 60 lines;
+    - 40 students, including padded and mixed-case emails, name and phone changes, and L13 case (a);
+    - 6 intensives with 32 seat requests, and 8 private events;
+    - catalog, attendance and notes.
+  - Applying 0018 passes. Proven:
+    - one student per normalized email, with name and phone taken from the latest order;
+    - every legacy column of every table identical to the pre-migration snapshot;
+    - the seen backfill;
+    - one policy per kind at v1, with null acceptance;
+    - a default project for every intensive and request;
+    - legacy lines left as `supplier` with no `stock_taken_at`;
+    - all 80+ CHECKs with zero violations, and the new unique rules enforced.
+  - L13 cases (b) and (c) each fail with 23505 on their own unique index. The database stays exactly at 0017 (Drizzle runs pending migrations in one transaction).
+  - Finding, advisory: 0018 also fails if a legacy `intensive_workshop` has a price or deposit that is not whole pesos, or a blank name. The application has enforced trimmed non-blank names and whole pesos since the intensive module was created (`c0165cd`, `parseWholePesos` in `validateIntensiveCore`), so only a hand-written SQL row could trip it.
+  - Pre-deploy check for the owner, read-only, in the same way as L25: `SELECT count(*) FILTER (WHERE price_centavos % 100 <> 0) AS price_cents, count(*) FILTER (WHERE deposit_centavos % 100 <> 0) AS deposit_cents, count(*) FILTER (WHERE btrim(name) = '') AS blank_names FROM intensive_workshop;` (all three must be 0).
+  - Next: native review in slices.

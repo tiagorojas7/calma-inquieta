@@ -82,6 +82,8 @@ S9. **Same rules.** Owner, verbatim (L2): "lo mismo que se hace ahora, pero sin 
 
 Only screens, navigation, copy and the shape of the forms change. A rule change needs the owner's word.
 
+S10. **Less information, shorter words, on every admin screen.** Owner, verbatim (L7): "ajustar los textosm botones, hay demasiado informacion, aca se busca el balance perfecto entre simplicidad y funcionalidad". Each screen shows only what the task needs. Every button label is a short verb phrase. Descriptions, hints and secondary facts are cut, or moved behind "Más opciones" or "Ver más". Long helper sentences become a few words. The rule applies to every admin page, including Ajustes and its pages, not only the four sections.
+
 ## Tasks
 
 - [ ] P1 (S1, S2, S8): the shell, the four-plus-Ajustes nav, and route skeletons with redirects from the old URLs. Friendly base styles: type scale, big buttons, cards, and the saved message. A shared "back to the same place" redirect helper. Route: delegated.
@@ -89,7 +91,8 @@ Only screens, navigation, copy and the shape of the forms change. A rule change 
 - [ ] P3 (S4, S5, S2, S8): the Alumnas file, one-form enrollment with "Ya pagó", sales inside the file. Route: delegated after P1.
 - [ ] P4 (S6, S2, S8): Clases, with workshop reservations and attendance inline. Route: delegated after P1.
 - [ ] P5 (S7, S2, S8): Materiales. Route: delegated after P1.
-- [ ] P6 (S1–S9): seam run, local walkthrough at 390 px and desktop, the owner's check.
+- [ ] P7 (S10, S8): information and copy pass over every remaining admin page (Ajustes pages, workshop and teacher editors, policies, statistics, suppliers, events, reminders): cut text, shorten labels, hide secondary facts. Route: delegated after P2–P5.
+- [ ] P6 (S1–S10): seam run, local walkthrough at 390 px and desktop, the owner's check.
 
 ## Log
 
@@ -117,3 +120,4 @@ Only screens, navigation, copy and the shape of the forms change. A rule change 
   - Owner, verbatim, answering whether to see sketches first or go ahead: "Avanzar con la propuesta".
 
 - L6 (2026-11-18, owner, verbatim, sent with that answer): "aparte al cargar una venta de materiales, se esta cargando como un nuevo turno, se tiene que cargar en la misma ficha del cliente, y la ux and ui tiene que ser mas amigable en todo sentido tambien."
+- L7 (2026-11-18, owner, verbatim): "si, la verdad que hay que simplificar todo, ajustar los textosm botones, hay demasiado informacion, aca se busca el balance perfecto entre simplicidad y funcionalidad, lo veo demasiado cargado actualmente, hasta yo mismo me pierdo, imaginate ellas, asi que hay que meter una mejora exponencial en simplificar este poryecto del lado del panel admin". This adds S10 (an information and copy diet on every admin screen) and task P7.

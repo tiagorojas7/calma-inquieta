@@ -138,3 +138,7 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
   - Explicit-path commits only, never stash.
   - P3 owns the enrollments module (atomic create+pay and sale+pay).
   - The seam run follows when all four return.
+- L10 (2026-11-18, owner, verbatim): "y actualmente ni yo logro indetificar lo que tengo en stocky lo que no, se hace medio complicado y confuso a la hoa de crear materiales y eso, cada flujo debe ser muy sencillo y claro de realizar". Sharpens S7 for P5:
+  - Stock state must be obvious at a glance on every material and variant: "Hay N", "Sin stock", or ordered on demand. It is shown in words, with a distinct visual state, never colour alone.
+  - A filter shows only what there is or only what is missing.
+  - Creating a material must be a short, clear flow.

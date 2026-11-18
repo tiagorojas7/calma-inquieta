@@ -36,7 +36,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 - [x] T4 (S8, S11): settlements, margin and reported defect reproduction; percentage mismatch not a code defect, characterization `89e0f81` (U-A, delegated); turno labels fixed in `baa6890` (U-B, delegated); workshop settlement and margin done in T3-E `89c9e86` and `ab95a9f`, monthly margin in S-B; monthly settlement already counts only paid states and the fee (L16, re-checked L81); percentage warning and per-teacher percentage editing (L82, L85) in `0124d0c`; verification in T6; high risk items 1/3.
 - [ ] T7 (S2): remove materials from monthly periods. U-P (delegated, parallel): public flow without material step or gate. U-W (delegated, parallel): admin period and quick forms without the flag or material picker. The `materials_required` column and `period_material_offer` table stay dormant until a later migration slice; implemented, commits in L26; seam run in L27: unit/ui, lint, typecheck and format green, DB files that use T7 code green in L28; the other 17 run in T6.
 - [x] T5 (S9–S10): responsive panel, shared notifications, simplified reminders and editable global content/policies; delegated reminder slice completed and corrected inline so “Clases de mañana” selects the Córdoba next calendar day; commit `1228ea7`; generated turno names `baa6890` (U-B); "Descripción"/"Contenido interno" `a6c565e` (U-C); notification bell `57c9fe0` + `d312eb4` (T5-N, L91); global policies `3b4dc0e` + `55d3feb` (T5-P, L92); mobile verification at 390 px and copy fix `b0eb1b0` (L93); done, verification in T6; high risk items 2/3 for consent and shared notifications.
-- [ ] T6 (S1–S11): exhaustive final verification per L67 (per-area independent verifiers, full DB suite, 0018 rehearsal, differential, sliced native review, lint, typecheck, phone walkthrough); commit pending.
+- [x] T6 (S1–S11): exhaustive final verification per L67 done (L94–L104): verifiers, corrections F1 `6a603d3`..`1c838d8` and F2 `6dfee21`, full DB suite 43/43, 0018 rehearsal `f31b124`, native review of the high-risk commits, lint, typecheck, unit and ui; owner pre-deploy steps pending (L104).
 
 ## Log
 
@@ -504,15 +504,14 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
 - L97 (2026-11-17, owner, verbatim, answering how the notification colours are chosen): "El color de cada sección (Recommended)" (option text: "Cada aviso usa el mismo color e ícono que su sección en el menú: inscripciones en lila (Inscripciones), reservas de workshop en el color de Workshops, consultas de eventos privados en el de Eventos. En \"Pagos pendientes\": cuotas en lila, señas y saldos en el color de Workshops, ventas de materiales en amarillo (Materiales). Lo reconocés de un vistazo porque ya lo ves en el menú.").
 - L98 (2026-11-17): T6 verifier verdicts, full notes in `...\scratchpad\t6\results.md`.
 
-  | Area | Specs | Verdict |
-  | --- | --- | --- |
-  | ATT | S7 | pass |
-  | STU | S1 profile | fail: STU-1 |
-  | ENR | S1, S2, S3 | S1 and S2 pass; S3 fails on ENR-B1 |
-  | STK | S4, S5 | S4 passes; S5 fails on STK-1 (same root as ENR-B1) |
-  | WSP | S6, S8, S11 | pass |
-  | PNL | S9, S10 | pass |
-
+  | Area | Specs       | Verdict                                            |
+  | ---- | ----------- | -------------------------------------------------- |
+  | ATT  | S7          | pass                                               |
+  | STU  | S1 profile  | fail: STU-1                                        |
+  | ENR  | S1, S2, S3  | S1 and S2 pass; S3 fails on ENR-B1                 |
+  | STK  | S4, S5      | S4 passes; S5 fails on STK-1 (same root as ENR-B1) |
+  | WSP  | S6, S8, S11 | pass                                               |
+  | PNL  | S9, S10     | pass                                               |
   - Blockers:
     - STU-1: a material sale copies its parent's contact snapshot but is stamped now, so the student detail shows a stale name and phone while the list shows the corrected ones.
     - ENR-B1 / STK-1: a `materials_received` record corrected back to pending and paid again takes its stock lines a second time. With no units left, the delivered line also flips to `supplier`, so it is bought again.
@@ -524,6 +523,7 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - Correction batch:
     - Unit F1 (delegated, parallel): STU-1, the L96/L97 colours and the advisories above.
     - Unit F2 (delegated, after the DB suite ends, because it changes 0018): ENR-B1 / STK-1 with a per-line stock-taken mark.
+
 - L99 (2026-11-17): The full DB suite at `cc6adad` passed: 43 of 43 files, one per command. `catalog-import` exited 127 once and passed on retry. This covers the 17 files never rerun after T7. Log is in `...\scratchpad\t6\db-summary.txt`. Unit F2 (stock-taken mark in 0018) delegated now; F1 is still running.
 - L100 (2026-11-17): Unit F1 done (delegated, worker-high). Six commits, all inside the declared surfaces:
   - `6a603d3`: STU-1. `deriveStudents` takes the name, phone and `lastRequestedAt` from the newest non-sale order.
@@ -539,15 +539,15 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - The repro is in the admin-store contract, so the fake and the real store both run it.
   - Evidence: RED `expected 1 to be 3` then GREEN. DB files, each alone, all green:
 
-    | DB file | Tests |
-    | --- | --- |
-    | `enrollment-schema` | — |
-    | `migrate` | — |
-    | `drizzle-order-repository` | — |
-    | `drizzle-insights-reader` | — |
-    | `request-services` | — |
-    | `drizzle-material-sale-store` | 25 |
-    | `drizzle-admin-enrollment-store` | 80 |
+    | DB file                          | Tests |
+    | -------------------------------- | ----- |
+    | `enrollment-schema`              | —     |
+    | `migrate`                        | —     |
+    | `drizzle-order-repository`       | —     |
+    | `drizzle-insights-reader`        | —     |
+    | `request-services`               | —     |
+    | `drizzle-material-sale-store`    | 25    |
+    | `drizzle-admin-enrollment-store` | 80    |
 
   - Incident: a failed `git stash push` (index lock held by F1) followed by `git stash pop` applied an old unrelated stash (`feat/private-events`). F2 restored the 10 conflicted files with `git checkout HEAD`. Parent check afterwards:
     - no tracked change was pending;
@@ -583,14 +583,35 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
     - Each candidate is one commit, with its parent as base.
   - Candidates, in order:
 
-    | Commit | Change |
-    | --- | --- |
-    | `5a4ae34` | stock tables |
-    | `1673823` | stock take and return |
-    | `d0e7d78` | workshop projects backfill |
+    | Commit    | Change                          |
+    | --------- | ------------------------------- |
+    | `5a4ae34` | stock tables                    |
+    | `1673823` | stock take and return           |
+    | `d0e7d78` | workshop projects backfill      |
     | `8570def` | material allocation under locks |
-    | `7261962` | material sales, kind and index |
-    | `57c9fe0` | seen backfill |
-    | `3b4dc0e` | policy tables and acceptance |
-    | `6dfee21` | `stock_taken_at` |
+    | `7261962` | material sales, kind and index  |
+    | `57c9fe0` | seen backfill                   |
+    | `3b4dc0e` | policy tables and acceptance    |
+    | `6dfee21` | `stock_taken_at`                |
 
+- L104 (2026-11-18): Native review of the high-risk commits done. Each commit was reviewed in a detached worktree with its parent as base, four lenses, the owner's consent each time, and authority burned on acknowledgement.
+
+  | Commit                     | Result                              |
+  | -------------------------- | ----------------------------------- |
+  | `5a4ae34`                  | approved                            |
+  | `1673823`                  | approved                            |
+  | `d0e7d78`                  | approved                            |
+  | `8570def`                  | approved                            |
+  | `7261962`                  | approved                            |
+  | `57c9fe0`                  | approved                            |
+  | `3b4dc0e`                  | correction_required, then abandoned |
+  | `55d3feb` (reviewed alone) | approved                            |
+  | `6dfee21`                  | approved                            |
+  - `3b4dc0e` alone: correction_required. Its 4 severe findings (R3/R4) are the known L92 intermediate gap: without `55d3feb` the public forms post no versions, so every request fails closed.
+    - The owner authorized abandoning that lineage ("Liberar y revisar los dos juntos (Recommended)"), and it was abandoned with reason `operator_disposition`.
+    - The combined `3b4dc0e^..55d3feb` (3875 lines) exceeded the lens budget, so the findings are recorded as resolved by `55d3feb`. Evidence: the L93 end-to-end enrollment stored versions 1/1, and the route tests.
+  - No reviewer found a blocking issue in any approved commit.
+  - The review worktree was removed.
+  - T6 is done. Two owner steps remain before deploying 0018:
+    1. Run the read-only L102 intensive query (all three counts 0).
+    2. Walk through the panel on a real phone.

@@ -615,3 +615,4 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - T6 is done. Two owner steps remain before deploying 0018:
     1. Run the read-only L102 intensive query (all three counts 0).
     2. Walk through the panel on a real phone.
+- L105 (2026-11-18, owner, verbatim result of the L102 read-only query): `[{"price_cents": 0, "deposit_cents": 0, "blank_names": 0}]`. No legacy intensive breaks the 0018 project checks; that pre-deploy step is cleared. Only the owners' real-phone walkthrough remains.

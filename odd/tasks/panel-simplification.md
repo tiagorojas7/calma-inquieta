@@ -132,3 +132,9 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
   - The parent restarted the dev server; all five sections return 200.
   - For P6: check the 18px visually. `adminMicrocopy.shell.more` is unused.
   - Next: P2–P5 in parallel.
+- L9 (2026-11-18): P2 Hoy, P3 Alumnas, P4 Clases and P5 Materiales delegated in parallel (worker-high), with a shared brief (`...\scratchpad\ps\brief.md`).
+  - The writers share one tree with declared disjoint surfaces.
+  - No writer edits `microcopy.ts`, `routes.ts`, the nav, the shell, the P1 primitives or `app-services.ts`; they report needed shared changes to the parent.
+  - Explicit-path commits only, never stash.
+  - P3 owns the enrollments module (atomic create+pay and sale+pay).
+  - The seam run follows when all four return.

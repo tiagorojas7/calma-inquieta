@@ -533,3 +533,27 @@ S11. Reported bugs. Reproduce before correcting the reported teacher percentage 
   - `20d3770`: WSP. A percentage posted for a workshop that is not the teacher's gets a 404 before any write.
   - `1c838d8`: STK. The sale-cancel copy now says "vuelve al stock lo que todavía no se entregó".
   - Evidence: RED then GREEN for every item. The `enrollment.ui.test.tsx` text edit has no RED, because that test passes the error as a prop. `pnpm typecheck` exit 0; eslint and prettier clean; unit 7 files / 144 plus students 25 passed; ui 3 files / 44 passed. The parent's full unit and ui run comes after F2.
+- L101 (2026-11-17): Unit F2 done (delegated, worker-high) in `6dfee21`; ENR-B1 / STK-1 fixed.
+  - `order_line.stock_taken_at` is folded into 0018 with CHECK `order_line_stock_taken_check` (non-null only for `source = 'stock'`). drizzle-kit printed "No schema changes".
+  - `takeStockLines` takes only unmarked lines and marks them; `returnStockLines` returns only marked lines and clears the mark. A received record keeps its mark, so a re-payment never takes the units twice and never flips the delivered line to `supplier`.
+  - The repro is in the admin-store contract, so the fake and the real store both run it.
+  - Evidence: RED `expected 1 to be 3` then GREEN. DB files, each alone, all green:
+
+    | DB file | Tests |
+    | --- | --- |
+    | `enrollment-schema` | — |
+    | `migrate` | — |
+    | `drizzle-order-repository` | — |
+    | `drizzle-insights-reader` | — |
+    | `request-services` | — |
+    | `drizzle-material-sale-store` | 25 |
+    | `drizzle-admin-enrollment-store` | 80 |
+
+  - Incident: a failed `git stash push` (index lock held by F1) followed by `git stash pop` applied an old unrelated stash (`feat/private-events`). F2 restored the 10 conflicted files with `git checkout HEAD`. Parent check afterwards:
+    - no tracked change was pending;
+    - F1's committed copy is present;
+    - the old stash is still listed, untouched;
+    - a stray `probe.tmp.mjs` connection probe left at the repository root by an agent was removed.
+  - Parent seam run after F1 + F2: `pnpm typecheck` exit 0; unit 318 files / 4045 passed; ui 132 files / 1178 passed. The probes of both blockers are now committed regression tests and pass; this is the bounded recheck.
+  - Advisory for the owner, not a rule today: after a received record is corrected and paid again, a later cancel returns the delivered units, because only the status check protects them (the same as before F2).
+  - Next: 0018 rehearsal, native review slices, then the owners' real-phone walkthrough.

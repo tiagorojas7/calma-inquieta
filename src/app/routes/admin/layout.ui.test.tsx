@@ -5,18 +5,24 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import AdminHome from "./home";
 import AdminLayout, { ErrorBoundary } from "./layout";
 
-const summary = {
-  period: "2026-10",
+const homeScreen = {
   monthLabel: "octubre 2026",
-  tasks: [],
   figures: {
     collected: "$ 0",
-    profit: "$ 0",
-    teachers: "$ 0",
+    toCollect: "$ 0",
+    studio: "$ 0",
+    studioTone: "income" as const,
+  },
+  more: {
     occupancy: "0 %",
     occupancyDetail: "0 de 0 lugares",
-    profitTone: "income",
+    teachers: "$ 0",
+    statisticsHref: "/admin/estadisticas",
   },
+  todo: { cards: [], seeAllHref: null },
+  classes: [],
+  novelties: [],
+  moreNews: false,
 };
 
 function renderAdmin(childLoader: () => unknown) {
@@ -33,7 +39,7 @@ function renderAdmin(childLoader: () => unknown) {
           Component: AdminHome,
           loader: () => {
             childLoader();
-            return { email: "agus@example.com", summary };
+            return { screen: homeScreen, returnTo: "/admin", saved: null };
           },
         },
       ],
@@ -45,9 +51,7 @@ function renderAdmin(childLoader: () => unknown) {
 describe("admin layout screens", () => {
   it("renders the landing inside the admin chrome", async () => {
     const { container } = renderAdmin(() => undefined);
-    expect(
-      await screen.findByText("Lo que necesita tu atención hoy."),
-    ).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Hoy" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Salir" })).toBeVisible();
     await expectNoAxeViolations(container, { page: true });
   });
@@ -87,7 +91,11 @@ describe("admin layout screens", () => {
 describe("admin layout bell", () => {
   function renderWithCount(
     layoutData: { email: string; unseen?: number | null },
-    childLoader: () => unknown = () => ({ email: layoutData.email, summary }),
+    childLoader: () => unknown = () => ({
+      screen: homeScreen,
+      returnTo: "/admin",
+      saved: null,
+    }),
   ) {
     const Stub = createRoutesStub([
       {

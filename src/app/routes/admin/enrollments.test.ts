@@ -83,19 +83,44 @@ function listBy(byStatus: Partial<Record<string, readonly (typeof item)[]>>) {
 }
 
 describe("admin enrollments list route: material sales", () => {
-  it("lists a sale among the payments to collect, marked as a sale of its workshop", async () => {
-    const sale = {
-      ...item,
-      id: "s1",
-      number: "CI-2026-0009",
-      kind: "material_sale" as const,
-    };
-    const result = await load(listBy({ pending_confirmation: [item, sale] }));
+  const sale = {
+    ...item,
+    id: "s1",
+    number: "CI-2026-0009",
+    kind: "material_sale" as const,
+  };
 
-    expect(result.rows.map((row) => [row.number, row.workshopName])).toEqual([
-      ["CI-2026-0007", "Cerámica"],
-      ["CI-2026-0009", "Venta de materiales · Cerámica"],
-    ]);
+  // The owner's report: "al cargar una venta de materiales, se esta cargando
+  // como un nuevo turno, se tiene que cargar en la misma ficha del cliente".
+  it("never lists a sale as a record of its own: a sale lives in the student's file", async () => {
+    const result = await load(
+      listBy({ pending_confirmation: [item, sale], paid: [sale] }),
+    );
+
+    expect(result.rows.map((row) => row.number)).toEqual(["CI-2026-0007"]);
+    for (const row of result.rows)
+      expect(row.workshopName).not.toContain("Venta de materiales");
+  });
+
+  it("does not count a sale in any tab", async () => {
+    const result = await load(
+      listBy({ pending_confirmation: [item, sale], paid: [sale] }),
+    );
+
+    expect(result.counts).toEqual({
+      "por-cobrar": "1",
+      pagadas: "0",
+      canceladas: "0",
+    });
+  });
+
+  it("shows a pending sale nowhere in the records of another tab either", async () => {
+    const result = await load(
+      listBy({ paid: [sale] }),
+      "/admin/inscripciones?estado=paid",
+    );
+
+    expect(result.rows).toEqual([]);
   });
 });
 

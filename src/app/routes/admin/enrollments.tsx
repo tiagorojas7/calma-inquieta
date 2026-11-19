@@ -22,7 +22,6 @@ import {
   monthLabel,
   ORDER_STATUS_LABELS,
 } from "~/app/enrollment/order-labels";
-import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { EnrollmentsList } from "~/app/ui/admin/enrollments-list";
 import { formatPesos } from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
@@ -87,20 +86,27 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     const listed = pages.get(status);
     return listed?.ok ? listed.value.items : [];
   };
+  // A material sale is part of its student's file, under its monthly record:
+  // it is never a record, a card or a count of its own in these lists.
+  const recordsOf = (status: (typeof ALL_STATUSES)[number]) =>
+    itemsOf(status).filter((order) => order.kind !== "material_sale");
   // Counts come from page 1 even when the visible page is another one.
   const counts = Object.fromEntries(
     ENROLLMENT_TABS.map((name) => {
       let total = 0;
+      let full = false;
       for (const status of TAB_STATUSES[name]) {
         const first = firstPages[ALL_STATUSES.indexOf(status)];
-        total += first?.ok ? first.value.items.length : 0;
+        const items = first?.ok ? first.value.items : [];
+        full ||= items.length >= PAGE_SIZE;
+        total += items.filter((order) => order.kind !== "material_sale").length;
       }
-      return [name, countLabel(total)] as const;
+      return [name, full ? countLabel(PAGE_SIZE) : countLabel(total)] as const;
     }),
   ) as Record<EnrollmentTab, string>;
 
   const visible = TAB_STATUSES[tab]
-    .flatMap((status) => itemsOf(status))
+    .flatMap((status) => recordsOf(status))
     .sort((a, b) => b.requestedOn.localeCompare(a.requestedOn));
 
   const feedbackKind = feedbackCode(request, FEEDBACK);
@@ -120,11 +126,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       number: order.number,
       studentName: order.studentName,
       whatsappHref: whatsappHref(order.phoneDigits),
-      // A sale shares its record's workshop, so the list names it as a sale.
-      workshopName:
-        order.kind === "material_sale"
-          ? `${adminMicrocopy.enrollments.detail.sale.listLabel} · ${order.workshopName}`
-          : order.workshopName,
+      workshopName: order.workshopName,
       month: monthLabel(order.period),
       turno: order.turnoLabel,
       status: order.status,

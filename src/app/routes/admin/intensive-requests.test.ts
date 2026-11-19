@@ -148,6 +148,25 @@ describe("admin intensive requests action", () => {
     });
   });
 
+  it("comes back to the same person on the page the form was on", async () => {
+    const { services, ids } = await seeded();
+    const id = ids[0] ?? "";
+
+    const response = (await post(
+      {
+        ...CONFIRM,
+        requestId: id,
+        returnTo: PATH,
+        anchor: `reserva-${id}`,
+      },
+      services,
+    )) as Response;
+
+    expect(response.headers.get("Location")).toBe(
+      `${PATH}?ok=confirmed#reserva-${id}`,
+    );
+  });
+
   it("rejects a different amount next to the field and keeps the values", async () => {
     const { repository, services, ids } = await seeded();
 

@@ -1,0 +1,425 @@
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoAxeViolations } from "~/testing/ui/axe";
+import { MaterialsScreen, type MaterialsScreenProps } from "./materials-screen";
+
+const ID_A = "11111111-1111-4111-8111-111111111111";
+const ID_B = "22222222-2222-4222-8222-222222222222";
+const ID_C = "33333333-3333-4333-8333-333333333333";
+
+const base: MaterialsScreenProps = {
+  cards: [
+    {
+      id: ID_A,
+      anchor: `material-${ID_A}`,
+      name: "Bastidor",
+      price: "$ 2.500",
+      state: "hay",
+      onHand: 4,
+      variantId: "va",
+      variants: [],
+    },
+    {
+      id: ID_B,
+      anchor: `material-${ID_B}`,
+      name: "Pincel plano",
+      price: "$ 1.000",
+      state: "sin",
+      onHand: 0,
+      variantId: "vb",
+      variants: [],
+    },
+    {
+      id: ID_C,
+      anchor: `material-${ID_C}`,
+      name: "Acrílico",
+      price: "Desde $ 1.500",
+      state: "hay",
+      onHand: 2,
+      variants: [
+        { id: "vc1", label: "Rojo", state: "hay", onHand: 2 },
+        { id: "vc2", label: "Azul", state: "sin", onHand: 0 },
+      ],
+    },
+  ],
+  filter: "todos",
+  query: "",
+  estado: "activos",
+  period: "2026-11",
+  periodLabel: "noviembre 2026",
+  returnTo: "/admin/materiales?mes=2026-11",
+  suppliers: [
+    {
+      supplierId: "s1",
+      supplierName: "Papelería Sur",
+      materials: [
+        { label: "Arcilla Grande", quantity: 3 },
+        {
+          label: "Arcilla Grande",
+          quantity: 2,
+          origin: "Torno intensivo",
+          originId: "w1",
+        },
+      ],
+      total: "$ 3.600",
+      summary: "Pedido a Papelería Sur\n- Arcilla Grande x5",
+      orderIds: ["o1", "o2"],
+      workshops: [{ id: "w1", name: "Torno intensivo" }],
+    },
+  ],
+  pendingOrders: 0,
+  toDeliver: [
+    {
+      id: "d1",
+      studentName: "Ana Pérez",
+      detail: "Cerámica · Lunes 18:00",
+      lines: [{ label: "Arcilla Grande", quantity: 2 }],
+      whatsappHref: "https://wa.me/5493515550001",
+    },
+    {
+      id: "d2",
+      studentName: "Eva Stock",
+      detail: "Cerámica · Miércoles 10:00",
+      lines: [{ label: "Esmalte Azul", quantity: 1 }],
+      fromStock: true,
+    },
+  ],
+  delivered: [
+    {
+      id: "d3",
+      studentName: "Cata Díaz",
+      detail: "Pintura · Jueves 16:00",
+      lines: [{ label: "Pincel Fino", quantity: 3 }],
+    },
+  ],
+};
+
+const view = (overrides: Partial<MaterialsScreenProps> = {}) =>
+  render(<MaterialsScreen {...base} {...overrides} />);
+
+const cardOf = (name: string) =>
+  screen.getByRole("article", { name: new RegExp(`^${name}`) });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("Materiales screen: Qué hay", () => {
+  it("shows the three sections in order under one title", () => {
+    view();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Materiales" }),
+    ).toBeVisible();
+    expect(
+      screen
+        .getAllByRole("heading", { level: 2 })
+        .map((heading) => heading.textContent),
+    ).toEqual(["Qué hay", "Para pedir", "Para entregar"]);
+  });
+
+  it("says Hay N or Sin stock in words on every material card", () => {
+    view();
+    expect(within(cardOf("Bastidor")).getByText("Hay 4")).toBeVisible();
+    expect(within(cardOf("Pincel plano")).getByText("Sin stock")).toBeVisible();
+    expect(within(cardOf("Bastidor")).getByText("$ 2.500")).toBeVisible();
+  });
+
+  it("gives each variant its own line with its own state and its own Llegaron", () => {
+    view();
+    const lines = within(
+      screen.getByRole("list", { name: "Variantes de Acrílico" }),
+    ).getAllByRole("listitem");
+    expect(lines).toHaveLength(2);
+    expect(within(lines[0] as HTMLElement).getByText("Rojo")).toBeVisible();
+    expect(within(lines[0] as HTMLElement).getByText("Hay 2")).toBeVisible();
+    expect(
+      within(lines[1] as HTMLElement).getByText("Sin stock"),
+    ).toBeVisible();
+    for (const line of lines)
+      expect(
+        within(line).getByRole("button", { name: "Llegaron" }),
+      ).toBeVisible();
+    expect(within(cardOf("Acrílico")).getAllByText("Hay 2")).toHaveLength(2);
+  });
+
+  it("offers a native Llegaron form that adds units to the variant and returns to the card", () => {
+    view();
+    const card = cardOf("Bastidor");
+    const field = within(card).getByLabelText("Cuántas llegaron de Bastidor");
+    expect(field).toHaveAttribute("type", "number");
+    expect(field).toHaveAttribute("name", "units");
+    expect(field).toBeRequired();
+    const form = field.closest("form");
+    expect(form).toHaveAttribute("method", "post");
+    expect(form?.querySelector('[name="intent"]')).toHaveValue("arrived");
+    expect(form?.querySelector('[name="materialId"]')).toHaveValue(ID_A);
+    expect(form?.querySelector('[name="variantId"]')).toHaveValue("va");
+    expect(form?.querySelector('[name="returnTo"]')).toHaveValue(
+      "/admin/materiales?mes=2026-11",
+    );
+    expect(form?.querySelector('[name="anchor"]')).toHaveValue(
+      `material-${ID_A}`,
+    );
+    expect(
+      within(card).getByRole("button", { name: "Llegaron" }),
+    ).toBeVisible();
+  });
+
+  it("links each card to its editor", () => {
+    view();
+    expect(
+      screen.getByRole("link", { name: "Editar Bastidor" }),
+    ).toHaveAttribute("href", `/admin/materiales/${ID_A}`);
+  });
+
+  it("puts a big search on top and the three filters under it", () => {
+    view({ filter: "hay", query: "pin" });
+    const search = screen.getByRole("search", { name: "Buscar" });
+    expect(search).toHaveAttribute("method", "get");
+    const box = screen.getByLabelText("Buscar material");
+    expect(box).toHaveValue("pin");
+    expect(search.querySelector('[name="stock"]')).toHaveValue("hay");
+    const filters = within(screen.getByRole("navigation", { name: "Mostrar" }));
+    expect(
+      filters.getAllByRole("link").map((link) => link.textContent),
+    ).toEqual(["Todos", "Hay", "Sin stock"]);
+    expect(filters.getByRole("link", { name: "Hay" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(filters.getByRole("link", { name: "Sin stock" })).toHaveAttribute(
+      "href",
+      "/admin/materiales?stock=sin&q=pin&mes=2026-11#que-hay",
+    );
+    expect(filters.getByRole("link", { name: "Todos" })).toHaveAttribute(
+      "href",
+      "/admin/materiales?q=pin&mes=2026-11#que-hay",
+    );
+  });
+
+  it("highlights the material that was just saved", () => {
+    view({ highlightId: ID_B });
+    expect(cardOf("Pincel plano")).toHaveAttribute("data-highlight");
+    expect(cardOf("Bastidor")).not.toHaveAttribute("data-highlight");
+  });
+
+  it("says what was saved, and a refused Llegaron on its own card", () => {
+    view({
+      saved: "llegaron 5 unidades",
+      arrivedError: {
+        anchor: `material-${ID_A}`,
+        message: "Poné una cantidad mayor a cero.",
+      },
+    });
+    expect(screen.getByText("Guardado: llegaron 5 unidades")).toBeVisible();
+    expect(within(cardOf("Bastidor")).getByRole("alert")).toHaveTextContent(
+      "Poné una cantidad mayor a cero.",
+    );
+    expect(
+      within(cardOf("Pincel plano")).queryByRole("alert"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says when nothing matches and when there are no materials", () => {
+    const { unmount } = view({ cards: [], query: "zzz" });
+    expect(screen.getByText("No encontramos nada.")).toBeVisible();
+    unmount();
+    view({ cards: [] });
+    expect(screen.getByText("Todavía no hay materiales.")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Nuevo material" }),
+    ).toHaveAttribute("href", "/admin/materiales/nuevo");
+  });
+});
+
+describe("Materiales screen: Para pedir", () => {
+  it("shows each supplier with its lines, the workshop of a workshop line and one total", () => {
+    view();
+    const card = screen.getByRole("article", { name: "Papelería Sur" });
+    expect(within(card).getByText("Total $ 3.600")).toBeVisible();
+    expect(within(card).getAllByText("Cantidad: 3")).toHaveLength(1);
+    expect(within(card).getByText("Workshop: Torno intensivo")).toBeVisible();
+  });
+
+  it("has one Ya lo pedí per supplier that carries the monthly orders and the workshops", () => {
+    view();
+    const buttons = screen.getAllByRole("button", { name: /^Ya lo pedí/ });
+    expect(buttons).toHaveLength(1);
+    const form = buttons[0]?.closest("form") as HTMLFormElement;
+    expect(form).toHaveAttribute("method", "post");
+    expect(form.querySelector('[name="intent"]')).toHaveValue(
+      "mark-supplier-requested",
+    );
+    expect(form.querySelector('[name="supplierId"]')).toHaveValue("s1");
+    expect(
+      [...form.querySelectorAll('[name="orderId"]')].map(
+        (input) => (input as HTMLInputElement).value,
+      ),
+    ).toEqual(["o1", "o2"]);
+    expect(
+      [...form.querySelectorAll('[name="workshopId"]')].map(
+        (input) => (input as HTMLInputElement).value,
+      ),
+    ).toEqual(["w1"]);
+    expect(form.querySelector('[name="mes"]')).toHaveValue("2026-11");
+    expect(form.querySelector('[name="anchor"]')).toHaveValue("pedir-s1");
+  });
+
+  it("hides Ya lo pedí when nothing can be marked", () => {
+    const [supplier] = base.suppliers;
+    if (!supplier) throw new Error("missing supplier");
+    view({ suppliers: [{ ...supplier, orderIds: [], workshops: [] }] });
+    expect(
+      screen.queryByRole("button", { name: /^Ya lo pedí/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copiar pedido" })).toBeVisible();
+  });
+
+  it("copies the order text and keeps the text behind Ver el texto", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    view();
+    fireEvent.click(screen.getByRole("button", { name: "Copiar pedido" }));
+    expect(writeText).toHaveBeenCalledWith(base.suppliers[0]?.summary);
+    const more = screen.getByText("Ver el texto").closest("details");
+    expect(more).not.toHaveAttribute("open");
+    expect(within(more as HTMLElement).getByRole("textbox")).toHaveAttribute(
+      "readonly",
+    );
+  });
+
+  it("counts the orders still to confirm and says when there is nothing to order", () => {
+    const { unmount } = view({ pendingOrders: 2 });
+    expect(screen.getByText("2 sin confirmar")).toBeVisible();
+    unmount();
+    view({ suppliers: [] });
+    expect(screen.getByText("No hay nada para pedir.")).toBeVisible();
+  });
+});
+
+describe("Materiales screen: Para entregar", () => {
+  it("has Entregado per student, each a native form back to her card", () => {
+    view();
+    const card = screen.getByRole("article", { name: "Ana Pérez" });
+    const button = within(card).getByRole("button", {
+      name: "Entregado a Ana Pérez",
+    });
+    expect(button).toHaveTextContent("Entregado");
+    const form = button.closest("form") as HTMLFormElement;
+    expect(form).toHaveAttribute("method", "post");
+    expect(form.querySelector('[name="intent"]')).toHaveValue("mark-received");
+    expect(form.querySelector('[name="orderId"]')).toHaveValue("d1");
+    expect(form.querySelector('[name="anchor"]')).toHaveValue("entregar-d1");
+    expect(within(card).getByText("Pedido")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "WhatsApp con Ana Pérez" }),
+    ).toHaveAttribute("href", "https://wa.me/5493515550001");
+  });
+
+  it("marks a stock order as coming from the stock", () => {
+    view();
+    expect(
+      within(screen.getByRole("article", { name: "Eva Stock" })).getByText(
+        "Del stock",
+      ),
+    ).toBeVisible();
+  });
+
+  it("hands over everything with one form carrying every order", () => {
+    view();
+    const form = screen
+      .getByRole("button", { name: "Entregar todo" })
+      .closest("form") as HTMLFormElement;
+    expect(
+      [...form.querySelectorAll('[name="orderId"]')].map(
+        (input) => (input as HTMLInputElement).value,
+      ),
+    ).toEqual(["d1", "d2"]);
+    expect(form.querySelector('[name="anchor"]')).toHaveValue("para-entregar");
+  });
+
+  it("does not offer Entregar todo for a single student", () => {
+    view({ toDeliver: [base.toDeliver[0] as never] });
+    expect(
+      screen.queryByRole("button", { name: "Entregar todo" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the already delivered ones behind a closed disclosure without actions", () => {
+    view();
+    const more = screen.getByText("Ya entregados: 1").closest("details");
+    expect(more).not.toHaveAttribute("open");
+    expect(
+      within(more as HTMLElement).queryByRole("button"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(more as HTMLElement).getByText("Cata Díaz"),
+    ).toBeInTheDocument();
+  });
+
+  it("says when there is nothing to hand over", () => {
+    view({ toDeliver: [], delivered: [] });
+    expect(screen.getByText("No hay nada para entregar.")).toBeVisible();
+  });
+});
+
+describe("Materiales screen: month and tools", () => {
+  it("keeps the month behind Otro mes, closed, with the current month named", () => {
+    view();
+    expect(screen.getByText("Mostrando noviembre 2026")).toBeVisible();
+    const more = screen.getByText("Otro mes").closest("details");
+    expect(more).not.toHaveAttribute("open");
+    const form = within(more as HTMLElement).getByRole("search", {
+      name: "Mes",
+    });
+    expect(form).toHaveAttribute("method", "get");
+    expect(form.querySelector('[name="mes"]')).toHaveValue("2026-11");
+  });
+
+  it("keeps the rarely used tools behind Herramientas, closed", () => {
+    view();
+    const more = screen.getByText("Herramientas").closest("details");
+    expect(more).not.toHaveAttribute("open");
+    const tools = within(more as HTMLElement);
+    expect(
+      tools.getByRole("link", { name: "Importar lista de precios" }),
+    ).toHaveAttribute("href", "/admin/materiales/importar");
+    expect(tools.getByRole("link", { name: "Subir precios" })).toHaveAttribute(
+      "href",
+      "/admin/materiales/precios",
+    );
+    expect(tools.getByRole("link", { name: "Proveedores" })).toHaveAttribute(
+      "href",
+      "/admin/materiales/proveedores",
+    );
+    expect(
+      tools.getByRole("link", { name: "Materiales archivados" }),
+    ).toHaveAttribute("href", "/admin/materiales?estado=inactivos");
+  });
+
+  it("offers the way back from the archived materials", () => {
+    view({ estado: "inactivos" });
+    expect(
+      screen.getByRole("link", { name: "Materiales activos" }),
+    ).toHaveAttribute("href", "/admin/materiales");
+  });
+});
+
+describe("Materiales screen: every post is native", () => {
+  it("has no form without method post or get and never a data request", () => {
+    const { container } = view();
+    for (const form of container.querySelectorAll("form")) {
+      expect(["post", "get"]).toContain(form.getAttribute("method"));
+      expect(form.getAttribute("action") ?? "").not.toContain(".data");
+    }
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = view({
+      saved: "llegaron 5 unidades",
+      highlightId: ID_A,
+      pendingOrders: 1,
+    });
+    await expectNoAxeViolations(container);
+  });
+});

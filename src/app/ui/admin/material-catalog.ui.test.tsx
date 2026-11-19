@@ -5,7 +5,6 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { MaterialImport, type CatalogPlanView } from "./material-import";
 import { MaterialPhoto } from "./material-photo";
 import { MaterialPrices, type PriceRaisePlanView } from "./material-prices";
-import { MaterialsList } from "./materials-list";
 
 const suppliers = [{ id: "s1", name: "Casa Pincel" }];
 
@@ -160,60 +159,5 @@ describe("MaterialPhoto", () => {
     expect(await screen.findByLabelText("Foto")).toBeVisible();
     expect(screen.getByRole("button", { name: "Guardar foto" })).toBeVisible();
     await expectNoAxeViolations(container);
-  });
-});
-
-describe("MaterialsList photo tools", () => {
-  const row = (id: string, hasImage: boolean) => ({
-    id,
-    name: `Material ${id}`,
-    category: "Tazas",
-    supplierName: "Casa Pincel",
-    hasImage,
-    variantCount: 1,
-    active: true,
-    available: true,
-  });
-
-  it("marks photoless rows and links each one to its photo screen", async () => {
-    renderInRouter(
-      <MaterialsList
-        rows={[row("a", false), row("b", true)]}
-        filter="activos"
-        category=""
-        supplierId=""
-        categories={[]}
-        suppliers={[]}
-      />,
-    );
-    expect(await screen.findAllByText("Sin foto")).toHaveLength(1);
-    const links = screen.getAllByRole("link", { name: /foto de Material/i });
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/admin/materiales/a/foto",
-      "/admin/materiales/b/foto",
-    ]);
-    expect(
-      screen.getByRole("link", { name: "Mostrar solo materiales sin foto" }),
-    ).toHaveAttribute("href", "/admin/materiales?sinfoto=1&estado=activos");
-  });
-
-  it("keeps the Sin foto filter in the photo links and offers to show all", async () => {
-    renderInRouter(
-      <MaterialsList
-        rows={[row("a", false)]}
-        filter="activos"
-        category=""
-        supplierId=""
-        categories={[]}
-        suppliers={[]}
-        withoutImage
-      />,
-    );
-    expect(
-      (
-        await screen.findByRole("link", { name: /foto de Material a/i })
-      ).getAttribute("href"),
-    ).toBe("/admin/materiales/a/foto?sinfoto=1");
-    expect(screen.getByRole("link", { name: "Mostrar todos" })).toBeVisible();
   });
 });

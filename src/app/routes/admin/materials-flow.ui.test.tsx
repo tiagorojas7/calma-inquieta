@@ -10,23 +10,30 @@ const LIST = "/admin/materiales";
 const ID = "11111111-1111-4111-8111-111111111111";
 
 const listData = {
-  filter: "activos",
-  category: "",
-  supplierId: "",
-  feedback: "created",
-  categories: ["Pinceles"],
-  suppliers: [{ value: "s1", label: "Casa Pincel" }],
-  rows: [
+  period: "2026-11",
+  periodLabel: "noviembre 2026",
+  counts: { pedir: 0, entregar: 0 },
+  pendingOrders: 0,
+  suppliers: [],
+  toDeliver: [],
+  delivered: [],
+  cards: [
     {
       id: "m1",
+      anchor: "material-m1",
       name: "Pincel plano",
-      category: "Pinceles",
-      supplierName: "Casa Pincel",
-      variantCount: 2,
-      active: true,
-      available: false,
+      price: "$ 1.000",
+      state: "hay",
+      onHand: 3,
+      variantId: "v1",
+      variants: [],
     },
   ],
+  filter: "todos",
+  query: "",
+  estado: "activos",
+  returnTo: "/admin/materiales?mes=2026-11",
+  saved: "Pincel plano",
 };
 
 const detailData = {
@@ -60,29 +67,27 @@ function crumbs() {
 }
 
 describe("materials guided flow", () => {
-  it("list shows breadcrumbs, a banner, cards and suppliers as a secondary action", async () => {
+  it("list shows a saved banner, the three sections and the tools behind a closed disclosure", async () => {
     const Stub = createRoutesStub([
       { path: LIST, Component: AdminMaterials, loader: () => listData },
     ]);
     const { container } = render(<Stub initialEntries={[LIST]} />);
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Material creado",
-    );
-    expect(crumbs().getByRole("link", { name: "Panel" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
-    const list = screen.getByRole("list", { name: "Materiales" });
-    expect(within(list).getByText("Casa Pincel")).toBeVisible();
-    expect(within(list).getByText("2 variantes")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Proveedores" })).toHaveAttribute(
-      "href",
-      `${LIST}/proveedores`,
-    );
+    expect(await screen.findByText("Guardado: Pincel plano")).toBeVisible();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual(["Qué hay", "Para pedir", "Para entregar"]);
+    expect(
+      within(screen.getByRole("list", { name: "Materiales" })).getByText(
+        "Hay 3",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Herramientas").closest("details"),
+    ).not.toHaveAttribute("open");
     await expectNoAxeViolations(container);
   });
 
-  it("new screen has breadcrumbs and a top back link", async () => {
+  it("new screen has a top back link", async () => {
     const Stub = createRoutesStub([
       {
         path: `${LIST}/nuevo`,
@@ -96,10 +101,6 @@ describe("materials guided flow", () => {
     expect(
       await screen.findByRole("link", { name: "Volver a materiales" }),
     ).toHaveAttribute("href", LIST);
-    expect(crumbs().getByRole("link", { name: "Materiales" })).toHaveAttribute(
-      "href",
-      LIST,
-    );
   });
 
   it("detail shows breadcrumbs, a saved banner and a separated danger zone", async () => {

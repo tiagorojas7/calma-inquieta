@@ -1,44 +1,98 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
+import { failureResponse } from "~/app/admin/failure-response";
+import { withFeedback } from "~/app/admin/feedback-code";
 import {
   materialFormErrors,
   parseMaterialDraft,
 } from "~/app/admin/material-form-data";
-import { failureResponse } from "~/app/admin/failure-response";
+import { materialAnchor } from "~/app/admin/material-stock-view";
 import { uploadChosenImage } from "~/app/admin/upload-chosen-image";
-import { withFeedback } from "~/app/admin/feedback-code";
 import { servicesContext } from "~/app/context";
 import { AdminPageHeader } from "~/app/ui/admin/admin-page";
-import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { adminCopy } from "~/app/ui/admin/copy";
 import {
-  MaterialForm,
-  type MaterialFormValues,
-} from "~/app/ui/admin/material-form";
+  EMPTY_QUICK_VALUES,
+  MaterialQuickForm,
+  type MaterialQuickErrors,
+  type MaterialQuickValues,
+} from "~/app/ui/admin/material-quick-form";
+import type { FieldIssue } from "~/modules/_shared";
+import type { MaterialDraft, MaterialField } from "~/modules/materials";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/material-new";
 
 const LIST = "/admin/materiales";
-const copy = adminMicrocopy.materialForm;
+const copy = adminCopy.materiales.form;
+/** What a short form leaves blank: the material service still requires both. */
+const DEFAULT_CATEGORY = "General";
 
-const EMPTY: MaterialFormValues = {
-  name: "",
-  description: "",
-  category: "",
-  supplierId: "",
-  available: true,
-  image: null,
-  variants: [],
-};
-
-function imageSource(form: FormData): string {
-  const value = form.get("imageSrc");
+function text(form: FormData, key: string): string {
+  const value = form.get(key);
   return typeof value === "string" ? value : "";
 }
 
-function rejectedValues(form: FormData): MaterialFormValues {
+/** The submitted draft with the two fields the short form does not ask for filled in. */
+function draftOf(form: FormData): MaterialDraft {
   const draft = parseMaterialDraft(form);
   return {
     ...draft,
-    image: draft.image ? { ...draft.image, src: imageSource(form) } : null,
+    description:
+      draft.description.trim() === "" ? draft.name : draft.description,
+    category: draft.category.trim() === "" ? DEFAULT_CATEGORY : draft.category,
+  };
+}
+
+function rejectedValues(form: FormData): MaterialQuickValues {
+  const draft = parseMaterialDraft(form);
+  const [first, ...others] = draft.variants;
+  return {
+    name: draft.name,
+    price: first?.price ?? "",
+    stock: text(form, "startingStock"),
+    supplierId: draft.supplierId,
+    category: draft.category,
+    description: draft.description,
+    cost: first?.cost ?? "",
+    priceOnRequest: first?.priceOnRequest === true,
+    available: draft.available,
+    image: draft.image ? { ...draft.image, src: text(form, "imageSrc") } : null,
+    extras: others.map((variant) => ({
+      label: variant.label,
+      price: variant.price,
+      cost: variant.cost ?? "",
+    })),
+  };
+}
+
+function quickErrors(
+  issues: readonly FieldIssue<MaterialField | "startingStock">[],
+): MaterialQuickErrors {
+  const stock = issues.find((issue) => issue.field === "startingStock");
+  const own = materialFormErrors(
+    issues.filter(
+      (issue): issue is FieldIssue<MaterialField> =>
+        issue.field !== "startingStock",
+    ),
+  );
+  const rows = own.variants?.rows ?? [];
+  const [first, ...others] = rows;
+  return {
+    ...(own.name ? { name: own.name } : {}),
+    ...(own.description ? { description: own.description } : {}),
+    ...(own.category ? { category: own.category } : {}),
+    ...(own.supplierId ? { supplierId: own.supplierId } : {}),
+    ...(own.image ? { image: own.image } : {}),
+    ...(first?.price ? { price: first.price } : {}),
+    ...(first?.cost ? { cost: first.cost } : {}),
+    ...(stock
+      ? {
+          stock:
+            stock.code === "out-of-range"
+              ? copy.stockTooMany
+              : copy.stockInvalid,
+        }
+      : {}),
+    ...(others.length > 0 ? { extras: others } : {}),
   };
 }
 
@@ -63,21 +117,28 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData();
-  const values = rejectedValues(form);
   const created = await context
     .get(servicesContext)
-    .materials.create(actor, parseMaterialDraft(form));
-  if (created.ok) return redirect(withFeedback(LIST, "created"));
-  if (created.error.kind === "invalid") {
+    .materials.createWithStock(
+      actor,
+      draftOf(form),
+      text(form, "startingStock"),
+    );
+  if (created.ok) {
+    const id = created.value.material.id;
+    return redirect(
+      `${withFeedback(LIST, "created")}&nuevo=${encodeURIComponent(id)}#${materialAnchor(id)}`,
+    );
+  }
+  if (created.error.kind === "invalid")
     return data(
       {
-        values,
-        errors: materialFormErrors(created.error.issues),
+        values: rejectedValues(form),
+        errors: quickErrors(created.error.issues),
         formError: copy.saveFailed,
       },
       { status: 422 },
     );
-  }
   if (created.error.kind === "variant-in-use")
     throw failureResponse({ kind: "unavailable" });
   throw failureResponse(created.error);
@@ -89,21 +150,15 @@ export default function AdminMaterialNew() {
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
-        title={adminMicrocopy.materials.newTitle}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: adminMicrocopy.materials.title, href: LIST },
-          { label: adminMicrocopy.materials.newTitle },
-        ]}
-        back={{ href: LIST, label: adminMicrocopy.materials.back }}
+        title={copy.title}
+        back={{ href: LIST, label: copy.back }}
       />
-      <MaterialForm
-        values={rejected?.values ?? EMPTY}
+      <MaterialQuickForm
+        values={rejected?.values ?? EMPTY_QUICK_VALUES}
         errors={rejected?.errors ?? {}}
         formError={rejected?.formError}
         suppliers={suppliers}
         upload={uploadChosenImage}
-        submitLabel="Guardar"
         cancelHref={LIST}
       />
     </section>

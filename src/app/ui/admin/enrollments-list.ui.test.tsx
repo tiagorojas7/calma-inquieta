@@ -436,7 +436,7 @@ describe("EnrollmentsList new enrollment entry point", () => {
   it("links to the manual enrollment screen with a document navigation", () => {
     render(<EnrollmentsList {...props} />);
     expect(
-      screen.getByRole("link", { name: "Nueva inscripción" }),
+      screen.getByRole("link", { name: "Inscribir alumna" }),
     ).toHaveAttribute("href", "/admin/inscripciones/nueva");
   });
 });

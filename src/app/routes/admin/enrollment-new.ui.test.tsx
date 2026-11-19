@@ -38,17 +38,21 @@ describe("admin enrollment-new screen", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: "Nueva inscripción" },
+        { name: "Inscribir alumna" },
         { timeout: 10_000 },
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Volver a inscripciones/ }),
-    ).toHaveAttribute("href", "/admin/inscripciones");
+    expect(screen.getByRole("link", { name: /Alumnas/ })).toHaveAttribute(
+      "href",
+      "/admin/alumnas",
+    );
     expect(screen.getByLabelText("Taller, mes y turno")).toBeInTheDocument();
     expect(screen.getByLabelText("Cuota")).toBeInTheDocument();
     expect(
-      screen.getByRole("group", { name: "Materiales (opcional)" }),
+      screen.getByRole("group", {
+        name: "Materiales (opcional)",
+        hidden: true,
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("searchbox", { name: "Buscar material" }),
@@ -66,7 +70,7 @@ describe("admin enrollment-new screen", () => {
     ]);
     render(<Stub initialEntries={["/admin/inscripciones/nueva"]} />);
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "No hay talleres con inscripciones abiertas.",
+      "No hay talleres con el mes abierto.",
     );
   });
 });

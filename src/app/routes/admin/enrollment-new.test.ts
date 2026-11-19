@@ -151,6 +151,7 @@ describe("admin enrollment-new loader", () => {
       context: adminContext(services()),
     } as never);
     expect(result).toEqual({
+      prefill: { fullName: "", email: "", phone: "" },
       options: [
         {
           value: "ceramica|2026-11|t1",
@@ -183,6 +184,27 @@ describe("admin enrollment-new loader", () => {
           onHand: 0,
         },
       ],
+    });
+  });
+
+  it("fills her data in when the file sends it, and nothing from anywhere else", async () => {
+    const query = new URLSearchParams({
+      nombre: " Ana Pérez ",
+      email: "ana@x.test",
+      telefono: "5493515550001",
+      fee: "1",
+    });
+    const result = await loader({
+      request: getRequest(`/admin/inscripciones/nueva?${query.toString()}`),
+      params: {},
+      context: adminContext(services()),
+    } as never);
+    expect(result).toMatchObject({
+      prefill: {
+        fullName: "Ana Pérez",
+        email: "ana@x.test",
+        phone: "5493515550001",
+      },
     });
   });
 
@@ -257,7 +279,7 @@ describe("admin enrollment-new loader", () => {
 });
 
 describe("admin enrollment-new action", () => {
-  it("creates the pending enrollment with fixed policy fields and the chosen fee, then redirects to the list", async () => {
+  it("creates the pending enrollment with fixed policy fields and the chosen fee, then goes to her file at the new record", async () => {
     const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
     const response = (await submit(VALID, createPending)) as Response;
     expect(createPending).toHaveBeenCalledWith(
@@ -278,8 +300,48 @@ describe("admin enrollment-new action", () => {
       { fee: pesos(40000) },
     );
     expect(response.status).toBe(302);
+    // The one allowed jump: it lands on what was just created.
     expect(response.headers.get("Location")).toBe(
-      "/admin/inscripciones?estado=pending_confirmation&ok=created",
+      "/admin/alumnas/ana%40x.test?ok=created#r-ci-2026-0007",
+    );
+  });
+
+  it('asks for the record to be stored paid in the same creation when "Ya pagó" is checked', async () => {
+    const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
+    const response = (await submit(
+      { ...VALID, paid: "on" },
+      createPending,
+    )) as Response;
+    expect(createPending).toHaveBeenCalledTimes(1);
+    expect(createPending).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { fee: pesos(40000), paid: true },
+    );
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40x.test?ok=created#r-ci-2026-0007",
+    );
+  });
+
+  it('keeps "Ya pagó" checked and everything typed when the creation is refused', async () => {
+    const createPending = vi
+      .fn<CreatePending>()
+      .mockResolvedValue(err({ kind: "turno-full" }) as never);
+    const result = await submit({ ...VALID, paid: "on" }, createPending);
+    expect(result).toMatchObject({
+      init: { status: 409 },
+      data: { paid: true, values: { fullName: "Ana Pérez", fee: "40000" } },
+    });
+  });
+
+  it("stores the email of her file in lower case, the way her file is found", async () => {
+    const createPending = vi.fn<CreatePending>().mockResolvedValue(ok(order));
+    const response = (await submit(
+      { ...VALID, email: " Ana@X.Test " },
+      createPending,
+    )) as Response;
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40x.test?ok=created#r-ci-2026-0007",
     );
   });
 

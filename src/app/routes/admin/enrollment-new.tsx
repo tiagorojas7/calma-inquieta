@@ -15,19 +15,22 @@ import {
 } from "~/app/admin/enrollment-failure";
 import { loadMaterialChoices } from "./enrollment-material-choices";
 import { withFeedback } from "~/app/admin/feedback-code";
+import { recordAnchor } from "~/app/admin/student-file";
 import { monthLabel } from "~/app/enrollment/order-labels";
 import { AdminPageHeader } from "~/app/ui/admin/admin-page";
+import { adminCopy } from "~/app/ui/admin/copy";
 import {
   EnrollmentNewForm,
-  enrollmentNewCopy as copy,
   type EnrollmentNewOption,
 } from "~/app/ui/admin/enrollment-new-form";
 import type { AppServices } from "~/composition/request-services";
+import { normalizeStudentEmail } from "~/modules/students";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-new";
 
-const LIST = "/admin/inscripciones";
-const AFTER_CREATE = `${LIST}?estado=pending_confirmation`;
+const copy = adminCopy.alumnas.enroll;
+const BACK = "/admin/alumnas";
+const PREFILL_MAX = 120;
 
 const EMPTY: EnrollmentNewValues = {
   offer: "",
@@ -44,7 +47,7 @@ const ISSUE_MESSAGES: Record<string, string> = {
 };
 
 export function meta() {
-  return [{ title: "Nueva inscripción | Panel | Calma Inquieta" }];
+  return [{ title: "Inscribir alumna | Panel | Calma Inquieta" }];
 }
 
 type Actor = Parameters<AppServices["monthlyWorkshops"]["list"]>[0];
@@ -85,10 +88,21 @@ async function loadOptions(services: AppServices, actor: Actor) {
   return options;
 }
 
+/** One value her file sends along, trimmed and bounded; nothing else in the address is read. */
+const queryValue = (params: URLSearchParams, name: string) =>
+  (params.get(name) ?? "").trim().slice(0, PREFILL_MAX);
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const services = context.get(servicesContext);
+  const params = new URL(request.url).searchParams;
   return {
+    // Coming from her file, her data is already in the form.
+    prefill: {
+      fullName: queryValue(params, "nombre"),
+      email: queryValue(params, "email"),
+      phone: queryValue(params, "telefono"),
+    },
     options: await loadOptions(services, actor),
     materials: await loadMaterialChoices(services, actor),
   };
@@ -100,13 +114,17 @@ function rejection(
   formError: string,
   status: 409 | 422,
   lines: readonly EnrollmentNewLineValue[] = [],
+  paid = false,
 ) {
-  return data({ values, errors, formError, lines }, { status });
+  return data({ values, errors, formError, lines, paid }, { status });
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
-  const parsed = parseEnrollmentNewForm(await request.formData());
+  const form = await request.formData();
+  const parsed = parseEnrollmentNewForm(form);
+  // "Ya pagó": the owner took the full payment, so the record is stored paid.
+  const paid = form.get("paid") === "on";
   if (
     parsed.target === null ||
     parsed.fee === null ||
@@ -118,6 +136,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       copy.saveFailed,
       422,
       parsed.lines,
+      paid,
     );
   const { fullName, email, phone } = parsed.values;
   const created = await context.get(servicesContext).enrollments.createPending(
@@ -133,9 +152,16 @@ export async function action({ request, context }: Route.ActionArgs) {
       },
       lines: parsed.cartLines,
     },
-    { fee: parsed.fee },
+    paid ? { fee: parsed.fee, paid } : { fee: parsed.fee },
   );
-  if (created.ok) return redirect(withFeedback(AFTER_CREATE, "created"));
+  // The one allowed jump: it lands on her file, at the record just created.
+  if (created.ok)
+    return redirect(
+      `${withFeedback(
+        `/admin/alumnas/${encodeURIComponent(normalizeStudentEmail(email))}`,
+        "created",
+      )}#${recordAnchor(created.value.number)}`,
+    );
   if (created.error.kind === "invalid-fee")
     return rejection(
       parsed.values,
@@ -143,6 +169,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       copy.saveFailed,
       422,
       parsed.lines,
+      paid,
     );
   const materials = materialsRefusal(created.error);
   if (materials !== null)
@@ -152,6 +179,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       copy.saveFailed,
       422,
       parsed.lines,
+      paid,
     );
   if (created.error.kind === "invalid") {
     const errors: Partial<Record<EnrollmentNewField, string>> = {};
@@ -160,36 +188,39 @@ export async function action({ request, context }: Route.ActionArgs) {
       if (message !== undefined && issue.field in parsed.values)
         errors[issue.field as EnrollmentNewField] ??= message;
     }
-    return rejection(parsed.values, errors, copy.saveFailed, 422, parsed.lines);
+    return rejection(
+      parsed.values,
+      errors,
+      copy.saveFailed,
+      422,
+      parsed.lines,
+      paid,
+    );
   }
   const refusal = enrollmentCreateRefusal(created.error);
   if (refusal !== null)
-    return rejection(parsed.values, {}, refusal, 409, parsed.lines);
+    return rejection(parsed.values, {}, refusal, 409, parsed.lines, paid);
   throw enrollmentFailureResponse(created.error);
 }
 
 export default function AdminEnrollmentNew() {
-  const { options, materials } = useLoaderData<typeof loader>();
+  const { options, materials, prefill } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex max-w-3xl flex-col gap-4">
       <AdminPageHeader
         title={copy.title}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: "Inscripciones", href: LIST },
-          { label: copy.title },
-        ]}
-        back={{ href: LIST, label: copy.back }}
+        back={{ href: BACK, label: copy.back }}
       />
       <EnrollmentNewForm
-        values={rejected?.values ?? EMPTY}
+        values={rejected?.values ?? { ...EMPTY, ...prefill }}
         errors={rejected?.errors ?? {}}
         formError={rejected?.formError}
         options={options}
         materials={materials}
         lines={rejected?.lines ?? []}
-        cancelHref={LIST}
+        paid={rejected?.paid ?? false}
+        cancelHref={BACK}
       />
     </section>
   );

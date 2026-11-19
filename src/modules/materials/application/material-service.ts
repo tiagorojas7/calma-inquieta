@@ -14,13 +14,14 @@ import {
   validateMaterialDraft,
   type ValidMaterialDraft,
 } from "../domain/material-core";
-import { validateStockAdjustment } from "../domain/stock-core";
+import { STOCK_DELTA_MAX, validateStockAdjustment } from "../domain/stock-core";
 import type { StockStore } from "./stock-store";
 import type {
   Material,
   MaterialError,
   MaterialField,
   MaterialLookup,
+  MaterialStockRow,
   MaterialSummary,
   MaterialsService,
   MaterialVariant,
@@ -58,6 +59,16 @@ export interface MaterialServiceDeps {
 export interface MaterialLookupDeps {
   readonly repository: MaterialRepository;
   readonly media: MediaLookup;
+}
+
+/** Blank is fine (no units); otherwise whole units up to one adjustment's limit. */
+function startingStockIssue(text: string): FieldIssue<"startingStock"> | null {
+  if (text === "") return null;
+  if (!/^[0-9]+$/.test(text))
+    return { field: "startingStock", code: "invalid-format" };
+  return Number(text) > STOCK_DELTA_MAX
+    ? { field: "startingStock", code: "out-of-range" }
+    : null;
 }
 
 const notFound: NotFound = { kind: "not-found" };
@@ -132,6 +143,29 @@ export function createMaterialsService(
     active: material.active,
     available: material.available,
   });
+
+  const stockRow = (
+    material: Material,
+    onHand: ReadonlyMap<string, number>,
+  ): MaterialStockRow => {
+    const variants = material.variants.map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+      price: variant.price ? variant.price.toCentavos() / 100 : null,
+      available: variant.available,
+      onHand: onHand.get(variant.id) ?? 0,
+    }));
+    return {
+      id: material.id,
+      name: material.name,
+      category: material.category,
+      supplierName: material.supplier.name,
+      active: material.active,
+      available: material.available,
+      variants,
+      onHand: variants.reduce((sum, variant) => sum + variant.onHand, 0),
+    };
+  };
 
   async function isNameTaken(name: string, selfId: string): Promise<boolean> {
     const holder = await repository.findActiveByName(name);
@@ -276,6 +310,18 @@ export function createMaterialsService(
       );
     },
 
+    async listWithStock(actor, filter) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const listed = await repository.list(filter);
+      const onHand = await deps.stock.onHand(
+        listed.flatMap((material) =>
+          material.variants.map((variant) => variant.id),
+        ),
+      );
+      return ok(listed.map((material) => stockRow(material, onHand)));
+    },
+
     async listSelectable(actor) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -306,6 +352,41 @@ export function createMaterialsService(
       const material = await buildMaterial(authorized.value, valid.value, null);
       if (!material.ok) return material;
       return save("insert", material.value);
+    },
+
+    async createWithStock(actor, draft, startingStock) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const text = startingStock.trim();
+      const stockIssue = startingStockIssue(text);
+      if (stockIssue) {
+        const valid = validateMaterialDraft(draft);
+        return err({
+          kind: "invalid",
+          issues: [...(valid.ok ? [] : valid.error), stockIssue],
+        });
+      }
+      const valid = validateMaterialDraft(draft);
+      if (!valid.ok) return err({ kind: "invalid", issues: valid.error });
+      const material = await buildMaterial(authorized.value, valid.value, null);
+      if (!material.ok) return material;
+      const saved = await save("insert", material.value);
+      if (!saved.ok) return saved;
+      const units = Number(text === "" ? "0" : text);
+      const first = saved.value.variants[0];
+      if (units === 0 || !first)
+        return ok({ material: saved.value, onHand: 0 });
+      const outcome = await deps.stock.adjust({
+        variantId: first.id,
+        delta: units,
+        reason: "Stock inicial",
+        by: authorized.value.email,
+        at: clock.now(),
+      });
+      // Adding units cannot go below zero: only a store failure lands here.
+      if (outcome.kind !== "adjusted")
+        throw new Error("starting stock was refused for a new variant");
+      return ok({ material: saved.value, onHand: outcome.onHand });
     },
 
     async update(actor, id, draft) {

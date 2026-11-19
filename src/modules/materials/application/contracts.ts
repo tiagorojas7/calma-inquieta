@@ -95,6 +95,30 @@ export interface MaterialSummary {
   readonly active: boolean;
   readonly available: boolean;
 }
+/** One variant of a stock overview row: its price in whole pesos and its units. */
+export interface MaterialStockVariant {
+  readonly id: string;
+  readonly label: string;
+  /** Whole pesos; null means "consultar precio". */
+  readonly price: number | null;
+  readonly available: boolean;
+  /** Units the studio holds; no stock row reads 0. */
+  readonly onHand: number;
+}
+/** A material with the units on hand of each variant, for the Materiales screen. */
+export interface MaterialStockRow {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly supplierName: string;
+  readonly active: boolean;
+  readonly available: boolean;
+  readonly variants: readonly MaterialStockVariant[];
+  /** The units of every variant together. */
+  readonly onHand: number;
+}
+/** The starting units of a new material, as typed. */
+export type StartingStockField = "startingStock";
 /** A manual stock subtraction larger than the units on hand. */
 export interface InsufficientStock {
   readonly kind: "insufficient-stock";
@@ -279,6 +303,29 @@ export interface MaterialsService {
       | NotFound
       | Invalid<StockAdjustmentField>
       | InsufficientStock
+    >
+  >;
+  /** Materials with the units on hand of each variant, read with one stock query. */
+  listWithStock(
+    a: AdminActor,
+    f: { readonly state: "active" | "inactive" | "all" },
+  ): Promise<Result<readonly MaterialStockRow[], AdminFailure>>;
+  /**
+   * Creates the material like `create` and, when `startingStock` is a whole
+   * number above zero, records those units on its first variant with the
+   * reason "Stock inicial". Blank or 0 records nothing. Bad units are refused
+   * before anything is created.
+   */
+  createWithStock(
+    a: AdminActor,
+    d: MaterialDraft,
+    startingStock: string,
+  ): Promise<
+    Result<
+      { readonly material: Material; readonly onHand: number },
+      | AdminFailure
+      | Invalid<MaterialField | StartingStockField>
+      | { readonly kind: "variant-in-use" }
     >
   >;
   setImage(

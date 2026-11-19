@@ -739,3 +739,199 @@ describe("material service", () => {
     ).toMatchObject({ image: { asset: null } });
   });
 });
+
+describe("material stock overview and creation with starting stock", () => {
+  it("lists each material with its variants, price and units on hand, and the total", async () => {
+    const { service, stock } = await setup();
+    const paint = valueOf(
+      await service.create(
+        actor,
+        draft({
+          name: "Acrílico",
+          variants: [
+            { label: "Rojo", price: "1500", available: true, swatch: "" },
+            { label: "Azul", price: "1800", available: true, swatch: "" },
+          ],
+        }),
+      ),
+    );
+    const clay = valueOf(
+      await service.create(actor, draft({ name: "Arcilla" })),
+    );
+    const [red] = paint.variants;
+    if (!red) throw new Error("expected variant");
+    stock.levels.set(red.id, 4);
+
+    const rows = valueOf(await service.listWithStock(actor, { state: "all" }));
+
+    expect(rows.map((row) => row.name)).toEqual(["Acrílico", "Arcilla"]);
+    expect(rows[0]).toMatchObject({
+      id: paint.id,
+      supplierName: supplier.name,
+      active: true,
+      available: true,
+      onHand: 4,
+      variants: [
+        { label: "Rojo", onHand: 4, price: 1500 },
+        { label: "Azul", onHand: 0, price: 1800 },
+      ],
+    });
+    expect(rows[1]).toMatchObject({ id: clay.id, onHand: 0 });
+  });
+
+  it("reads one stock query for every variant and honors the state filter", async () => {
+    const { service, stock } = await setup();
+    const kept = valueOf(await service.create(actor, draft({ name: "Hilo" })));
+    const archived = valueOf(
+      await service.create(actor, draft({ name: "Cinta" })),
+    );
+    await service.deactivate(actor, archived.id);
+    const onHand = vi.spyOn(stock, "onHand");
+
+    const active = valueOf(
+      await service.listWithStock(actor, { state: "active" }),
+    );
+    expect(active.map((row) => row.id)).toEqual([kept.id]);
+    expect(onHand).toHaveBeenCalledTimes(1);
+    expect(
+      valueOf(await service.listWithStock(actor, { state: "inactive" })).map(
+        (row) => row.id,
+      ),
+    ).toEqual([archived.id]);
+  });
+
+  it("shows a price on request as no price", async () => {
+    const { service } = await setup();
+    valueOf(
+      await service.create(
+        actor,
+        draft({
+          variants: [
+            {
+              label: "Única",
+              price: "",
+              priceOnRequest: true,
+              available: true,
+              swatch: "",
+            },
+          ],
+        }),
+      ),
+    );
+    const [row] = valueOf(
+      await service.listWithStock(actor, { state: "active" }),
+    );
+    expect(row?.variants[0]?.price).toBeNull();
+  });
+
+  it("creates the material and records its starting stock with an audited reason", async () => {
+    const { service, stock } = await setup();
+    const created = valueOf(await service.createWithStock(actor, draft(), "6"));
+
+    const variant = created.material.variants[0];
+    expect(created.onHand).toBe(6);
+    expect(stock.levels.get(variant?.id ?? "")).toBe(6);
+    expect(stock.adjustments).toMatchObject([
+      {
+        variantId: variant?.id,
+        delta: 6,
+        reason: "Stock inicial",
+        by: actor.email,
+      },
+    ]);
+  });
+
+  it.each(["", "  ", "0"])(
+    "creates the material without stock movement for %j",
+    async (units) => {
+      const { service, stock } = await setup();
+      const created = valueOf(
+        await service.createWithStock(actor, draft(), units),
+      );
+      expect(created.onHand).toBe(0);
+      expect(stock.adjustments).toEqual([]);
+    },
+  );
+
+  it.each([
+    ["abc", "invalid-format"],
+    ["-3", "invalid-format"],
+    ["1.5", "invalid-format"],
+    ["100001", "out-of-range"],
+  ])("refuses starting stock %j and creates nothing", async (units, code) => {
+    const { service, repository, stock } = await setup();
+    const result = await service.createWithStock(actor, draft(), units);
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "startingStock", code }],
+      },
+    });
+    expect(await repository.list({ state: "all" })).toEqual([]);
+    expect(stock.adjustments).toEqual([]);
+  });
+
+  it("reports the material's own issues too and records no stock when the material is refused", async () => {
+    const { service, repository, stock } = await setup();
+    const result = await service.createWithStock(
+      actor,
+      draft({ name: "" }),
+      "3",
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "invalid", issues: [{ field: "name", code: "required" }] },
+    });
+    const bad = await service.createWithStock(actor, draft({ name: "" }), "x");
+    expect(bad).toMatchObject({
+      ok: false,
+      error: {
+        issues: [
+          { field: "name", code: "required" },
+          { field: "startingStock", code: "invalid-format" },
+        ],
+      },
+    });
+    expect(await repository.list({ state: "all" })).toEqual([]);
+    expect(stock.adjustments).toEqual([]);
+  });
+
+  it("keeps the same refusals as create for a duplicate name and an unknown supplier", async () => {
+    const { service, stock } = await setup();
+    valueOf(await service.create(actor, draft()));
+    expect(await service.createWithStock(actor, draft(), "2")).toMatchObject({
+      ok: false,
+      error: { issues: [{ field: "name", code: "duplicate" }] },
+    });
+    expect(
+      await service.createWithStock(
+        actor,
+        draft({ name: "Otro", supplierId: "nope" }),
+        "2",
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: { issues: [{ field: "supplierId", code: "unknown-reference" }] },
+    });
+    expect(stock.adjustments).toEqual([]);
+  });
+
+  it("denies a missing actor on both new methods", async () => {
+    const { service } = await setup();
+    expect(await service.listWithStock(null, { state: "all" })).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    expect(await service.createWithStock(undefined, draft(), "2")).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+  });
+
+  it("keeps create as it was for a caller that gives no quantity", async () => {
+    const { service, stock } = await setup();
+    valueOf(await service.create(actor, draft()));
+    expect(stock.adjustments).toEqual([]);
+  });
+});

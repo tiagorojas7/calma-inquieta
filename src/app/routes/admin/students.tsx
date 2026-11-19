@@ -3,17 +3,16 @@ import { servicesContext } from "~/app/context";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { parseStudentFilter } from "~/app/admin/student-filter";
 import { parseActivityFilter } from "~/app/students/activity-filter";
-import { dateLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
+import { monthLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
 import { StudentsList } from "~/app/ui/admin/students-list";
-import { ORDER_STATUSES } from "~/modules/enrollments";
+import { Money } from "~/modules/_shared";
+import { formatPesos, ORDER_STATUSES } from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/students";
 
 export function meta() {
   return [{ title: "Alumnas | Panel | Calma Inquieta" }];
 }
-
-const CORDOBA_OFFSET_MS = 10_800_000;
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
@@ -28,19 +27,24 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!listed.ok) throw enrollmentFailureResponse(listed.error);
   return {
     filter: { ...values, mostrar: param },
-    rows: listed.value.items.map((student) => ({
-      email: student.email,
-      name: student.fullName,
-      phone: student.phoneDigits,
-      workshops: student.workshops.map((w) => w.name).join(", "),
-      orders: student.orders.length,
-      active: student.active,
-      lastRequest: dateLabel(
-        new Date(student.lastRequestedAt.getTime() - CORDOBA_OFFSET_MS)
-          .toISOString()
-          .slice(0, 10),
-      ),
-    })),
+    rows: listed.value.items.map((student) => {
+      // What she owes: every pending payment, a material sale included.
+      const owed = student.orders
+        .filter((order) => order.status === "pending_confirmation")
+        .reduce((sum, order) => sum.add(order.total), Money.zero());
+      // Her newest monthly record that was not cancelled: a sale is not one.
+      const [latest] = student.activities;
+      return {
+        email: student.email,
+        name: student.fullName,
+        active: student.active,
+        current:
+          latest === undefined
+            ? null
+            : `${latest.workshopName} · ${monthLabel(latest.period)}`,
+        owes: owed.isZero() ? null : formatPesos(owed),
+      };
+    }),
     // A workshop list failure only drops the workshop filter.
     workshops: workshops.ok
       ? workshops.value.map(({ id, name }) => ({ id, name }))

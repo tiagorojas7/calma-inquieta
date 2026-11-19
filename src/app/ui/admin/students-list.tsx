@@ -1,19 +1,20 @@
-import { Text } from "../atoms/heading";
+import { Heading } from "../atoms/heading";
+import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import { adminCopy } from "./copy";
 import { SelectField, TextField } from "./form-fields";
-import { adminMicrocopy } from "./microcopy";
-import { ResponsiveList } from "./responsive-list";
-import { adminFilterClasses } from "./admin-sections";
+import { MoreOptions } from "./more-options";
+import { StatusChip } from "./status-chip";
 
 export interface StudentRow {
   readonly email: string;
   readonly name: string;
-  readonly phone: string;
-  readonly workshops: string;
-  readonly orders: number;
-  readonly lastRequest: string;
   readonly active: boolean;
+  /** "Cerámica · noviembre 2026": her newest record that was not cancelled. */
+  readonly current: string | null;
+  /** What she owes, as text; null when she owes nothing. */
+  readonly owes: string | null;
 }
 
 export interface StudentsFilter {
@@ -32,52 +33,7 @@ export interface StudentsListProps {
   readonly hasNext: boolean;
 }
 
-const copy = adminMicrocopy.students;
-
-const linkClasses =
-  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
-
-const cols = copy.columns;
-
-const stateLabel = (row: StudentRow) =>
-  row.active ? copy.state.active : copy.state.inactive;
-
-const columns = [
-  {
-    key: "name",
-    header: cols.name,
-    cell: (row: StudentRow) => (
-      <a
-        href={`/admin/alumnas/${encodeURIComponent(row.email)}`}
-        className={linkClasses}
-      >
-        {row.name}
-      </a>
-    ),
-  },
-  { key: "email", header: cols.email, cell: (row: StudentRow) => row.email },
-  { key: "phone", header: cols.phone, cell: (row: StudentRow) => row.phone },
-  {
-    key: "workshops",
-    header: cols.workshops,
-    cell: (row: StudentRow) => row.workshops,
-  },
-  {
-    key: "orders",
-    header: cols.orders,
-    cell: (row: StudentRow) => String(row.orders),
-  },
-  {
-    key: "lastRequest",
-    header: cols.lastRequest,
-    cell: (row: StudentRow) => row.lastRequest,
-  },
-  {
-    key: "state",
-    header: cols.state,
-    cell: (row: StudentRow) => stateLabel(row),
-  },
-] as const;
+const copy = adminCopy.alumnas.list;
 
 function pageHref(filter: StudentsFilter, page: number): string {
   const params = new URLSearchParams();
@@ -90,9 +46,10 @@ function pageHref(filter: StudentsFilter, page: number): string {
 }
 
 /**
- * Students registry. The filter is a plain GET form and every link a plain
- * anchor: the Worker gate refuses the `.data` requests a client navigation
- * would make.
+ * The students, found by a big search and shown as plain cards: her name, where
+ * she is this month and whether she owes. The search is a plain GET form and
+ * every link a plain anchor: the Worker gate refuses the `.data` requests a
+ * client navigation would make. The filters stay behind "Filtrar".
  */
 export function StudentsList({
   rows,
@@ -102,137 +59,122 @@ export function StudentsList({
   hasNext,
 }: StudentsListProps) {
   const filtered = Boolean(
-    filter.q || filter.taller || filter.estado || filter.mostrar !== "activas",
+    filter.taller || filter.estado || filter.mostrar !== "activas",
   );
   return (
-    <section className="flex flex-col gap-4">
-      <AdminPageHeader
-        title={copy.title}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: copy.title },
-        ]}
-      />
-      <details open={filtered}>
-        <summary
-          className={`${adminFilterClasses(false)} w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
-        >
-          {copy.filters.summary}
-        </summary>
-        <form
-          role="search"
-          method="get"
-          action="/admin/alumnas"
-          aria-label={copy.filterLabel}
-          className="mt-3 grid gap-3 rounded-md bg-surface p-4 shadow-card md:grid-cols-2"
-        >
-          <TextField
-            label={copy.filters.search}
-            hint={copy.filters.searchHint}
-            name="q"
-            defaultValue={filter.q}
-          />
+    <section className="flex max-w-3xl flex-col gap-5">
+      <AdminPageHeader title={copy.title} />
+      <div>
+        <AdminButtonLink href="/admin/inscripciones/nueva">
+          {copy.enroll}
+        </AdminButtonLink>
+      </div>
+      <form
+        role="search"
+        method="get"
+        action="/admin/alumnas"
+        aria-label={copy.searchLabel}
+        className="flex flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
+      >
+        <TextField
+          label={copy.searchLabel}
+          hint={copy.searchHint}
+          name="q"
+          type="search"
+          autoComplete="off"
+          defaultValue={filter.q}
+        />
+        <div>
+          <AdminButton type="submit">{copy.search}</AdminButton>
+        </div>
+        <MoreOptions label={copy.filter} defaultOpen={filtered}>
           <SelectField
-            label={copy.filters.workshop}
+            label={copy.workshop}
             name="taller"
             defaultValue={filter.taller}
             options={[
-              { value: "", label: copy.filters.anyWorkshop },
+              { value: "", label: copy.allWorkshops },
               ...workshops.map((w) => ({ value: w.id, label: w.name })),
             ]}
           />
           <SelectField
-            label={copy.filters.status}
+            label={copy.orderState}
             name="estado"
             defaultValue={filter.estado}
-            options={[
-              { value: "", label: copy.filters.anyStatus },
-              ...statuses,
-            ]}
+            options={[{ value: "", label: copy.allOrderStates }, ...statuses]}
           />
           <SelectField
-            label={copy.filters.show}
+            label={copy.show}
             name="mostrar"
             defaultValue={filter.mostrar}
             options={[
-              { value: "activas", label: copy.filters.showActive },
-              { value: "inactivas", label: copy.filters.showInactive },
-              { value: "todas", label: copy.filters.showAll },
+              { value: "activas", label: copy.shows.activas },
+              { value: "inactivas", label: copy.shows.inactivas },
+              { value: "todas", label: copy.shows.todas },
             ]}
           />
           <div>
-            <button
-              type="submit"
-              className="inline-flex min-h-11 items-center rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
-            >
-              {copy.filters.apply}
-            </button>
+            <AdminButton type="submit" variant="outline">
+              {copy.apply}
+            </AdminButton>
           </div>
-        </form>
-      </details>
-      <Text tone="muted">{copy.count(rows.length)}</Text>
-      <a
-        href={
-          filter.mostrar === "activas"
-            ? "/admin/alumnas?mostrar=inactivas"
-            : "/admin/alumnas"
-        }
-        className={linkClasses}
-      >
-        {filter.mostrar === "activas" ? copy.viewInactive : copy.viewActive}
-      </a>
-      <ResponsiveList
-        label={copy.title}
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.email}
-        card={(row) => (
-          <>
-            <a
-              href={`/admin/alumnas/${encodeURIComponent(row.email)}`}
-              className={linkClasses}
+        </MoreOptions>
+      </form>
+      {rows.length === 0 ? (
+        <p role="status" className="text-lg text-ink-700">
+          {copy.empty}
+        </p>
+      ) : (
+        <ul aria-label={copy.title} className="flex flex-col gap-3">
+          {rows.map((row) => (
+            <li
+              key={row.email}
+              className="flex flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
             >
-              {row.name}
-            </a>
-            <dl className="grid gap-1 text-sm text-ink-700">
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.email}</dt>
-                <dd className="break-all">{row.email}</dd>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Heading level={2} size="h4">
+                    {row.name}
+                  </Heading>
+                  <p className="text-lg text-ink-700">
+                    {row.current ?? copy.noCurrent}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {row.active ? null : (
+                    <StatusChip status="cancelled" label={copy.inactive} />
+                  )}
+                  {row.owes === null ? (
+                    <StatusChip status="paid" label={copy.upToDate} />
+                  ) : (
+                    <StatusChip
+                      status="pending_confirmation"
+                      label={copy.owes(row.owes)}
+                    />
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.phone}</dt>
-                <dd>{row.phone}</dd>
+              <div>
+                <AdminButtonLink
+                  variant="secondary"
+                  href={`/admin/alumnas/${encodeURIComponent(row.email)}`}
+                  ariaLabel={`${copy.open} de ${row.name}`}
+                >
+                  {copy.open}
+                </AdminButtonLink>
               </div>
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.orders}</dt>
-                <dd>{String(row.orders)}</dd>
-              </div>
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.state}</dt>
-                <dd>{stateLabel(row)}</dd>
-              </div>
-            </dl>
-            <Text tone="muted">{row.workshops}</Text>
-            <Text tone="muted">{row.lastRequest}</Text>
-          </>
-        )}
-        empty={{
-          title: copy.empty.title,
-          message: copy.empty.message,
-          action: { href: "/admin/alumnas", label: copy.empty.action },
-        }}
-      />
+            </li>
+          ))}
+        </ul>
+      )}
       {filter.page > 1 || hasNext ? (
-        <nav
-          aria-label={copy.pagination.label}
-          className="flex flex-wrap gap-3"
-        >
+        <nav aria-label={copy.title} className="flex flex-wrap gap-3">
           {filter.page > 1 ? (
             <AdminButtonLink
               variant="outline"
               href={pageHref(filter, filter.page - 1)}
             >
-              {copy.pagination.previous}
+              {copy.previous}
             </AdminButtonLink>
           ) : null}
           {hasNext ? (
@@ -240,7 +182,7 @@ export function StudentsList({
               variant="outline"
               href={pageHref(filter, filter.page + 1)}
             >
-              {copy.pagination.next}
+              {copy.next}
             </AdminButtonLink>
           ) : null}
         </nav>

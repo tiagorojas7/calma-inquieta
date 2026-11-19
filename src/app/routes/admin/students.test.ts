@@ -60,7 +60,7 @@ async function load(
 }
 
 describe("admin students list route", () => {
-  it("lists one row per person with her workshops, even across several orders", async () => {
+  it("lists one card per person with her current workshop and month and what she owes, even across several orders", async () => {
     const result = await load();
 
     expect(result.rows.map((row) => row.email)).toEqual([
@@ -69,9 +69,12 @@ describe("admin students list route", () => {
     ]);
     expect(result.rows[1]).toMatchObject({
       name: "Ana Pérez",
-      workshops: "Acuarela, Cerámica inicial",
-      orders: 2,
-      lastRequest: "03/10/2026",
+      current: "Acuarela · octubre 2026",
+      owes: "$ 116.000",
+    });
+    expect(result.rows[0]).toMatchObject({
+      current: "Cerámica inicial · octubre 2026",
+      owes: "$ 58.000",
     });
     expect(result.workshops).toEqual([
       { id: WORKSHOP, name: "Cerámica inicial" },
@@ -81,6 +84,58 @@ describe("admin students list route", () => {
       label: "Pendiente de confirmación",
     });
     expect(result.hasNext).toBe(false);
+  });
+
+  it("owes nothing once everything is paid, and a cancelled order is never owed", async () => {
+    const { orders, activity, service } = studentsFixture();
+    orders.orders.push(
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        status: "paid",
+      }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        status: "cancelled",
+      }),
+    );
+    activity.enrolled("ana@example.com");
+    const result = await loader({
+      request: getRequest("/admin/alumnas"),
+      params: {},
+      context: adminContext({ students: service }),
+    } as never);
+
+    expect(result.rows[0]).toMatchObject({ owes: null });
+  });
+
+  it("counts a pending material sale as owed, but shows it nowhere as a workshop", async () => {
+    const { orders, activity, service } = studentsFixture();
+    orders.orders.push(
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        status: "paid",
+      }),
+      studentOrder(3, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        kind: "material_sale",
+        workshopName: "Venta",
+      }),
+    );
+    activity.enrolled("ana@example.com");
+    const result = await loader({
+      request: getRequest("/admin/alumnas"),
+      params: {},
+      context: adminContext({ students: service }),
+    } as never);
+
+    expect(result.rows[0]).toMatchObject({
+      current: "Cerámica inicial · octubre 2026",
+      owes: "$ 58.000",
+    });
   });
 
   it("shows each row's state and hides the inactive students by default", async () => {

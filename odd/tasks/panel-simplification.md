@@ -95,6 +95,19 @@ In the sale and enrollment pickers, a material not kept in the studio reads "Se 
 
 S12. **Debt is always right.** A student who owes anything shows "Debe $X" everywhere: the Alumnas list, the top of her file and Hoy. That covers a pending fee, a pending material sale and a pending workshop deposit or balance. A record whose sale is owed never reads only "Pagado".
 
+S13. **Structure, strategic colour, numbers first, real contrast.** Owner (L19).
+
+- **Colours carry meaning, used the same way everywhere:**
+  - owed or pending money is one strong warning colour;
+  - paid or done is one success colour;
+  - neutral information is ink;
+  - one brand accent for primary actions.
+  - Decoration never competes with these.
+- **Contrast:** all text and badges meet WCAG AA, at least 4.5:1, and 3:1 for large numbers and UI borders. Muted grey text on the warm background must pass too.
+- **Numbers first:** every card (student, record, sale, workshop, reservation, material, supplier order, Hoy figures) opens with a summary row whose key numbers are large and bold, for example "Debe $30.900", "Pagado $100.900", "3 de 20 lugares", "Hay 5" or "Total $116.600". Details follow below.
+- **Structure:** consistent card anatomy (title, summary row, details, actions), consistent spacing and clear section headings.
+- A contrast test asserts the token pairs.
+
 ## Tasks
 
 - [x] P1 (S1, S2, S8): `7059b0b` + `95ef0da`; the shell, the four-plus-Ajustes nav, and route skeletons with redirects from the old URLs. Friendly base styles: type scale, big buttons, cards, and the saved message. A shared "back to the same place" redirect helper. Route: delegated.
@@ -104,7 +117,8 @@ S12. **Debt is always right.** A student who owes anything shows "Debe $X" every
 - [ ] P5 (S7, S2, S8): Materiales. Implemented in `67ff00d` and `696eaa0`; task closure pending the seam check. Route: delegated after P1.
 - [x] P7 (S10, S8): information and copy pass over every remaining admin page (Ajustes pages, workshop and teacher editors, policies, statistics, suppliers, events, reminders): cut text, shorten labels, hide secondary facts. Existing compact/collapsed screens were verified by readback; workshop, policies, reminders and supplier forms were simplified with RED/GREEN tests. UI 1240/1240, unit 4285/4285, focused lint, typecheck, format, and Impeccable detect passed; committed as `ecf92d3`. Route: inline after P2–P5; no writer trigger held because the mapped edits shared `microcopy.ts`.
 - [ ] P8 (S11, S12, S2, S8, S10): corrections from the L17 walkthrough. F-A covers Alumnas debt, width, sale picker feedback and phone format. F-B covers the Hoy sale task, one open-month rule, "libres" and a slimmer page header. F-C covers the stocked flag and Materiales order. Route: delegated, parallel.
-- [ ] P6 (S1–S12): seam run, local walkthrough at 390 px and desktop, the owner's check.
+- [ ] P9 (S13, S8, S10): visual system pass. Semantic colour tokens with AA contrast and a contrast test. A card anatomy with a summary row of large numbers in the shared primitives, applied to every card in Hoy, Alumnas, Clases, Materiales and the record detail. Route: delegated after P8.
+- [ ] P6 (S1–S13): seam run, local walkthrough at 390 px and desktop, the owner's check.
 
 ## Log
 
@@ -174,3 +188,4 @@ S12. **Debt is always right.** A student who owes anything shows "Debe $X" every
     - U6: Clases says "28 lugares" without saying free or taken.
     - U7: every page opens with a large icon header card repeating the nav.
 - L18 (2026-11-19, owner, verbatim, answering how to tell stocked materials apart): "Marcar los que se tienen (Recommended)" (option text: "Cada material lleva un sí/no: \"Lo tenemos en el estudio\". Materiales muestra arriba \"Para entregar\" y \"Para pedir\", después \"En el estudio\" solo con esos materiales (Hay 5 / Se acabó), y el resto del catálogo queda en un buscador. Al vender, los que no se tienen dicen \"Se pide\".").
+- L19 (2026-11-19, owner, verbatim): "ademas necesitoque este todo mas estructurado, que los colores esten elegidos estrategicamente, que diga el resumen en cada ficha, por que los numero son muy importantes ysiento que el contraste de colores es malisimo y se pierde todo y no hay nada de contraste, por l oque hay que hacer una mejora ahi tambien". This adds S13 and task P9, which runs after P8 because it touches the shared tokens and primitives the P8 writers are using.

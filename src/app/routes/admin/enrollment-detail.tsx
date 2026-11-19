@@ -186,15 +186,30 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
             href: `/admin/inscripciones/${order.parent.id}`,
           }
         : null,
-    sales: (order.sales ?? []).map((sale) => ({
-      id: sale.id,
-      number: sale.number,
-      href: `/admin/inscripciones/${sale.id}`,
-      status: sale.status,
-      statusLabel: ORDER_STATUS_LABELS[sale.status],
-      total: formatPesos(sale.total),
-      requestedOn: dateLabel(cordobaDay(sale.requestedAt)),
-    })),
+    // Each sale shows what it holds inside its record; one that cannot be
+    // read still lists, without its materials.
+    sales: await Promise.all(
+      (order.sales ?? []).map(async (sale) => {
+        const own = await services.enrollments
+          .detail(actor, sale.id)
+          .catch(() => null);
+        return {
+          id: sale.id,
+          number: sale.number,
+          href: `/admin/inscripciones/${sale.id}`,
+          status: sale.status,
+          statusLabel: ORDER_STATUS_LABELS[sale.status],
+          total: formatPesos(sale.total),
+          requestedOn: dateLabel(cordobaDay(sale.requestedAt)),
+          lines: own?.ok
+            ? own.value.lines.map((line) => ({
+                label: `${line.materialName} ${line.variantLabel}`,
+                quantity: line.quantity,
+              }))
+            : [],
+        };
+      }),
+    ),
     newSaleHref:
       !isSale && order.status !== "cancelled"
         ? `/admin/inscripciones/${order.id}/venta-nueva`

@@ -59,6 +59,28 @@ describe("parseAttendanceFilter", () => {
     });
   });
 
+  it("defaults to the current month when it has turnos, not the newest one", () => {
+    expect(
+      parseAttendanceFilter(new URLSearchParams(), turnos, "2026-09"),
+    ).toEqual({ mes: "2026-09", taller: "" });
+  });
+
+  it("falls back to the newest month when the current one has no turnos", () => {
+    expect(
+      parseAttendanceFilter(new URLSearchParams(), turnos, "2027-01"),
+    ).toEqual({ mes: "2026-10", taller: "" });
+  });
+
+  it("keeps a month the owner chose over the current one", () => {
+    expect(
+      parseAttendanceFilter(
+        new URLSearchParams("mes=2026-10"),
+        turnos,
+        "2026-09",
+      ),
+    ).toEqual({ mes: "2026-10", taller: "" });
+  });
+
   it("keeps a month and workshop that exist and drops unknown ones", () => {
     expect(
       parseAttendanceFilter(
@@ -159,10 +181,10 @@ describe("sheetView", () => {
   it("carries the pending-fee note and the full-turno warning", () => {
     const view = sheetView({ turno: turno(), date: "2026-10-05", rows: [] });
     expect(view.pendingNote).toBe(
-      "Todavía debe la cuota del mes. Podés marcar su asistencia igual.",
+      "Debe la cuota del mes. Podés marcarla igual.",
     );
     expect(view.makeUpFullWarning).toBe(
-      "La recuperación quedó programada, pero ese turno ya no tiene lugares libres ese día.",
+      "Quedó agendada, pero ese turno ya está completo ese día.",
     );
   });
 
@@ -195,6 +217,7 @@ describe("sheetView", () => {
     expect(view.heading).toBe("Lunes 05/10/2026");
     expect(view.subtitle).toBe("Cerámica, Lunes tarde · octubre 2026");
     expect(view.backHref).toBe(`/admin/asistencia/${P1}/${T1}`);
+    expect(view.path).toBe(`/admin/asistencia/${P1}/${T1}/2026-10-05`);
     expect(view.rows).toEqual([
       {
         email: "ana@example.com",

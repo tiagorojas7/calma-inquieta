@@ -32,10 +32,14 @@ export interface AttendanceFilter {
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-/** `?mes=` and `?taller=` kept only when some turno has them. */
+/**
+ * `?mes=` and `?taller=` kept only when some turno has them. Without a month
+ * the current one is shown when it has turnos, else the newest.
+ */
 export function parseAttendanceFilter(
   params: URLSearchParams,
   turnos: readonly ScheduledTurno[],
+  currentMonth = "",
 ): AttendanceFilter {
   const months = turnos
     .map((turno) => turno.period)
@@ -44,7 +48,12 @@ export function parseAttendanceFilter(
   const mes = params.get("mes") ?? "";
   const taller = params.get("taller") ?? "";
   return {
-    mes: MONTH.test(mes) && months.includes(mes) ? mes : (months[0] ?? ""),
+    mes:
+      MONTH.test(mes) && months.includes(mes)
+        ? mes
+        : months.includes(currentMonth)
+          ? currentMonth
+          : (months[0] ?? ""),
     taller: turnos.some((turno) => turno.workshopId === taller) ? taller : "",
   };
 }
@@ -112,6 +121,7 @@ export function sheetView({ turno, date, rows }: SessionSheet) {
     heading: sessionDateLabel(date),
     subtitle: `${turno.workshopName}, ${turno.turnoLabel} · ${monthLabel(turno.period)}`,
     backHref: sessionsPath(turno.periodId, turno.turnoId),
+    path: `${sessionsPath(turno.periodId, turno.turnoId)}/${date}`,
     pendingNote: attendanceRulesCopy.pendingNote,
     makeUpFullWarning: attendanceRulesCopy.makeUpFullWarning,
     rows: rows.map((row) => ({

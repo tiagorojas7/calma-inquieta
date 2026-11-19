@@ -5,6 +5,7 @@ import {
   parseAttendanceFilter,
 } from "~/app/attendance/admin-view";
 import { servicesContext } from "~/app/context";
+import { cordobaMonthOf } from "~/modules/workshops";
 import { AttendanceIndex } from "~/app/ui/admin/attendance-screens";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/attendance";
@@ -22,6 +23,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const filter = parseAttendanceFilter(
     new URL(request.url).searchParams,
     listed.value,
+    cordobaMonthOf(new Date()),
   );
   return attendanceIndexView(listed.value, filter);
 }

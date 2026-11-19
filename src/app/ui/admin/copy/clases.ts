@@ -85,13 +85,10 @@ export const clasesCopy = {
     whatsapp: "WhatsApp",
     seeCancelled: (count: number) => `Canceladas (${String(count)})`,
     cancelledReason: (reason: string) => `Motivo: ${reason}`,
-    noProject: "Sin proyecto",
   },
   reservations: {
     title: "Reservas",
     back: "Volver a Clases",
-    seats: (taken: number, capacity: number) =>
-      `${String(taken)} de ${String(capacity)} lugares`,
     seatsWord: "lugares",
     edit: "Editar workshop",
   },
@@ -103,14 +100,20 @@ export const clasesCopy = {
     save: "Guardar",
     saved: "asistencia guardada",
     makeUpScheduled: "recuperación agendada",
-    pendingFee: "Debe la cuota del mes",
-    feePending: "Debe la cuota",
+    formLabel: "Asistencia de la clase",
+    list: "Alumnas",
+    saveFailed: "No se pudo guardar. Probá de nuevo.",
     makeUp: {
       action: "Agendar recuperación",
       turno: "Turno",
       date: "Fecha",
       submit: "Agendar",
-      pending: "Recuperación pendiente",
+      errors: {
+        makeUpDate: "Elegí una fecha del mes, en el día del turno.",
+        makeUpTurno: "Elegí un turno de la lista.",
+        student: "Solo se agenda a quien faltó.",
+        exists: "Ya tiene una recuperación agendada.",
+      },
     },
     empty: "Todavía no hay alumnas en esta clase.",
     emptyAction: "Volver",
@@ -124,6 +127,7 @@ export const clasesCopy = {
       sessions: (count: number) =>
         count === 1 ? "1 clase" : `${String(count)} clases`,
       makeUps: "Recuperaciones",
+      back: "Volver a Clases",
       emptyTitle: "No hay turnos",
       emptyMessage: "Probá con otro mes.",
       emptyAction: "Ver todos",
@@ -131,7 +135,6 @@ export const clasesCopy = {
     sessions: {
       back: "Volver",
       open: "Abrir",
-      marked: "Marcadas",
       present: "Vinieron",
       absent: "Faltaron",
     },

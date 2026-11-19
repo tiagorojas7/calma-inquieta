@@ -26,50 +26,52 @@ const index: AttendanceIndexProps = {
 };
 
 describe("AttendanceIndex", () => {
-  it("offers a GET filter and plain links to each turno", async () => {
+  it("offers a GET filter and a plain link to the make-ups", async () => {
     const { container } = render(<AttendanceIndex {...index} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Asistencia" }),
     ).toBeVisible();
-    const form = screen.getByRole("search", { name: "Elegir clases" });
+    const form = screen.getByRole("search", { name: "Asistencia" });
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/admin/asistencia");
     expect(within(form).getByLabelText("Mes")).toHaveValue("2026-10");
     expect(within(form).getByLabelText("Taller")).toHaveValue("w1");
     expect(
-      screen.getByRole("link", { name: "Ver recuperaciones" }),
+      screen.getByRole("link", { name: "Recuperaciones" }),
     ).toHaveAttribute("href", "/admin/asistencia/recuperaciones");
+    expect(
+      screen.getByRole("link", { name: "Volver a Clases" }),
+    ).toHaveAttribute("href", "/admin/clases");
     await expectNoAxeViolations(container);
   });
 
-  it("has breadcrumbs and shows each turno as a card with its details", () => {
+  it("shows each turno as a card with one button and no labels to read", () => {
     render(<AttendanceIndex {...index} />);
 
-    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
-    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
     const card = within(
       screen.getByRole("list", { name: "Asistencia" }),
     ).getByRole("listitem");
-    expect(within(card).getByText("Lunes tarde")).toBeVisible();
-    expect(within(card).getByText("Lunes 18:00 a 20:00 h")).toBeVisible();
-    expect(within(card).getByText("4")).toBeVisible();
+    expect(within(card).getByText("Cerámica")).toBeVisible();
     expect(
-      within(card).getByRole("link", {
-        name: "Ver clases de Cerámica, Lunes tarde",
-      }),
+      within(card).getByText("Lunes tarde · Lunes 18:00 a 20:00 h"),
+    ).toBeVisible();
+    expect(within(card).getByText("4 clases")).toBeVisible();
+    expect(
+      within(card).getByRole("link", { name: "Abrir: Cerámica, Lunes tarde" }),
     ).toHaveAttribute("href", "/admin/asistencia/p/t");
     expect(screen.queryByRole("table")).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "Migas de pan" }),
+    ).toBeNull();
   });
 
   it("says there are no turnos for the filter", () => {
     render(<AttendanceIndex {...index} rows={[]} />);
     expect(
-      screen.getByRole("heading", { name: "No hay turnos para este filtro" }),
+      screen.getByRole("heading", { name: "No hay turnos" }),
     ).toBeVisible();
+    expect(screen.getByText("Probá con otro mes.")).toBeVisible();
   });
 });
 
@@ -85,33 +87,36 @@ const sessions: AttendanceSessionsProps = {
       present: "1",
       absent: "1",
     },
+    {
+      key: "2026-10-12",
+      href: "/admin/asistencia/p/t/2026-10-12",
+      date: "Lunes 12/10/2026",
+      marked: "0",
+      present: "0",
+      absent: "0",
+    },
   ],
 };
 
 describe("AttendanceSessions", () => {
-  it("lists each class date with its counts and a plain link", async () => {
+  it("lists each class date with who came and who did not, and a plain link", async () => {
     const { container } = render(<AttendanceSessions {...sessions} />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Cerámica, Lunes tarde" }),
     ).toBeVisible();
-    const card = within(
-      screen.getByRole("list", { name: "Clases del turno" }),
-    ).getByRole("listitem");
+    const [marked, empty] = within(
+      screen.getByRole("list", { name: "Cerámica, Lunes tarde" }),
+    ).getAllByRole("listitem") as [HTMLElement, HTMLElement];
     expect(
-      within(card).getByRole("link", {
-        name: "Registrar asistencia: Lunes 05/10/2026",
-      }),
+      within(marked).getByRole("link", { name: "Abrir: Lunes 05/10/2026" }),
     ).toHaveAttribute("href", "/admin/asistencia/p/t/2026-10-05");
-    expect(within(card).getByText("Registradas")).toBeVisible();
-    expect(within(card).getByText("Presentes")).toBeVisible();
-    expect(within(card).getByText("Ausentes")).toBeVisible();
-    expect(
-      screen.getByRole("navigation", { name: "Migas de pan" }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "Volver a asistencia" }),
-    ).toHaveAttribute("href", "/admin/asistencia");
+    expect(marked).toHaveTextContent("Vinieron: 1 · Faltaron: 1");
+    expect(empty).not.toHaveTextContent("Vinieron");
+    expect(screen.getByRole("link", { name: "Volver" })).toHaveAttribute(
+      "href",
+      "/admin/asistencia",
+    );
     await expectNoAxeViolations(container);
   });
 });
@@ -120,8 +125,9 @@ const sheet: AttendanceSheetProps = {
   heading: "Lunes 05/10/2026",
   subtitle: "Cerámica, Lunes tarde · octubre 2026",
   backHref: "/admin/asistencia/p/t",
-  pendingNote: "Todavía debe la cuota. Se la puede marcar igual.",
-  makeUpFullWarning: "Ese turno no tiene lugares libres ese día.",
+  path: "/admin/asistencia/p/t/2026-10-05",
+  pendingNote: "Debe la cuota del mes. Podés marcarla igual.",
+  makeUpFullWarning: "Quedó agendada, pero ese turno ya está completo ese día.",
   makeUpTurnos: [
     { value: "p:u", label: "Cerámica, Miércoles (octubre 2026)" },
     { value: "p:v", label: "Cerámica, Viernes (octubre 2026)" },
@@ -147,102 +153,107 @@ const sheet: AttendanceSheetProps = {
 };
 
 describe("AttendanceSheet", () => {
-  it("marks every student inside ONE native post form", async () => {
+  it("gives each student two big toggles, Vino and Faltó, that post with the one form", async () => {
     const { container } = render(<AttendanceSheet {...sheet} />);
 
     const marking = screen.getByRole("form", {
       name: "Asistencia de la clase",
     });
     expect(marking).toHaveAttribute("method", "post");
-    expect(within(marking).getAllByRole("radio")).toHaveLength(4);
+    expect(marking.id).toBe("attendance-sheet");
+    const radios = screen.getAllByRole("radio");
+    expect(radios).toHaveLength(4);
+    for (const radio of radios)
+      expect(radio).toHaveAttribute("form", "attendance-sheet");
     const ana = screen.getByRole("group", { name: "Ana Pérez" });
-    expect(within(ana).getByLabelText("Ausente")).toBeChecked();
-    expect(within(ana).getByLabelText("Presente")).not.toBeChecked();
-    expect(within(ana).getByLabelText("Presente")).toHaveAttribute(
+    expect(within(ana).getByLabelText("Faltó")).toBeChecked();
+    expect(within(ana).getByLabelText("Vino")).not.toBeChecked();
+    expect(within(ana).getByLabelText("Vino")).toHaveAttribute(
       "name",
       "status:ana@example.com",
     );
-    expect(
-      screen.getByRole("button", { name: "Guardar asistencia" }),
-    ).toBeVisible();
+    expect(within(ana).getByLabelText("Vino").closest("label")).toHaveClass(
+      "min-h-16",
+    );
     await expectNoAxeViolations(container);
   });
 
-  it("shows one thumb-sized card per student, breadcrumbs and a sticky save bar", () => {
+  it("collects the marks into the one native form when it is submitted", () => {
+    render(<AttendanceSheet {...sheet} />);
+
+    const marking = screen.getByRole<HTMLFormElement>("form", {
+      name: "Asistencia de la clase",
+    });
+    const data = new FormData(marking);
+    expect(data.get("intent")).toBe("save");
+    expect(data.get("returnTo")).toBe("/admin/asistencia/p/t/2026-10-05");
+    expect(data.get("status:ana@example.com")).toBe("absent");
+    expect(data.get("status:caro@example.com")).toBeNull();
+    expect(screen.getByRole("button", { name: "Guardar" })).toHaveAttribute(
+      "form",
+      "attendance-sheet",
+    );
+  });
+
+  it("shows one big card per student and a sticky Guardar, with no breadcrumbs or order numbers", () => {
     render(<AttendanceSheet {...sheet} />);
 
     expect(
-      screen.getByRole("list", { name: "Alumnas de la clase" }),
-    ).toBeVisible();
-    expect(
-      within(
-        screen.getByRole("list", { name: "Alumnas de la clase" }),
-      ).getAllByRole("listitem"),
+      within(screen.getByRole("list", { name: "Alumnas" })).getAllByRole(
+        "listitem",
+      ),
     ).toHaveLength(2);
-    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
     expect(
-      within(crumbs).getByRole("link", { name: "Clases" }),
-    ).toHaveAttribute("href", "/admin/asistencia/p/t");
+      screen.queryByRole("navigation", { name: "Migas de pan" }),
+    ).toBeNull();
+    expect(screen.queryByText("CI-1")).toBeNull();
+    expect(screen.getByRole("link", { name: "Volver" })).toHaveAttribute(
+      "href",
+      "/admin/asistencia/p/t",
+    );
     expect(
-      screen.getByRole("button", { name: "Guardar asistencia" }).closest("div"),
+      screen.getByRole("button", { name: "Guardar" }).closest("div"),
     ).toHaveClass("sticky");
-    expect(
-      screen.getAllByLabelText("Presente")[0]?.closest("label"),
-    ).toHaveClass("min-h-14");
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("shows the fee state and lets a pending student be marked like a paid one", () => {
+  it("keeps the pending-fee note and lets a pending student be marked like a paid one", () => {
     render(<AttendanceSheet {...sheet} />);
 
-    expect(screen.getByText("Cuota pagada")).toBeVisible();
-    expect(screen.getByText("Cuota pendiente")).toBeVisible();
+    expect(
+      screen.getByText("Debe la cuota del mes. Podés marcarla igual."),
+    ).toBeVisible();
     const caro = screen.getByRole("group", { name: "Caro Díaz" });
-    expect(within(caro).getByLabelText("Presente")).toHaveAttribute(
+    expect(within(caro).getByLabelText("Vino")).toHaveAttribute(
       "name",
       "status:caro@example.com",
     );
-    expect(within(caro).getByLabelText("Ausente")).toBeVisible();
-    expect(
-      screen.getByText("Todavía debe la cuota. Se la puede marcar igual."),
-    ).toBeVisible();
+    expect(within(caro).getByLabelText("Faltó")).toBeVisible();
   });
 
-  it("confirms a saved sheet and shows a save error", () => {
+  it("says what was saved in a few words and shows a save error", () => {
     const { rerender } = render(
       <AttendanceSheet {...sheet} feedback={{ saved: true }} />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Asistencia guardada.",
+      "Guardado: asistencia guardada",
     );
-    expect(screen.getByRole("status")).toHaveClass("bg-sand-200");
     rerender(<AttendanceSheet {...sheet} feedback={{ error: "No pudimos" }} />);
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos");
     rerender(
       <AttendanceSheet {...sheet} feedback={{ makeUpScheduled: true }} />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Recuperación programada.",
+      "Guardado: recuperación agendada",
     );
   });
 
-  it("keeps the save button when only students with a pending fee are listed", () => {
-    render(
-      <AttendanceSheet
-        {...sheet}
-        rows={sheet.rows.filter((row) => !row.feePaid)}
-      />,
-    );
-    expect(
-      screen.getByRole("button", { name: "Guardar asistencia" }),
-    ).toBeVisible();
-  });
-
-  it("has no save button when there are no students", () => {
+  it("has no Guardar when there are no students", () => {
     render(<AttendanceSheet {...sheet} rows={[]} />);
-    expect(screen.queryByRole("button", { name: "Guardar asistencia" })).toBe(
-      null,
-    );
+    expect(screen.queryByRole("button", { name: "Guardar" })).toBeNull();
+    expect(
+      screen.getByText("Todavía no hay alumnas en esta clase."),
+    ).toBeVisible();
   });
 
   it("warns without blocking when the make-up turno is full", () => {
@@ -252,39 +263,46 @@ describe("AttendanceSheet", () => {
         feedback={{ makeUpScheduled: true, makeUpFull: true }}
       />,
     );
-    expect(screen.getByText("Recuperación programada.")).toBeVisible();
     expect(
-      screen.getByText("Ese turno no tiene lugares libres ese día."),
+      screen.getByText(
+        "Quedó agendada, pero ese turno ya está completo ese día.",
+      ),
     ).toBeVisible();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
   describe("make-up classes", () => {
-    it("offers a plain post form for each absent student", () => {
+    it("shows Agendar recuperación right on the row of a student saved as absent, and only hers", () => {
       render(<AttendanceSheet {...sheet} />);
 
       const form = screen.getByRole("form", {
-        name: "Programar recuperación: Ana Pérez",
+        name: "Agendar recuperación: Ana Pérez",
       });
       expect(form).toHaveAttribute("method", "post");
+      expect(form.closest("li")).toHaveTextContent("Ana Pérez");
       expect(form.querySelector("input[name=intent]")).toHaveValue("makeup");
       expect(form.querySelector("input[name=email]")).toHaveValue(
         "ana@example.com",
       );
+      expect(form.querySelector("input[name=returnTo]")).toHaveValue(
+        "/admin/asistencia/p/t/2026-10-05",
+      );
+      expect(form.querySelector("input[name=anchor]")).toHaveValue("alumna-1");
+      expect(within(form).getByLabelText("Turno")).toHaveValue("p:u");
+      expect(within(form).getByLabelText("Fecha")).toHaveAttribute(
+        "type",
+        "date",
+      );
       expect(
-        within(form).getByLabelText("Turno de la recuperación"),
-      ).toHaveValue("p:u");
+        within(form).getByRole("button", { name: "Agendar" }),
+      ).toBeInTheDocument();
       expect(
-        within(form).getByLabelText("Fecha de la recuperación"),
-      ).toHaveAttribute("type", "date");
+        within(form).getByText("Agendar recuperación").closest("details"),
+      ).not.toHaveAttribute("open");
       expect(
-        within(form).getByRole("button", { name: "Programar recuperación" }),
-      ).toBeVisible();
-      expect(
-        screen.queryByRole("form", {
-          name: "Programar recuperación: Caro Díaz",
-        }),
+        screen.queryByRole("form", { name: "Agendar recuperación: Caro Díaz" }),
       ).toBeNull();
+      expect(form.closest("li")).toHaveAttribute("id", "alumna-1");
     });
 
     it("shows the scheduled state instead of a form", () => {
@@ -306,11 +324,11 @@ describe("AttendanceSheet", () => {
       );
       expect(screen.getByText("Recuperación pendiente")).toBeVisible();
       expect(
-        screen.queryByRole("form", { name: /Programar recuperación/ }),
+        screen.queryByRole("form", { name: /Agendar recuperación/ }),
       ).toBeNull();
     });
 
-    it("says so when nobody was absent", () => {
+    it("offers no make-up form while nobody is saved as absent", () => {
       render(
         <AttendanceSheet
           {...sheet}
@@ -318,11 +336,11 @@ describe("AttendanceSheet", () => {
         />,
       );
       expect(
-        screen.getByText("No hay alumnas ausentes en esta clase."),
-      ).toBeVisible();
+        screen.queryByRole("form", { name: /Agendar recuperación/ }),
+      ).toBeNull();
     });
 
-    it("shows a rejected form errors and what was typed on that student only", async () => {
+    it("shows a rejected form's errors and what was typed on that student only, open", async () => {
       const { container } = render(
         <AttendanceSheet
           {...sheet}
@@ -336,17 +354,16 @@ describe("AttendanceSheet", () => {
         />,
       );
       const form = screen.getByRole("form", {
-        name: "Programar recuperación: Ana Pérez",
+        name: "Agendar recuperación: Ana Pérez",
       });
-      expect(
-        within(form).getByLabelText("Turno de la recuperación"),
-      ).toHaveValue("p:v");
-      expect(
-        within(form).getByLabelText("Fecha de la recuperación"),
-      ).toHaveValue("2026-10-15");
+      expect(within(form).getByLabelText("Turno")).toHaveValue("p:v");
+      expect(within(form).getByLabelText("Fecha")).toHaveValue("2026-10-15");
       expect(within(form).getByRole("alert")).toHaveTextContent(
         "Elegí una fecha válida.",
       );
+      expect(
+        within(form).getByText("Agendar recuperación").closest("details"),
+      ).toHaveAttribute("open");
       await expectNoAxeViolations(container);
     });
   });

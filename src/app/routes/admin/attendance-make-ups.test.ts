@@ -93,6 +93,22 @@ describe("admin attendance make-ups route", () => {
     );
   });
 
+  it("comes back to the same make-up when the form says where it was", async () => {
+    const { post, repository } = await setup();
+    const id = [...repository.makeUps.keys()][0] ?? "";
+
+    const response = await post({
+      intent: "complete",
+      id,
+      returnTo: PATH,
+      anchor: `recuperacion-${id}`,
+    });
+
+    expect(response.headers.get("Location")).toBe(
+      `${PATH}?ok=completed#recuperacion-${id}`,
+    );
+  });
+
   it("marks a make-up as missed and moves it to the missed list", async () => {
     const { post, load, repository } = await setup();
     const id = [...repository.makeUps.keys()][0] ?? "";

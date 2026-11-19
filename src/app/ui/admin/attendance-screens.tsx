@@ -2,10 +2,10 @@ import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
 import { AdminCardList } from "./admin-sections";
+import { adminCopy } from "./copy";
 import { SelectField } from "./form-fields";
-import { adminMicrocopy } from "./microcopy";
 
-const copy = adminMicrocopy.attendance;
+const copy = adminCopy.clases.attendance;
 
 export interface AttendanceTurnoRow {
   readonly key: string;
@@ -24,9 +24,9 @@ export interface AttendanceIndexProps {
 }
 
 /**
- * Month, workshop and turno chooser. The filter is a plain GET form and every
- * link a plain anchor: the Worker gate refuses the `.data` requests a client
- * navigation would make.
+ * Month and workshop chooser, then one card per turno. The filter is a plain
+ * GET form and every link a plain anchor: the Worker gate refuses the `.data`
+ * requests a client navigation would make.
  */
 export function AttendanceIndex({
   filter,
@@ -34,20 +34,18 @@ export function AttendanceIndex({
   workshops,
   rows,
 }: AttendanceIndexProps) {
+  const t = copy.index;
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
-        title={copy.title}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: copy.title },
-        ]}
+        title={t.title}
+        back={{ href: "/admin/clases", label: t.back }}
         actions={
           <AdminButtonLink
-            variant="outline"
+            variant="secondary"
             href="/admin/asistencia/recuperaciones"
           >
-            {copy.makeUpsLink}
+            {t.makeUps}
           </AdminButtonLink>
         }
       />
@@ -55,67 +53,52 @@ export function AttendanceIndex({
         role="search"
         method="get"
         action="/admin/asistencia"
-        aria-label={copy.filterLabel}
+        aria-label={t.title}
         className="grid gap-3 md:grid-cols-2"
       >
         <SelectField
-          label={copy.filters.month}
+          label={t.month}
           name="mes"
           defaultValue={filter.mes}
           options={months}
         />
         <SelectField
-          label={copy.filters.workshop}
+          label={t.workshop}
           name="taller"
           defaultValue={filter.taller}
-          options={[
-            { value: "", label: copy.filters.anyWorkshop },
-            ...workshops,
-          ]}
+          options={[{ value: "", label: t.anyWorkshop }, ...workshops]}
         />
         <div>
           <Button type="submit" variant="secondary">
-            {copy.filters.apply}
+            {t.apply}
           </Button>
         </div>
       </form>
       <AdminCardList
-        label={copy.title}
+        label={t.title}
         rows={rows}
         rowKey={(row) => row.key}
         card={(row) => (
           <>
-            <p className="font-semibold text-ink-900">{row.workshop}</p>
-            <dl className="grid gap-1 text-sm text-ink-700">
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.turno}</dt>
-                <dd>{row.turno}</dd>
-              </div>
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.schedule}</dt>
-                <dd>{row.schedule}</dd>
-              </div>
-              <div className="flex flex-wrap gap-x-2">
-                <dt className="font-semibold">{copy.cardLabels.sessions}</dt>
-                <dd>{String(row.sessions)}</dd>
-              </div>
-            </dl>
+            <p className="text-xl font-semibold text-ink-900">{row.workshop}</p>
+            <p className="text-lg text-ink-700">
+              {row.turno} · {row.schedule}
+            </p>
+            <p className="text-lg text-ink-700">{t.sessions(row.sessions)}</p>
             <div>
               <AdminButtonLink
                 href={row.href}
-                ariaLabel={copy.openSessionsFor(
-                  `${row.workshop}, ${row.turno}`,
-                )}
+                ariaLabel={`${t.open}: ${row.workshop}, ${row.turno}`}
               >
-                {copy.openSessions}
+                {t.open}
               </AdminButtonLink>
             </div>
           </>
         )}
         empty={{
-          title: copy.empty.title,
-          message: copy.empty.message,
-          action: { href: "/admin/asistencia", label: copy.empty.action },
+          title: t.emptyTitle,
+          message: t.emptyMessage,
+          action: { href: "/admin/asistencia", label: t.emptyAction },
         }}
       />
     </section>
@@ -137,68 +120,46 @@ export interface AttendanceSessionsProps {
   readonly rows: readonly AttendanceSessionRow[];
 }
 
-/** The generated class dates of one turno and month. */
+/** The class dates of one turno and month, each with who came and who did not. */
 export function AttendanceSessions({
   heading,
   subtitle,
   rows,
 }: AttendanceSessionsProps) {
+  const t = copy.sessions;
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
         title={heading}
         description={subtitle}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: copy.title, href: "/admin/asistencia" },
-          { label: heading },
-        ]}
-        back={{ href: "/admin/asistencia", label: copy.sessions.back }}
+        back={{ href: "/admin/asistencia", label: t.back }}
       />
       <AdminCardList
-        label={copy.sessions.caption}
+        label={heading}
         rows={rows}
         rowKey={(row) => row.key}
         card={(row) => (
           <>
-            <p className="font-semibold text-ink-900">{row.date}</p>
-            <dl className="grid grid-cols-3 gap-2 text-sm text-ink-700">
-              <div>
-                <dt className="font-semibold">
-                  {copy.sessions.columns.marked}
-                </dt>
-                <dd>{row.marked}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold">
-                  {copy.sessions.columns.present}
-                </dt>
-                <dd>{row.present}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold">
-                  {copy.sessions.columns.absent}
-                </dt>
-                <dd>{row.absent}</dd>
-              </div>
-            </dl>
+            <p className="text-xl font-semibold text-ink-900">{row.date}</p>
+            {row.marked === "0" ? null : (
+              <p className="text-lg text-ink-700">
+                {t.present}: {row.present} · {t.absent}: {row.absent}
+              </p>
+            )}
             <div>
               <AdminButtonLink
                 href={row.href}
-                ariaLabel={copy.sessions.openFor(row.date)}
+                ariaLabel={`${t.open}: ${row.date}`}
               >
-                {copy.sessions.open}
+                {t.open}
               </AdminButtonLink>
             </div>
           </>
         )}
         empty={{
-          title: copy.sessions.empty.title,
-          message: copy.sessions.empty.message,
-          action: {
-            href: "/admin/asistencia",
-            label: copy.sessions.empty.action,
-          },
+          title: copy.index.emptyTitle,
+          message: copy.index.emptyMessage,
+          action: { href: "/admin/asistencia", label: t.back },
         }}
       />
     </section>

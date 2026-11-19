@@ -1,12 +1,17 @@
 import { AdminButton as Button } from "./admin-button";
-import { Heading, Text } from "../atoms/heading";
+import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
-import { AdminCardList } from "./admin-sections";
-import { FormError, SelectField, TextField } from "./form-fields";
-import { adminMicrocopy } from "./microcopy";
-import { OrderStatusBadge } from "./order-status-badge";
+import { adminCopy } from "./copy";
+import {
+  FormError,
+  ReturnToFields,
+  SelectField,
+  TextField,
+} from "./form-fields";
+import { MoreOptions } from "./more-options";
+import { SavedBanner } from "./saved-banner";
 
-const copy = adminMicrocopy.attendance;
+const copy = adminCopy.clases.attendance;
 
 export interface AttendanceSheetRow {
   readonly email: string;
@@ -37,6 +42,8 @@ export interface AttendanceSheetProps {
   readonly heading: string;
   readonly subtitle: string;
   readonly backHref: string;
+  /** This page's address, so every post comes back to it. */
+  readonly path?: string | undefined;
   readonly rows: readonly AttendanceSheetRow[];
   /** Shown next to a student who still owes the monthly fee. */
   readonly pendingNote: string;
@@ -59,61 +66,55 @@ export interface AttendanceSheetProps {
     | undefined;
 }
 
-const radioClasses =
-  "flex min-h-14 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-clay-600 px-4 text-lg text-clay-800 has-[:checked]:bg-clay-600 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-clay-800";
+/** The id of the form that holds every mark; the toggles belong to it by `form`. */
+const SHEET_FORM = "attendance-sheet";
 
-function FeeBadge({ paid }: { paid: boolean }) {
-  return paid ? (
-    <OrderStatusBadge status="paid" label={copy.sheet.feePaid} />
-  ) : (
-    <OrderStatusBadge
-      status="pending_confirmation"
-      label={copy.sheet.feePending}
-    />
-  );
-}
+const toggleClasses =
+  "flex min-h-16 flex-1 cursor-pointer items-center justify-center rounded-md border-2 px-4 text-xl font-bold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-clay-800";
+const presentClasses = `${toggleClasses} border-admin-success text-admin-success has-[:checked]:bg-admin-success has-[:checked]:text-white`;
+const absentClasses = `${toggleClasses} border-admin-danger text-admin-danger has-[:checked]:bg-admin-danger has-[:checked]:text-white`;
 
-function MarkChoice({
-  row,
-  pendingNote,
-}: {
-  row: AttendanceSheetRow;
-  pendingNote: string;
-}) {
+/** Two big toggles. They post with the one "Guardar" even though the row holds its own forms. */
+function MarkChoice({ row }: { row: AttendanceSheetRow }) {
   return (
-    <fieldset className="flex flex-wrap gap-3">
+    <fieldset className="flex gap-3">
       <legend className="sr-only">{row.name}</legend>
-      <label className={radioClasses}>
+      <label className={presentClasses}>
         <input
           type="radio"
+          form={SHEET_FORM}
           name={`status:${row.email}`}
           value="present"
           defaultChecked={row.status === "present"}
+          className="sr-only"
         />
-        {copy.sheet.present}
+        {copy.present}
       </label>
-      <label className={radioClasses}>
+      <label className={absentClasses}>
         <input
           type="radio"
+          form={SHEET_FORM}
           name={`status:${row.email}`}
           value="absent"
           defaultChecked={row.status === "absent"}
+          className="sr-only"
         />
-        {copy.sheet.absent}
+        {copy.absent}
       </label>
-      {row.feePaid ? null : (
-        <p className="w-full text-sm text-ink-600">{pendingNote}</p>
-      )}
     </fieldset>
   );
 }
 
 function MakeUpForm({
   row,
+  anchor,
+  path,
   turnos,
   feedback,
 }: {
   row: AttendanceSheetRow;
+  anchor: string;
+  path: string | undefined;
   turnos: AttendanceSheetProps["makeUpTurnos"];
   feedback: MakeUpFeedback | undefined;
 }) {
@@ -122,133 +123,130 @@ function MakeUpForm({
   return (
     <form
       method="post"
-      aria-label={`${f.schedule}: ${row.name}`}
-      className="flex max-w-prose flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
+      aria-label={`${f.action}: ${row.name}`}
+      className="flex flex-col gap-3"
     >
-      <Heading level={3} size="h4">
-        {row.name}
-      </Heading>
       <input type="hidden" name="intent" value="makeup" />
       <input type="hidden" name="email" value={row.email} />
-      <FormError message={shown?.formError ?? shown?.errors.student} />
-      <SelectField
-        label={f.turno}
-        name="makeUpTurno"
-        defaultValue={shown?.values.makeUpTurno ?? turnos[0]?.value ?? ""}
-        options={turnos}
-        error={shown?.errors.makeUpTurno}
-      />
-      <TextField
-        label={f.date}
-        hint={f.dateHint}
-        name="makeUpDate"
-        type="date"
-        required
-        defaultValue={shown?.values.makeUpDate ?? ""}
-        error={shown?.errors.makeUpDate}
-      />
-      <div>
-        <Button type="submit" variant="success">
-          {f.submit}
-        </Button>
-      </div>
+      {path ? <ReturnToFields to={path} anchor={anchor} /> : null}
+      <MoreOptions label={f.action} defaultOpen={shown !== undefined}>
+        <FormError message={shown?.formError ?? shown?.errors.student} />
+        <SelectField
+          label={f.turno}
+          name="makeUpTurno"
+          defaultValue={shown?.values.makeUpTurno ?? turnos[0]?.value ?? ""}
+          options={turnos}
+          error={shown?.errors.makeUpTurno}
+        />
+        <TextField
+          label={f.date}
+          name="makeUpDate"
+          type="date"
+          required
+          defaultValue={shown?.values.makeUpDate ?? ""}
+          error={shown?.errors.makeUpDate}
+        />
+        <div>
+          <Button type="submit" variant="success">
+            {f.submit}
+          </Button>
+        </div>
+      </MoreOptions>
     </form>
   );
 }
 
+function StudentRow({
+  row,
+  index,
+  props,
+}: {
+  row: AttendanceSheetRow;
+  index: number;
+  props: AttendanceSheetProps;
+}) {
+  const anchor = `alumna-${String(index + 1)}`;
+  return (
+    <li
+      id={anchor}
+      className="flex scroll-mt-20 flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
+    >
+      <p className="text-xl font-semibold text-ink-900">{row.name}</p>
+      {row.feePaid ? null : (
+        <p className="text-lg font-semibold text-terracotta-700">
+          {props.pendingNote}
+        </p>
+      )}
+      <MarkChoice row={row} />
+      {row.status === "absent" ? (
+        row.makeUp ? (
+          <p className="text-lg font-semibold text-ink-900">
+            {row.makeUp.label}
+          </p>
+        ) : (
+          <MakeUpForm
+            row={row}
+            anchor={anchor}
+            path={props.path}
+            turnos={props.makeUpTurnos}
+            feedback={props.feedback?.makeUp}
+          />
+        )
+      ) : null}
+    </li>
+  );
+}
+
 /**
- * One class session: every student marked present or absent with a single
- * native form post. Unmarked students are left without a mark.
+ * One class: each student is a big row with two big toggles, "Vino" and
+ * "Faltó", and one "Guardar" for the whole class. A student saved as absent
+ * can have her make-up class booked right on her row. Everything is a native
+ * post that comes back to this page.
  */
-export function AttendanceSheet({
-  heading,
-  subtitle,
-  backHref,
-  rows,
-  pendingNote,
-  makeUpFullWarning,
-  makeUpTurnos,
-  feedback,
-}: AttendanceSheetProps) {
-  const absent = rows.filter((row) => row.status === "absent");
+export function AttendanceSheet(props: AttendanceSheetProps) {
+  const { heading, subtitle, backHref, rows, feedback, path } = props;
+  const saved = feedback?.saved
+    ? copy.saved
+    : feedback?.makeUpScheduled
+      ? copy.makeUpScheduled
+      : null;
   return (
     <section className="flex flex-col gap-4">
       <AdminPageHeader
         title={heading}
         description={subtitle}
-        breadcrumbs={[
-          { label: "Panel", href: "/admin" },
-          { label: copy.title, href: "/admin/asistencia" },
-          { label: copy.classesCrumb, href: backHref },
-          { label: heading },
-        ]}
-        back={{ href: backHref, label: copy.sheet.back }}
+        back={{ href: backHref, label: copy.sheetBack }}
       />
-      {feedback?.saved ? (
-        <AdminFeedback tone="success" title={copy.sheet.saved} />
-      ) : null}
-      {feedback?.makeUpScheduled ? (
-        <AdminFeedback tone="success" title={copy.sheet.makeUpScheduled} />
-      ) : null}
+      <SavedBanner message={saved} />
       {feedback?.makeUpFull ? (
-        <AdminFeedback tone="info" title={makeUpFullWarning} />
+        <AdminFeedback tone="info" title={props.makeUpFullWarning} />
       ) : null}
-      <form
-        method="post"
-        aria-label={copy.sheet.formLabel}
-        className="flex flex-col gap-4"
-      >
+      <FormError message={feedback?.error} />
+      <form id={SHEET_FORM} method="post" aria-label={copy.formLabel}>
         <input type="hidden" name="intent" value="save" />
-        <FormError message={feedback?.error} />
-        <AdminCardList
-          label={copy.sheet.caption}
-          rows={rows}
-          rowKey={(row) => row.email}
-          card={(row) => (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-lg font-semibold text-ink-900">
-                  {row.name}
-                  <span className="block text-sm font-normal text-ink-600">
-                    {row.orderNumber}
-                  </span>
-                </p>
-                <FeeBadge paid={row.feePaid} />
-              </div>
-              <MarkChoice row={row} pendingNote={pendingNote} />
-            </>
-          )}
-          empty={{
-            title: copy.sheet.empty.title,
-            message: copy.sheet.empty.message,
-            action: { href: backHref, label: copy.sheet.empty.action },
-          }}
-        />
-        {rows.length > 0 ? (
-          <div className="sticky bottom-0 -mx-4 bg-surface p-3 shadow-card">
-            <Button type="submit">{copy.sheet.save}</Button>
-          </div>
-        ) : null}
+        {path ? <ReturnToFields to={path} /> : null}
       </form>
-
-      <section className="flex flex-col gap-3">
-        <Heading level={2}>{copy.makeUp.title}</Heading>
-        {absent.length === 0 ? <Text>{copy.makeUp.none}</Text> : null}
-        {absent.map((row) =>
-          row.makeUp ? (
-            <p key={row.email}>
-              {row.name}: <strong>{row.makeUp.label}</strong>
-            </p>
-          ) : (
-            <MakeUpForm
-              key={row.email}
-              row={row}
-              turnos={makeUpTurnos}
-              feedback={feedback?.makeUp}
-            />
-          ),
-        )}
-      </section>
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-start gap-3 rounded-md bg-surface p-5 shadow-card">
+          <p className="text-lg text-ink-700">{copy.empty}</p>
+          <AdminButtonLink href={backHref} variant="secondary">
+            {copy.emptyAction}
+          </AdminButtonLink>
+        </div>
+      ) : (
+        <ul aria-label={copy.list} className="flex flex-col gap-3">
+          {rows.map((row, index) => (
+            <StudentRow key={row.email} row={row} index={index} props={props} />
+          ))}
+        </ul>
+      )}
+      {rows.length > 0 ? (
+        <div className="sticky bottom-0 -mx-4 bg-surface p-3 shadow-card">
+          <Button type="submit" form={SHEET_FORM}>
+            {copy.save}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

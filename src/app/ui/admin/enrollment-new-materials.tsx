@@ -24,12 +24,12 @@ export interface EnrollmentMaterialLine {
 
 export const enrollmentMaterialsCopy = {
   legend: "Materiales (opcional)",
-  hint: "Sumá materiales del catálogo a esta inscripción. Si no elegís ninguno, queda solo la cuota.",
+  hint: "Si no elegís ninguno, queda solo la cuota.",
   search: "Buscar material",
-  searchHint: "Buscá por nombre o por medida, por ejemplo: arcilla 5 kg.",
-  typeToSearch: "Escribí para buscar en el catálogo.",
-  noMatches: "No encontramos materiales con ese nombre.",
-  noCatalog: "No hay materiales con precio en el catálogo.",
+  searchHint: "Nombre o medida, por ejemplo: arcilla 5 kg.",
+  typeToSearch: "Escribí para buscar.",
+  noMatches: "No hay materiales con ese nombre.",
+  noCatalog: "No hay materiales con precio.",
   inStock: (units: number) => `En stock: ${String(units)}`,
   toOrder: "A pedir",
   add: "Agregar",
@@ -85,6 +85,7 @@ export function EnrollmentNewMaterials({
   initialLines = [],
   fee,
   hint = copy.hint,
+  legend = copy.legend,
   error,
 }: {
   choices: readonly EnrollmentMaterialChoice[];
@@ -94,8 +95,10 @@ export function EnrollmentNewMaterials({
    * material sale, which has no fee: the materials are then its only total.
    */
   fee?: string | undefined;
-  /** What the legend explains; a sale words it its own way. */
+  /** What the legend explains; a sale words it its own way. Empty shows nothing. */
   hint?: string;
+  /** The group's name; a sale is not optional, so it words it its own way. */
+  legend?: string;
   error?: string | undefined;
 }) {
   const [lines, setLines] =
@@ -135,8 +138,8 @@ export function EnrollmentNewMaterials({
 
   return (
     <fieldset className="flex flex-col gap-3 border-t border-admin-line pt-4">
-      <legend className="font-semibold text-ink-900">{copy.legend}</legend>
-      <p className="text-sm text-ink-700">{hint}</p>
+      <legend className="font-semibold text-ink-900">{legend}</legend>
+      {hint === "" ? null : <p className="text-sm text-ink-700">{hint}</p>}
       <TextField
         label={copy.search}
         hint={copy.searchHint}

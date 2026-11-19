@@ -1,9 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { err, Money, ok } from "~/modules/_shared";
+import {
+  createUnavailableAdminEnrollmentService,
+  type AdminEnrollmentDetail,
+  type AdminEnrollmentUseCases,
+} from "~/modules/enrollments";
+import type { MaterialsService, StockStore } from "~/modules/materials";
+import { createUnavailableService } from "~/composition/unavailable-service";
 import {
   adminContext,
   getRequest,
   postRequest,
   thrownStatus,
+  withOverrides,
 } from "~/testing/admin/route-kit";
 import {
   ATT_MONDAY,
@@ -15,57 +24,192 @@ import { studentsFixture } from "~/testing/admin/student-kit";
 import { studentOrder } from "~/testing/fakes/student-builders";
 import { action, loader } from "./student-detail";
 
-function setup() {
+const pesos = (value: number) => {
+  const money = Money.fromCentavos(value * 100);
+  if (!money.ok) throw new Error("fixture money");
+  return money.value;
+};
+
+const PAID = studentOrder(1, {
+  studentEmail: "ana@example.com",
+  studentName: "Ana Pérez",
+  status: "paid",
+  paidAt: new Date("2026-10-05T15:00:00Z"),
+});
+const CANCELLED = studentOrder(2, {
+  studentEmail: "ana@example.com",
+  studentName: "Ana Pérez",
+  workshopName: "Acuarela",
+  status: "cancelled",
+});
+const OWED = studentOrder(4, {
+  studentEmail: "ana@example.com",
+  studentName: "Ana Pérez",
+  workshopName: "Dibujo",
+  period: "2026-11",
+});
+const SALE = studentOrder(3, {
+  studentEmail: "ana@example.com",
+  studentName: "Ana Pérez",
+  status: "pending_confirmation",
+  kind: "material_sale",
+});
+
+/** The detail the enrollments service gives for each order of the file. */
+function detailOf(
+  source: ReturnType<typeof studentOrder>,
+  overrides: Record<string, unknown> = {},
+): AdminEnrollmentDetail {
+  return {
+    id: source.id,
+    number: source.number,
+    status: source.status,
+    workshopName: source.workshopName,
+    period: source.period,
+    turnoLabel: source.turnoLabel,
+    total: source.total,
+    ...(source.status === "paid" ? { paidAmount: source.total } : {}),
+    ...(source.kind === undefined ? {} : { kind: source.kind }),
+    lines: [],
+    sales: [],
+    ...overrides,
+  } as unknown as AdminEnrollmentDetail;
+}
+
+const saleLine = {
+  materialName: "Arcilla",
+  variantLabel: "1 kg",
+  unitPrice: pesos(4000),
+  quantity: 2,
+  supplierName: "Proveedor",
+};
+
+const saleVariants = [
+  {
+    materialId: "m-1",
+    variantId: "v-1",
+    materialName: "Arcilla",
+    variantLabel: "1 kg",
+    unitPrice: pesos(4000),
+  },
+];
+
+type Calls = {
+  confirmPayment: ReturnType<typeof vi.fn>;
+  createMaterialSale: ReturnType<typeof vi.fn>;
+  cancel: ReturnType<typeof vi.fn>;
+};
+
+function setup(orders = [PAID, CANCELLED]) {
   const fixture = studentsFixture();
-  fixture.orders.orders.push(
-    studentOrder(1, {
-      studentEmail: "ana@example.com",
-      studentName: "Ana Pérez",
-      status: "paid",
-      paidAt: new Date("2026-10-05T15:00:00Z"),
-    }),
-    studentOrder(2, {
-      studentEmail: "ana@example.com",
-      studentName: "Ana Pérez",
-      workshopName: "Acuarela",
-      status: "cancelled",
+  fixture.orders.orders.push(...orders);
+  fixture.activity.enrolled("ana@example.com");
+  const details = new Map(
+    orders.map((order) => [
+      order.id,
+      detailOf(
+        order,
+        order.id === OWED.id
+          ? {
+              sales: [
+                {
+                  id: SALE.id,
+                  number: SALE.number,
+                  status: "pending_confirmation",
+                  total: pesos(8000),
+                  requestedAt: new Date("2026-11-05T15:00:00Z"),
+                },
+              ],
+            }
+          : {},
+      ),
+    ]),
+  );
+  details.set(
+    SALE.id,
+    detailOf(SALE, {
+      total: pesos(8000),
+      lines: [saleLine],
+      parent: { id: OWED.id, number: OWED.number },
     }),
   );
-  fixture.activity.enrolled("ana@example.com");
-  const context = adminContext({ students: fixture.service });
-  return { ...fixture, context };
+  const calls: Calls = {
+    confirmPayment: vi.fn(() => Promise.resolve(ok({ kind: "confirmed" }))),
+    createMaterialSale: vi.fn(() =>
+      Promise.resolve(ok({ id: SALE.id, number: SALE.number })),
+    ),
+    cancel: vi.fn(() => Promise.resolve(ok({ kind: "cancelled" }))),
+  };
+  const enrollments = withOverrides(createUnavailableAdminEnrollmentService(), {
+    detail: (_actor: unknown, id: string) => {
+      const found = details.get(id);
+      return Promise.resolve(
+        found === undefined ? err({ kind: "not-found" }) : ok(found),
+      );
+    },
+    ...(calls as unknown as Partial<AdminEnrollmentUseCases>),
+  });
+  const onHand: StockStore["onHand"] = (ids) =>
+    Promise.resolve(new Map(ids.map((id) => [id, 3] as const)));
+  const context = adminContext({
+    students: fixture.service,
+    enrollments,
+    materials: withOverrides(createUnavailableService<MaterialsService>(), {
+      listSaleVariants: () => Promise.resolve(ok(saleVariants)),
+    }),
+    variantStock: { onHand },
+  });
+  return { ...fixture, context, calls };
 }
 
 const path = (email: string) => `/admin/alumnas/${encodeURIComponent(email)}`;
-const loadArgs = (context: unknown, email: string) =>
-  ({ request: getRequest(path(email)), params: { email }, context }) as never;
-const actionArgs = (context: unknown, email: string, note: string) =>
+const loadArgs = (context: unknown, email: string, query = "") =>
   ({
-    request: postRequest(path(email), { note }),
+    request: getRequest(`${path(email)}${query}`),
     params: { email },
     context,
   }) as never;
+const actionArgs = (context: unknown, email: string, note: string) =>
+  ({
+    request: postRequest(path(email), { intent: "note", note }),
+    params: { email },
+    context,
+  }) as never;
+/** A post from the file page, as its native forms send it. */
+const post = (
+  context: unknown,
+  fields: Record<string, string>,
+  email = "ana@example.com",
+) =>
+  action({
+    request: postRequest(path(email), {
+      returnTo: path(email),
+      ...fields,
+    }),
+    params: { email },
+    context,
+  } as never) as Promise<Response>;
 
-describe("admin student detail route", () => {
-  it("reports a bounded feedback code and ignores unknown ones", async () => {
+describe("admin student file loader", () => {
+  it("says what was just saved, only for a known code, with her name", async () => {
     const { context } = setup();
-    const known = await loader({
-      request: getRequest(`${path("ana@example.com")}?ok=note-saved`),
-      params: { email: "ana@example.com" },
-      context,
-    } as never);
-    const unknown = await loader({
-      request: getRequest(`${path("ana@example.com")}?ok=<b>hi</b>`),
-      params: { email: "ana@example.com" },
-      context,
-    } as never);
+    const known = await loader(
+      loadArgs(context, "ana@example.com", "?ok=paid"),
+    );
+    const created = await loader(
+      loadArgs(context, "ana@example.com", "?ok=created"),
+    );
+    const unknown = await loader(
+      loadArgs(context, "ana@example.com", "?ok=<b>hi</b>"),
+    );
 
-    expect(known.feedback).toBe("note-saved");
-    expect(unknown.feedback).toBeNull();
+    expect(known.saved).toBe("cobro de Ana Pérez");
+    expect(created.saved).toBe("inscripción de Ana Pérez");
+    expect(unknown.saved).toBeNull();
   });
 
-  it("shows the data, the active workshops, the order and payment history and the note", async () => {
-    const { context, notes } = setup();
+  it("shows her data and one card per monthly record, newest first, each with its state in words", async () => {
+    const { context, notes } = setup([PAID, CANCELLED, OWED, SALE]);
     notes.notes.set("ana@example.com", {
       email: "ana@example.com",
       text: "Zurda.",
@@ -78,50 +222,83 @@ describe("admin student detail route", () => {
     expect(result).toMatchObject({
       name: "Ana Pérez",
       email: "ana@example.com",
+      active: true,
+      path: "/admin/alumnas/ana%40example.com",
       note: {
         text: "Zurda.",
         meta: "Actualizadas por owner@example.com el 31/10/2026 12:30.",
       },
     });
-    expect(result.activities).toEqual([
-      {
-        workshop: "Cerámica inicial",
-        month: "octubre 2026",
-        turno: "Martes 18:00 a 20:00",
-        status: "paid",
-        statusLabel: "Cobrado",
-      },
-    ]);
     expect(
-      result.orders.map((o) => [o.number, o.statusLabel, o.paidOn]),
+      result.records.map((record) => [
+        record.number,
+        record.workshop,
+        record.state,
+      ]),
     ).toEqual([
-      ["CI-2026-0002", "Cancelado", null],
-      ["CI-2026-0001", "Cobrado", "05/10/2026"],
+      ["CI-2026-0004", "Dibujo", "owes"],
+      ["CI-2026-0002", "Acuarela", "cancelled"],
+      ["CI-2026-0001", "Cerámica inicial", "paid"],
     ]);
-    expect(result.orders[0]).toMatchObject({ total: "$ 58.000" });
+    expect(result.records[0]).toMatchObject({
+      month: "noviembre 2026",
+      total: "$ 58.000",
+      canPay: true,
+      canSell: true,
+    });
   });
 
-  it("lists a material sale in the payment history with its kind and state, but not among her activities", async () => {
-    const { context, orders } = setup();
-    orders.orders.push(
-      studentOrder(3, {
-        studentEmail: "ana@example.com",
-        studentName: "Ana Pérez",
-        status: "pending_confirmation",
-        kind: "material_sale",
-      }),
-    );
+  // The owner's report: "al cargar una venta de materiales, se esta cargando
+  // como un nuevo turno, se tiene que cargar en la misma ficha del cliente".
+  it("nests a material sale in its monthly record and never lists it as a record of its own", async () => {
+    const { context } = setup([PAID, OWED, SALE]);
 
     const result = await loader(loadArgs(context, "ana@example.com"));
 
-    expect(result.orders.map((o) => [o.number, o.kind, o.statusLabel])).toEqual(
-      [
-        ["CI-2026-0003", "material_sale", "Pendiente de confirmación"],
-        ["CI-2026-0002", "enrollment", "Cancelado"],
-        ["CI-2026-0001", "enrollment", "Cobrado"],
-      ],
+    expect(result.records.map((record) => record.number)).toEqual([
+      "CI-2026-0004",
+      "CI-2026-0001",
+    ]);
+    const [dibujo, ceramica] = result.records;
+    expect(ceramica?.sales).toEqual([]);
+    expect(dibujo?.sales).toHaveLength(1);
+    expect(dibujo?.sales[0]).toMatchObject({
+      number: "CI-2026-0003",
+      anchor: "v-ci-2026-0003",
+      state: "owes",
+      total: "$ 8.000",
+      lines: [{ label: "Arcilla 1 kg", quantity: 2 }],
+      canPay: true,
+    });
+  });
+
+  it("offers the catalog for a sale only when a record can take one", async () => {
+    const withRecord = setup([PAID]);
+    const onlyCancelled = setup([CANCELLED]);
+
+    const open = await loader(loadArgs(withRecord.context, "ana@example.com"));
+    const closed = await loader(
+      loadArgs(onlyCancelled.context, "ana@example.com"),
     );
-    expect(result.activities).toHaveLength(1);
+
+    expect(open.materials.map((material) => material.variantId)).toEqual([
+      "v-1",
+    ]);
+    expect(closed.materials).toEqual([]);
+  });
+
+  it('points "Inscribir en otro mes" at the enrollment form filled with her data', async () => {
+    const { context } = setup();
+
+    const result = await loader(loadArgs(context, "ana@example.com"));
+
+    const url = new URL(result.enrollHref, "https://panel.test");
+    expect(url.pathname).toBe("/admin/inscripciones/nueva");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      nombre: "Ana Pérez",
+      email: "ana@example.com",
+      telefono: "5493515550002",
+    });
   });
 
   it("answers 404 for an unknown student and for a path that is not an email", async () => {
@@ -141,19 +318,242 @@ describe("admin student detail route", () => {
       await thrownStatus(() => loader(loadArgs(context, "ana@example.com"))),
     ).toBe(403);
   });
+});
 
-  it("saves the note and redirects back to the student", async () => {
-    const { context, notes } = setup();
+describe("admin student file: collecting, selling and cancelling in place", () => {
+  it("collects the full amount of a record and returns to its card with the saved code", async () => {
+    const { context, calls } = setup([OWED]);
 
-    const response = await action(
-      actionArgs(context, "ana@example.com", " Viene con su hermana "),
+    const response = await post(context, {
+      intent: "confirm",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      amount: "58000",
+      paidOn: "2026-11-05",
+    });
+
+    expect(calls.confirmPayment).toHaveBeenCalledWith(expect.anything(), {
+      orderId: OWED.id,
+      amount: "58000",
+      paidOn: "2026-11-05",
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=paid#r-ci-2026-0004",
+    );
+  });
+
+  it("shows a refused payment on its own card and stores nothing more", async () => {
+    const { context, calls } = setup([OWED]);
+    calls.confirmPayment.mockResolvedValueOnce(
+      err({ kind: "amount-mismatch" }),
     );
 
-    expect(response).toBeInstanceOf(Response);
-    const redirect = response as Response;
-    expect(redirect.status).toBe(302);
-    expect(redirect.headers.get("Location")).toBe(
-      "/admin/alumnas/ana%40example.com?ok=note-saved",
+    const result = await post(context, {
+      intent: "confirm",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      amount: "100",
+      paidOn: "2026-11-05",
+    });
+
+    expect(result).toMatchObject({
+      init: { status: 409 },
+      data: {
+        orderId: OWED.id,
+        intent: "confirm",
+        message: "El monto no coincide con el total del pedido.",
+      },
+    });
+  });
+
+  it("sells materials under the record and returns to the record's card", async () => {
+    const { context, calls } = setup([OWED]);
+
+    const response = await post(context, {
+      intent: "sale",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      "line:m-1:v-1": "2",
+    });
+
+    expect(calls.createMaterialSale).toHaveBeenCalledWith(expect.anything(), {
+      orderId: OWED.id,
+      lines: [{ materialId: "m-1", variantId: "v-1", quantity: 2 }],
+      paid: false,
+    });
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=sold#r-ci-2026-0004",
+    );
+  });
+
+  it('asks for the sale to be stored paid in the same save when "Ya pagó" is checked', async () => {
+    const { context, calls } = setup([OWED]);
+
+    await post(context, {
+      intent: "sale",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      "line:m-1:v-1": "1",
+      paid: "on",
+    });
+
+    expect(calls.createMaterialSale).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ paid: true }),
+    );
+    // One submit: the sale is not paid by a second call.
+    expect(calls.confirmPayment).not.toHaveBeenCalled();
+  });
+
+  it("keeps what was typed when a sale is refused: no material, and a record that cannot take it", async () => {
+    const { context, calls } = setup([OWED]);
+
+    const none = await post(context, {
+      intent: "sale",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      paid: "on",
+    });
+    calls.createMaterialSale.mockResolvedValueOnce(
+      err({ kind: "not-sellable" }),
+    );
+    const closed = await post(context, {
+      intent: "sale",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      "line:m-1:v-1": "3",
+    });
+
+    expect(none).toMatchObject({
+      init: { status: 422 },
+      data: {
+        orderId: OWED.id,
+        intent: "sale",
+        message: "Elegí al menos un material.",
+        paid: true,
+      },
+    });
+    expect(calls.createMaterialSale).toHaveBeenCalledTimes(1);
+    expect(closed).toMatchObject({
+      init: { status: 409 },
+      data: {
+        intent: "sale",
+        lines: [{ materialId: "m-1", variantId: "v-1", quantity: "3" }],
+      },
+    });
+  });
+
+  it("cancels a pending record with its reason and returns to its card", async () => {
+    const { context, calls } = setup([OWED]);
+
+    const response = await post(context, {
+      intent: "cancel",
+      orderId: OWED.id,
+      anchor: "r-ci-2026-0004",
+      reason: "No viene más",
+    });
+
+    expect(calls.cancel).toHaveBeenCalledWith(expect.anything(), {
+      orderId: OWED.id,
+      reason: "No viene más",
+    });
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=cancelled#r-ci-2026-0004",
+    );
+  });
+
+  it("cancels a paid record with the refund it was given back", async () => {
+    const { context, calls } = setup([PAID]);
+
+    await post(context, {
+      intent: "cancel",
+      orderId: PAID.id,
+      anchor: "r-ci-2026-0001",
+      reason: "Se mudó",
+      refundAmount: "58000",
+      refundedOn: "2026-11-05",
+      refundNote: "Transferencia",
+    });
+
+    expect(calls.cancel).toHaveBeenCalledWith(expect.anything(), {
+      orderId: PAID.id,
+      reason: "Se mudó",
+      refund: {
+        amount: "58000",
+        refundedOn: "2026-11-05",
+        note: "Transferencia",
+      },
+    });
+  });
+
+  it("explains a refused cancellation on its card", async () => {
+    const { context, calls } = setup([PAID]);
+    calls.cancel.mockResolvedValueOnce(
+      err({ kind: "invalid-refund", field: "amount", code: "above-paid" }),
+    );
+
+    const result = await post(context, {
+      intent: "cancel",
+      orderId: PAID.id,
+      anchor: "r-ci-2026-0001",
+      reason: "Se mudó",
+      refundAmount: "99999",
+      refundedOn: "2026-11-05",
+    });
+
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        orderId: PAID.id,
+        intent: "cancel",
+        message: "La devolución no puede ser mayor que lo cobrado.",
+      },
+    });
+  });
+
+  it("acts only on an order of this student, and never from a visitor", async () => {
+    const { context, calls } = setup([OWED]);
+    const stranger = "00000000-0000-4000-8000-000100000099";
+
+    expect(
+      await thrownStatus(() =>
+        post(context, { intent: "confirm", orderId: stranger }),
+      ),
+    ).toBe(404);
+    expect(
+      await thrownStatus(() =>
+        post(context, { intent: "confirm", orderId: "not-an-id" }),
+      ),
+    ).toBe(400);
+    const denied = adminContext({}, { admin: false });
+    expect(
+      await thrownStatus(() =>
+        post(denied, { intent: "confirm", orderId: OWED.id }),
+      ),
+    ).toBe(403);
+    expect(calls.confirmPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin student file: note and state", () => {
+  it("saves the note and returns to the note, not to a different page", async () => {
+    const { context, notes } = setup();
+
+    const response = (await action({
+      request: postRequest(path("ana@example.com"), {
+        intent: "note",
+        note: " Viene con su hermana ",
+        returnTo: path("ana@example.com"),
+        anchor: "nota",
+      }),
+      params: { email: "ana@example.com" },
+      context,
+    } as never)) as Response;
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "/admin/alumnas/ana%40example.com?ok=note-saved#nota",
     );
     expect(notes.notes.get("ana@example.com")).toMatchObject({
       text: "Viene con su hermana",
@@ -170,8 +570,9 @@ describe("admin student detail route", () => {
     expect(result).toMatchObject({
       init: { status: 422 },
       data: {
-        error: "Las observaciones no pueden pasar los 2000 caracteres.",
-        value: long,
+        intent: "note",
+        message: "La nota es demasiado larga (máximo 2000 caracteres).",
+        noteValue: long,
       },
     });
     expect(notes.notes.size).toBe(0);
@@ -187,7 +588,7 @@ describe("admin student detail route", () => {
     expect(
       await thrownStatus(() =>
         action({
-          request: postRequest(path("ana@example.com"), {}),
+          request: postRequest(path("ana@example.com"), { intent: "note" }),
           params: { email: "ana@example.com" },
           context,
         } as never),
@@ -232,8 +633,8 @@ describe("admin student detail activity", () => {
     );
     expect(inactive.active).toBe(false);
     expect(active.active).toBe(true);
-    expect(inactive.orders).toEqual(active.orders);
-    expect(inactive.orders).toHaveLength(2);
+    expect(inactive.records).toEqual(active.records);
+    expect(inactive.records).toHaveLength(2);
     expect(inactive.note.text).toBe("Zurda.");
     expect(notes.notes.get("ana@example.com")?.text).toBe("Zurda.");
   });
@@ -304,17 +705,18 @@ describe("admin student detail attendance summary", () => {
     const context = adminContext({
       students: base.service,
       attendance: attendance.service,
+      enrollments: withOverrides(createUnavailableAdminEnrollmentService(), {
+        detail: () => Promise.resolve(ok(detailOf(studentOrder(1)))),
+      }),
+      materials: withOverrides(createUnavailableService<MaterialsService>(), {
+        listSaleVariants: () => Promise.resolve(ok([])),
+      }),
+      variantStock: { onHand: () => Promise.resolve(new Map()) },
     });
 
     const result = await loader(loadArgs(context, "ana@example.com"));
 
-    expect(result.attendance).toEqual({
-      present: "2",
-      absent: "1",
-      makeUpsPending: "1",
-      makeUpsDone: "0",
-      makeUpsMissed: "0",
-    });
+    expect(result.attendance).toBe("Vino 2 · Faltó 1 · Recuperos pendientes 1");
   });
 
   it("leaves the summary out when attendance is unavailable", async () => {

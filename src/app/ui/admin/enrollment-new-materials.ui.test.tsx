@@ -84,9 +84,7 @@ describe("EnrollmentNewMaterials", () => {
     expect(
       screen.getByRole("group", { name: "Materiales (opcional)" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Escribí para buscar en el catálogo."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Escribí para buscar.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Agregar/ })).toBeNull();
   });
 
@@ -110,7 +108,7 @@ describe("EnrollmentNewMaterials", () => {
     await user.clear(search);
     await user.type(search, "zzz");
     expect(
-      screen.getByText("No encontramos materiales con ese nombre."),
+      screen.getByText("No hay materiales con ese nombre."),
     ).toBeInTheDocument();
   });
 
@@ -235,7 +233,7 @@ describe("EnrollmentNewMaterials", () => {
   it("explains an empty catalog and posts nothing", () => {
     const { container } = renderMaterials({ choices: [] });
     expect(
-      screen.getByText("No hay materiales con precio en el catálogo."),
+      screen.getByText("No hay materiales con precio."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("searchbox")).toBeNull();
     expect(posted(container)).toEqual({});

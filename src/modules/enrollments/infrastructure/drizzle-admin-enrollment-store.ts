@@ -366,6 +366,7 @@ export function createDrizzleAdminEnrollmentStore(
             const number = await nextOrderNumber(tx, input.year);
             const id = crypto.randomUUID();
             const total = input.materialsTotal.toCentavos();
+            const paid = input.paidAt;
             // The sale copies the monthly record's student, workshop, month and
             // turno; it holds no seat and charges no fee.
             await tx.insert(enrollmentOrder).values({
@@ -373,7 +374,8 @@ export function createDrizzleAdminEnrollmentStore(
               studentId: parent.studentId,
               publicId: input.publicId,
               number,
-              status: "pending_confirmation",
+              // A sale the owner already collected is stored paid in full.
+              status: paid ? "paid" : "pending_confirmation",
               source: "public",
               workshopId: parent.workshopId,
               periodId: parent.periodId,
@@ -400,6 +402,13 @@ export function createDrizzleAdminEnrollmentStore(
               // The owner who sells it already knows about it.
               seenAt: input.now,
               seenBy: input.actor.email,
+              ...(paid
+                ? {
+                    paidAt: paid,
+                    paidAmountCentavos: total,
+                    confirmedBy: input.actor.email,
+                  }
+                : {}),
             });
             await tx.insert(orderLine).values(
               input.lines.map((line, position) => ({
@@ -417,13 +426,20 @@ export function createDrizzleAdminEnrollmentStore(
                 unitCostCentavos: line.unitCost?.toCentavos() ?? null,
               })),
             );
+            // A sale holds no seat; paying it takes its stock lines, exactly as
+            // confirming it later would, but in this same transaction.
+            if (paid)
+              await takeStockLines(tx, stock, id, {
+                by: input.actor.email,
+                at: input.now,
+              });
             await tx.insert(orderAudit).values({
               id: crypto.randomUUID(),
               orderId: id,
               at: input.now,
               actor: input.actor.email,
               from: null,
-              to: "pending_confirmation",
+              to: paid ? "paid" : "pending_confirmation",
               note: null,
             });
             return ok({ id, number });

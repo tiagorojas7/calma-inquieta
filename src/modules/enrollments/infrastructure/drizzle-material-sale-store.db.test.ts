@@ -263,6 +263,40 @@ describe("DrizzleAdminEnrollmentStore material sales", () => {
     await expect(harness.stock.onHand(ids.clay)).resolves.toBe(5);
   });
 
+  it("creates a sale already paid in full when the owner took the payment, taking its stock in the same transaction", async () => {
+    const harness = await freshHarness(1);
+    await harness.stock.seed(ids.clay, 5);
+    const parent = await harness.monthly({}, "paid");
+    const seatsBefore = await harness.seats();
+
+    const result = await harness.store.createSale({
+      parentOrderId: parent.id,
+      publicId: "sale-paid-0000000000000",
+      year: 2026,
+      materialsTotal: pesos(12_000),
+      lines: [line(ids.clay, 2), line(ids.glaze, 1, "supplier")],
+      paidAt: paymentAt,
+      actor,
+      now,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    await expect(harness.row(result.value.id)).resolves.toMatchObject({
+      kind: "material_sale",
+      status: "paid",
+      total_centavos: "1200000",
+      paid_amount_centavos: "1200000",
+      confirmed_by: actor.email,
+    });
+    await expect(harness.audit(result.value.id)).resolves.toMatchObject([
+      { from: null, to: "paid", actor: actor.email },
+    ]);
+    // The stock line took its units, the supplier line did not, and no seat moved.
+    await expect(harness.stock.onHand(ids.clay)).resolves.toBe(3);
+    await expect(harness.seats()).resolves.toBe(seatsBefore);
+  });
+
   it("refuses a sale under a cancelled record, under another sale or under nothing, and stores nothing", async () => {
     const harness = await freshHarness();
     const cancelled = await harness.monthly();

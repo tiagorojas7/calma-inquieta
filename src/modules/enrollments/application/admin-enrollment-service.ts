@@ -62,11 +62,19 @@ export type AdminEnrollmentError =
 export interface CreatePendingOptions {
   /** The student's fee in whole pesos, replacing the period fee; $0 is a scholarship. */
   readonly fee?: Money;
+  /**
+   * The owner took the payment: the order is stored already paid in full, with
+   * its seat and stock taken in the same creation, or nothing is stored.
+   */
+  readonly paid?: boolean;
 }
 /** What the service hands to the creation: the admin's choices plus the date a free order is paid. */
-export interface CreatePendingRequest extends CreatePendingOptions {
+export interface CreatePendingRequest {
+  readonly fee?: Money;
   /** Córdoba creation date; a $0 order is stored already paid on it. */
   readonly paidAtIfFree?: Date;
+  /** Córdoba creation date; the order is stored already paid in full on it, whatever its total. */
+  readonly paidAt?: Date;
 }
 /** Creates an enrollment on behalf of a student, attributed to the admin; a free one is created paid. */
 export type CreatePendingEnrollment = (
@@ -134,6 +142,8 @@ export interface CreateMaterialSaleInput {
   /** The monthly record the sale belongs to. */
   readonly orderId: string;
   readonly lines: readonly CartLine[];
+  /** The owner took the payment: the sale is stored paid in full, or nothing is stored. */
+  readonly paid?: boolean;
 }
 export type MaterialSaleError =
   | AdminEnrollmentError
@@ -369,15 +379,20 @@ export function createAdminEnrollmentService(
     async createPending(actor, input, options) {
       const admin = requireAdminActor(actor);
       if (!admin.ok) return admin;
-      // A $0 order has nothing to collect, so the creation itself stores it
-      // paid (dated the Córdoba creation day) and claims the seat atomically.
-      const request =
-        options?.fee?.isZero() === true
-          ? {
-              ...options,
-              paidAtIfFree: paidAt(cordobaDate(deps.clock.now())),
-            }
-          : options;
+      // A $0 order has nothing to collect, and an order the owner already
+      // collected is paid in full: either way the creation itself stores it
+      // paid (dated the Córdoba creation day), claiming the seat and taking
+      // the stock atomically, so a failure leaves nothing behind.
+      const today = paidAt(cordobaDate(deps.clock.now()));
+      const fee = options?.fee;
+      const request: CreatePendingRequest | undefined =
+        options?.paid === true
+          ? { ...(fee === undefined ? {} : { fee }), paidAt: today }
+          : fee?.isZero() === true
+            ? { fee, paidAtIfFree: today }
+            : fee === undefined
+              ? undefined
+              : { fee };
       return request === undefined
         ? deps.createPending(input, admin.value.email)
         : deps.createPending(input, admin.value.email, request);
@@ -458,6 +473,7 @@ export function createAdminEnrollmentService(
         year: cordobaYearOf(now),
         materialsTotal: priced.value.materialsTotal,
         lines: lines.value,
+        ...(input.paid === true ? { paidAt: paidAt(cordobaDate(now)) } : {}),
         actor: admin.value,
         now,
       });

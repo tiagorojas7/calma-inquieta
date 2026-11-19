@@ -291,6 +291,12 @@ export interface CreateSaleInput {
   /** The sum of the lines, in whole pesos; it is the sale total (a sale has no fee). */
   readonly materialsTotal: Money;
   readonly lines: readonly OrderLineDraft[];
+  /**
+   * The Córdoba day the owner took the payment. The sale is then stored
+   * already paid in full, its stock lines taken in the same transaction;
+   * absent, it is stored pending.
+   */
+  readonly paidAt?: Date;
   readonly actor: AdminEnrollmentActor;
   readonly now: Date;
 }

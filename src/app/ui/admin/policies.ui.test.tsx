@@ -49,6 +49,22 @@ const sections: readonly PolicySectionView[] = [
 ];
 
 describe("AdminPolicies", () => {
+  it("keeps previous versions available but closed until requested", () => {
+    render(
+      <AdminPolicies
+        sections={sections}
+        feedback={null}
+        rejected={undefined}
+      />,
+    );
+    const conditions = screen.getByRole("region", { name: "Condiciones" });
+    const history = within(conditions)
+      .getByText("Versiones anteriores")
+      .closest("details");
+    expect(history).not.toHaveAttribute("open");
+    expect(history).toHaveTextContent("Versión 1");
+  });
+
   it("has one section per document, each a native post form prefilled with the current text", async () => {
     const { container } = render(
       <AdminPolicies

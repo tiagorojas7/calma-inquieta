@@ -4,6 +4,7 @@ import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { AdminSection } from "./admin-sections";
 import { TextAreaField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { MoreOptions } from "./more-options";
 
 export interface PolicyVersionView {
   readonly version: number;
@@ -96,10 +97,7 @@ export function AdminPolicies({
                 {copy.form.publish}
               </AdminButton>
             </form>
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold text-ink-900">
-                {copy.history.title}
-              </h3>
+            <MoreOptions label={copy.history.title}>
               <ul className="flex flex-col gap-2">
                 {section.history.map((entry) => (
                   <li
@@ -123,7 +121,7 @@ export function AdminPolicies({
                   </li>
                 ))}
               </ul>
-            </div>
+            </MoreOptions>
           </AdminSection>
         );
       })}

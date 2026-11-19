@@ -26,7 +26,7 @@ describe("short fields on a wide form", () => {
   const pairOf = (label: string) =>
     screen.getByLabelText(label).closest("[data-field-pair]");
 
-  it("pairs the name with its link, and the technique with the fee", () => {
+  it("keeps the fee visible while secondary fields are closed by default", () => {
     stub(
       <WorkshopForm
         values={values}
@@ -37,8 +37,14 @@ describe("short fields on a wide form", () => {
       />,
     );
 
-    expect(pairOf("Nombre")).toContainElement(screen.getByLabelText("Enlace"));
-    expect(pairOf("Técnica")).not.toBeNull();
+    expect(screen.getByLabelText("Nombre")).toBeVisible();
+    expect(screen.getByLabelText("Arancel mensual (en pesos)")).toBeVisible();
+    const more = screen.getByText("Más opciones").closest("details");
+    expect(more).not.toHaveAttribute("open");
+    expect(more).toContainElement(screen.getByLabelText("Enlace"));
+    expect(more).toContainElement(screen.getByLabelText("Técnica"));
+    expect(more).toContainElement(screen.getByLabelText("Porcentaje acordado"));
+    expect(pairOf("Nombre")).toBeNull();
   });
 });
 
@@ -256,7 +262,7 @@ describe("taller photos", () => {
     hidden: container.querySelectorAll("details input[type=file]"),
   });
 
-  it("offers four photo slots on the edit form, two visible and two under details", async () => {
+  it("keeps four photo slots available under the secondary options", async () => {
     const { container } = stub(
       <WorkshopForm
         values={values}
@@ -269,7 +275,9 @@ describe("taller photos", () => {
     await screen.findByText("Fotos");
     const { inputs, hidden } = photos(container);
     expect(inputs).toHaveLength(4);
-    expect(hidden).toHaveLength(2);
+    expect(hidden).toHaveLength(4);
+    expect(screen.getByText("Agregar más fotos")).not.toBeVisible();
+    await userEvent.click(screen.getByText("Más opciones"));
     expect(screen.getByText("Agregar más fotos")).toBeVisible();
   });
 

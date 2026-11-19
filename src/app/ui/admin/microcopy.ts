@@ -366,23 +366,20 @@ export const adminMicrocopy = {
   },
   reminders: {
     title: "Recordatorios",
-    intro:
-      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. Los emails automáticos (inscripción, pago, clase y cuota) salen solos cuando están activados.",
+    intro: "Prepará mensajes para enviar por WhatsApp.",
     emailStatus: {
-      on: "Emails automáticos: activados",
-      off: "Emails automáticos: desactivados (falta configurar el dominio)",
+      on: "Emails automáticos activos",
+      off: "Emails automáticos no disponibles",
     },
     formLabel: "Preparar mensajes",
     fields: {
       message: "Mensaje",
       when: "Cuándo",
-      whenHint:
-        "Para clase y workshop. Por ejemplo: mañana, el martes 4 o este sábado.",
+      whenHint: "Por ejemplo: mañana o martes 4.",
       activity: "Nombre del workshop",
-      activityHint: "Solo para el recordatorio de workshop.",
+      activityHint: "Para el workshop.",
       text: "Texto del aviso",
-      textHint:
-        "Solo para el aviso libre. Se agrega después del saludo con el nombre.",
+      textHint: "Aparece después del saludo.",
     },
     audience: {
       workshop: "Taller",
@@ -397,8 +394,8 @@ export const adminMicrocopy = {
         "Sin elegir, la cuota pendiente va a quienes tienen la inscripción por confirmar y el resto a quienes no cancelaron.",
     },
     steps: {
-      message: "1. Qué querés avisar",
-      audience: "2. A quiénes (opcional)",
+      message: "Mensaje",
+      audience: "Destinatarias (opcional)",
     },
     submit: "Preparar mensajes",
     preview: "Vista previa",
@@ -1699,25 +1696,21 @@ export const adminMicrocopy = {
   },
   policies: {
     title: "Políticas",
-    subtitle:
-      "Las condiciones y la política de privacidad de todo el sitio. Cada cambio publica una versión nueva: las anteriores quedan guardadas.",
+    subtitle: "Editá los textos que aceptan al inscribirse.",
     sections: {
       conditions: {
         title: "Condiciones",
-        description:
-          "Lo que ven y aceptan quienes se inscriben. Cada workshop muestra además sus propias condiciones.",
+        description: "Condiciones de inscripción.",
       },
       privacy: {
         title: "Privacidad",
-        description:
-          "Cómo usamos los datos de quienes se inscriben. También se acepta al inscribirse.",
+        description: "Uso de datos personales.",
       },
     },
     form: {
       label: (title: string) => `Texto de ${title}`,
       body: "Texto vigente",
-      bodyHint:
-        "Separá los párrafos con una línea en blanco. Al publicar se guarda como versión nueva.",
+      bodyHint: "Al publicar, se guarda una nueva versión.",
       publish: "Publicar nueva versión",
       current: (version: number) => `Versión vigente: ${String(version)}`,
     },

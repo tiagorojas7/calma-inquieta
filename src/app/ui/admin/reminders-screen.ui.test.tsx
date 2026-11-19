@@ -58,15 +58,18 @@ describe("RemindersScreen", () => {
   it("shows breadcrumbs and the two steps, with the audience collapsed", () => {
     render(<RemindersScreen {...base} />);
 
+    expect(
+      screen.getByText("Prepará mensajes para enviar por WhatsApp."),
+    ).toBeVisible();
+    expect(screen.getByText("Emails automáticos no disponibles")).toBeVisible();
+
     const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
     expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
       "href",
       "/admin",
     );
-    expect(
-      screen.getByText("1. Qué querés avisar", { selector: "legend" }),
-    ).toBeVisible();
-    const audience = screen.getByText("2. A quiénes (opcional)");
+    expect(screen.getByText("Mensaje", { selector: "legend" })).toBeVisible();
+    const audience = screen.getByText("Destinatarias (opcional)");
     expect(audience.closest("details")).not.toHaveAttribute("open");
   });
 
@@ -97,18 +100,14 @@ describe("RemindersScreen", () => {
     expect(screen.queryByLabelText("Cuándo")).toBeNull();
   });
 
-  it("states that automatic emails are off until the domain is set up", () => {
+  it("states briefly when automatic emails are unavailable", () => {
     render(<RemindersScreen {...base} />);
-    expect(
-      screen.getByText(
-        "Emails automáticos: desactivados (falta configurar el dominio)",
-      ),
-    ).toBeVisible();
+    expect(screen.getByText("Emails automáticos no disponibles")).toBeVisible();
   });
 
   it("states that automatic emails are on", () => {
     render(<RemindersScreen {...base} emailEnabled />);
-    expect(screen.getByText("Emails automáticos: activados")).toBeVisible();
+    expect(screen.getByText("Emails automáticos activos")).toBeVisible();
   });
 
   it("offers a GET form with the template and the audience filters", async () => {

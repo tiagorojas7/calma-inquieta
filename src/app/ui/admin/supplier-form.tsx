@@ -5,6 +5,7 @@ import { ADMIN_SHEET, AdminDangerZone, AdminFieldPair } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { MoreOptions } from "./more-options";
 
 type SupplierFormField = "name" | "phone" | "email" | "notes";
 
@@ -56,14 +57,16 @@ export function SupplierForm({
           error={errors.email}
         />
       </AdminFieldPair>
-      <TextAreaField
-        label={copy.form.notes}
-        hint={copy.form.notesHint}
-        name="notes"
-        rows={4}
-        defaultValue={values.notes}
-        error={errors.notes}
-      />
+      <MoreOptions defaultOpen={Boolean(errors.notes)}>
+        <TextAreaField
+          label={copy.form.notes}
+          hint={copy.form.notesHint}
+          name="notes"
+          rows={4}
+          defaultValue={values.notes}
+          error={errors.notes}
+        />
+      </MoreOptions>
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{submitLabel}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

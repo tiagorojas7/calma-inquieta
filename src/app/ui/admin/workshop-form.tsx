@@ -11,6 +11,7 @@ import {
 } from "./form-fields";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
+import { MoreOptions } from "./more-options";
 import { StatusBadge, type AdminStatus } from "./status-badge";
 import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
@@ -73,29 +74,13 @@ export function WorkshopForm({
     <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <AdminFieldPair>
-        <TextField
-          label={copy.form.name}
-          name="name"
-          defaultValue={values.name}
-          error={errors.name}
-          autoComplete="off"
-        />
-        <TextField
-          label={copy.form.slug}
-          hint={copy.form.slugHint}
-          name="slug"
-          defaultValue={values.slug}
-          error={errors.slug}
-          autoComplete="off"
-        />
-      </AdminFieldPair>
-      {published && (
-        <CheckboxField
-          label={copy.form.confirmSlugChange}
-          name="confirmSlugChange"
-        />
-      )}
+      <TextField
+        label={copy.form.name}
+        name="name"
+        defaultValue={values.name}
+        error={errors.name}
+        autoComplete="off"
+      />
       <TextField
         label={copy.form.summary}
         hint={copy.form.summaryHint}
@@ -113,12 +98,6 @@ export function WorkshopForm({
       />
       <AdminFieldPair>
         <TextField
-          label={copy.form.technique}
-          name="technique"
-          defaultValue={values.technique}
-          error={errors.technique}
-        />
-        <TextField
           label={copy.form.defaultFee}
           hint={copy.form.defaultFeeHint}
           name="defaultFee"
@@ -126,8 +105,6 @@ export function WorkshopForm({
           defaultValue={values.defaultFee}
           error={errors.defaultFee}
         />
-      </AdminFieldPair>
-      <AdminFieldPair>
         <SelectField
           label={copy.form.teacher}
           name="teacherId"
@@ -135,24 +112,52 @@ export function WorkshopForm({
           defaultValue={values.teacherId}
           error={errors.teacherId}
         />
-        <TextField
-          label={copy.form.percentage}
-          hint={`${copy.form.percentageHint} ${copy.form.percentageNote}`}
-          name="percentage"
-          inputMode="decimal"
-          defaultValue={values.percentage}
-          error={errors.percentage}
-        />
       </AdminFieldPair>
-      <GalleryFields
-        images={values.images}
-        slots={WORKSHOP_PHOTO_SLOTS}
-        title={copy.form.photosTitle}
-        hint={copy.form.photosHint}
-        label={copy.form.photo}
-        moreLabel={copy.form.morePhotos}
-        error={errors.images}
-      />
+      <MoreOptions
+        defaultOpen={Boolean(
+          errors.slug || errors.technique || errors.percentage || errors.images,
+        )}
+      >
+        <TextField
+          label={copy.form.slug}
+          hint={copy.form.slugHint}
+          name="slug"
+          defaultValue={values.slug}
+          error={errors.slug}
+          autoComplete="off"
+        />
+        {published && (
+          <CheckboxField
+            label={copy.form.confirmSlugChange}
+            name="confirmSlugChange"
+          />
+        )}
+        <AdminFieldPair>
+          <TextField
+            label={copy.form.technique}
+            name="technique"
+            defaultValue={values.technique}
+            error={errors.technique}
+          />
+          <TextField
+            label={copy.form.percentage}
+            hint={`${copy.form.percentageHint} ${copy.form.percentageNote}`}
+            name="percentage"
+            inputMode="decimal"
+            defaultValue={values.percentage}
+            error={errors.percentage}
+          />
+        </AdminFieldPair>
+        <GalleryFields
+          images={values.images}
+          slots={WORKSHOP_PHOTO_SLOTS}
+          title={copy.form.photosTitle}
+          hint={copy.form.photosHint}
+          label={copy.form.photo}
+          moreLabel={copy.form.morePhotos}
+          error={errors.images}
+        />
+      </MoreOptions>
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.form.save}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

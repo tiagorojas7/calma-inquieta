@@ -70,7 +70,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (extraIntensives)
     for (const listed of extraIntensives)
       if (!listed.ok) throw failureResponse(listed.error);
-  if (!statistics.ok) throw failureResponse(statistics.error);
+  if (!statistics.ok) {
+    // The month is always valid here, so only a service failure can come back.
+    if (statistics.error.kind === "invalid") throw data(null, { status: 500 });
+    throw failureResponse(statistics.error);
+  }
   const seats = statistics.value.occupancy.rows.map((row) => ({
     workshopId: row.workshopId,
     turnoId: row.turnoId,

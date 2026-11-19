@@ -84,6 +84,17 @@ Only screens, navigation, copy and the shape of the forms change. A rule change 
 
 S10. **Less information, shorter words, on every admin screen.** Owner, verbatim (L7): "ajustar los textosm botones, hay demasiado informacion, aca se busca el balance perfecto entre simplicidad y funcionalidad". Each screen shows only what the task needs. Every button label is a short verb phrase. Descriptions, hints and secondary facts are cut, or moved behind "Más opciones" or "Ver más". Long helper sentences become a few words. The rule applies to every admin page, including Ajustes and its pages, not only the four sections.
 
+S11. **Stocked materials.** Owner (L16, L18): each material carries a yes/no "Lo tenemos en el estudio". Materiales shows, in this order:
+
+1. "Para entregar";
+2. "Para pedir";
+3. "En el estudio", only the stocked materials, with "Hay N" or "Se acabó" and "Llegaron";
+4. the rest of the catalog behind a search.
+
+In the sale and enrollment pickers, a material not kept in the studio reads "Se pide". The flag is folded into the unapplied migration 0018: existing materials default to not stocked, except those with stock units, which default to stocked.
+
+S12. **Debt is always right.** A student who owes anything shows "Debe $X" everywhere: the Alumnas list, the top of her file and Hoy. That covers a pending fee, a pending material sale and a pending workshop deposit or balance. A record whose sale is owed never reads only "Pagado".
+
 ## Tasks
 
 - [x] P1 (S1, S2, S8): `7059b0b` + `95ef0da`; the shell, the four-plus-Ajustes nav, and route skeletons with redirects from the old URLs. Friendly base styles: type scale, big buttons, cards, and the saved message. A shared "back to the same place" redirect helper. Route: delegated.
@@ -92,7 +103,8 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
 - [ ] P4 (S6, S2, S8): Clases, with workshop reservations and attendance inline. Implemented in `bab16fc` and `7df747b`; task closure pending the seam check. Route: delegated after P1.
 - [ ] P5 (S7, S2, S8): Materiales. Implemented in `67ff00d` and `696eaa0`; task closure pending the seam check. Route: delegated after P1.
 - [x] P7 (S10, S8): information and copy pass over every remaining admin page (Ajustes pages, workshop and teacher editors, policies, statistics, suppliers, events, reminders): cut text, shorten labels, hide secondary facts. Existing compact/collapsed screens were verified by readback; workshop, policies, reminders and supplier forms were simplified with RED/GREEN tests. UI 1240/1240, unit 4285/4285, focused lint, typecheck, format, and Impeccable detect passed; committed as `ecf92d3`. Route: inline after P2–P5; no writer trigger held because the mapped edits shared `microcopy.ts`.
-- [ ] P6 (S1–S10): seam run, local walkthrough at 390 px and desktop, the owner's check.
+- [ ] P8 (S11, S12, S2, S8, S10): corrections from the L17 walkthrough. F-A covers Alumnas debt, width, sale picker feedback and phone format. F-B covers the Hoy sale task, one open-month rule, "libres" and a slimmer page header. F-C covers the stocked flag and Materiales order. Route: delegated, parallel.
+- [ ] P6 (S1–S12): seam run, local walkthrough at 390 px and desktop, the owner's check.
 
 ## Log
 
@@ -148,3 +160,17 @@ S10. **Less information, shorter words, on every admin screen.** Owner, verbatim
 - L14 (2026-11-19): Full UI suite passed 141 files / 1,240 tests; full unit suite passed 320 files / 4,285 tests when run separately with a verbose reporter. Full PostgreSQL test run passed more than 380 checks before the native Windows worker exited with code 3221226505, without an assertion failure or terminal summary; its outcome is partial, not green. Full repository ESLint was interrupted after a prolonged no-progress run; targeted ESLint, TypeScript and Prettier checks had passed. P7 is implemented and covered; P6 remains pending because the browser automation host could not provide the 390 px/desktop walkthrough and the DB/full-lint checks lack terminal proof.
 - L15 (2026-11-19): P7 landed in `ecf92d3`. After the commit, focused TypeScript, ESLint and Prettier passed again. Native RDD assessment could not select the untracked inventory; its read-only STATUS failed first on filesystem access and then timed out outside the sandbox with `mutation_outcome: not_started`, `next_action: stop`. No review authority or consent was created; do not infer approval or retry the timed-out operation from prose. A later computer-use attempt found Chrome running, but policy stopped before reading its URL, so no visual walkthrough occurred. The native DB worker crash also stopped the dev server; it was restarted, and warm requests to `/`, `/admin`, and `/admin/materiales` all returned 200 at http://localhost:5173/. P6 still lacks full DB, full lint, native review and visual proof.
 - L16 (2026-11-19, owner, verbatim): "codex ya estuve trabajdno un poco en l oque venias, confirma que esta todo perfecto y avisame, que necesito que hagas un reocrrido exaustivo por toda la web vos mismo, ya que siento que la ui y ux no es tan sensiclla y se les puede complicar, ya que por ejemplo esta muy escindido lo que tiene que pedir, l oque no, lo que hay en stock, Ademas las alumnas cuando se vende un nuevo material, sigue apareciendo como al adia, cuando en realidad esta debiendo, esntonces neceisot quw realmente lo mires vos con tus propios ojos, de punta a punta, situandote en el lugar de las dueñas, que bsucan algo sneicllo y facil, y hay que mejorar exponencialmetn e la ui and ux". Reported defect: a student with an unpaid material sale shows "Al día". Next: a walkthrough in the browser, in the owners' shoes.
+- L17 (2026-11-19): Parent walkthrough in the owner's Chrome, desktop, against local `calma_dev` (Docker `calma-pg`). Typecheck exit 0 at `20722e0`.
+  - Bugs:
+    - B1: the Alumnas list shows "Al día" for a student who owes. Reproduced by selling a tray unpaid to martina roberi ($30.900 owed, list says "Al día"). tiago rojas and Prueba Test QA owe $20.000 workshop balances and also show "Al día". The list only looks at the monthly fee.
+    - B2: Hoy "Para hacer" does not show that pending sale.
+    - B3: Hoy offers "Abrir diciembre" for bordado de canastas while Clases shows no open action for it and offers "Abrir enero" for tejido a dos manos. They use two copies of the open-month rule.
+  - UX:
+    - U1: on Materiales, "Para pedir" starts at y=18162 of a 19004 px page, below 99 catalog cards that almost all say "Sin stock". What to order, what to hand over and what is in stock cannot be told apart (owner, L16: "esta muy escindido").
+    - U2: on desktop the Alumnas list, file and enrollment form are a narrow column, leaving half the screen empty.
+    - U3: in "Vender materiales", after "Agregar" the chosen items appear far below a long result list, with no visible feedback.
+    - U4: phone numbers show raw digits ("5493516785675").
+    - U5: the file shows a record as "Pagado" while a sale under it is owed, and the file has no overall "Debe $X".
+    - U6: Clases says "28 lugares" without saying free or taken.
+    - U7: every page opens with a large icon header card repeating the nav.
+- L18 (2026-11-19, owner, verbatim, answering how to tell stocked materials apart): "Marcar los que se tienen (Recommended)" (option text: "Cada material lleva un sí/no: \"Lo tenemos en el estudio\". Materiales muestra arriba \"Para entregar\" y \"Para pedir\", después \"En el estudio\" solo con esos materiales (Hay 5 / Se acabó), y el resto del catálogo queda en un buscador. Al vender, los que no se tienen dicen \"Se pide\".").

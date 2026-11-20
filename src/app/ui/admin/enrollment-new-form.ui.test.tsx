@@ -45,6 +45,30 @@ describe("EnrollmentNewForm", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("uses the width of a desktop screen: her data on one side, the materials and the payment on the other", () => {
+    const { container } = render(
+      <EnrollmentNewForm
+        values={values}
+        errors={{}}
+        options={options}
+        cancelHref="/admin/inscripciones"
+      />,
+    );
+
+    const form = container.querySelector("form");
+    expect(form?.className).not.toMatch(/max-w-3xl/);
+    const columns = form?.querySelector("[data-columns]");
+    expect(columns?.className).toMatch(/lg:grid-cols-2/);
+    const [data, rest] = Array.from(columns?.children ?? []);
+    expect(within(data as HTMLElement).getByLabelText("Nombre")).toBeVisible();
+    expect(
+      within(rest as HTMLElement).getByRole("button", { name: "Inscribir" }),
+    ).toBeVisible();
+    expect(
+      within(rest as HTMLElement).getByLabelText("Ya pagó"),
+    ).toBeInTheDocument();
+  });
+
   it("starts with the fee of the chosen month and follows the offer until the owner types one", async () => {
     const user = userEvent.setup();
     render(

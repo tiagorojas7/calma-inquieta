@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import { ADMIN_PANEL, ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 import { adminCopy } from "./copy";
 import {
   EnrollmentNewMaterials,
@@ -83,83 +83,89 @@ export function EnrollmentNewForm({
     );
   }
   return (
-    <form method="post" noValidate className={ADMIN_SHEET}>
+    <form method="post" noValidate className={ADMIN_PANEL}>
       <FormError message={formError} />
-      <SelectField
-        label={copy.offer}
-        name="offer"
-        required
-        options={[{ value: "", label: copy.offerPlaceholder }, ...options]}
-        defaultValue={values.offer}
-        onChange={(event) => {
-          if (!typed) setFee(feeOf(event.target.value));
-        }}
-        error={errors.offer}
-      />
-      <TextField
-        label={copy.fee}
-        hint={copy.feeHint}
-        name="fee"
-        inputMode="numeric"
-        required
-        autoComplete="off"
-        value={fee}
-        onChange={(event) => {
-          setTyped(true);
-          setFee(event.target.value);
-        }}
-        error={errors.fee}
-      />
-      <TextField
-        label={copy.fullName}
-        name="fullName"
-        required
-        autoComplete="off"
-        defaultValue={values.fullName}
-        error={errors.fullName}
-      />
-      <AdminFieldPair>
-        <TextField
-          label={copy.email}
-          name="email"
-          type="email"
-          inputMode="email"
-          required
-          autoComplete="off"
-          defaultValue={values.email}
-          error={errors.email}
-        />
-        <TextField
-          label={copy.phone}
-          name="phone"
-          type="tel"
-          required
-          autoComplete="off"
-          defaultValue={values.phone}
-          error={errors.phone}
-        />
-      </AdminFieldPair>
-      <MoreOptions
-        label={copy.materials}
-        defaultOpen={lines.length > 0 || errors.materials !== undefined}
-      >
-        <EnrollmentNewMaterials
-          choices={materials}
-          initialLines={lines}
-          fee={fee}
-          error={errors.materials}
-        />
-      </MoreOptions>
-      <CheckboxField
-        label={copy.alreadyPaid}
-        name="paid"
-        defaultChecked={paid}
-      />
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit">{copy.submit}</Button>
-        <AdminButtonLink href={cancelHref} variant="outline">
-          {copy.cancel}
-        </AdminButtonLink>
+      <div data-columns className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <div className="flex flex-col gap-4">
+          <SelectField
+            label={copy.offer}
+            name="offer"
+            required
+            options={[{ value: "", label: copy.offerPlaceholder }, ...options]}
+            defaultValue={values.offer}
+            onChange={(event) => {
+              if (!typed) setFee(feeOf(event.target.value));
+            }}
+            error={errors.offer}
+          />
+          <TextField
+            label={copy.fee}
+            hint={copy.feeHint}
+            name="fee"
+            inputMode="numeric"
+            required
+            autoComplete="off"
+            value={fee}
+            onChange={(event) => {
+              setTyped(true);
+              setFee(event.target.value);
+            }}
+            error={errors.fee}
+          />
+          <TextField
+            label={copy.fullName}
+            name="fullName"
+            required
+            autoComplete="off"
+            defaultValue={values.fullName}
+            error={errors.fullName}
+          />
+          <AdminFieldPair>
+            <TextField
+              label={copy.email}
+              name="email"
+              type="email"
+              inputMode="email"
+              required
+              autoComplete="off"
+              defaultValue={values.email}
+              error={errors.email}
+            />
+            <TextField
+              label={copy.phone}
+              name="phone"
+              type="tel"
+              required
+              autoComplete="off"
+              defaultValue={values.phone}
+              error={errors.phone}
+            />
+          </AdminFieldPair>
+        </div>
+        <div className="flex flex-col gap-4">
+          <MoreOptions
+            label={copy.materials}
+            defaultOpen={lines.length > 0 || errors.materials !== undefined}
+          >
+            <EnrollmentNewMaterials
+              choices={materials}
+              initialLines={lines}
+              fee={fee}
+              error={errors.materials}
+            />
+          </MoreOptions>
+          <CheckboxField
+            label={copy.alreadyPaid}
+            name="paid"
+            defaultChecked={paid}
+          />
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit">{copy.submit}</Button>
+            <AdminButtonLink href={cancelHref} variant="outline">
+              {copy.cancel}
+            </AdminButtonLink>
+          </div>
+        </div>
       </div>
     </form>
   );

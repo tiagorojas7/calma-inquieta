@@ -44,6 +44,7 @@ const saleVariants = [
     materialName: "Arcilla",
     variantLabel: "1 kg",
     unitPrice: pesos(4000),
+    keptInStudio: true,
   },
   {
     materialId: "m-2",
@@ -51,6 +52,7 @@ const saleVariants = [
     materialName: "Pincel",
     variantLabel: "Chico",
     unitPrice: pesos(12500),
+    keptInStudio: false,
   },
 ];
 
@@ -173,6 +175,7 @@ describe("admin enrollment-new loader", () => {
           unitPrice: 4000,
           priceLabel: "$ 4.000",
           onHand: 3,
+          keptInStudio: true,
         },
         {
           materialId: "m-2",
@@ -182,6 +185,7 @@ describe("admin enrollment-new loader", () => {
           unitPrice: 12500,
           priceLabel: "$ 12.500",
           onHand: 0,
+          keptInStudio: false,
         },
       ],
     });

@@ -8,7 +8,7 @@ type Actor = Parameters<AppServices["materials"]["listSaleVariants"]>[0];
 /**
  * Active, available catalog variants that have a price: the only ones an owner
  * may add to a hand-made enrollment or to a material sale, each with the units
- * the studio holds. A stock that cannot be read must not close the form: every
+ * the studio holds and whether the studio keeps the material. A stock that cannot be read must not close the form: every
  * variant is then offered as "a pedir", the supplier path that always works.
  */
 export async function loadMaterialChoices(
@@ -28,5 +28,6 @@ export async function loadMaterialChoices(
     unitPrice: variant.unitPrice.toCentavos() / 100,
     priceLabel: formatPesos(variant.unitPrice),
     onHand: onHand.get(variant.variantId) ?? 0,
+    keptInStudio: variant.keptInStudio,
   }));
 }

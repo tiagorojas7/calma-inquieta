@@ -21,6 +21,7 @@ const materials = [
     unitPrice: 4000,
     priceLabel: "$ 4.000",
     onHand: 3,
+    keptInStudio: true,
   },
   {
     materialId: "m-2",

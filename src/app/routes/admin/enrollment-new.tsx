@@ -207,7 +207,7 @@ export default function AdminEnrollmentNew() {
   const { options, materials, prefill } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
-    <section className="flex max-w-3xl flex-col gap-4">
+    <section className="flex flex-col gap-4">
       <AdminPageHeader
         title={copy.title}
         back={{ href: BACK, label: copy.back }}

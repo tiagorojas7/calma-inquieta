@@ -30,6 +30,12 @@ export interface MaterialRepository {
   insert(material: Material): Promise<void>;
   /** Replaces the root and complete variant list atomically. */
   update(material: Material): Promise<boolean>;
+  /** Atomically changes only the studio flag and audit fields. */
+  setKeptInStudio(
+    id: string,
+    kept: boolean,
+    audit: Material["audit"],
+  ): Promise<Material | null>;
   findById(id: string): Promise<Material | null>;
   findActiveByName(name: string): Promise<Material | null>;
   /**

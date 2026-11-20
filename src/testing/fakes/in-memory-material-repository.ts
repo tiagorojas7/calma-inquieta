@@ -100,6 +100,18 @@ export class InMemoryMaterialRepository implements MaterialRepository {
     }
   }
 
+  setKeptInStudio(
+    id: string,
+    kept: boolean,
+    audit: Material["audit"],
+  ): Promise<Material | null> {
+    const current = this.materials.get(id);
+    if (!current) return Promise.resolve(null);
+    const changed = { ...current, keptInStudio: kept, audit };
+    this.materials.set(id, cloneMaterial(changed));
+    return Promise.resolve(cloneMaterial(changed));
+  }
+
   findById(id: string): Promise<Material | null> {
     const stored = this.materials.get(id);
     return Promise.resolve(stored ? cloneMaterial(stored) : null);

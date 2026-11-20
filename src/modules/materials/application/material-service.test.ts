@@ -986,6 +986,22 @@ describe("materials kept in the studio", () => {
     expect((await repository.findById(created.id))?.keptInStudio).toBe(false);
   });
 
+  it("preserves an availability edit interleaved at audit stamping", async () => {
+    const { service, repository, clock } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    let intervened: Promise<boolean> | undefined;
+    clock.now = () => {
+      intervened = repository.update({ ...created, available: false });
+      return new Date(NOW);
+    };
+    valueOf(await service.setKeptInStudio(actor, created.id, true));
+    expect(await intervened).toBe(true);
+    expect(await repository.findById(created.id)).toMatchObject({
+      available: false,
+      keptInStudio: true,
+    });
+  });
+
   it("refuses to mark without an actor or for an unknown material", async () => {
     const { service } = await setup();
     expect(await service.setKeptInStudio(null, "id", true)).toEqual({

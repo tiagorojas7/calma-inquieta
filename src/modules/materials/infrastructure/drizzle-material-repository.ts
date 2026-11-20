@@ -294,6 +294,26 @@ export function createDrizzleMaterialRepository(
         }
       }),
 
+    setKeptInStudio: (id, kept, audit) =>
+      withSession(async (db) => {
+        const rows = await db
+          .update(material)
+          .set({
+            keptInStudio: kept,
+            updatedBy: audit.updatedBy,
+            updatedAt: audit.updatedAt,
+          })
+          .where(eq(material.id, id))
+          .returning({ id: material.id });
+        if (rows.length === 0) return null;
+        const values = await loadMaterials(
+          db,
+          eq(material.id, id),
+          variantUsage,
+        );
+        return values[0] ?? null;
+      }),
+
     findById: (id) =>
       withSession(async (db) => {
         const values = await loadMaterials(

@@ -442,15 +442,14 @@ export function createMaterialsService(
     },
 
     async setKeptInStudio(actor, id, kept) {
-      const loaded = await loadForToggle(actor, id);
-      if (!loaded.ok) return err(loaded.error);
-      const next = {
-        ...loaded.value.material,
-        keptInStudio: kept,
-        audit: stamp(loaded.value.actor),
-      };
-      await repository.update(next);
-      return ok(next);
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const changed = await repository.setKeptInStudio(
+        id,
+        kept,
+        stamp(authorized.value),
+      );
+      return changed ? ok(changed) : err(notFound);
     },
 
     async setImage(actor, id, image) {

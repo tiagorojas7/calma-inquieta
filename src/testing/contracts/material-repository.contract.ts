@@ -114,6 +114,24 @@ export function runMaterialRepositoryContract(
       expect(listed?.keptInStudio).toBe(true);
     });
 
+    it("changes only the studio flag after another material edit", async () => {
+      const { repository } = await create();
+      const original = buildStoredMaterial();
+      await repository.insert(original);
+      await repository.update({ ...original, available: false });
+
+      const changed = await repository.setKeptInStudio(
+        original.id,
+        true,
+        original.audit,
+      );
+      expect(changed).toMatchObject({ available: false, keptInStudio: true });
+      expect(await repository.findById(original.id)).toMatchObject({
+        available: false,
+        keptInStudio: true,
+      });
+    });
+
     it("returns null for an unknown id and finds known ids only", async () => {
       const { repository } = await create();
       const first = buildStoredMaterial();

@@ -81,6 +81,8 @@ export interface Material {
   readonly supplier: Supplier;
   readonly available: boolean;
   readonly active: boolean;
+  /** "Lo tenemos en el estudio": the studio keeps units of it. Absent reads as no. */
+  readonly keptInStudio?: boolean;
   readonly image: ImageUse | null;
   readonly variants: readonly MaterialVariant[];
   readonly audit: Audit;
@@ -113,6 +115,8 @@ export interface MaterialStockRow {
   readonly supplierName: string;
   readonly active: boolean;
   readonly available: boolean;
+  /** "Lo tenemos en el estudio". */
+  readonly keptInStudio: boolean;
   readonly variants: readonly MaterialStockVariant[];
   /** The units of every variant together. */
   readonly onHand: number;
@@ -219,6 +223,8 @@ export interface SaleVariantOption {
   readonly materialName: string;
   readonly variantLabel: string;
   readonly unitPrice: import("~/modules/_shared").Money;
+  /** "Lo tenemos en el estudio": when not, the sale says it is ordered. */
+  readonly keptInStudio: boolean;
 }
 /** A material with the sale facts a hand-made enrollment snapshots. */
 export interface SaleCatalogMaterial {
@@ -278,6 +284,12 @@ export interface MaterialsService {
     a: AdminActor,
     id: string,
   ): Promise<Result<Material, AdminFailure | NotFound | Invalid<"name">>>;
+  /** Marks or unmarks "Lo tenemos en el estudio" and changes nothing else. */
+  setKeptInStudio(
+    a: AdminActor,
+    id: string,
+    kept: boolean,
+  ): Promise<Result<Material, AdminFailure | NotFound>>;
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;

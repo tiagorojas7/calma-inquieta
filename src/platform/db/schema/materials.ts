@@ -49,6 +49,8 @@ export const material = pgTable(
       .references(() => supplier.id),
     available: boolean("available").notNull().default(true),
     active: boolean("active").notNull().default(true),
+    // "Lo tenemos en el estudio": the studio keeps units of this material.
+    keptInStudio: boolean("kept_in_studio").notNull().default(false),
     imageAssetId: uuid("image_asset_id").references(() => mediaAsset.id),
     imageAlt: text("image_alt"),
     updatedBy: text("updated_by").notNull(),

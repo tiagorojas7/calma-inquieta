@@ -66,6 +66,7 @@ async function catalog() {
       id: "m-brush",
       name: "Pincel",
       supplier,
+      keptInStudio: true,
       variants: [variant("v-6", "Chico", pesos(1500))],
     }),
   );
@@ -92,6 +93,7 @@ describe("sale catalog for hand-made enrollments", () => {
           materialName: "Arcilla",
           variantLabel: "1 kg",
           unitPrice: pesos(4000),
+          keptInStudio: false,
         },
         {
           materialId: "m-brush",
@@ -99,6 +101,7 @@ describe("sale catalog for hand-made enrollments", () => {
           materialName: "Pincel",
           variantLabel: "Chico",
           unitPrice: pesos(1500),
+          keptInStudio: true,
         },
       ],
     });

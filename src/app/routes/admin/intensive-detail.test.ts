@@ -820,6 +820,7 @@ const catalog = [
     materialName: "Arcilla blanca",
     variantLabel: "5 kg",
     unitPrice: money(9000),
+    keptInStudio: false,
   },
   {
     materialId: "m2",
@@ -827,6 +828,7 @@ const catalog = [
     materialName: "Esmalte",
     variantLabel: "Celeste",
     unitPrice: money(4000),
+    keptInStudio: false,
   },
 ];
 const okMaterials = (variants = catalog) =>

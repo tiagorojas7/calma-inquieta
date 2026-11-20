@@ -85,6 +85,7 @@ function toMaterial(
     supplier: toSupplier(row.supplier),
     available: row.material.available,
     active: row.material.active,
+    keptInStudio: row.material.keptInStudio,
     image:
       row.material.imageAssetId && row.material.imageAlt
         ? {
@@ -111,6 +112,7 @@ function rootValues(value: Material) {
     supplierId: value.supplier.id,
     available: value.available,
     active: value.active,
+    keptInStudio: value.keptInStudio === true,
     imageAssetId: value.image?.assetId ?? null,
     imageAlt: value.image?.alt ?? null,
     updatedBy: value.audit.updatedBy,

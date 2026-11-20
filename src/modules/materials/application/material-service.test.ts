@@ -935,3 +935,82 @@ describe("material stock overview and creation with starting stock", () => {
     expect(stock.adjustments).toEqual([]);
   });
 });
+
+describe("materials kept in the studio", () => {
+  it("creates a material not kept unless the draft says it is", async () => {
+    const { service } = await setup();
+    const plain = valueOf(await service.create(actor, draft({ name: "Hilo" })));
+    const kept = valueOf(
+      await service.create(
+        actor,
+        draft({ name: "Arcilla", keptInStudio: true }),
+      ),
+    );
+    expect(plain.keptInStudio).toBe(false);
+    expect(kept.keptInStudio).toBe(true);
+  });
+
+  it("saves the flag on update, and leaves it as it was when the draft says nothing", async () => {
+    const { service, repository } = await setup();
+    const created = valueOf(
+      await service.create(actor, draft({ keptInStudio: true })),
+    );
+
+    valueOf(await service.update(actor, created.id, draft()));
+    expect((await repository.findById(created.id))?.keptInStudio).toBe(true);
+
+    valueOf(
+      await service.update(actor, created.id, draft({ keptInStudio: false })),
+    );
+    expect((await repository.findById(created.id))?.keptInStudio).toBe(false);
+  });
+
+  it("marks and unmarks one material alone, keeping everything else", async () => {
+    const { service, repository } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+
+    const marked = valueOf(
+      await service.setKeptInStudio(other, created.id, true),
+    );
+    expect(marked.keptInStudio).toBe(true);
+    expect(marked.audit.updatedBy).toBe(other.email);
+    const stored = await repository.findById(created.id);
+    expect(stored).toMatchObject({
+      keptInStudio: true,
+      name: created.name,
+      active: true,
+    });
+    expect(stored?.variants).toHaveLength(1);
+
+    valueOf(await service.setKeptInStudio(actor, created.id, false));
+    expect((await repository.findById(created.id))?.keptInStudio).toBe(false);
+  });
+
+  it("refuses to mark without an actor or for an unknown material", async () => {
+    const { service } = await setup();
+    expect(await service.setKeptInStudio(null, "id", true)).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    expect(await service.setKeptInStudio(actor, "nope", true)).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+
+  it("carries the flag on the stock overview rows", async () => {
+    const { service } = await setup();
+    const kept = valueOf(
+      await service.create(
+        actor,
+        draft({ name: "Arcilla", keptInStudio: true }),
+      ),
+    );
+    const plain = valueOf(await service.create(actor, draft({ name: "Hilo" })));
+    const rows = valueOf(await service.listWithStock(actor, { state: "all" }));
+    expect(rows.map((row) => [row.id, row.keptInStudio])).toEqual([
+      [kept.id, true],
+      [plain.id, false],
+    ]);
+  });
+});

@@ -162,6 +162,7 @@ export function createMaterialsService(
       supplierName: material.supplier.name,
       active: material.active,
       available: material.available,
+      keptInStudio: material.keptInStudio === true,
       variants,
       onHand: variants.reduce((sum, variant) => sum + variant.onHand, 0),
     };
@@ -252,6 +253,7 @@ export function createMaterialsService(
       category: valid.category,
       supplier: references.supplier,
       available: valid.available,
+      keptInStudio: valid.keptInStudio ?? current?.keptInStudio ?? false,
       active: current?.active ?? true,
       image: valid.image
         ? {
@@ -436,6 +438,18 @@ export function createMaterialsService(
           return err({ kind: "invalid", issues: [duplicateName] });
         throw error;
       }
+      return ok(next);
+    },
+
+    async setKeptInStudio(actor, id, kept) {
+      const loaded = await loadForToggle(actor, id);
+      if (!loaded.ok) return err(loaded.error);
+      const next = {
+        ...loaded.value.material,
+        keptInStudio: kept,
+        audit: stamp(loaded.value.actor),
+      };
+      await repository.update(next);
       return ok(next);
     },
 

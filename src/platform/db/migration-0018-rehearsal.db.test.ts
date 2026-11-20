@@ -487,6 +487,60 @@ describe("migration 0018 rehearsal over staging-shaped legacy data", () => {
     expect(variants).toEqual({ costed: 0 });
   });
 
+  it("leaves every legacy material not kept in the studio, and its backfill marks only those with units on hand", async () => {
+    const total = await one<{ materials: number; kept: number }>(
+      client,
+      `SELECT count(*)::int AS materials,
+              count(*) FILTER (WHERE kept_in_studio)::int AS kept
+         FROM material`,
+    );
+    expect(total.materials).toBe(6);
+    expect(total.kept).toBe(0);
+
+    const sql = await readFile(MIGRATION_FILE, "utf8");
+    const backfill = sql
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .find((statement) =>
+        statement.startsWith('UPDATE "material" SET "kept_in_studio"'),
+      );
+    expect(backfill).toBeDefined();
+
+    const variants = await client.query<{ id: string; material_id: string }>(
+      `SELECT id, material_id FROM material_variant
+        ORDER BY material_id, position`,
+    );
+    const materialIds = [
+      ...new Set(variants.rows.map((variant) => variant.material_id)),
+    ];
+    const [withUnits, withNone, withZero] = materialIds.map((id) => ({
+      id,
+      variants: variants.rows
+        .filter((variant) => variant.material_id === id)
+        .map((variant) => variant.id),
+    }));
+    if (!withUnits || !withNone || !withZero) throw new Error("fixture");
+    const stockRow = (variantId: string, units: number) =>
+      client.query(
+        `INSERT INTO variant_stock (variant_id, on_hand, updated_at, updated_by)
+         VALUES ($1, $2, now(), 'rehearsal')`,
+        [variantId, units],
+      );
+    try {
+      // Units only on the last variant still count; a stock row at 0 does not.
+      await stockRow(withUnits.variants[2] ?? "", 4);
+      await stockRow(withZero.variants[0] ?? "", 0);
+      await client.query(backfill ?? "");
+      const kept = await client.query<{ id: string }>(
+        "SELECT id FROM material WHERE kept_in_studio ORDER BY id",
+      );
+      expect(kept.rows.map((row) => row.id)).toEqual([withUnits.id]);
+    } finally {
+      await client.query("DELETE FROM variant_stock");
+      await client.query("UPDATE material SET kept_in_studio = false");
+    }
+  });
+
   it("creates every constraint and unique index the migration declares, valid, and no row violates any CHECK or unique rule", async () => {
     const sql = await readFile(MIGRATION_FILE, "utf8");
     const constraints = new Set(

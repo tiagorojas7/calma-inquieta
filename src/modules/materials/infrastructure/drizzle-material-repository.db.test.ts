@@ -106,6 +106,7 @@ describe("createDrizzleMaterialRepository", () => {
         { table_name: "material", column_name: "id" },
         { table_name: "material", column_name: "image_alt" },
         { table_name: "material", column_name: "image_asset_id" },
+        { table_name: "material", column_name: "kept_in_studio" },
         { table_name: "material", column_name: "name" },
         { table_name: "material", column_name: "name_key" },
         { table_name: "material", column_name: "supplier_id" },

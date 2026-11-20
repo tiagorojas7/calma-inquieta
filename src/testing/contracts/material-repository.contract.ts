@@ -51,6 +51,7 @@ export function buildStoredMaterial(
     supplier: buildSupplier({ id: MATERIAL_SUPPLIER_ID }),
     available: true,
     active: true,
+    keptInStudio: false,
     image: {
       assetId: MATERIAL_ASSET_ID,
       alt: "Arcilla ámbar",
@@ -98,6 +99,19 @@ export function runMaterialRepositoryContract(
       expect(first?.variants).not.toBe(material.variants);
       expect(first?.variants[0]).not.toBe(material.variants[0]);
       expect(first?.audit.updatedAt).not.toBe(material.audit.updatedAt);
+    });
+
+    it("keeps the studio flag through insert, update and list", async () => {
+      const { repository } = await create();
+      await repository.insert(buildStoredMaterial({ keptInStudio: true }));
+      expect((await repository.findById(MATERIAL_A))?.keptInStudio).toBe(true);
+
+      await repository.update(buildStoredMaterial({ keptInStudio: false }));
+      expect((await repository.findById(MATERIAL_A))?.keptInStudio).toBe(false);
+
+      await repository.update(buildStoredMaterial({ keptInStudio: true }));
+      const [listed] = await repository.list({ state: "all" });
+      expect(listed?.keptInStudio).toBe(true);
     });
 
     it("returns null for an unknown id and finds known ids only", async () => {

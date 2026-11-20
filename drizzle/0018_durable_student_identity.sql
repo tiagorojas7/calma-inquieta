@@ -193,6 +193,8 @@ CREATE TABLE "variant_stock" (
 );
 --> statement-breakpoint
 ALTER TABLE "material_variant" ADD COLUMN "cost_centavos" bigint;--> statement-breakpoint
+ALTER TABLE "material" ADD COLUMN "kept_in_studio" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+UPDATE "material" SET "kept_in_studio" = true WHERE EXISTS (SELECT 1 FROM "material_variant" JOIN "variant_stock" ON "variant_stock"."variant_id" = "material_variant"."id" WHERE "material_variant"."material_id" = "material"."id" AND "variant_stock"."on_hand" > 0);--> statement-breakpoint
 CREATE INDEX "stock_adjustment_variant_idx" ON "stock_adjustment" USING btree ("variant_id","at");--> statement-breakpoint
 ALTER TABLE "material_variant" ADD CONSTRAINT "material_variant_cost_check" CHECK ("material_variant"."cost_centavos" > 0);
 --> statement-breakpoint

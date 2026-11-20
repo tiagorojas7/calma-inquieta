@@ -91,12 +91,13 @@ describe("materials contract signatures", () => {
       "adjustStock",
       "listWithStock",
       "createWithStock",
+      "setKeptInStudio",
     ] as const satisfies readonly (keyof MaterialsService)[];
     expect(supplierKeys).toHaveLength(6);
     expectTypeOf<keyof SuppliersService>().toEqualTypeOf<
       (typeof supplierKeys)[number]
     >();
-    expect(materialKeys).toHaveLength(18);
+    expect(materialKeys).toHaveLength(19);
     expectTypeOf<keyof MaterialsService>().toEqualTypeOf<
       (typeof materialKeys)[number]
     >();

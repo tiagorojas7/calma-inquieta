@@ -168,6 +168,7 @@ const variant = (
   materialName,
   variantLabel,
   unitPrice: Money.zero(),
+  keptInStudio: false,
 });
 
 describe("bill of materials form data", () => {

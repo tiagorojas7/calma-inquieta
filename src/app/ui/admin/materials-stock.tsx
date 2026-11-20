@@ -1,15 +1,12 @@
 import { Heading } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
-import { AdminButtonLink } from "./admin-button-link";
 import { adminCopy } from "./copy";
 import { FormError, ReturnToFields } from "./form-fields";
-import { adminFilterClasses } from "./admin-sections";
+import { MaterialsSectionTitle } from "./materials-section-title";
 import { StatusChip } from "./status-chip";
 
 const copy = adminCopy.materiales.stock;
 const BASE = "/admin/materiales";
-
-export type StockFilterKey = "todos" | "hay" | "sin";
 
 export interface StockVariantLine {
   readonly id: string;
@@ -29,9 +26,7 @@ export interface StockCard {
   readonly variants: readonly StockVariantLine[];
 }
 
-const FILTERS: readonly StockFilterKey[] = ["todos", "hay", "sin"];
-
-/** "Hay N" or "Sin stock", always in words; the color only backs them up. */
+/** "Hay N" or "Se acabó", always in words; the color only backs them up. */
 export function StockBadge({
   state,
   onHand,
@@ -165,100 +160,32 @@ function MaterialCard({
   );
 }
 
-/** The href of a filter or search, keeping what else the page shows. */
-function viewHref(
-  keep: { mes: string; estado: string },
-  values: { stock: StockFilterKey; q: string },
-): string {
-  const params = new URLSearchParams();
-  if (values.stock !== "todos") params.set("stock", values.stock);
-  if (values.q !== "") params.set("q", values.q);
-  params.set("mes", keep.mes);
-  if (keep.estado !== "activos") params.set("estado", keep.estado);
-  return `${BASE}?${params.toString()}#que-hay`;
-}
-
-/** "Qué hay": a big search, the stock filter and one card per material. */
-export function StockSection({
+/** "En el estudio": one card per material the studio keeps, with Hay N or Se acabó and Llegaron. */
+export function StudioSection({
   cards,
-  filter,
-  query,
-  period,
-  estado,
   returnTo,
   highlightId,
   error,
 }: {
   cards: readonly StockCard[];
-  filter: StockFilterKey;
-  query: string;
-  period: string;
-  estado: string;
   returnTo: string;
   highlightId?: string | undefined;
   /** A refused "Llegaron": the card it belongs to and the message. */
   error?: { anchor: string; message: string } | undefined;
 }) {
-  const keep = { mes: period, estado };
   return (
     <section
-      id="que-hay"
-      aria-labelledby="que-hay-title"
+      id="en-el-estudio"
+      aria-labelledby="en-el-estudio-title"
       className="flex scroll-mt-20 flex-col gap-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={2} id="que-hay-title">
-          {copy.title}
-        </Heading>
-        <AdminButtonLink href={`${BASE}/nuevo`} variant="success">
-          {copy.newAction}
-        </AdminButtonLink>
-      </div>
-      <form
-        role="search"
-        aria-label={copy.searchAction}
-        method="get"
-        action={BASE}
-        className="flex flex-wrap items-end gap-3"
-      >
-        <input type="hidden" name="stock" value={filter} />
-        <input type="hidden" name="mes" value={period} />
-        {estado === "activos" ? null : (
-          <input type="hidden" name="estado" value={estado} />
-        )}
-        <label className="flex min-w-0 flex-1 basis-64 flex-col gap-1 font-semibold text-ink-900">
-          {copy.search}
-          <input
-            type="search"
-            name="q"
-            defaultValue={query}
-            autoComplete="off"
-            className="min-h-14 rounded-md border border-admin-line bg-surface px-4 text-xl font-normal text-ink-900"
-          />
-        </label>
-        <Button type="submit" variant="outline">
-          {copy.searchAction}
-        </Button>
-      </form>
-      <nav aria-label={copy.filtersLabel}>
-        <ul className="flex flex-wrap gap-2">
-          {FILTERS.map((key) => (
-            <li key={key}>
-              <a
-                href={viewHref(keep, { stock: key, q: query })}
-                aria-current={key === filter ? "page" : undefined}
-                className={adminFilterClasses(key === filter)}
-              >
-                {copy.filters[key]}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <MaterialsSectionTitle
+        id="en-el-estudio-title"
+        title={copy.title}
+        count={cards.length}
+      />
       {cards.length === 0 ? (
-        <p className="text-lg text-ink-700">
-          {query !== "" || filter !== "todos" ? copy.emptyFound : copy.empty}
-        </p>
+        <p className="text-lg text-ink-700">{copy.empty}</p>
       ) : (
         <ul
           aria-label={copy.listLabel}

@@ -3,6 +3,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { adminCopy } from "./copy";
 import { ReturnToFields, TextAreaField } from "./form-fields";
+import { MaterialsSectionTitle } from "./materials-section-title";
 import { MoreOptions } from "./more-options";
 import { StatusChip } from "./status-chip";
 
@@ -176,9 +177,11 @@ export function OrderSection({
       aria-labelledby="para-pedir-title"
       className="flex scroll-mt-20 flex-col gap-4"
     >
-      <Heading level={2} id="para-pedir-title">
-        {copy.order.title}
-      </Heading>
+      <MaterialsSectionTitle
+        id="para-pedir-title"
+        title={copy.order.title}
+        count={suppliers.length}
+      />
       {pendingOrders > 0 ? (
         <p className="rounded-md bg-status-orange-bg px-4 py-3 text-lg font-semibold text-status-orange-fg">
           {copy.order.unconfirmed(pendingOrders)}
@@ -295,9 +298,11 @@ export function DeliverSection({
       className="flex scroll-mt-20 flex-col gap-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={2} id="para-entregar-title">
-          {copy.deliver.title}
-        </Heading>
+        <MaterialsSectionTitle
+          id="para-entregar-title"
+          title={copy.deliver.title}
+          count={toDeliver.length}
+        />
         {toDeliver.length > 1 ? (
           <form method="post">
             <input type="hidden" name="intent" value="mark-received" />

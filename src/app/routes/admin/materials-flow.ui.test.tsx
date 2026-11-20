@@ -12,12 +12,11 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const listData = {
   period: "2026-11",
   periodLabel: "noviembre 2026",
-  counts: { pedir: 0, entregar: 0 },
   pendingOrders: 0,
   suppliers: [],
   toDeliver: [],
   delivered: [],
-  cards: [
+  studio: [
     {
       id: "m1",
       anchor: "material-m1",
@@ -29,7 +28,7 @@ const listData = {
       variants: [],
     },
   ],
-  filter: "todos",
+  catalog: { rows: [], found: 0, total: 1 },
   query: "",
   estado: "activos",
   returnTo: "/admin/materiales?mes=2026-11",
@@ -67,7 +66,7 @@ function crumbs() {
 }
 
 describe("materials guided flow", () => {
-  it("list shows a saved banner, the three sections and the tools behind a closed disclosure", async () => {
+  it("list shows a saved banner, the four sections and the tools behind a closed disclosure", async () => {
     const Stub = createRoutesStub([
       { path: LIST, Component: AdminMaterials, loader: () => listData },
     ]);
@@ -75,11 +74,11 @@ describe("materials guided flow", () => {
     expect(await screen.findByText("Guardado: Pincel plano")).toBeVisible();
     expect(
       screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
-    ).toEqual(["Qué hay", "Para pedir", "Para entregar"]);
+    ).toEqual(["Para entregar", "Para pedir", "En el estudio", "Catálogo"]);
     expect(
-      within(screen.getByRole("list", { name: "Materiales" })).getByText(
-        "Hay 3",
-      ),
+      within(
+        screen.getByRole("list", { name: "Materiales en el estudio" }),
+      ).getByText("Hay 3"),
     ).toBeVisible();
     expect(
       screen.getByText("Herramientas").closest("details"),

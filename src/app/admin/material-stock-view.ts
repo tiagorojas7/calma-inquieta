@@ -1,20 +1,18 @@
 import type { MaterialStockRow } from "~/modules/materials";
 
-/** The stock filter of "Qué hay": everything, with units, or without. */
-export type StockFilter = "todos" | "hay" | "sin";
-
 const SEARCH_MAX = 80;
-
-export function parseStockFilter(value: string | null): StockFilter {
-  return value === "hay" || value === "sin" ? value : "todos";
-}
+/** Catalog results shown at once, so a broad word never floods the page. */
+const CATALOG_RESULTS = 12;
 
 export function parseSearchText(value: string | null): string {
   return (value ?? "").trim().slice(0, SEARCH_MAX);
 }
 
-/** The element id of a material card: what a post comes back to. */
+/** The element id of a studio card: what a post comes back to. */
 export const materialAnchor = (id: string): string => `material-${id}`;
+
+/** The element id of a catalog result, apart from the same material's studio card. */
+export const catalogAnchor = (id: string): string => `catalogo-${id}`;
 
 export type StockState = "hay" | "sin";
 
@@ -55,24 +53,12 @@ function priceOf(row: MaterialStockRow): string {
 const plain = (text: string): string =>
   text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("es");
 
-/**
- * The cards of "Qué hay": the rows that pass the stock filter and the search
- * (name, category or supplier), each with its state in words.
- */
-export function stockCards(
+/** The cards of "En el estudio": only the materials the studio keeps, each with its state in words. */
+export function studioCards(
   rows: readonly MaterialStockRow[],
-  { filter, query }: { filter: StockFilter; query: string },
 ): StockCardView[] {
-  const needle = plain(query.trim());
   return rows
-    .filter((row) => filter === "todos" || stateOf(row.onHand) === filter)
-    .filter(
-      (row) =>
-        needle === "" ||
-        plain(`${row.name} ${row.category} ${row.supplierName}`).includes(
-          needle,
-        ),
-    )
+    .filter((row) => row.keptInStudio)
     .map((row) => {
       const [only] = row.variants;
       const single = row.variants.length === 1 && only !== undefined;
@@ -94,4 +80,38 @@ export function stockCards(
             })),
       };
     });
+}
+
+/** One simple row of the catalog search. */
+export interface CatalogRowView {
+  readonly id: string;
+  readonly anchor: string;
+  readonly name: string;
+  /** "Lo tenemos en el estudio". */
+  readonly kept: boolean;
+}
+
+/**
+ * The catalog behind a search: nothing until the owner types, then the
+ * materials whose name, category or supplier match (a few at once, with how
+ * many matched in all).
+ */
+export function catalogSearch(
+  rows: readonly MaterialStockRow[],
+  query: string,
+): { rows: CatalogRowView[]; found: number } {
+  const needle = plain(query.trim());
+  if (needle === "") return { rows: [], found: 0 };
+  const matching = rows.filter((row) =>
+    plain(`${row.name} ${row.category} ${row.supplierName}`).includes(needle),
+  );
+  return {
+    rows: matching.slice(0, CATALOG_RESULTS).map((row) => ({
+      id: row.id,
+      anchor: catalogAnchor(row.id),
+      name: row.name,
+      kept: row.keptInStudio,
+    })),
+    found: matching.length,
+  };
 }

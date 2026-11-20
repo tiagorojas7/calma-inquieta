@@ -8,7 +8,7 @@ const ID_B = "22222222-2222-4222-8222-222222222222";
 const ID_C = "33333333-3333-4333-8333-333333333333";
 
 const base: MaterialsScreenProps = {
-  cards: [
+  studio: [
     {
       id: ID_A,
       anchor: `material-${ID_A}`,
@@ -42,7 +42,7 @@ const base: MaterialsScreenProps = {
       ],
     },
   ],
-  filter: "todos",
+  catalog: { rows: [], found: 0, total: 99 },
   query: "",
   estado: "activos",
   period: "2026-11",
@@ -104,8 +104,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Materiales screen: Qué hay", () => {
-  it("shows the three sections in order under one title", () => {
+const catalogRows = [
+  { id: ID_A, anchor: `catalogo-${ID_A}`, name: "Bastidor", kept: true },
+  {
+    id: ID_B,
+    anchor: `catalogo-${ID_B}`,
+    name: "Arcilla blanca",
+    kept: false,
+  },
+];
+
+describe("Materiales screen: the order of the sections", () => {
+  it("shows Para entregar, Para pedir, En el estudio and Catálogo, in that order, under one title", () => {
     view();
     expect(
       screen.getByRole("heading", { level: 1, name: "Materiales" }),
@@ -114,14 +124,37 @@ describe("Materiales screen: Qué hay", () => {
       screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent),
-    ).toEqual(["Qué hay", "Para pedir", "Para entregar"]);
+    ).toEqual(["Para entregar", "Para pedir", "En el estudio", "Catálogo"]);
   });
 
-  it("says Hay N or Sin stock in words on every material card", () => {
+  it("puts a count beside each section heading", () => {
+    view();
+    const countOf = (name: string) =>
+      screen
+        .getByRole("heading", { level: 2, name })
+        .parentElement?.querySelector("[data-count]")?.textContent;
+    expect(countOf("Para entregar")).toBe("2");
+    expect(countOf("Para pedir")).toBe("1");
+    expect(countOf("En el estudio")).toBe("3");
+    expect(countOf("Catálogo")).toBe("99");
+  });
+
+  it("has no Todos, Hay or Sin stock filter any more", () => {
+    view();
+    expect(
+      screen.queryByRole("navigation", { name: "Mostrar" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sin stock" })).toBeNull();
+  });
+});
+
+describe("Materiales screen: En el estudio", () => {
+  it("says Hay N or Se acabó in words on every material card", () => {
     view();
     expect(within(cardOf("Bastidor")).getByText("Hay 4")).toBeVisible();
-    expect(within(cardOf("Pincel plano")).getByText("Sin stock")).toBeVisible();
+    expect(within(cardOf("Pincel plano")).getByText("Se acabó")).toBeVisible();
     expect(within(cardOf("Bastidor")).getByText("$ 2.500")).toBeVisible();
+    expect(screen.queryByText("Sin stock")).toBeNull();
   });
 
   it("gives each variant its own line with its own state and its own Llegaron", () => {
@@ -132,9 +165,7 @@ describe("Materiales screen: Qué hay", () => {
     expect(lines).toHaveLength(2);
     expect(within(lines[0] as HTMLElement).getByText("Rojo")).toBeVisible();
     expect(within(lines[0] as HTMLElement).getByText("Hay 2")).toBeVisible();
-    expect(
-      within(lines[1] as HTMLElement).getByText("Sin stock"),
-    ).toBeVisible();
+    expect(within(lines[1] as HTMLElement).getByText("Se acabó")).toBeVisible();
     for (const line of lines)
       expect(
         within(line).getByRole("button", { name: "Llegaron" }),
@@ -172,31 +203,6 @@ describe("Materiales screen: Qué hay", () => {
     ).toHaveAttribute("href", `/admin/materiales/${ID_A}`);
   });
 
-  it("puts a big search on top and the three filters under it", () => {
-    view({ filter: "hay", query: "pin" });
-    const search = screen.getByRole("search", { name: "Buscar" });
-    expect(search).toHaveAttribute("method", "get");
-    const box = screen.getByLabelText("Buscar material");
-    expect(box).toHaveValue("pin");
-    expect(search.querySelector('[name="stock"]')).toHaveValue("hay");
-    const filters = within(screen.getByRole("navigation", { name: "Mostrar" }));
-    expect(
-      filters.getAllByRole("link").map((link) => link.textContent),
-    ).toEqual(["Todos", "Hay", "Sin stock"]);
-    expect(filters.getByRole("link", { name: "Hay" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(filters.getByRole("link", { name: "Sin stock" })).toHaveAttribute(
-      "href",
-      "/admin/materiales?stock=sin&q=pin&mes=2026-11#que-hay",
-    );
-    expect(filters.getByRole("link", { name: "Todos" })).toHaveAttribute(
-      "href",
-      "/admin/materiales?q=pin&mes=2026-11#que-hay",
-    );
-  });
-
   it("highlights the material that was just saved", () => {
     view({ highlightId: ID_B });
     expect(cardOf("Pincel plano")).toHaveAttribute("data-highlight");
@@ -220,15 +226,117 @@ describe("Materiales screen: Qué hay", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says when nothing matches and when there are no materials", () => {
-    const { unmount } = view({ cards: [], query: "zzz" });
+  it("says so in a few words when the studio keeps nothing yet", () => {
+    view({ studio: [] });
+    expect(
+      screen.getByText("Todavía no hay materiales en el estudio."),
+    ).toBeVisible();
+  });
+});
+
+describe("Materiales screen: Catálogo", () => {
+  it("is a search and nothing else until the owner searches", () => {
+    view();
+    const section = screen.getByRole("region", { name: "Catálogo" });
+    const search = within(section).getByRole("search", { name: "Buscar" });
+    expect(search).toHaveAttribute("method", "get");
+    expect(within(section).getByLabelText("Buscar material")).toHaveValue("");
+    expect(within(section).queryByRole("list")).toBeNull();
+    expect(
+      within(section).getByText("Buscá un material por su nombre."),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole("link", { name: "Nuevo material" }),
+    ).toHaveAttribute("href", "/admin/materiales/nuevo");
+  });
+
+  it("lists simple rows with Editar and the yes or no after a search", () => {
+    view({
+      query: "a",
+      catalog: { rows: catalogRows, found: 2, total: 99 },
+    });
+    const section = screen.getByRole("region", { name: "Catálogo" });
+    const rows = within(
+      within(section).getByRole("list", { name: "Resultados" }),
+    ).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(
+      within(rows[0] as HTMLElement).getByText("En el estudio"),
+    ).toBeVisible();
+    expect(within(rows[1] as HTMLElement).getByText("Se pide")).toBeVisible();
+    expect(
+      within(rows[1] as HTMLElement).getByRole("link", {
+        name: "Editar Arcilla blanca",
+      }),
+    ).toHaveAttribute("href", `/admin/materiales/${ID_B}`);
+  });
+
+  it("marks a material as kept with one native post that comes back to its row", () => {
+    view({
+      query: "a",
+      catalog: { rows: catalogRows, found: 2, total: 99 },
+    });
+    const button = screen.getByRole("button", {
+      name: "Lo tenemos en el estudio: Arcilla blanca",
+    });
+    expect(button).toHaveTextContent("Lo tenemos en el estudio");
+    const form = button.closest("form") as HTMLFormElement;
+    expect(form).toHaveAttribute("method", "post");
+    expect(form.querySelector('[name="intent"]')).toHaveValue("set-kept");
+    expect(form.querySelector('[name="materialId"]')).toHaveValue(ID_B);
+    expect(form.querySelector('[name="kept"]')).toHaveValue("1");
+    expect(form.querySelector('[name="returnTo"]')).toHaveValue(
+      "/admin/materiales?mes=2026-11",
+    );
+    expect(form.querySelector('[name="anchor"]')).toHaveValue(
+      `catalogo-${ID_B}`,
+    );
+  });
+
+  it("unmarks a kept material the same way", () => {
+    view({
+      query: "a",
+      catalog: { rows: catalogRows, found: 2, total: 99 },
+    });
+    const button = screen.getByRole("button", {
+      name: "Ya no lo tenemos: Bastidor",
+    });
+    const form = button.closest("form") as HTMLFormElement;
+    expect(form.querySelector('[name="kept"]')).toHaveValue("0");
+    expect(form.querySelector('[name="intent"]')).toHaveValue("set-kept");
+  });
+
+  it("says when nothing matches, and how many matched when only some are shown", () => {
+    const { unmount } = view({
+      query: "zzz",
+      catalog: { rows: [], found: 0, total: 99 },
+    });
     expect(screen.getByText("No encontramos nada.")).toBeVisible();
     unmount();
-    view({ cards: [] });
-    expect(screen.getByText("Todavía no hay materiales.")).toBeVisible();
+    view({
+      query: "a",
+      catalog: { rows: catalogRows, found: 30, total: 99 },
+    });
     expect(
-      screen.getByRole("link", { name: "Nuevo material" }),
-    ).toHaveAttribute("href", "/admin/materiales/nuevo");
+      screen.getByText("Mostrando 2 de 30. Escribí más para afinar."),
+    ).toBeVisible();
+  });
+
+  it("says there are no materials when the catalog is empty", () => {
+    view({ studio: [], catalog: { rows: [], found: 0, total: 0 } });
+    expect(screen.getByText("Todavía no hay materiales.")).toBeVisible();
+  });
+
+  it("highlights a result that was just marked", () => {
+    view({
+      highlightId: ID_B,
+      query: "a",
+      catalog: { rows: catalogRows, found: 2, total: 99 },
+    });
+    const marked = screen
+      .getAllByRole("listitem")
+      .filter((item) => item.hasAttribute("data-highlight"));
+    expect(marked.map((row) => row.id)).toEqual([`catalogo-${ID_B}`]);
   });
 });
 

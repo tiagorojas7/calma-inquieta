@@ -10,12 +10,11 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const loaded = {
   period: "2026-11",
   periodLabel: "noviembre 2026",
-  counts: { pedir: 0, entregar: 0 },
   pendingOrders: 0,
   suppliers: [],
   toDeliver: [],
   delivered: [],
-  cards: [
+  studio: [
     {
       id: ID,
       anchor: `material-${ID}`,
@@ -27,7 +26,7 @@ const loaded = {
       variants: [],
     },
   ],
-  filter: "todos",
+  catalog: { rows: [], found: 0, total: 1 },
   query: "",
   estado: "activos",
   returnTo: `${LIST}?mes=2026-11`,
@@ -48,9 +47,9 @@ describe("materials admin screen", () => {
       await screen.findByRole("link", { name: "Editar Pincel plano" }),
     ).toHaveAttribute("href", `${LIST}/${ID}`);
     expect(
-      within(screen.getByRole("list", { name: "Materiales" })).getByText(
-        "Sin stock",
-      ),
+      within(
+        screen.getByRole("list", { name: "Materiales en el estudio" }),
+      ).getByText("Se acabó"),
     ).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Nuevo material" }),
@@ -65,7 +64,11 @@ describe("materials admin screen", () => {
   });
 
   it("shows the empty state with a way to create the first material", async () => {
-    const Stub = stub({ ...loaded, cards: [] });
+    const Stub = stub({
+      ...loaded,
+      studio: [],
+      catalog: { rows: [], found: 0, total: 0 },
+    });
     render(<Stub initialEntries={[LIST]} />);
     expect(await screen.findByText("Todavía no hay materiales.")).toBeVisible();
     expect(screen.getByRole("link", { name: "Nuevo material" })).toBeVisible();

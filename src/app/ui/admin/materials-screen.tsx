@@ -9,21 +9,25 @@ import {
   type DeliveryCardView,
   type OrderSupplierView,
 } from "./materials-orders";
-import {
-  StockSection,
-  type StockCard,
-  type StockFilterKey,
-} from "./materials-stock";
+import { CatalogSection, type CatalogRow } from "./materials-catalog";
+import { StudioSection, type StockCard } from "./materials-stock";
 import { SavedBanner } from "./saved-banner";
 
 const copy = adminCopy.materiales;
 const BASE = "/admin/materiales";
 
 export interface MaterialsScreenProps {
-  readonly cards: readonly StockCard[];
-  readonly filter: StockFilterKey;
+  /** "En el estudio": the materials the studio keeps. */
+  readonly studio: readonly StockCard[];
+  /** "Catálogo": the search results, how many matched and how many there are. */
+  readonly catalog: {
+    readonly rows: readonly CatalogRow[];
+    readonly found: number;
+    readonly total: number;
+  };
+  /** What the owner searched in the catalog. */
   readonly query: string;
-  /** `activos` or `inactivos`: which materials "Qué hay" lists. */
+  /** `activos` or `inactivos`: which materials the screen lists. */
   readonly estado: string;
   readonly period: string;
   readonly periodLabel: string;
@@ -86,22 +90,15 @@ function Tools({ period, estado }: { period: string; estado: string }) {
   );
 }
 
-/** One Materiales screen: what there is, what to order, what to hand over. */
+/**
+ * One Materiales screen, in this order: what to hand over, what to order, what
+ * is in the studio, and the catalog behind a search.
+ */
 export function MaterialsScreen(props: MaterialsScreenProps) {
   return (
     <div className="flex flex-col gap-8">
       <AdminPageHeader title={copy.title} />
       <SavedBanner message={props.saved} />
-      <StockSection
-        cards={props.cards}
-        filter={props.filter}
-        query={props.query}
-        period={props.period}
-        estado={props.estado}
-        returnTo={props.returnTo}
-        highlightId={props.highlightId}
-        error={props.arrivedError}
-      />
       <div className="flex flex-col gap-3">
         <p className="text-lg font-semibold text-ink-900">
           {copy.month.showing(props.periodLabel)}
@@ -114,11 +111,11 @@ export function MaterialsScreen(props: MaterialsScreenProps) {
             action={BASE}
             className="flex flex-wrap items-end gap-3"
           >
-            {props.filter === "todos" ? null : (
-              <input type="hidden" name="stock" value={props.filter} />
-            )}
             {props.query === "" ? null : (
               <input type="hidden" name="q" value={props.query} />
+            )}
+            {props.estado === "activos" ? null : (
+              <input type="hidden" name="estado" value={props.estado} />
             )}
             <TextField
               label={copy.month.label}
@@ -133,17 +130,33 @@ export function MaterialsScreen(props: MaterialsScreenProps) {
         </MoreOptions>
       </div>
       <FormError message={props.formError} />
+      <DeliverSection
+        toDeliver={props.toDeliver}
+        delivered={props.delivered}
+        period={props.period}
+        returnTo={props.returnTo}
+      />
       <OrderSection
         suppliers={props.suppliers}
         pendingOrders={props.pendingOrders}
         period={props.period}
         returnTo={props.returnTo}
       />
-      <DeliverSection
-        toDeliver={props.toDeliver}
-        delivered={props.delivered}
-        period={props.period}
+      <StudioSection
+        cards={props.studio}
         returnTo={props.returnTo}
+        highlightId={props.highlightId}
+        error={props.arrivedError}
+      />
+      <CatalogSection
+        rows={props.catalog.rows}
+        found={props.catalog.found}
+        total={props.catalog.total}
+        query={props.query}
+        period={props.period}
+        estado={props.estado}
+        returnTo={props.returnTo}
+        highlightId={props.highlightId}
       />
       <Tools period={props.period} estado={props.estado} />
     </div>

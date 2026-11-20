@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { MaterialStockRow } from "~/modules/materials";
 import {
+  catalogAnchor,
+  catalogSearch,
   materialAnchor,
   parseSearchText,
-  parseStockFilter,
-  stockCards,
+  studioCards,
 } from "./material-stock-view";
 
 const row = (overrides: Partial<MaterialStockRow> = {}): MaterialStockRow => ({
@@ -14,6 +15,7 @@ const row = (overrides: Partial<MaterialStockRow> = {}): MaterialStockRow => ({
   supplierName: "Casa Pincel",
   active: true,
   available: true,
+  keptInStudio: true,
   onHand: 3,
   variants: [
     { id: "v1", label: "Única", price: 1500, available: true, onHand: 3 },
@@ -21,15 +23,7 @@ const row = (overrides: Partial<MaterialStockRow> = {}): MaterialStockRow => ({
   ...overrides,
 });
 
-describe("stock filter and search parsing", () => {
-  it("defaults to todos and accepts only the three keys", () => {
-    expect(parseStockFilter(null)).toBe("todos");
-    expect(parseStockFilter("nope")).toBe("todos");
-    expect(parseStockFilter("hay")).toBe("hay");
-    expect(parseStockFilter("sin")).toBe("sin");
-    expect(parseStockFilter("todos")).toBe("todos");
-  });
-
+describe("search parsing", () => {
   it("trims and bounds the search text", () => {
     expect(parseSearchText(null)).toBe("");
     expect(parseSearchText("  arcilla ")).toBe("arcilla");
@@ -40,12 +34,19 @@ describe("stock filter and search parsing", () => {
     expect(materialAnchor("11111111-1111-4111-8111-111111111111")).toMatch(
       /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
     );
+    expect(catalogAnchor("11111111-1111-4111-8111-111111111111")).toMatch(
+      /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
+    );
+  });
+
+  it("gives the studio card and the catalog row of one material different ids", () => {
+    expect(catalogAnchor("a")).not.toBe(materialAnchor("a"));
   });
 });
 
-describe("stock cards", () => {
+describe("studio cards", () => {
   it("says Hay N with its price for a one-variant material", () => {
-    const [card] = stockCards([row()], { filter: "todos", query: "" });
+    const [card] = studioCards([row()]);
     expect(card).toMatchObject({
       name: "Arcilla",
       price: "$ 1.500",
@@ -57,51 +58,45 @@ describe("stock cards", () => {
   });
 
   it("says Sin stock for zero units", () => {
-    const [card] = stockCards(
-      [
-        row({
-          onHand: 0,
-          variants: [
-            {
-              id: "v1",
-              label: "Única",
-              price: 1500,
-              available: true,
-              onHand: 0,
-            },
-          ],
-        }),
-      ],
-      { filter: "todos", query: "" },
-    );
+    const [card] = studioCards([
+      row({
+        onHand: 0,
+        variants: [
+          {
+            id: "v1",
+            label: "Única",
+            price: 1500,
+            available: true,
+            onHand: 0,
+          },
+        ],
+      }),
+    ]);
     expect(card).toMatchObject({ state: "sin", onHand: 0 });
   });
 
   it("lists the variants one line each, with their own state, and the lowest price", () => {
-    const [card] = stockCards(
-      [
-        row({
-          onHand: 2,
-          variants: [
-            {
-              id: "v1",
-              label: "Rojo",
-              price: 1800,
-              available: true,
-              onHand: 2,
-            },
-            {
-              id: "v2",
-              label: "Azul",
-              price: 1500,
-              available: true,
-              onHand: 0,
-            },
-          ],
-        }),
-      ],
-      { filter: "todos", query: "" },
-    );
+    const [card] = studioCards([
+      row({
+        onHand: 2,
+        variants: [
+          {
+            id: "v1",
+            label: "Rojo",
+            price: 1800,
+            available: true,
+            onHand: 2,
+          },
+          {
+            id: "v2",
+            label: "Azul",
+            price: 1500,
+            available: true,
+            onHand: 0,
+          },
+        ],
+      }),
+    ]);
     expect(card?.price).toBe("Desde $ 1.500");
     expect(card?.variantId).toBeUndefined();
     expect(card?.variants).toEqual([
@@ -111,63 +106,81 @@ describe("stock cards", () => {
   });
 
   it("shows a price on request in words", () => {
-    const [card] = stockCards(
-      [
-        row({
-          variants: [
-            {
-              id: "v1",
-              label: "Única",
-              price: null,
-              available: true,
-              onHand: 1,
-            },
-          ],
-        }),
-      ],
-      { filter: "todos", query: "" },
-    );
+    const [card] = studioCards([
+      row({
+        variants: [
+          {
+            id: "v1",
+            label: "Única",
+            price: null,
+            available: true,
+            onHand: 1,
+          },
+        ],
+      }),
+    ]);
     expect(card?.price).toBe("Precio a consultar");
   });
 
-  it("keeps only materials with units for Hay and only those without for Sin stock", () => {
+  it("lists only the materials the studio keeps, in order, whatever their units", () => {
     const rows = [
       row({ id: "a", name: "Con" }),
       row({
         id: "b",
-        name: "Sin",
+        name: "Se acabó",
         onHand: 0,
         variants: [
           { id: "v2", label: "Única", price: 1, available: true, onHand: 0 },
         ],
       }),
+      row({ id: "c", name: "Se pide", keptInStudio: false }),
     ];
-    expect(
-      stockCards(rows, { filter: "hay", query: "" }).map((c) => c.name),
-    ).toEqual(["Con"]);
-    expect(
-      stockCards(rows, { filter: "sin", query: "" }).map((c) => c.name),
-    ).toEqual(["Sin"]);
-    expect(
-      stockCards(rows, { filter: "todos", query: "" }).map((c) => c.name),
-    ).toEqual(["Con", "Sin"]);
+    expect(studioCards(rows).map((c) => [c.name, c.state])).toEqual([
+      ["Con", "hay"],
+      ["Se acabó", "sin"],
+    ]);
+  });
+});
+
+describe("catalog search", () => {
+  const rows = [
+    row({ id: "a", name: "Pincel plano", category: "Pinceles" }),
+    row({
+      id: "b",
+      name: "Arcilla",
+      category: "Barro",
+      supplierName: "Álamo",
+      keptInStudio: false,
+    }),
+  ];
+  const find = (query: string) =>
+    catalogSearch(rows, query).rows.map((c) => c.name);
+
+  it("lists nothing until the owner searches, whatever the catalog holds", () => {
+    expect(catalogSearch(rows, "")).toEqual({ rows: [], found: 0 });
+    expect(catalogSearch(rows, "   ")).toEqual({ rows: [], found: 0 });
   });
 
   it("searches name, category and supplier without caring for case or accents", () => {
-    const rows = [
-      row({ id: "a", name: "Pincel plano", category: "Pinceles" }),
-      row({
-        id: "b",
-        name: "Arcilla",
-        category: "Barro",
-        supplierName: "Álamo",
-      }),
-    ];
-    const find = (query: string) =>
-      stockCards(rows, { filter: "todos", query }).map((c) => c.name);
     expect(find("PINCEL")).toEqual(["Pincel plano"]);
     expect(find("alamo")).toEqual(["Arcilla"]);
     expect(find("barro")).toEqual(["Arcilla"]);
     expect(find("zzz")).toEqual([]);
+  });
+
+  it("gives each result its own anchor and whether the studio keeps it", () => {
+    expect(catalogSearch(rows, "a").rows).toEqual([
+      { id: "a", anchor: catalogAnchor("a"), name: "Pincel plano", kept: true },
+      { id: "b", anchor: catalogAnchor("b"), name: "Arcilla", kept: false },
+    ]);
+  });
+
+  it("shows a bounded number of results and says how many matched", () => {
+    const many = Array.from({ length: 30 }, (_, index) =>
+      row({ id: `m${String(index)}`, name: `Hilo ${String(index)}` }),
+    );
+    const result = catalogSearch(many, "hilo");
+    expect(result.rows).toHaveLength(12);
+    expect(result.found).toBe(30);
   });
 });

@@ -25,12 +25,18 @@ import { action, loader } from "./materials";
 
 const actor = testAdminActor();
 
-const draft = (name: string, category: string, price = "1000") => ({
+const draft = (
+  name: string,
+  category: string,
+  price = "1000",
+  keptInStudio = false,
+) => ({
   name,
   description: "Para pintar",
   category,
   supplierId: MATERIAL_SUPPLIER_ID,
   available: true,
+  keptInStudio,
   image: null,
   variants: [{ label: "Única", price, available: true, swatch: "" }],
 });
@@ -47,11 +53,16 @@ async function seeded() {
   const { service, stock } = fixture;
   const bastidor = await service.create(
     actor,
-    draft("Bastidor", "Bastidores", "2500"),
+    draft("Bastidor", "Bastidores", "2500", true),
   );
-  const pincel = await service.create(actor, draft("Pincel plano", "Pinceles"));
+  const pincel = await service.create(
+    actor,
+    draft("Pincel plano", "Pinceles", "1000", true),
+  );
   const retired = await service.create(actor, draft("Esponja", "Pinceles"));
-  if (!bastidor.ok || !pincel.ok || !retired.ok) throw new Error("seed failed");
+  const cinta = await service.create(actor, draft("Cinta", "Papelería"));
+  if (!bastidor.ok || !pincel.ok || !retired.ok || !cinta.ok)
+    throw new Error("seed failed");
   await service.deactivate(actor, retired.value.id);
   const variantOf = (material: typeof bastidor.value) => {
     const [variant] = material.variants;
@@ -64,6 +75,7 @@ async function seeded() {
     bastidor: bastidor.value,
     pincel: pincel.value,
     retired: retired.value,
+    cinta: cinta.value,
     variantOf,
   };
 }
@@ -126,62 +138,71 @@ function submit(
   } as never);
 }
 
-describe("materials screen loader: Qué hay", () => {
-  it("lists the active materials by name with Hay N or Sin stock in words", async () => {
+describe("materials screen loader: En el estudio and Catálogo", () => {
+  it("lists in the studio only the kept materials by name, with Hay N or Se acabó", async () => {
     const env = await seeded();
     const result = await load(env, "?mes=2026-11");
-    expect(result.cards.map((card) => card.name)).toEqual([
+    expect(result.studio.map((card) => card.name)).toEqual([
       "Bastidor",
       "Pincel plano",
     ]);
-    expect(result.cards[0]).toMatchObject({
+    expect(result.studio[0]).toMatchObject({
       price: "$ 2.500",
       state: "hay",
       onHand: 4,
       anchor: `material-${env.bastidor.id}`,
     });
-    expect(result.cards[1]).toMatchObject({ state: "sin", onHand: 0 });
-    expect(result.filter).toBe("todos");
+    expect(result.studio[1]).toMatchObject({ state: "sin", onHand: 0 });
     expect(result.estado).toBe("activos");
   });
 
-  it("filters by stock with ?stock=hay and ?stock=sin, and ignores an unknown value", async () => {
+  it("shows nothing of the catalog until the owner searches, and counts every active material", async () => {
     const env = await seeded();
-    expect(
-      (await load(env, "?stock=hay")).cards.map((card) => card.name),
-    ).toEqual(["Bastidor"]);
-    expect(
-      (await load(env, "?stock=sin")).cards.map((card) => card.name),
-    ).toEqual(["Pincel plano"]);
-    const unknown = await load(env, "?stock=otro");
-    expect(unknown.filter).toBe("todos");
-    expect(unknown.cards).toHaveLength(2);
+    const result = await load(env, "?mes=2026-11");
+    expect(result.catalog).toEqual({ rows: [], found: 0, total: 3 });
+    expect(result.query).toBe("");
   });
 
-  it("searches by text and keeps the filter", async () => {
+  it("searches the whole catalog, kept or not, with the yes or no on each row", async () => {
     const env = await seeded();
-    const found = await load(env, "?q=plano");
-    expect(found.query).toBe("plano");
-    expect(found.cards.map((card) => card.name)).toEqual(["Pincel plano"]);
-    expect((await load(env, "?q=plano&stock=hay")).cards).toEqual([]);
+    const found = await load(env, "?q=cinta");
+    expect(found.query).toBe("cinta");
+    expect(found.catalog.rows).toEqual([
+      {
+        id: env.cinta.id,
+        anchor: `catalogo-${env.cinta.id}`,
+        name: "Cinta",
+        kept: false,
+      },
+    ]);
+    const kept = await load(env, "?q=plano");
+    expect(kept.catalog.rows.map((row) => [row.name, row.kept])).toEqual([
+      ["Pincel plano", true],
+    ]);
   });
 
-  it("lists the archived materials on request", async () => {
+  it("ignores the old stock filter", async () => {
     const env = await seeded();
-    const result = await load(env, "?estado=inactivos");
+    const result = await load(env, "?stock=sin");
+    expect(result.studio).toHaveLength(2);
+    expect(result.returnTo).not.toContain("stock");
+  });
+
+  it("lists the archived materials on request, none of them in the studio", async () => {
+    const env = await seeded();
+    const result = await load(env, "?estado=inactivos&q=espon");
     expect(result.estado).toBe("inactivos");
-    expect(result.cards.map((card) => card.name)).toEqual(["Esponja"]);
+    expect(result.studio).toEqual([]);
+    expect(result.catalog.rows.map((row) => row.name)).toEqual(["Esponja"]);
   });
 
   it("carries only the view in the address the forms come back to", async () => {
     const env = await seeded();
     const result = await load(
       env,
-      "?q=pincel&stock=sin&mes=2026-10&ok=arrived&n=3&nuevo=x",
+      "?q=pincel&mes=2026-10&ok=arrived&n=3&nuevo=x",
     );
-    expect(result.returnTo).toBe(
-      "/admin/materiales?stock=sin&q=pincel&mes=2026-10",
-    );
+    expect(result.returnTo).toBe("/admin/materiales?q=pincel&mes=2026-10");
     expect((await load(env, "?mes=2026-11")).returnTo).toBe(
       "/admin/materiales?mes=2026-11",
     );
@@ -198,6 +219,16 @@ describe("materials screen loader: Qué hay", () => {
     const stranger = await load(env, "?ok=created&nuevo=nope");
     expect(stranger.saved).toBeNull();
     expect(stranger.highlightId).toBeUndefined();
+  });
+
+  it("says which material the studio now keeps, or no longer keeps, and highlights it", async () => {
+    const env = await seeded();
+    const kept = await load(env, `?ok=kept&nuevo=${env.cinta.id}&q=cinta`);
+    expect(kept.saved).toBe("Cinta, lo tenemos en el estudio");
+    expect(kept.highlightId).toBe(env.cinta.id);
+    const unkept = await load(env, `?ok=unkept&nuevo=${env.cinta.id}`);
+    expect(unkept.saved).toBe("Cinta, se pide al vender");
+    expect((await load(env, "?ok=kept&nuevo=nope")).saved).toBeNull();
   });
 
   it("says how many units arrived, only for a sensible count", async () => {
@@ -382,6 +413,73 @@ describe("materials screen action: Llegaron", () => {
       returnTo: "https://evil.example/x",
     })) as Response;
     expect(result.headers.get("Location")).toMatch(/^\/admin\/materiales\?/);
+  });
+});
+
+describe("materials screen action: Lo tenemos en el estudio", () => {
+  it("marks a material as kept and stays on its row, naming it", async () => {
+    const env = await seeded();
+    const result = (await submit(env, {
+      intent: "set-kept",
+      materialId: env.cinta.id,
+      kept: "1",
+      returnTo: "/admin/materiales?q=cinta&mes=2026-11",
+      anchor: `catalogo-${env.cinta.id}`,
+    })) as Response;
+    expect(result.status).toBe(302);
+    expect(result.headers.get("Location")).toBe(
+      `/admin/materiales?q=cinta&mes=2026-11&ok=kept&nuevo=${env.cinta.id}#catalogo-${env.cinta.id}`,
+    );
+    const stored = await env.fixture.repository.findById(env.cinta.id);
+    expect(stored).toMatchObject({
+      keptInStudio: true,
+      name: "Cinta",
+      active: true,
+    });
+    expect(stored?.audit.updatedBy).toBe("a@x.test");
+    expect(env.fixture.stock.adjustments).toEqual([]);
+  });
+
+  it("marks it as not kept the same way", async () => {
+    const env = await seeded();
+    const result = (await submit(env, {
+      intent: "set-kept",
+      materialId: env.bastidor.id,
+      kept: "0",
+      returnTo: "/admin/materiales?q=bast&mes=2026-11",
+      anchor: `catalogo-${env.bastidor.id}`,
+    })) as Response;
+    expect(result.headers.get("Location")).toBe(
+      `/admin/materiales?q=bast&mes=2026-11&ok=unkept&nuevo=${env.bastidor.id}#catalogo-${env.bastidor.id}`,
+    );
+    expect(
+      (await env.fixture.repository.findById(env.bastidor.id))?.keptInStudio,
+    ).toBe(false);
+  });
+
+  it("answers 404 for an unknown material, 403 to a non-admin, and changes nothing", async () => {
+    const env = await seeded();
+    expect(
+      await thrownStatus(() =>
+        submit(env, {
+          intent: "set-kept",
+          materialId: "99999999-9999-4999-8999-999999999999",
+          kept: "1",
+        }),
+      ),
+    ).toBe(404);
+    expect(
+      await thrownStatus(() =>
+        submit(
+          env,
+          { intent: "set-kept", materialId: env.cinta.id, kept: "1" },
+          { admin: false },
+        ),
+      ),
+    ).toBe(403);
+    expect(
+      (await env.fixture.repository.findById(env.cinta.id))?.keptInStudio,
+    ).toBe(false);
   });
 });
 

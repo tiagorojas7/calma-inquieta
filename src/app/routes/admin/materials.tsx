@@ -10,10 +10,11 @@ import { failureResponse } from "~/app/admin/failure-response";
 import { feedbackCode } from "~/app/admin/feedback-code";
 import { parseMaterialFilterKey } from "~/app/admin/material-list-query";
 import {
+  catalogAnchor,
+  catalogSearch,
   materialAnchor,
   parseSearchText,
-  parseStockFilter,
-  stockCards,
+  studioCards,
 } from "~/app/admin/material-stock-view";
 import { stayOnPage } from "~/app/admin/return-to";
 import { servicesContext } from "~/app/context";
@@ -23,7 +24,13 @@ import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/materials";
 
 const copy = adminCopy.materiales;
-const FEEDBACK = ["created", "arrived", ...CONSOLIDATION_FEEDBACK] as const;
+const FEEDBACK = [
+  "created",
+  "arrived",
+  "kept",
+  "unkept",
+  ...CONSOLIDATION_FEEDBACK,
+] as const;
 const MAX_NOTICE_COUNT = 100_000;
 const ID_MAX = 64;
 
@@ -42,7 +49,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const params = new URL(request.url).searchParams;
   const estado = parseMaterialFilterKey(params.get("estado"));
-  const filter = parseStockFilter(params.get("stock"));
   const query = parseSearchText(params.get("q"));
   const services = context.get(servicesContext);
   const [listed, consolidation] = await Promise.all([
@@ -58,25 +64,30 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const { notice, ...month } = consolidation;
   const created = params.get("nuevo");
   const highlighted =
-    code === "created"
+    code === "created" || code === "kept" || code === "unkept"
       ? listed.value.find((material) => material.id === created)
       : undefined;
   let saved: string | null = null;
-  if (highlighted) saved = copy.saved.created(highlighted.name);
+  if (highlighted && code === "kept") saved = copy.saved.kept(highlighted.name);
+  else if (highlighted && code === "unkept")
+    saved = copy.saved.unkept(highlighted.name);
+  else if (highlighted) saved = copy.saved.created(highlighted.name);
   else if (code === "arrived" && count !== null)
     saved = copy.saved.arrived(count);
   else if (notice) saved = copy.saved[notice.kind](notice.count);
 
   const view = new URLSearchParams();
-  if (filter !== "todos") view.set("stock", filter);
   if (query !== "") view.set("q", query);
   view.set("mes", month.period);
   if (estado !== "activos") view.set("estado", estado);
 
   return {
     ...month,
-    cards: stockCards(listed.value, { filter, query }),
-    filter,
+    studio: studioCards(listed.value),
+    catalog: {
+      ...catalogSearch(listed.value, query),
+      total: listed.value.length,
+    },
     query,
     estado,
     returnTo: `${MATERIALS_PATH}?${view.toString()}`,
@@ -135,12 +146,37 @@ async function arrived({ request, context }: Route.ActionArgs, form: FormData) {
   return redirect(withCount(to, Number(units)));
 }
 
+/** `to` with the material the owner just marked, so the page can name it. */
+function withMaterial(to: string, id: string): string {
+  const [base = "", anchor] = to.split("#");
+  const joined = `${base}${base.includes("?") ? "&" : "?"}nuevo=${encodeURIComponent(id)}`;
+  return anchor === undefined ? joined : `${joined}#${anchor}`;
+}
+
+/** "Lo tenemos en el estudio": the yes or no of one material, from the catalog search. */
+async function setKept({ request, context }: Route.ActionArgs, form: FormData) {
+  const actor = requireAdmin(request, context);
+  const materialId = text(form, "materialId").slice(0, ID_MAX);
+  const kept = text(form, "kept") === "1";
+  const changed = await context
+    .get(servicesContext)
+    .materials.setKeptInStudio(actor, materialId, kept);
+  if (!changed.ok) throw failureResponse(changed.error);
+  if (!form.get("anchor")) form.set("anchor", catalogAnchor(materialId));
+  const to = stayOnPage(form, {
+    fallback: MATERIALS_PATH,
+    code: kept ? "kept" : "unkept",
+  });
+  return redirect(withMaterial(to, materialId));
+}
+
 export async function action(args: Route.ActionArgs) {
   const form = await args.request
     .clone()
     .formData()
     .catch(() => null);
   if (form?.get("intent") === "arrived") return arrived(args, form);
+  if (form?.get("intent") === "set-kept") return setKept(args, form);
   return consolidationAction(args);
 }
 

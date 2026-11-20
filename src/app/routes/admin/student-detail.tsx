@@ -18,8 +18,12 @@ import {
   parseMaterialLines,
 } from "~/app/admin/enrollment-new-form-data";
 import { feedbackCode } from "~/app/admin/feedback-code";
+import { formatPhone, telHref } from "~/app/admin/phone-format";
 import { stayOnPage } from "~/app/admin/return-to";
+import { whatsappHref } from "~/app/admin/whatsapp-href";
 import { recordCard, saleCard } from "~/app/admin/student-file";
+import { amountOwed } from "~/app/admin/student-debt";
+import { formatPesos } from "~/modules/enrollments";
 import { adminCopy } from "~/app/ui/admin/copy";
 import { StudentDetail } from "~/app/ui/admin/student-detail";
 import { normalizeStudentEmail } from "~/modules/students";
@@ -60,12 +64,17 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const email = emailParam(params.email);
   const services = context.get(servicesContext);
-  const [found, summary] = await Promise.all([
+  const [found, summary, seatPayments] = await Promise.all([
     services.students.detail(actor, email),
     services.attendance.studentSummary(actor, email),
+    services.intensiveRequests.owedPayments(actor, email),
   ]);
   if (!found.ok) throw enrollmentFailureResponse(found.error);
+  // Never "Al día" on a guess: without the workshop payments the file fails.
+  if (!seatPayments.ok) throw enrollmentFailureResponse(seatPayments.error);
   const student = found.value;
+  const seatDebts = seatPayments.value;
+  const owed = amountOwed(student.orders, seatDebts);
   const detailOf = async (id: string) => {
     const result = await services.enrollments.detail(actor, id);
     if (!result.ok) throw enrollmentFailureResponse(result.error);
@@ -90,6 +99,15 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     name: student.fullName,
     email: student.email,
     phone: student.phoneDigits,
+    phoneShown: formatPhone(student.phoneDigits),
+    phoneLink: telHref(student.phoneDigits) ?? null,
+    whatsappLink: whatsappHref(student.phoneDigits) ?? null,
+    // Everything she owes in one line: the fee, the sales and the workshops.
+    owes: owed.isZero() ? null : formatPesos(owed),
+    seatDebts: seatDebts.map((debt) => ({
+      label: copy.file.seatDebt[debt.kind](debt.workshopName ?? ""),
+      amount: formatPesos(debt.amount),
+    })),
     active: student.active,
     path: filePath(student.email),
     today: new Date(Date.now() - CORDOBA_OFFSET_MS).toISOString().slice(0, 10),

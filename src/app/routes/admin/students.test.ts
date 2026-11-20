@@ -11,7 +11,17 @@ import {
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { studentsFixture } from "~/testing/admin/student-kit";
 import { studentOrder } from "~/testing/fakes/student-builders";
+import { createInMemoryIntensiveRequests } from "~/testing/fakes/intensive-request-builders";
+import { buildStoredRequest } from "~/testing/contracts/intensive-request-repository.contract";
+import { Money } from "~/modules/_shared";
 import { loader } from "./students";
+
+const pesos = (value: number) => {
+  const money = Money.fromCentavos(value * 100);
+  if (!money.ok) throw new Error("fixture money");
+  return money.value;
+};
+const SEAT = { price: pesos(40000), deposit: pesos(15000) } as const;
 
 const WORKSHOP = "00000000-0000-4000-8000-000000000002";
 
@@ -44,6 +54,7 @@ async function load(
     context: adminContext(
       {
         students: service,
+        intensiveRequests: createInMemoryIntensiveRequests().service,
         monthlyWorkshops: withOverrides(
           createUnavailableService<MonthlyWorkshopsService>(),
           {
@@ -104,7 +115,10 @@ describe("admin students list route", () => {
     const result = await loader({
       request: getRequest("/admin/alumnas"),
       params: {},
-      context: adminContext({ students: service }),
+      context: adminContext({
+        students: service,
+        intensiveRequests: createInMemoryIntensiveRequests().service,
+      }),
     } as never);
 
     expect(result.rows[0]).toMatchObject({ owes: null });
@@ -129,13 +143,106 @@ describe("admin students list route", () => {
     const result = await loader({
       request: getRequest("/admin/alumnas"),
       params: {},
-      context: adminContext({ students: service }),
+      context: adminContext({
+        students: service,
+        intensiveRequests: createInMemoryIntensiveRequests().service,
+      }),
     } as never);
 
     expect(result.rows[0]).toMatchObject({
       current: "Cerámica inicial · octubre 2026",
       owes: "$ 58.000",
     });
+  });
+
+  it("counts a workshop deposit or balance a student still owes, even when every monthly fee is paid", async () => {
+    const { orders, activity, service } = studentsFixture();
+    orders.orders.push(
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        status: "paid",
+      }),
+      studentOrder(2, {
+        studentEmail: "bea@example.com",
+        studentName: "Bea",
+        status: "paid",
+      }),
+      studentOrder(3, {
+        studentEmail: "cora@example.com",
+        studentName: "Cora",
+        status: "paid",
+      }),
+    );
+    activity.enrolled("ana@example.com", "bea@example.com", "cora@example.com");
+    const seats = createInMemoryIntensiveRequests();
+    // Ana: a confirmed seat whose balance is still due. Bea: a pending deposit.
+    // Cora: a confirmed seat whose balance was paid.
+    seats.repository.requests.set(
+      "r1",
+      buildStoredRequest({
+        ...SEAT,
+        id: "r1",
+        status: "confirmed",
+        email: "ana@example.com",
+        paidAmount: SEAT.deposit,
+      }),
+    );
+    seats.repository.requests.set(
+      "r2",
+      buildStoredRequest({ ...SEAT, id: "r2", email: "bea@example.com" }),
+    );
+    seats.repository.requests.set(
+      "r3",
+      buildStoredRequest({
+        ...SEAT,
+        id: "r3",
+        status: "confirmed",
+        email: "cora@example.com",
+        balance: {
+          amount: pesos(25000),
+          paidOn: "2026-10-25",
+          note: null,
+          by: "duena@example.com",
+          at: new Date("2026-10-25T15:00:00.000Z"),
+        },
+      }),
+    );
+
+    const result = await loader({
+      request: getRequest("/admin/alumnas"),
+      params: {},
+      context: adminContext({
+        students: service,
+        intensiveRequests: seats.service,
+      }),
+    } as never);
+
+    expect(
+      Object.fromEntries(result.rows.map((row) => [row.email, row.owes])),
+    ).toEqual({
+      "ana@example.com": "$ 25.000",
+      "bea@example.com": "$ 15.000",
+      "cora@example.com": null,
+    });
+  });
+
+  it("fails closed instead of showing Al día when the workshop payments cannot be read", async () => {
+    const { orders, activity, service } = studentsFixture();
+    orders.orders.push(
+      studentOrder(1, { studentEmail: "ana@example.com", status: "paid" }),
+    );
+    activity.enrolled("ana@example.com");
+
+    expect(
+      await thrownStatus(() =>
+        loader({
+          request: getRequest("/admin/alumnas"),
+          params: {},
+          context: adminContext({ students: service }),
+        } as never),
+      ),
+    ).toBe(503);
   });
 
   it("shows each row's state and hides the inactive students by default", async () => {

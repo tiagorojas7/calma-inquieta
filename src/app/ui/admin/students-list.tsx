@@ -62,7 +62,7 @@ export function StudentsList({
     filter.taller || filter.estado || filter.mostrar !== "activas",
   );
   return (
-    <section className="flex max-w-3xl flex-col gap-5">
+    <section className="flex flex-col gap-5">
       <AdminPageHeader title={copy.title} />
       <div>
         <AdminButtonLink href="/admin/inscripciones/nueva">
@@ -74,7 +74,7 @@ export function StudentsList({
         method="get"
         action="/admin/alumnas"
         aria-label={copy.searchLabel}
-        className="flex flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
+        className="flex max-w-3xl flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
       >
         <TextField
           label={copy.searchLabel}
@@ -125,7 +125,10 @@ export function StudentsList({
           {copy.empty}
         </p>
       ) : (
-        <ul aria-label={copy.title} className="flex flex-col gap-3">
+        <ul
+          aria-label={copy.title}
+          className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3"
+        >
           {rows.map((row) => (
             <li
               key={row.email}

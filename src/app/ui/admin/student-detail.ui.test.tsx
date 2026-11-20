@@ -75,6 +75,11 @@ const props: StudentDetailProps = {
     name: "Ana Pérez",
     email: "ana@example.com",
     phone: "5493515550000",
+    phoneShown: "351 555-0000",
+    phoneLink: "tel:+5493515550000",
+    whatsappLink: "https://wa.me/5493515550000?text=",
+    owes: "$ 66.000",
+    seatDebts: [],
     active: true,
     records: [owed, paid, cancelled],
     attendance: "Vino 2 · Faltó 1 · Recuperos pendientes 0",
@@ -112,6 +117,84 @@ describe("StudentDetail", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("opens with one line of what she owes, sales and workshops included, or Al día", () => {
+    const { rerender } = render(<StudentDetail {...props} />);
+
+    const line = screen.getByRole("group", { name: "Lo que debe" });
+    expect(within(line).getByText("Debe $ 66.000")).toBeInTheDocument();
+    expect(within(line).queryByText("Al día")).toBeNull();
+
+    rerender(
+      <StudentDetail {...props} student={{ ...props.student, owes: null }} />,
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Lo que debe" })).getByText(
+        "Al día",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names a workshop deposit or balance she owes, which has no card in the file", () => {
+    render(
+      <StudentDetail
+        {...props}
+        student={{
+          ...props.student,
+          seatDebts: [
+            { label: "Saldo de Intensivo de cerámica", amount: "$ 25.000" },
+          ],
+        }}
+      />,
+    );
+
+    const line = within(screen.getByRole("group", { name: "Lo que debe" }));
+    expect(
+      line.getByText("Saldo de Intensivo de cerámica"),
+    ).toBeInTheDocument();
+    expect(line.getByText("$ 25.000")).toBeInTheDocument();
+  });
+
+  it("shows her phone as people say it, to call or to write on WhatsApp", () => {
+    render(<StudentDetail {...props} />);
+
+    expect(screen.getByRole("link", { name: "351 555-0000" })).toHaveAttribute(
+      "href",
+      "tel:+5493515550000",
+    );
+    expect(screen.getByRole("link", { name: "WhatsApp" })).toHaveAttribute(
+      "href",
+      "https://wa.me/5493515550000?text=",
+    );
+    expect(screen.queryByText("5493515550000")).toBeNull();
+  });
+
+  it("shows a phone it cannot format as it is, without a link it cannot dial", () => {
+    render(
+      <StudentDetail
+        {...props}
+        student={{
+          ...props.student,
+          phone: "12345",
+          phoneShown: "12345",
+          phoneLink: null,
+          whatsappLink: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("12345")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "WhatsApp" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "12345" })).toBeNull();
+  });
+
+  it("uses the width of a desktop screen: the records sit side by side", () => {
+    render(<StudentDetail {...props} />);
+
+    const grid = card("Acuarela").parentElement;
+    expect(grid?.className).toMatch(/xl:grid-cols-2/);
+    expect(grid?.closest("section.max-w-3xl")).toBeNull();
+  });
+
   it("says what was just saved at the top", () => {
     render(<StudentDetail {...props} saved="cobro de Ana Pérez" />);
 
@@ -128,7 +211,11 @@ describe("StudentDetail", () => {
       first.getByText("noviembre 2026 · Martes 18:00 · $ 58.000"),
     ).toBeInTheDocument();
     expect(first.getAllByText("Debe $ 58.000").length).toBeGreaterThan(0);
-    expect(within(card("Cerámica")).getByText("Pagado")).toBeInTheDocument();
+    // A paid fee says so as a fee: the sales under it may still be owed.
+    expect(
+      within(card("Cerámica")).getByText("Cuota pagada"),
+    ).toBeInTheDocument();
+    expect(within(card("Cerámica")).queryByText("Pagado")).toBeNull();
     expect(within(card("Dibujo")).getByText("Cancelada")).toBeInTheDocument();
   });
 

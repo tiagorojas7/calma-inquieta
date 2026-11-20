@@ -67,6 +67,15 @@ export interface StudentDetailProps {
     readonly name: string;
     readonly email: string;
     readonly phone: string;
+    /** The phone as people say it ("351 678-5675"), or the raw digits when it cannot be. */
+    readonly phoneShown: string;
+    /** The `tel:` link; null when there is nothing to dial. */
+    readonly phoneLink: string | null;
+    readonly whatsappLink: string | null;
+    /** Everything she owes as text, a sale and a workshop payment included; null when nothing. */
+    readonly owes: string | null;
+    /** The workshop deposits and balances behind that, which have no card in the file. */
+    readonly seatDebts: readonly { label: string; amount: string }[];
     readonly active: boolean;
     readonly records: readonly StudentRecordCard[];
     /** A few words about her attendance; null when it could not be read. */
@@ -87,8 +96,9 @@ export interface StudentDetailProps {
 
 const summaryButton = `${adminButtonClasses.secondary} cursor-pointer list-none [&::-webkit-details-marker]:hidden`;
 
-function stateLabel(card: StudentPayableCard): string {
-  if (card.state === "paid") return copy.paid;
+/** A paid monthly record reads as a paid fee: the sales under it may still be owed. */
+function stateLabel(card: StudentPayableCard, isRecord = false): string {
+  if (card.state === "paid") return isRecord ? copy.feePaid : copy.paid;
   if (card.state === "cancelled") return copy.cancelled;
   return copy.owes(card.total);
 }
@@ -352,7 +362,7 @@ function RecordBlock({
         </div>
         <StatusChip
           status={stateStatus[record.state]}
-          label={stateLabel(record)}
+          label={stateLabel(record, true)}
         />
       </div>
       <Materials card={record} />
@@ -424,19 +434,66 @@ export function StudentDetail({
 }: StudentDetailProps) {
   const noteMine = form?.intent === "note";
   return (
-    <section className="flex max-w-3xl flex-col gap-6">
+    <section className="flex flex-col gap-6">
       <AdminPageHeader
         title={student.name}
         back={{ href: "/admin/alumnas", label: copy.back }}
       />
       <SavedBanner message={saved} />
 
-      <div className="flex flex-col gap-3 rounded-md bg-surface p-5 shadow-card">
-        <p className="text-lg text-ink-900">{student.phone}</p>
-        <p className="text-lg text-ink-700">{student.email}</p>
-        <p className="font-semibold text-ink-900">
-          {student.active ? copy.active : copy.inactive}
-        </p>
+      <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {student.phoneLink === null ? (
+              <p className="text-lg text-ink-900">{student.phoneShown}</p>
+            ) : (
+              <a
+                href={student.phoneLink}
+                className="text-lg font-semibold text-ink-900 underline underline-offset-4"
+              >
+                {student.phoneShown}
+              </a>
+            )}
+            {student.whatsappLink === null ? null : (
+              <a
+                href={student.whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-variant="secondary"
+                className={adminButtonClasses.secondary}
+              >
+                {copy.whatsapp}
+              </a>
+            )}
+          </div>
+          <p className="text-lg text-ink-700">{student.email}</p>
+          <p className="font-semibold text-ink-900">
+            {student.active ? copy.active : copy.inactive}
+          </p>
+        </div>
+        <div
+          role="group"
+          aria-label={copy.debtLabel}
+          className="flex flex-col gap-2 lg:items-end"
+        >
+          {student.owes === null ? (
+            <StatusChip status="paid" label={copy.upToDate} />
+          ) : (
+            <StatusChip
+              status="pending_confirmation"
+              label={copy.owes(student.owes)}
+            />
+          )}
+          {student.seatDebts.map((debt) => (
+            <p
+              key={debt.label}
+              className="flex flex-wrap gap-x-2 text-lg text-ink-700"
+            >
+              <span>{debt.label}</span>
+              <span className="font-semibold text-ink-900">{debt.amount}</span>
+            </p>
+          ))}
+        </div>
         <MoreOptions label={copy.edit}>
           <form method="post" className="flex flex-col gap-3">
             <input
@@ -462,16 +519,18 @@ export function StudentDetail({
         {student.records.length === 0 ? (
           <p className="text-lg text-ink-700">{copy.noRecords}</p>
         ) : (
-          student.records.map((record) => (
-            <RecordBlock
-              key={record.id}
-              record={record}
-              path={path}
-              today={today}
-              materials={materials}
-              form={form}
-            />
-          ))
+          <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+            {student.records.map((record) => (
+              <RecordBlock
+                key={record.id}
+                record={record}
+                path={path}
+                today={today}
+                materials={materials}
+                form={form}
+              />
+            ))}
+          </div>
         )}
       </Section>
 

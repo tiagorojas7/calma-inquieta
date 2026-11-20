@@ -5,7 +5,7 @@ import { parseStudentFilter } from "~/app/admin/student-filter";
 import { parseActivityFilter } from "~/app/students/activity-filter";
 import { monthLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
 import { StudentsList } from "~/app/ui/admin/students-list";
-import { Money } from "~/modules/_shared";
+import { amountOwed, seatDebtsByEmail } from "~/app/admin/student-debt";
 import { formatPesos, ORDER_STATUSES } from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/students";
@@ -20,18 +20,24 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
   const { query, values } = parseStudentFilter(params);
   const { activity, param } = parseActivityFilter(params);
-  const [listed, workshops] = await Promise.all([
+  const [listed, workshops, seatPayments] = await Promise.all([
     services.students.list(actor, { ...query, activity }),
     services.monthlyWorkshops.list(actor, { status: "live" }),
+    services.intensiveRequests.owedPayments(actor),
   ]);
   if (!listed.ok) throw enrollmentFailureResponse(listed.error);
+  // Never "Al día" on a guess: without the workshop payments the list fails.
+  if (!seatPayments.ok) throw enrollmentFailureResponse(seatPayments.error);
+  const seatDebts = seatDebtsByEmail(seatPayments.value);
   return {
     filter: { ...values, mostrar: param },
     rows: listed.value.items.map((student) => {
-      // What she owes: every pending payment, a material sale included.
-      const owed = student.orders
-        .filter((order) => order.status === "pending_confirmation")
-        .reduce((sum, order) => sum.add(order.total), Money.zero());
+      // What she owes: the pending fee, the material sales and the workshop
+      // deposit or balance.
+      const owed = amountOwed(
+        student.orders,
+        seatDebts.get(student.email) ?? [],
+      );
       // Her newest monthly record that was not cancelled: a sale is not one.
       const [latest] = student.activities;
       return {

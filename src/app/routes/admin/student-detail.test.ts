@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { err, Money, ok } from "~/modules/_shared";
+import { servicesContext } from "~/app/context";
 import {
   createUnavailableAdminEnrollmentService,
   type AdminEnrollmentDetail,
@@ -22,6 +23,8 @@ import {
 } from "~/testing/admin/attendance-kit";
 import { studentsFixture } from "~/testing/admin/student-kit";
 import { studentOrder } from "~/testing/fakes/student-builders";
+import { createInMemoryIntensiveRequests } from "~/testing/fakes/intensive-request-builders";
+import { buildStoredRequest } from "~/testing/contracts/intensive-request-repository.contract";
 import { action, loader } from "./student-detail";
 
 const pesos = (value: number) => {
@@ -91,6 +94,7 @@ const saleVariants = [
     materialName: "Arcilla",
     variantLabel: "1 kg",
     unitPrice: pesos(4000),
+    keptInStudio: true,
   },
 ];
 
@@ -100,7 +104,10 @@ type Calls = {
   cancel: ReturnType<typeof vi.fn>;
 };
 
-function setup(orders = [PAID, CANCELLED]) {
+function setup(
+  orders = [PAID, CANCELLED],
+  seats = createInMemoryIntensiveRequests(),
+) {
   const fixture = studentsFixture();
   fixture.orders.orders.push(...orders);
   fixture.activity.enrolled("ana@example.com");
@@ -153,6 +160,7 @@ function setup(orders = [PAID, CANCELLED]) {
     Promise.resolve(new Map(ids.map((id) => [id, 3] as const)));
   const context = adminContext({
     students: fixture.service,
+    intensiveRequests: seats.service,
     enrollments,
     materials: withOverrides(createUnavailableService<MaterialsService>(), {
       listSaleVariants: () => Promise.resolve(ok(saleVariants)),
@@ -704,6 +712,7 @@ describe("admin student detail attendance summary", () => {
     });
     const context = adminContext({
       students: base.service,
+      intensiveRequests: createInMemoryIntensiveRequests().service,
       attendance: attendance.service,
       enrollments: withOverrides(createUnavailableAdminEnrollmentService(), {
         detail: () => Promise.resolve(ok(detailOf(studentOrder(1)))),
@@ -717,6 +726,69 @@ describe("admin student detail attendance summary", () => {
     const result = await loader(loadArgs(context, "ana@example.com"));
 
     expect(result.attendance).toBe("Vino 2 · Faltó 1 · Recuperos pendientes 1");
+  });
+
+  // The owner's report: "las alumnas cuando se vende un nuevo material,
+  // sigue apareciendo como al adia, cuando en realidad esta debiendo".
+  it("says in one line that she owes a pending sale although her fee is paid, and Al día when she owes nothing", async () => {
+    const owing = setup([PAID, SALE]);
+    const settled = setup([PAID]);
+
+    const debt = await loader(loadArgs(owing.context, "ana@example.com"));
+    const clear = await loader(loadArgs(settled.context, "ana@example.com"));
+
+    expect(debt.owes).toBe("$ 58.000");
+    expect(debt.seatDebts).toEqual([]);
+    expect(clear.owes).toBeNull();
+  });
+
+  it("adds a workshop balance or deposit to what she owes and names it", async () => {
+    const seats = createInMemoryIntensiveRequests();
+    seats.repository.requests.set(
+      "r1",
+      buildStoredRequest({
+        id: "r1",
+        status: "confirmed",
+        email: "ana@example.com",
+        price: pesos(40000),
+        deposit: pesos(15000),
+        paidAmount: pesos(15000),
+      }),
+    );
+    const { context } = setup([PAID, OWED], seats);
+
+    const result = await loader(loadArgs(context, "ana@example.com"));
+
+    expect(result.owes).toBe("$ 83.000");
+    expect(result.seatDebts).toEqual([
+      { label: "Saldo de Intensivo de cerámica", amount: "$ 25.000" },
+    ]);
+  });
+
+  it("fails closed instead of showing Al día when the workshop payments cannot be read", async () => {
+    const { context } = setup();
+    const services = context.get(servicesContext);
+    const broken = adminContext({
+      students: services.students,
+      enrollments: services.enrollments,
+    });
+
+    expect(
+      await thrownStatus(() => loader(loadArgs(broken, "ana@example.com"))),
+    ).toBe(503);
+  });
+
+  it("shows her phone the way people say it, with links to call and to write", async () => {
+    const { context } = setup([PAID]);
+
+    const result = await loader(loadArgs(context, "ana@example.com"));
+
+    expect(result).toMatchObject({
+      phone: "5493515550001",
+      phoneShown: "351 555-0001",
+      phoneLink: "tel:+5493515550001",
+      whatsappLink: "https://wa.me/5493515550001?text=",
+    });
   });
 
   it("leaves the summary out when attendance is unavailable", async () => {

@@ -62,6 +62,14 @@ describe("StudentsList", () => {
     expect(bea.getByText("Al día")).toBeInTheDocument();
   });
 
+  it("uses the width of a desktop screen: the cards sit in a responsive grid", () => {
+    render(<StudentsList {...props} />);
+
+    const list = screen.getByRole("list", { name: "Alumnas" });
+    expect(list.className).toMatch(/lg:grid-cols-2/);
+    expect(list.closest("section")?.className).not.toMatch(/max-w-3xl/);
+  });
+
   it("marks an inactive student in words", () => {
     render(
       <StudentsList

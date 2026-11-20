@@ -230,7 +230,10 @@ const saveFields: [string, string][] = [
 describe("admin material detail loader", () => {
   it("hydrates the detail, active supplier choices with its archived supplier, variants, image and Córdoba audit", async () => {
     const get = vi.fn(() =>
-      Promise.resolve({ ok: true as const, value: material }),
+      Promise.resolve({
+        ok: true as const,
+        value: { ...material, keptInStudio: true },
+      }),
     );
     const list = vi.fn(() =>
       Promise.resolve({
@@ -256,6 +259,7 @@ describe("admin material detail loader", () => {
       id: ID,
       name: "Pincel plano",
       available: false,
+      keptInStudio: true,
       active: true,
       image: { src: "/imagenes/pincel.webp", alt: "Un pincel" },
       suppliers: [
@@ -440,6 +444,17 @@ describe("admin material detail action", () => {
     expect(update.mock.calls[0]?.[2]).toMatchObject({
       variants: [{ id: "v1", price: "2500", cost: "800" }],
     });
+  });
+
+  it("saves the studio box: checked keeps it, unchecked clears it", async () => {
+    const update = vi.fn<MaterialsService["update"]>();
+    update.mockResolvedValue({ ok: true as const, value: material } as never);
+
+    await save([...saveFields, ["keptInStudio", "on"]], { update });
+    expect(update.mock.calls[0]?.[2]).toMatchObject({ keptInStudio: true });
+
+    await save(saveFields, { update });
+    expect(update.mock.calls[1]?.[2]).toMatchObject({ keptInStudio: false });
   });
 
   it("keeps a new first variant unidentifed while retaining the reordered existing variant id", async () => {

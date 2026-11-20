@@ -55,6 +55,7 @@ function rejectedValues(form: FormData): MaterialQuickValues {
     cost: first?.cost ?? "",
     priceOnRequest: first?.priceOnRequest === true,
     available: draft.available,
+    keptInStudio: draft.keptInStudio === true,
     image: draft.image ? { ...draft.image, src: text(form, "imageSrc") } : null,
     extras: others.map((variant) => ({
       label: variant.label,
@@ -117,12 +118,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData();
+  const draft = draftOf(form);
+  // A material the studio does not keep holds no units: it is ordered when sold.
   const created = await context
     .get(servicesContext)
     .materials.createWithStock(
       actor,
-      draftOf(form),
-      text(form, "startingStock"),
+      draft,
+      draft.keptInStudio === true ? text(form, "startingStock") : "",
     );
   if (created.ok) {
     const id = created.value.material.id;

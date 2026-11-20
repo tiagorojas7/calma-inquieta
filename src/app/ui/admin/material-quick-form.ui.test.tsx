@@ -35,14 +35,29 @@ function view(
 const more = () => screen.getByText("Más opciones").closest("details");
 
 describe("MaterialQuickForm", () => {
-  it("asks only for name, price and how many, with one Guardar", () => {
+  it("asks for name, price and a clear yes or no, with one Guardar", () => {
     const { container } = view();
     expect(screen.getByLabelText("Nombre")).toBeVisible();
     expect(screen.getByLabelText("Precio")).toBeVisible();
-    expect(screen.getByLabelText("¿Cuántos hay?")).toBeVisible();
+    expect(screen.getByLabelText("Lo tenemos en el estudio")).toBeVisible();
+    expect(screen.getByLabelText("Lo tenemos en el estudio")).not.toBeChecked();
     expect(screen.getAllByRole("button", { name: "Guardar" })).toHaveLength(1);
     expect(container.querySelector("form")).toHaveAttribute("method", "post");
     expect(more()).not.toHaveAttribute("open");
+  });
+
+  it("asks how many there are only once the studio box is checked, and posts it with the box", () => {
+    const { container } = view();
+    expect(screen.queryByLabelText("¿Cuántos hay?")).toBeNull();
+    expect(container.querySelector('[name="startingStock"]')).toBeNull();
+    fireEvent.click(screen.getByLabelText("Lo tenemos en el estudio"));
+    expect(screen.getByLabelText("¿Cuántos hay?")).toBeVisible();
+    expect(screen.getByLabelText("Lo tenemos en el estudio")).toHaveAttribute(
+      "name",
+      "keptInStudio",
+    );
+    fireEvent.click(screen.getByLabelText("Lo tenemos en el estudio"));
+    expect(screen.queryByLabelText("¿Cuántos hay?")).toBeNull();
   });
 
   it("keeps supplier, cost, variants, photo, price on request and availability behind Más opciones", () => {
@@ -59,6 +74,7 @@ describe("MaterialQuickForm", () => {
     expect(
       inside.getByRole("button", { name: "Agregar variante" }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Lo tenemos en el estudio"));
     const visibleTop = screen
       .getAllByRole("textbox")
       .filter((field) => !(more() as HTMLElement).contains(field));
@@ -78,6 +94,7 @@ describe("MaterialQuickForm", () => {
       "name",
       "variantPrice",
     );
+    fireEvent.click(screen.getByLabelText("Lo tenemos en el estudio"));
     expect(screen.getByLabelText("¿Cuántos hay?")).toHaveAttribute(
       "name",
       "startingStock",
@@ -100,6 +117,7 @@ describe("MaterialQuickForm", () => {
 
   it("stays closed when only a visible field failed, and shows its message", () => {
     view({
+      values: { keptInStudio: true },
       errors: {
         name: "Completá este campo.",
         stock: "Escribí un número entero, por ejemplo 5.",
@@ -114,7 +132,12 @@ describe("MaterialQuickForm", () => {
 
   it("keeps what was typed after a refusal and shows the form error", () => {
     view({
-      values: { name: "Pintura", price: "1200", stock: "x" },
+      values: {
+        name: "Pintura",
+        price: "1200",
+        stock: "x",
+        keptInStudio: true,
+      },
       formError: "No pudimos guardar. Revisá los campos.",
     });
     expect(screen.getByLabelText("Nombre")).toHaveValue("Pintura");

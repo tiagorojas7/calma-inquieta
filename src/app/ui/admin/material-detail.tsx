@@ -82,6 +82,7 @@ export function MaterialDetail({
     category: string;
     supplierId: string;
     available: boolean;
+    keptInStudio?: boolean | undefined;
     image: { assetId: string; alt: string; src?: string } | null;
     variants: readonly {
       id?: string;

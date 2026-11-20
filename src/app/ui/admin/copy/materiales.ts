@@ -1,6 +1,7 @@
 /**
- * Materiales: one screen with three plain sections (what there is, what to
- * order, what to hand over) and a short new-material form. Short words.
+ * Materiales: one screen with four plain sections in this order (what to hand
+ * over, what to order, what is in the studio, the catalog behind a search)
+ * and a short new-material form. Short words.
  */
 export const materialesCopy = {
   nav: { label: "Materiales" },
@@ -21,29 +22,45 @@ export const materialesCopy = {
       count === 1
         ? "1 material de workshop pedido"
         : `${String(count)} materiales de workshop pedidos`,
+    kept: (name: string) => `${name}, lo tenemos en el estudio`,
+    unkept: (name: string) => `${name}, se pide al vender`,
   },
   stock: {
-    title: "Qué hay",
+    title: "En el estudio",
     newAction: "Nuevo material",
-    search: "Buscar material",
-    searchAction: "Buscar",
-    filtersLabel: "Mostrar",
-    filters: { todos: "Todos", hay: "Hay", sin: "Sin stock" },
     state: {
       hay: (count: number) => `Hay ${String(count)}`,
-      sin: "Sin stock",
+      sin: "Se acabó",
     },
-    listLabel: "Materiales",
+    listLabel: "Materiales en el estudio",
     variantsLabel: (name: string) => `Variantes de ${name}`,
     arrived: "Llegaron",
     arrivedField: (name: string) => `Cuántas llegaron de ${name}`,
     arrivedPlaceholder: "Cantidad",
     edit: "Editar",
     editOf: (name: string) => `Editar ${name}`,
-    empty: "Todavía no hay materiales.",
-    emptyFound: "No encontramos nada.",
+    empty: "Todavía no hay materiales en el estudio.",
     noUnits: "Poné una cantidad mayor a cero.",
     unitsTooMany: "Esa cantidad es demasiado grande.",
+  },
+  catalog: {
+    title: "Catálogo",
+    search: "Buscar material",
+    searchAction: "Buscar",
+    hint: "Buscá un material por su nombre.",
+    listLabel: "Resultados",
+    empty: "Todavía no hay materiales.",
+    emptyFound: "No encontramos nada.",
+    more: (shown: number, found: number) =>
+      `Mostrando ${String(shown)} de ${String(found)}. Escribí más para afinar.`,
+    kept: "En el estudio",
+    ordered: "Se pide",
+    keep: "Lo tenemos en el estudio",
+    keepOf: (name: string) => `Lo tenemos en el estudio: ${name}`,
+    unkeep: "Ya no lo tenemos",
+    unkeepOf: (name: string) => `Ya no lo tenemos: ${name}`,
+    edit: "Editar",
+    editOf: (name: string) => `Editar ${name}`,
   },
   order: {
     title: "Para pedir",
@@ -94,6 +111,7 @@ export const materialesCopy = {
     name: "Nombre",
     price: "Precio",
     stock: "¿Cuántos hay?",
+    keptInStudio: "Lo tenemos en el estudio",
     save: "Guardar",
     cancel: "Cancelar",
     saveFailed: "No pudimos guardar. Revisá los campos.",

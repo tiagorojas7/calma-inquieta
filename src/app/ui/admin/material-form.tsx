@@ -11,6 +11,7 @@ import {
 } from "./form-fields";
 import { DEFAULT_SWATCH } from "./material-swatch";
 import { materialCatalogCopy } from "./material-catalog-copy";
+import { adminCopy } from "./copy";
 import { adminMicrocopy } from "./microcopy";
 import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
@@ -31,6 +32,8 @@ export interface MaterialFormValues {
   readonly category: string;
   readonly supplierId: string;
   readonly available: boolean;
+  /** "Lo tenemos en el estudio"; absent reads as no. */
+  readonly keptInStudio?: boolean | undefined;
   readonly image: {
     readonly assetId: string;
     readonly src: string;
@@ -168,6 +171,11 @@ export function MaterialForm({
             error={errors.supplierId}
           />
         </AdminFieldPair>
+        <CheckboxField
+          label={adminCopy.materiales.form.keptInStudio}
+          name="keptInStudio"
+          defaultChecked={values.keptInStudio === true}
+        />
         <CheckboxField
           label={copy.available}
           name="available"

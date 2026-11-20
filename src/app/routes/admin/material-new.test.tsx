@@ -19,6 +19,7 @@ const SHORT = {
   name: "  Pintura acrílica ",
   variantLabel: "Única",
   variantPrice: "12500",
+  keptInStudio: "on",
   startingStock: "6",
   supplierId: MATERIAL_SUPPLIER_ID,
   variantSwatch: "",
@@ -108,6 +109,34 @@ describe("admin material create route: the short flow", () => {
     expect(fixture.stock.adjustments).toMatchObject([
       { variantId, delta: 6, reason: "Stock inicial", by: "a@x.test" },
     ]);
+  });
+
+  it("marks the material as kept in the studio when the box is checked", async () => {
+    const { fixture, services } = await setup();
+    await submit(services, SHORT);
+    expect([...fixture.repository.materials.values()][0]).toMatchObject({
+      keptInStudio: true,
+    });
+  });
+
+  it("creates a material that is ordered on demand, holding no units, when the box is not checked", async () => {
+    const { fixture, services } = await setup();
+    const unchecked = Object.fromEntries(
+      Object.entries(SHORT).filter(([key]) => key !== "keptInStudio"),
+    );
+    const response = (await submit(services, unchecked)) as Response;
+    expect(response.status).toBe(302);
+    const [created] = [...fixture.repository.materials.values()];
+    expect(created?.keptInStudio).toBe(false);
+    expect(fixture.stock.adjustments).toEqual([]);
+  });
+
+  it("keeps the box checked when a refusal sends the form back", async () => {
+    const { services } = await setup();
+    const result = await submit(services, { ...SHORT, name: "   " });
+    expect(result).toMatchObject({
+      data: { values: { keptInStudio: true } },
+    });
   });
 
   it("fills the description with the name and the category with General when the short form leaves them out", async () => {
@@ -292,6 +321,7 @@ describe("admin material create route: the short flow", () => {
       ["name", "Acrílico"],
       ["variantLabel", "Única"],
       ["variantPrice", "1500"],
+      ["keptInStudio", "on"],
       ["startingStock", "2"],
       ["supplierId", MATERIAL_SUPPLIER_ID],
       ["variantCost", ""],

@@ -128,6 +128,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
     category: text(form, "category"),
     supplierId: text(form, "supplierId"),
     available: form.has("available"),
+    keptInStudio: form.has("keptInStudio"),
     image: imageAssetId
       ? { assetId: imageAssetId, alt: text(form, "imageAlt") }
       : null,

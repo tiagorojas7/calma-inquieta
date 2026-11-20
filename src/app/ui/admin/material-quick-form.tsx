@@ -25,6 +25,8 @@ export interface MaterialQuickValues {
   readonly name: string;
   readonly price: string;
   readonly stock: string;
+  /** "Lo tenemos en el estudio": only then does the form ask how many there are. */
+  readonly keptInStudio: boolean;
   readonly supplierId: string;
   readonly category: string;
   readonly description: string;
@@ -61,6 +63,7 @@ export const EMPTY_QUICK_VALUES: MaterialQuickValues = {
   name: "",
   price: "",
   stock: "",
+  keptInStudio: false,
   supplierId: "",
   category: "",
   description: "",
@@ -110,6 +113,7 @@ export function MaterialQuickForm({
     values.extras.map((extra, key) => ({ ...extra, key })),
   );
   const [nextKey, setNextKey] = useState(values.extras.length);
+  const [kept, setKept] = useState(values.keptInStudio);
   const onlySupplier = suppliers.length === 1 ? suppliers[0] : undefined;
   const currentImage = values.image?.src ? values.image : undefined;
 
@@ -143,13 +147,23 @@ export function MaterialQuickForm({
         defaultValue={values.price}
         error={errors.price}
       />
-      <TextField
-        label={copy.stock}
-        name="startingStock"
-        inputMode="numeric"
-        defaultValue={values.stock}
-        error={errors.stock}
+      <CheckboxField
+        label={copy.keptInStudio}
+        name="keptInStudio"
+        checked={kept}
+        onChange={(event) => {
+          setKept(event.target.checked);
+        }}
       />
+      {kept ? (
+        <TextField
+          label={copy.stock}
+          name="startingStock"
+          inputMode="numeric"
+          defaultValue={values.stock}
+          error={errors.stock}
+        />
+      ) : null}
       <MoreOptions defaultOpen={hasHiddenError(errors)}>
         <SelectField
           label={copy.supplier}

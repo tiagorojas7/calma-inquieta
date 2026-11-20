@@ -59,6 +59,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     category: material.category,
     active: material.active,
     available: material.available,
+    keptInStudio: material.keptInStudio === true,
     supplierId: material.supplier.id,
     suppliers: suppliers.map((supplier) => ({
       id: supplier.id,

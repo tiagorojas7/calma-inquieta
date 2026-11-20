@@ -8,6 +8,7 @@ export type {
   IllegalTransition,
   IntensiveFull,
   IntensiveRequestRepository,
+  OwedPayment,
   RequestBalance,
   RequestFilter,
   RequestStockPort,
@@ -31,6 +32,7 @@ export {
   type OfferError,
   type PublicRequestView,
   type RequestSeatError,
+  type SeatDebt,
   type SeatOffer,
   type SeatProject,
 } from "./application/intensive-request-service";

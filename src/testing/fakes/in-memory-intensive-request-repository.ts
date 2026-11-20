@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "~/modules/_shared";
+import { err, ok, type Money, type Result } from "~/modules/_shared";
 import {
   checkRefund,
   type BalanceAlreadyPaid,
@@ -9,6 +9,7 @@ import {
   type IllegalTransition,
   type IntensiveFull,
   type IntensiveRequestRepository,
+  type OwedPayment,
   type InvalidRequestRefund,
   type RequestFilter,
   type StoredIntensiveRequest,
@@ -69,6 +70,42 @@ export class InMemoryIntensiveRequestRepository implements IntensiveRequestRepos
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
     return Promise.resolve(selected);
+  }
+
+  listOwed(email?: string): Promise<readonly OwedPayment[]> {
+    const owed: { payment: OwedPayment; createdAt: Date }[] = [];
+    for (const stored of this.requests.values()) {
+      if (email !== undefined && stored.email.trim().toLowerCase() !== email)
+        continue;
+      const base = {
+        requestId: stored.id,
+        intensiveId: stored.intensiveId,
+        email: stored.email.trim().toLowerCase(),
+      };
+      const payment = (kind: OwedPayment["kind"], amount: Money) =>
+        owed.push({
+          payment: { ...base, kind, amount },
+          createdAt: stored.createdAt,
+        });
+      if (stored.status === "pending_confirmation") {
+        // A request made before projects has no quote: its workshop prices it.
+        if (stored.deposit !== null && !stored.deposit.isZero())
+          payment("deposit", stored.deposit);
+      } else if (
+        stored.status === "confirmed" &&
+        stored.balance === null &&
+        stored.price !== null &&
+        stored.deposit !== null &&
+        stored.price.compare(stored.deposit) > 0
+      )
+        payment("balance", stored.price.subtract(stored.deposit));
+    }
+    owed.sort(
+      (a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        (a.payment.requestId < b.payment.requestId ? -1 : 1),
+    );
+    return Promise.resolve(owed.map(({ payment }) => payment));
   }
 
   confirmedSeats(intensiveId: string): Promise<number> {

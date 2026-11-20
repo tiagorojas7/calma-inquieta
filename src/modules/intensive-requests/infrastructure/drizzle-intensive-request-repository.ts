@@ -251,6 +251,49 @@ export function createDrizzleIntensiveRequestRepository(
         return rows.map(toStored);
       }),
 
+    listOwed: (email) =>
+      withSession(async (db) => {
+        // The same rule the panel bell uses: a pending request owes its deposit
+        // (the quoted one, or the workshop's for a request made before projects
+        // existed); a confirmed one owes the balance while its price is above
+        // its deposit and none is recorded. The workshop is joined as SQL: its
+        // table belongs to the workshops module.
+        const { rows } = await db.execute<{
+          id: string;
+          intensive_id: string;
+          email: string;
+          kind: "deposit" | "balance";
+          amount: string;
+        }>(sql`
+          SELECT request.id, request.intensive_id,
+                 lower(btrim(request.email)) AS email,
+                 CASE WHEN request.status = 'pending_confirmation'
+                      THEN 'deposit' ELSE 'balance' END AS kind,
+                 CASE WHEN request.status = 'pending_confirmation'
+                      THEN coalesce(request.deposit_centavos, workshop.deposit_centavos, 0)
+                      ELSE request.price_centavos - request.deposit_centavos END AS amount
+          FROM ${intensiveSeatRequest} AS request
+          LEFT JOIN intensive_workshop AS workshop
+            ON workshop.id = request.intensive_id
+          WHERE (request.status = 'pending_confirmation'
+             OR (request.status = 'confirmed'
+                 AND request.balance_centavos IS NULL
+                 AND request.price_centavos IS NOT NULL
+                 AND request.deposit_centavos IS NOT NULL
+                 AND request.price_centavos > request.deposit_centavos))
+            ${email === undefined ? sql`` : sql`AND lower(btrim(request.email)) = ${email}`}
+          ORDER BY request.created_at ASC, request.id ASC`);
+        return rows
+          .filter((row) => Number(row.amount) > 0)
+          .map((row) => ({
+            requestId: row.id,
+            intensiveId: row.intensive_id,
+            email: row.email,
+            kind: row.kind,
+            amount: toMoney(Number(row.amount)),
+          }));
+      }),
+
     confirmedSeats: (intensiveId) =>
       withSession(async (db) => {
         const [row] = await db

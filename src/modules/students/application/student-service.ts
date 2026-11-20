@@ -7,12 +7,16 @@ import {
   filterStudents,
   normalizeStudentEmail,
   validateNote,
+  type StudentProfile,
 } from "../domain/student-core";
 import type {
   StudentNoteRepository,
   StudentOrderSource,
 } from "./student-ports";
 import type { StudentsService } from "./students";
+
+/** How many students' own histories are read at once. */
+const HISTORY_BATCH = 8;
 
 type MaybeActor = AdminActor | null | undefined;
 
@@ -59,14 +63,31 @@ export function createStudentsService(
     async list(actor, query = {}) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
+      const inactive = await activity.inactiveEmails();
       const matched = filterStudents(
-        deriveStudents(await orders.all(), await activity.inactiveEmails()),
+        deriveStudents(await orders.all(), inactive),
         query,
       );
       const page = query.page !== undefined && query.page >= 1 ? query.page : 1;
       const start = (page - 1) * STUDENT_PAGE_SIZE;
+      // The registry listing never reads a material sale, so each listed
+      // student's own history adds hers: what she owes has to count them.
+      const listed: StudentProfile[] = [];
+      const shown = matched.slice(start, start + STUDENT_PAGE_SIZE);
+      for (let from = 0; from < shown.length; from += HISTORY_BATCH)
+        listed.push(
+          ...(await Promise.all(
+            shown.slice(from, from + HISTORY_BATCH).map(async (profile) => {
+              const own = deriveStudents(
+                await orders.byEmail(profile.email),
+                inactive,
+              )[0];
+              return own ?? profile;
+            }),
+          )),
+        );
       return ok({
-        items: matched.slice(start, start + STUDENT_PAGE_SIZE),
+        items: listed,
         page,
         pageSize: STUDENT_PAGE_SIZE,
         hasNext: matched.length > start + STUDENT_PAGE_SIZE,

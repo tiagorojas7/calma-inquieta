@@ -391,6 +391,82 @@ export function runIntensiveRequestRepositoryContract(
       });
     });
 
+    describe("what a person still owes", () => {
+      it("lists the deposit of a pending request and the balance of a confirmed one", async () => {
+        const repo = await create();
+        await repo.insert(buildStoredRequest(QUOTED));
+        await repo.insert(
+          buildStoredRequest({
+            ...QUOTED,
+            id: REQUEST_2,
+            publicId: SECOND.publicId,
+            email: SECOND.email,
+          }),
+        );
+        await repo.confirm(confirmInput(REQUEST_2));
+
+        const owed = await repo.listOwed();
+
+        expect(
+          owed.map((payment) => [
+            payment.requestId,
+            payment.email,
+            payment.intensiveId,
+            payment.kind,
+            payment.amount.toCentavos(),
+          ]),
+        ).toEqual([
+          [REQUEST_1, "ana@example.com", INTENSIVE_A, "deposit", 1_500_000],
+          [REQUEST_2, "bea@example.com", INTENSIVE_A, "balance", 2_500_000],
+        ]);
+      });
+
+      it("reads only the requested student's debt when an email is supplied", async () => {
+        const repo = await create();
+        await repo.insert(buildStoredRequest(QUOTED));
+        await repo.insert(
+          buildStoredRequest({
+            ...QUOTED,
+            id: REQUEST_2,
+            publicId: SECOND.publicId,
+            email: SECOND.email,
+          }),
+        );
+
+        expect(
+          (await repo.listOwed("ana@example.com")).map((item) => item.email),
+        ).toEqual(["ana@example.com"]);
+      });
+
+      it("owes nothing once the balance is paid, when the deposit was the whole price, or after a cancellation", async () => {
+        const repo = await create();
+        await repo.insert(buildStoredRequest(QUOTED));
+        await repo.confirm(confirmInput(REQUEST_1));
+        await repo.recordBalance(balanceInput(REQUEST_1));
+        await repo.insert(
+          buildStoredRequest({
+            id: REQUEST_2,
+            publicId: SECOND.publicId,
+            email: SECOND.email,
+            price: DEPOSIT,
+            deposit: DEPOSIT,
+          }),
+        );
+        await repo.confirm(confirmInput(REQUEST_2));
+        await repo.insert(
+          buildStoredRequest({
+            ...QUOTED,
+            id: REQUEST_3,
+            publicId: "third-public-id-00000",
+            email: "cora@example.com",
+          }),
+        );
+        await repo.cancel(cancelInput(REQUEST_3));
+
+        expect(await repo.listOwed()).toEqual([]);
+      });
+    });
+
     describe("cancelling with a refund", () => {
       async function confirmedQuoted(withBalance = false) {
         const repo = await create();

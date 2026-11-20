@@ -136,6 +136,17 @@ export interface CancelInput {
 
 export type RequestFilter = IntensiveRequestStatus | "all";
 
+/** A payment a live seat request still owes, with the person who owes it. */
+export interface OwedPayment {
+  readonly requestId: string;
+  readonly intensiveId: string;
+  /** Trimmed and lower-cased, so it matches a student by her identity. */
+  readonly email: string;
+  /** The deposit of a pending request, or the balance of a confirmed one. */
+  readonly kind: "deposit" | "balance";
+  readonly amount: Money;
+}
+
 /** Persistence port for intensivo seat requests. */
 export interface IntensiveRequestRepository {
   /**
@@ -153,6 +164,13 @@ export interface IntensiveRequestRepository {
     intensiveId: string,
     filter: RequestFilter,
   ): Promise<readonly StoredIntensiveRequest[]>;
+  /**
+   * What the live requests still owe, oldest first: the deposit of every
+   * pending request, and the balance of every confirmed one whose price is
+   * above its deposit and that has no balance recorded. Cancelled requests and
+   * amounts of zero never appear.
+   */
+  listOwed(email?: string): Promise<readonly OwedPayment[]>;
   /** Seats taken: confirmed requests only, pending ones never count. */
   confirmedSeats(intensiveId: string): Promise<number>;
   /**

@@ -88,10 +88,18 @@ export class InMemoryMaterialRepository implements MaterialRepository {
     }
   }
 
-  update(material: Material): Promise<boolean> {
-    if (!this.materials.has(material.id)) return Promise.resolve(false);
+  update(
+    material: Material,
+    options?: { readonly preserveKeptInStudio?: boolean },
+  ): Promise<boolean> {
+    const current = this.materials.get(material.id);
+    if (!current) return Promise.resolve(false);
     try {
-      this.write(material);
+      this.write(
+        options?.preserveKeptInStudio
+          ? { ...material, keptInStudio: current.keptInStudio === true }
+          : material,
+      );
       return Promise.resolve(true);
     } catch (error) {
       return Promise.reject(

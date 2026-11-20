@@ -270,11 +270,16 @@ export function createMaterialsService(
   async function save(
     mode: "insert" | "update",
     material: Material,
+    preserveKeptInStudio = false,
   ): Promise<Result<Material, MaterialError>> {
     try {
       if (mode === "insert") await repository.insert(material);
-      else await repository.update(material);
-      return ok(material);
+      else await repository.update(material, { preserveKeptInStudio });
+      return ok(
+        preserveKeptInStudio
+          ? ((await repository.findById(material.id)) ?? material)
+          : material,
+      );
     } catch (error) {
       if (error instanceof MaterialNameConflictError)
         return err({ kind: "invalid", issues: [duplicateName] });
@@ -404,7 +409,11 @@ export function createMaterialsService(
         current,
       );
       if (!material.ok) return material;
-      return save("update", material.value);
+      return save(
+        "update",
+        material.value,
+        valid.value.keptInStudio === undefined,
+      );
     },
 
     async deactivate(actor, id) {

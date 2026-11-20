@@ -28,8 +28,11 @@ export interface MaterialWrite {
 export interface MaterialRepository {
   /** Inserts the root and every variant atomically. */
   insert(material: Material): Promise<void>;
-  /** Replaces the root and complete variant list atomically. */
-  update(material: Material): Promise<boolean>;
+  /** Replaces the root and variants atomically, optionally retaining a concurrently changed studio flag. */
+  update(
+    material: Material,
+    options?: { readonly preserveKeptInStudio?: boolean },
+  ): Promise<boolean>;
   /** Atomically changes only the studio flag and audit fields. */
   setKeptInStudio(
     id: string,

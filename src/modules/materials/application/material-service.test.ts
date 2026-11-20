@@ -1002,6 +1002,29 @@ describe("materials kept in the studio", () => {
     });
   });
 
+  it("preserves a studio flag toggle when an edit omits that flag", async () => {
+    const { service, repository, clock } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    let intervened: Promise<unknown> | undefined;
+    clock.now = () => {
+      intervened = repository.setKeptInStudio(created.id, true, {
+        updatedBy: other.email,
+        updatedAt: new Date(NOW),
+      });
+      return new Date(NOW);
+    };
+
+    const updated = valueOf(
+      await service.update(actor, created.id, draft({ name: "Arcilla" })),
+    );
+    await intervened;
+    expect(updated.keptInStudio).toBe(true);
+    expect(await repository.findById(created.id)).toMatchObject({
+      name: "Arcilla",
+      keptInStudio: true,
+    });
+  });
+
   it("refuses to mark without an actor or for an unknown material", async () => {
     const { service } = await setup();
     expect(await service.setKeptInStudio(null, "id", true)).toEqual({

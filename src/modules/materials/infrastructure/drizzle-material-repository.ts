@@ -102,7 +102,7 @@ function toMaterial(
   };
 }
 
-function rootValues(value: Material) {
+function rootValues(value: Material, includeKeptInStudio = true) {
   return {
     name: value.name,
     nameKey: materialNameKey(value.name),
@@ -112,7 +112,9 @@ function rootValues(value: Material) {
     supplierId: value.supplier.id,
     available: value.available,
     active: value.active,
-    keptInStudio: value.keptInStudio === true,
+    ...(includeKeptInStudio
+      ? { keptInStudio: value.keptInStudio === true }
+      : {}),
     imageAssetId: value.image?.assetId ?? null,
     imageAlt: value.image?.alt ?? null,
     updatedBy: value.audit.updatedBy,
@@ -273,13 +275,13 @@ export function createDrizzleMaterialRepository(
         }
       }),
 
-    update: (value) =>
+    update: (value, options) =>
       withSession(async (db) => {
         try {
           return await db.transaction(async (tx) => {
             const rows = await tx
               .update(material)
-              .set(rootValues(value))
+              .set(rootValues(value, !options?.preserveKeptInStudio))
               .where(eq(material.id, value.id))
               .returning({ id: material.id });
             if (rows.length === 0) return false;

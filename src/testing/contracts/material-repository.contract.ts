@@ -132,6 +132,22 @@ export function runMaterialRepositoryContract(
       });
     });
 
+    it("retains a changed studio flag when the full update omits it", async () => {
+      const { repository } = await create();
+      const original = buildStoredMaterial();
+      await repository.insert(original);
+      await repository.setKeptInStudio(original.id, true, original.audit);
+
+      await repository.update(
+        { ...original, name: "Arcilla" },
+        { preserveKeptInStudio: true },
+      );
+      expect(await repository.findById(original.id)).toMatchObject({
+        name: "Arcilla",
+        keptInStudio: true,
+      });
+    });
+
     it("returns null for an unknown id and finds known ids only", async () => {
       const { repository } = await create();
       const first = buildStoredMaterial();

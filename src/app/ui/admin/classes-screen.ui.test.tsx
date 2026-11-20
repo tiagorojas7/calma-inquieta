@@ -73,9 +73,9 @@ describe("AdminClassesScreen", () => {
 
     const card = screen.getByRole("article", { name: "Bordado" });
     expect(card).toHaveTextContent("Ana Gómez · Abierto: noviembre");
-    expect(within(card).getByText("Lunes 15:00 · 3 lugares")).toBeVisible();
-    expect(within(card).getByText("Martes 10:00 · 1 lugar")).toBeVisible();
-    expect(within(card).getByText("Jueves 18:00 · completo")).toBeVisible();
+    expect(within(card).getByText("Lunes 15:00 · 3 libres")).toBeVisible();
+    expect(within(card).getByText("Martes 10:00 · 1 libre")).toBeVisible();
+    expect(within(card).getByText("Jueves 18:00 · Completo")).toBeVisible();
     expect(within(card).getByRole("link", { name: "Editar" })).toHaveAttribute(
       "href",
       "/admin/talleres/w1",

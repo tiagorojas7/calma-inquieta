@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
-import { useAdminArea, AreaChip } from "./admin-area";
+import { useAdminArea } from "./admin-area";
 import { adminButtonClasses } from "./admin-button";
 
 export interface AdminBreadcrumb {
@@ -34,10 +34,10 @@ export function AdminBackButton({
 }
 
 /**
- * Page header: the back button first, then the title on a raised sheet with
- * the page's actions beside it. Inside an area (the shell provides it) the
- * title carries the area's colored icon chip, so each screen says where you
- * are at a glance; the sheet itself stays white.
+ * Page header: the back button first, then the title as a plain row with the
+ * page's actions beside it. No card and no icon: the nav already says where
+ * you are, so the content starts higher on the page. The shell's area stays
+ * on the header as `data-area`.
  */
 export function AdminPageHeader({
   title,
@@ -91,17 +91,14 @@ export function AdminPageHeader({
         </div>
       ) : null}
       <div
-        data-title-sheet
-        className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:flex-row lg:items-center lg:justify-between lg:p-6"
+        data-title-row
+        className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
       >
-        <div className="flex min-w-0 items-center gap-4">
-          {area ? <AreaChip area={area} size={32} className="p-3" /> : null}
-          <div className="flex min-w-0 flex-col gap-1">
-            <Heading level={1}>{title}</Heading>
-            {description ? (
-              <p className="text-base text-ink-700">{description}</p>
-            ) : null}
-          </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Heading level={1}>{title}</Heading>
+          {description ? (
+            <p className="text-base text-ink-700">{description}</p>
+          ) : null}
         </div>
         {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>

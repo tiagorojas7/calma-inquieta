@@ -7,6 +7,7 @@ import type {
   DatedCardData,
   MonthlyCardData,
 } from "~/app/ui/admin/classes-screen";
+import { openableMonth } from "./next-month";
 import { monthName } from "./workshop-readiness";
 
 /** One free-seat line of a turno, from the month's occupancy. */
@@ -17,11 +18,7 @@ export interface TurnoSeats {
   readonly free: number;
 }
 
-/**
- * What one taller card shows. "Abrir <mes>" follows the same rule as the
- * talleres list: only for a published taller, for the next month nobody has
- * opened, and not while the latest month is still a draft.
- */
+/** What one taller card shows. "Abrir <mes>" follows `openableMonth`. */
 export function monthlyCard(input: {
   workshop: MonthlyWorkshopSummary;
   periods: readonly PeriodSummary[];
@@ -31,17 +28,11 @@ export function monthlyCard(input: {
 }): MonthlyCardData {
   const { workshop, periods, suggestedNext, month } = input;
   const current = periods.find((period) => period.period === month);
-  const latest = periods.reduce<PeriodSummary | null>(
-    (best, item) => (best && best.period > item.period ? best : item),
-    null,
-  );
-  const openNext =
-    workshop.status === "published" &&
-    suggestedNext !== null &&
-    (latest === null || latest.status !== "draft") &&
-    !periods.some((item) => item.period === suggestedNext)
-      ? { period: suggestedNext, label: monthName(suggestedNext) }
-      : null;
+  const openNext = openableMonth({
+    workshopStatus: workshop.status,
+    periods,
+    suggestedNext,
+  });
   const isOpen = current?.status === "open";
   return {
     id: workshop.id,

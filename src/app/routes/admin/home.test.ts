@@ -33,6 +33,7 @@ import { createTestServices } from "~/testing/fakes/app-services";
 import { action, loader } from "./home";
 
 const ORDER_ID = "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b";
+const SALE_ID = "5d9e7f31-2a4b-4c8d-8e6f-7a1b2c3d4e5f";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -48,6 +49,10 @@ function load(
   options: {
     admin?: boolean;
     unansweredEvents?: number;
+    /** Extra pending payments, as the readers return them. */
+    payments?: ReturnType<
+      typeof insightsFixture
+    >["orders"]["pendingPaymentRows"];
     path?: string;
     overrides?: Parameters<typeof adminContext>[0];
   } = {},
@@ -64,6 +69,7 @@ function load(
       totalCentavos: 45_000_00,
       requestedAt: new Date("2026-10-30T12:00:00.000Z"),
     },
+    ...(options.payments ?? []),
   ];
   intensiveRequests.pending = 2;
   workshops.published = [
@@ -112,7 +118,120 @@ describe("admin home loader", () => {
       // The event (20/10) is older than the fee (30/10).
       ["evento-00000000-0000-4000-8000-000000000000", "Dora 0"],
       [`cobrar-${ORDER_ID}`, "Ana Pérez"],
-      ["abrir-w2", "Acuarela"],
+    ]);
+  });
+
+  it('lists a pending material sale as "Cobrar materiales" and counts it in Por cobrar', async () => {
+    const result = await load({
+      payments: [
+        {
+          id: SALE_ID,
+          kind: "material_sale",
+          studentName: "martina roberi",
+          workshopName: "Cerámica",
+          period: "2026-10",
+          totalCentavos: 30_900_00,
+          requestedAt: new Date("2026-10-31T12:00:00.000Z"),
+        },
+      ],
+    });
+
+    expect(result.screen.figures.toCollect).toBe("$ 75.900");
+    expect(
+      result.screen.todo.cards.find(
+        (card) => card.id === `materiales-${SALE_ID}`,
+      ),
+    ).toMatchObject({
+      kind: "form",
+      title: "martina roberi",
+      label: "Cobrar materiales $ 30.900",
+      intent: "confirm-order",
+      fields: { orderId: SALE_ID, amount: "30900" },
+    });
+  });
+
+  it("keeps a sale out of the unseen novelties while still listing it to collect", async () => {
+    const result = await load({
+      payments: [
+        {
+          id: SALE_ID,
+          kind: "material_sale",
+          studentName: "martina roberi",
+          workshopName: "Cerámica",
+          period: "2026-10",
+          totalCentavos: 30_900_00,
+          requestedAt: new Date("2026-10-31T12:00:00.000Z"),
+        },
+      ],
+    });
+
+    expect(result.screen.novelties).toEqual([]);
+    expect(
+      result.screen.todo.cards.some(
+        (card) => card.id === `materiales-${SALE_ID}`,
+      ),
+    ).toBe(true);
+  });
+
+  it('offers "Abrir <mes>" by the same rule as Clases and the talleres list', async () => {
+    const workshops = withOverrides(createTestServices().monthlyWorkshops, {
+      list: () =>
+        Promise.resolve({
+          ok: true,
+          value: [
+            {
+              id: "w-bordado",
+              name: "bordado de canastas",
+              status: "published",
+            },
+            { id: "w-tejido", name: "tejido a dos manos", status: "published" },
+            { id: "w-cesteria", name: "cestería", status: "published" },
+          ],
+        }),
+    } as never);
+    const periodsByWorkshop = {
+      // October open only: November is the next one to open.
+      "w-bordado": {
+        periods: [
+          { id: "b1", period: "2026-10", status: "open", activeTurnos: 1 },
+        ],
+        suggestedNext: "2026-11",
+      },
+      // The latest month is still a draft: publish it first, no open action.
+      "w-tejido": {
+        periods: [
+          { id: "t1", period: "2026-10", status: "open", activeTurnos: 1 },
+          { id: "t2", period: "2026-11", status: "draft", activeTurnos: 1 },
+        ],
+        suggestedNext: "2026-12",
+      },
+      // Already open a month ahead: nothing to do yet.
+      "w-cesteria": {
+        periods: [
+          { id: "c1", period: "2026-10", status: "open", activeTurnos: 1 },
+          { id: "c2", period: "2026-11", status: "open", activeTurnos: 1 },
+        ],
+        suggestedNext: "2026-12",
+      },
+    } as const;
+    const periods = withOverrides(createTestServices().workshopPeriods, {
+      list: (_actor: unknown, id: keyof typeof periodsByWorkshop) =>
+        Promise.resolve({ ok: true, value: periodsByWorkshop[id] }),
+    } as never);
+
+    const result = await load({
+      overrides: { monthlyWorkshops: workshops, workshopPeriods: periods },
+    });
+
+    const open = result.screen.todo.cards.filter((card) =>
+      card.id.startsWith("abrir-"),
+    );
+    expect(open).toMatchObject([
+      {
+        id: "abrir-w-bordado",
+        label: "Abrir noviembre",
+        fields: { workshopId: "w-bordado", period: "2026-11" },
+      },
     ]);
   });
 

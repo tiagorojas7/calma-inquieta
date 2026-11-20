@@ -27,6 +27,8 @@ const secondaryLink =
 export function AdminActionCard({
   id,
   title,
+  summary,
+  summaryTone = "neutral",
   facts,
   area,
   primary,
@@ -36,6 +38,9 @@ export function AdminActionCard({
   /** The anchor id of this item. */
   id?: string | undefined;
   title: string;
+  /** Key amount or count, before any secondary detail. */
+  summary?: ReactNode | undefined;
+  summaryTone?: "owed" | "paid" | "neutral" | undefined;
   /** One short line: the amount, the date, the state. */
   facts?: ReactNode | undefined;
   /** Shows the area's colored icon chip before the title. */
@@ -62,13 +67,21 @@ export function AdminActionCard({
           >
             {title}
           </Heading>
-          {facts ? (
-            <p data-facts className="text-lg text-ink-700">
-              {facts}
-            </p>
-          ) : null}
         </div>
       </div>
+      {summary ? (
+        <p
+          data-summary-tone={summaryTone}
+          className={`text-2xl font-bold tabular-nums ${summaryTone === "owed" ? "text-terracotta-700" : summaryTone === "paid" ? "text-moss-700" : "text-ink-900"}`}
+        >
+          {summary}
+        </p>
+      ) : null}
+      {facts ? (
+        <p data-facts className="text-lg text-ink-700">
+          {facts}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         {primary}
         {secondary?.map((link) => (

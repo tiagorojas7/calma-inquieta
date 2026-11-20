@@ -319,7 +319,7 @@ describe("StatisticsScreen", () => {
     expect(
       screen
         .getByRole("button", { name: "Ver mes" })
-        .closest("[data-title-sheet]"),
+        .closest("[data-title-row]"),
     ).not.toBeNull();
     expect(screen.getByRole("button", { name: "Ver mes" })).toBeVisible();
   });

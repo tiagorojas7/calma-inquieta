@@ -5,6 +5,7 @@ import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { feedbackCode } from "~/app/admin/feedback-code";
 import { loadClassesToday } from "~/app/admin/hoy-classes";
+import { loadOpenMonthTasks } from "~/app/admin/hoy-open-months";
 import { toHoyScreen } from "~/app/admin/hoy-view";
 import { safeAnchor, safeReturnTo, stayOnPage } from "~/app/admin/return-to";
 import { openNextMonth } from "~/app/admin/workshop-quick-publish";
@@ -35,9 +36,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!panel.ok) throw enrollmentFailureResponse(panel.error);
   if (!notifications.ok) throw enrollmentFailureResponse(notifications.error);
   // What cannot be read must not hide the rest of the day: private events,
-  // months with no turno and today's classes each degrade to nothing.
-  const [emptyMonths, classes] = await Promise.all([
+  // months with no turno, months to open and today's classes each degrade to
+  // nothing.
+  const [emptyMonths, openMonths, classes] = await Promise.all([
     loadEmptyMonthTasks(services, actor, panel.value.period),
+    loadOpenMonthTasks(services, actor, panel.value.nextPeriod),
     loadClassesToday(services, actor, today),
   ]);
   const saved = feedbackCode(request, FEEDBACK);
@@ -47,6 +50,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       notifications: notifications.value,
       events: events.ok ? events.value : [],
       emptyMonths,
+      openMonths,
       classes,
       today,
       showAll: url.searchParams.get("ver") === "todo",

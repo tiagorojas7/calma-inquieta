@@ -72,6 +72,7 @@ function input(overrides: Partial<HoyInput> = {}): HoyInput {
     notifications: notifications(),
     events: [],
     emptyMonths: [],
+    openMonths: [],
     classes: [],
     today: "2026-10-05",
     ...overrides,
@@ -172,6 +173,7 @@ describe("toHoyScreen to-do cards", () => {
     expect(
       cards.map((card) => ({
         id: card.id,
+        summary: card.summary,
         intent: card.kind === "form" ? card.intent : null,
         label: card.kind === "form" ? card.label : null,
         fields: card.kind === "form" ? card.fields : null,
@@ -179,18 +181,21 @@ describe("toHoyScreen to-do cards", () => {
     ).toEqual([
       {
         id: "materiales-sale-1",
+        summary: "Debe $ 4.000",
         intent: "confirm-order",
         label: "Cobrar materiales $ 4.000",
         fields: { orderId: "sale-1", amount: "4000" },
       },
       {
         id: "sena-req-1",
+        summary: "Debe $ 15.000",
         intent: "confirm-deposit",
         label: "Confirmar seña $ 15.000",
         fields: { intensiveId: "int-1", requestId: "req-1", amount: "15000" },
       },
       {
         id: "saldo-req-2",
+        summary: "Debe $ 25.000",
         intent: "record-balance",
         label: "Cobrar saldo $ 25.000",
         fields: { intensiveId: "int-1", requestId: "req-2", amount: "25000" },
@@ -225,16 +230,12 @@ describe("toHoyScreen to-do cards", () => {
     expect(card?.kind === "event" && card.whatsappHref).toContain("wa.me");
   });
 
-  it("offers 'Abrir <mes>' for the next month of each workshop without it", () => {
+  it("offers 'Abrir <mes>' for each month the shared rule says can be opened", () => {
     const [card] = toHoyScreen(
       input({
-        panel: {
-          ...panel,
-          alerts: {
-            ...panel.alerts,
-            withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
-          },
-        },
+        openMonths: [
+          { workshopId: "w2", workshopName: "Acuarela", period: "2026-11" },
+        ],
       }),
     ).todo.cards;
 
@@ -267,13 +268,9 @@ describe("toHoyScreen to-do cards", () => {
             createdAt: new Date("2026-10-10T12:00:00.000Z"),
           }),
         ],
-        panel: {
-          ...panel,
-          alerts: {
-            ...panel.alerts,
-            withoutOpenPeriod: [{ workshopId: "w2", name: "Acuarela" }],
-          },
-        },
+        openMonths: [
+          { workshopId: "w2", workshopName: "Acuarela", period: "2026-11" },
+        ],
       }),
     ).todo.cards;
 

@@ -10,13 +10,19 @@ describe("AdminActionCard", () => {
       <AdminActionCard
         id="inscripcion-1"
         title="Ana Pérez"
-        facts="Debe $45.000"
+        summary="Debe $45.000"
+        summaryTone="owed"
+        facts="Cuota de noviembre"
         primary={<AdminButton type="submit">Cobrar</AdminButton>}
       />,
     );
     const card = screen.getByRole("article", { name: "Ana Pérez" });
     expect(card).toHaveAttribute("id", "inscripcion-1");
     expect(within(card).getByText("Debe $45.000")).toBeVisible();
+    expect(within(card).getByText("Debe $45.000")).toHaveAttribute(
+      "data-summary-tone",
+      "owed",
+    );
     expect(within(card).getByRole("button", { name: "Cobrar" })).toBeVisible();
     expect(
       within(card).getByRole("heading", { level: 3, name: "Ana Pérez" }),

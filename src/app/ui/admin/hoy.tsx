@@ -22,6 +22,7 @@ interface CardBase {
   /** The element id and the anchor the post returns to. */
   readonly id: string;
   readonly title: string;
+  readonly summary?: string;
   readonly facts: string;
   readonly area: AdminAreaKey;
 }
@@ -185,6 +186,8 @@ function Task({
   const common = {
     id: card.id,
     title: card.title,
+    summary: card.summary,
+    summaryTone: card.summary ? ("owed" as const) : ("neutral" as const),
     facts: card.facts === "" ? undefined : card.facts,
     area: card.area,
   };

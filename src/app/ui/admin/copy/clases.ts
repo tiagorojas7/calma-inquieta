@@ -39,8 +39,8 @@ export const clasesCopy = {
     },
     seats: (label: string, free: number) =>
       free <= 0
-        ? `${label} · completo`
-        : `${label} · ${String(free)} ${free === 1 ? "lugar" : "lugares"}`,
+        ? `${label} · Completo`
+        : `${label} · ${String(free)} ${free === 1 ? "libre" : "libres"}`,
   },
   dated: {
     edit: "Editar",

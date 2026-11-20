@@ -13,6 +13,7 @@ import type {
 import type { PrivateEvent } from "~/modules/private-events";
 import { toNotificationsScreen } from "./notifications-view";
 import type { EmptyMonthTask } from "./empty-months";
+import type { OpenMonthTask } from "./hoy-open-months";
 import { monthName } from "./workshop-readiness";
 import { whatsappHref } from "./whatsapp-href";
 
@@ -45,6 +46,8 @@ export interface HoyInput {
   /** Private events still marked as new. */
   readonly events: readonly PrivateEvent[];
   readonly emptyMonths: readonly EmptyMonthTask[];
+  /** Months the shared open-month rule offers, up to the next one. */
+  readonly openMonths: readonly OpenMonthTask[];
   readonly classes: readonly TodayClass[];
   /** Today in Córdoba, `YYYY-MM-DD`. */
   readonly today: string;
@@ -76,7 +79,11 @@ function paymentCard(
   item: NotificationsView["pendingPayments"][number],
 ): TodoCard {
   const amount = formatPesos(item.amount);
-  const base = { title: item.name, area: PAYMENT_AREA[item.kind] };
+  const base = {
+    title: item.name,
+    summary: `Debe ${amount}`,
+    area: PAYMENT_AREA[item.kind],
+  };
   const where = item.workshopName;
   const month = item.period === null ? null : monthLabel(item.period);
   if (item.kind === "enrollment" || item.kind === "material-sale") {
@@ -154,19 +161,20 @@ function listOf(names: readonly string[]): string {
 function undatedCards(input: HoyInput): TodoCard[] {
   const { panel } = input;
   const cards: TodoCard[] = [];
-  const next = monthName(panel.nextPeriod);
-  for (const workshop of panel.alerts.withoutOpenPeriod)
+  for (const task of input.openMonths) {
+    const month = monthName(task.period);
     cards.push({
       kind: "form",
-      id: `abrir-${workshop.workshopId}`,
-      title: workshop.name,
-      facts: copy.todo.openFacts(next),
+      id: `abrir-${task.workshopId}`,
+      title: task.workshopName,
+      facts: copy.todo.openFacts(month),
       area: "workshops",
       intent: "open-month",
-      label: copy.todo.open(next),
-      ariaLabel: `${copy.todo.open(next)}: ${workshop.name}`,
-      fields: { workshopId: workshop.workshopId, period: panel.nextPeriod },
+      label: copy.todo.open(month),
+      ariaLabel: `${copy.todo.open(month)}: ${task.workshopName}`,
+      fields: { workshopId: task.workshopId, period: task.period },
     });
+  }
   for (const empty of input.emptyMonths)
     cards.push({
       kind: "link",

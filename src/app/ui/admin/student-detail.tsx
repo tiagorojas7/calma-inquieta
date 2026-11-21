@@ -526,7 +526,13 @@ export function StudentDetail({
         {student.records.length === 0 ? (
           <p className="text-lg text-ink-700">{copy.noRecords}</p>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+          <div
+            className={
+              student.records.length > 1
+                ? "grid gap-4 xl:grid-cols-2 xl:items-start"
+                : "grid gap-4"
+            }
+          >
             {student.records.map((record) => (
               <RecordBlock
                 key={record.id}

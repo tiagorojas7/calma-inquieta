@@ -195,6 +195,18 @@ describe("StudentDetail", () => {
     expect(grid?.closest("section.max-w-3xl")).toBeNull();
   });
 
+  it("uses the full desktop width for a single record", () => {
+    render(
+      <StudentDetail
+        {...props}
+        student={{ ...props.student, records: [owed] }}
+      />,
+    );
+
+    const grid = card("Acuarela").parentElement;
+    expect(grid?.className).not.toMatch(/xl:grid-cols-2/);
+  });
+
   it("says what was just saved at the top", () => {
     render(<StudentDetail {...props} saved="cobro de Ana Pérez" />);
 

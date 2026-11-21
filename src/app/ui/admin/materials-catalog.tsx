@@ -76,6 +76,7 @@ export function CatalogSection({
   found,
   total,
   query,
+  studioQuery,
   period,
   estado,
   returnTo,
@@ -87,6 +88,7 @@ export function CatalogSection({
   /** How many materials the catalog holds. */
   total: number;
   query: string;
+  studioQuery: string;
   period: string;
   estado: string;
   returnTo: string;
@@ -116,6 +118,9 @@ export function CatalogSection({
         className="flex flex-wrap items-end gap-3"
       >
         <input type="hidden" name="mes" value={period} />
+        {studioQuery && (
+          <input type="hidden" name="estudio" value={studioQuery} />
+        )}
         {estado === "activos" ? null : (
           <input type="hidden" name="estado" value={estado} />
         )}

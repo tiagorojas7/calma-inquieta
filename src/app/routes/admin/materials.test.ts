@@ -139,6 +139,24 @@ function submit(
 }
 
 describe("materials screen loader: En el estudio and Catálogo", () => {
+  it("limits the studio to four but finds a later material by its own search", async () => {
+    const env = await seeded();
+    for (const name of ["Arcilla", "Esmalte", "Torno"])
+      expect(
+        (
+          await env.fixture.service.create(
+            actor,
+            draft(name, "Arte", "1000", true),
+          )
+        ).ok,
+      ).toBe(true);
+    const first = await load(env, "?mes=2026-11");
+    expect(first.studio).toHaveLength(4);
+    expect(first.studioTotal).toBe(5);
+    const found = await load(env, "?mes=2026-11&estudio=torno");
+    expect(found.studio.map((card) => card.name)).toEqual(["Torno"]);
+    expect(found.returnTo).toContain("estudio=torno");
+  });
   it("lists in the studio only the kept materials by name, with Hay N or Se acabó", async () => {
     const env = await seeded();
     const result = await load(env, "?mes=2026-11");

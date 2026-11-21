@@ -42,6 +42,8 @@ const base: MaterialsScreenProps = {
       ],
     },
   ],
+  studioTotal: 3,
+  studioQuery: "",
   catalog: { rows: [], found: 0, total: 99 },
   query: "",
   estado: "activos",
@@ -149,6 +151,16 @@ describe("Materiales screen: the order of the sections", () => {
 });
 
 describe("Materiales screen: En el estudio", () => {
+  it("keeps the studio list compact and searchable instead of stretching cards in a grid", () => {
+    view();
+    const section = screen.getByRole("region", { name: "En el estudio" });
+    expect(
+      within(section).getByRole("search", { name: "Buscar en el estudio" }),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole("list", { name: "Materiales en el estudio" }),
+    ).not.toHaveClass("grid");
+  });
   it("says Hay N or Se acabó in words on every material card", () => {
     view();
     expect(within(cardOf("Bastidor")).getByText("Hay 4")).toBeVisible();

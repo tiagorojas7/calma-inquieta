@@ -98,19 +98,21 @@ function MaterialCard({
         id={card.anchor}
         aria-labelledby={titleId}
         data-highlight={highlighted ? "" : undefined}
-        className={`flex scroll-mt-20 flex-col gap-3 rounded-md bg-surface p-5 shadow-card ${highlighted ? "ring-4 ring-clay-800" : ""}`}
+        className={`flex scroll-mt-20 flex-col gap-2 rounded-md bg-surface p-4 shadow-card ${highlighted ? "ring-4 ring-clay-800" : ""}`}
       >
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-1">
           <div className="flex min-w-0 flex-col gap-1">
             <Heading level={3} size="h4" id={titleId}>
               {card.name}
             </Heading>
+            <p className="text-base text-ink-700">{card.price}</p>
           </div>
+          <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
+            {card.state === "hay"
+              ? copy.state.hay(card.onHand)
+              : copy.state.sin}
+          </p>
         </div>
-        <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
-          {card.state === "hay" ? copy.state.hay(card.onHand) : copy.state.sin}
-        </p>
-        <p className="text-lg text-ink-700">{card.price}</p>
         <FormError message={error} />
         {card.variants.length > 0 ? (
           <ul
@@ -165,11 +167,21 @@ function MaterialCard({
 /** "En el estudio": one card per material the studio keeps, with Hay N or Se acabó and Llegaron. */
 export function StudioSection({
   cards,
+  total,
+  query,
+  catalogQuery,
+  period,
+  estado,
   returnTo,
   highlightId,
   error,
 }: {
   cards: readonly StockCard[];
+  total: number;
+  query: string;
+  catalogQuery: string;
+  period: string;
+  estado: string;
   returnTo: string;
   highlightId?: string | undefined;
   /** A refused "Llegaron": the card it belongs to and the message. */
@@ -184,25 +196,59 @@ export function StudioSection({
       <MaterialsSectionTitle
         id="en-el-estudio-title"
         title={copy.title}
-        count={cards.length}
+        count={total}
       />
+      <form
+        role="search"
+        aria-label={copy.search}
+        method="get"
+        action={`${BASE}#en-el-estudio`}
+        className="flex flex-wrap items-end gap-2"
+      >
+        <input type="hidden" name="mes" value={period} />
+        {catalogQuery && <input type="hidden" name="q" value={catalogQuery} />}
+        {estado !== "activos" && (
+          <input type="hidden" name="estado" value={estado} />
+        )}
+        <label className="flex min-w-0 flex-1 basis-64 flex-col gap-1 text-base font-semibold text-ink-900">
+          {copy.searchField}
+          <input
+            type="search"
+            name="estudio"
+            defaultValue={query}
+            autoComplete="off"
+            className="min-h-12 rounded-md border border-admin-line bg-surface px-3 text-lg font-normal text-ink-900"
+          />
+        </label>
+        <Button type="submit" variant="outline">
+          Buscar
+        </Button>
+      </form>
       {cards.length === 0 ? (
-        <p className="text-lg text-ink-700">{copy.empty}</p>
+        <p className="text-lg text-ink-700">
+          {query ? copy.notFound : copy.empty}
+        </p>
       ) : (
-        <ul
-          aria-label={copy.listLabel}
-          className="grid grid-cols-1 gap-4 lg:grid-cols-2"
-        >
-          {cards.map((card) => (
-            <MaterialCard
-              key={card.id}
-              card={card}
-              returnTo={returnTo}
-              highlighted={card.id === highlightId}
-              error={error?.anchor === card.anchor ? error.message : undefined}
-            />
-          ))}
-        </ul>
+        <>
+          <ul aria-label={copy.listLabel} className="flex flex-col gap-3">
+            {cards.map((card) => (
+              <MaterialCard
+                key={card.id}
+                card={card}
+                returnTo={returnTo}
+                highlighted={card.id === highlightId}
+                error={
+                  error?.anchor === card.anchor ? error.message : undefined
+                }
+              />
+            ))}
+          </ul>
+          {total > cards.length && (
+            <p className="text-base text-ink-700">
+              {copy.more(cards.length, total)}
+            </p>
+          )}
+        </>
       )}
     </section>
   );

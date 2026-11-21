@@ -33,6 +33,11 @@ export const materialesCopy = {
       sin: "Se acabó",
     },
     listLabel: "Materiales en el estudio",
+    search: "Buscar en el estudio",
+    searchField: "Buscar material en el estudio",
+    notFound: "No encontramos ese material.",
+    more: (shown: number, total: number) =>
+      `Mostrando ${String(shown)} de ${String(total)}. Buscá para encontrar otro.`,
     variantsLabel: (name: string) => `Variantes de ${name}`,
     arrived: "Llegaron",
     arrivedField: (name: string) => `Cuántas llegaron de ${name}`,

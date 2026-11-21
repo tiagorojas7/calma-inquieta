@@ -15,6 +15,7 @@ import {
   materialAnchor,
   parseSearchText,
   studioCards,
+  studioSearch,
 } from "~/app/admin/material-stock-view";
 import { stayOnPage } from "~/app/admin/return-to";
 import { servicesContext } from "~/app/context";
@@ -50,6 +51,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
   const estado = parseMaterialFilterKey(params.get("estado"));
   const query = parseSearchText(params.get("q"));
+  const studioQuery = parseSearchText(params.get("estudio"));
   const services = context.get(servicesContext);
   const [listed, consolidation] = await Promise.all([
     services.materials.listWithStock(actor, {
@@ -78,12 +80,16 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const view = new URLSearchParams();
   if (query !== "") view.set("q", query);
+  if (studioQuery !== "") view.set("estudio", studioQuery);
   view.set("mes", month.period);
   if (estado !== "activos") view.set("estado", estado);
 
+  const studio = studioCards(listed.value);
   return {
     ...month,
-    studio: studioCards(listed.value),
+    studio: studioSearch(studio, studioQuery),
+    studioTotal: studio.length,
+    studioQuery,
     catalog: {
       ...catalogSearch(listed.value, query),
       total: listed.value.length,

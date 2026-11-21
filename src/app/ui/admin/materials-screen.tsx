@@ -19,6 +19,8 @@ const BASE = "/admin/materiales";
 export interface MaterialsScreenProps {
   /** "En el estudio": the materials the studio keeps. */
   readonly studio: readonly StockCard[];
+  readonly studioTotal: number;
+  readonly studioQuery: string;
   /** "Catálogo": the search results, how many matched and how many there are. */
   readonly catalog: {
     readonly rows: readonly CatalogRow[];
@@ -114,6 +116,9 @@ export function MaterialsScreen(props: MaterialsScreenProps) {
             {props.query === "" ? null : (
               <input type="hidden" name="q" value={props.query} />
             )}
+            {props.studioQuery === "" ? null : (
+              <input type="hidden" name="estudio" value={props.studioQuery} />
+            )}
             {props.estado === "activos" ? null : (
               <input type="hidden" name="estado" value={props.estado} />
             )}
@@ -144,6 +149,11 @@ export function MaterialsScreen(props: MaterialsScreenProps) {
       />
       <StudioSection
         cards={props.studio}
+        total={props.studioTotal}
+        query={props.studioQuery}
+        catalogQuery={props.query}
+        period={props.period}
+        estado={props.estado}
         returnTo={props.returnTo}
         highlightId={props.highlightId}
         error={props.arrivedError}
@@ -153,6 +163,7 @@ export function MaterialsScreen(props: MaterialsScreenProps) {
         found={props.catalog.found}
         total={props.catalog.total}
         query={props.query}
+        studioQuery={props.studioQuery}
         period={props.period}
         estado={props.estado}
         returnTo={props.returnTo}

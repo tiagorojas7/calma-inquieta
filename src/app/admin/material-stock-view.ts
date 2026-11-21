@@ -2,7 +2,8 @@ import type { MaterialStockRow } from "~/modules/materials";
 
 const SEARCH_MAX = 80;
 /** Catalog results shown at once, so a broad word never floods the page. */
-const CATALOG_RESULTS = 12;
+const CATALOG_RESULTS = 4;
+const STUDIO_RESULTS = 4;
 
 export function parseSearchText(value: string | null): string {
   return (value ?? "").trim().slice(0, SEARCH_MAX);
@@ -80,6 +81,17 @@ export function studioCards(
             })),
       };
     });
+}
+
+/** A short, stable studio list; a search reaches materials beyond the first four. */
+export function studioSearch(
+  cards: readonly StockCardView[],
+  query: string,
+): StockCardView[] {
+  const needle = plain(query.trim());
+  return cards
+    .filter((card) => needle === "" || plain(card.name).includes(needle))
+    .slice(0, STUDIO_RESULTS);
 }
 
 /** One simple row of the catalog search. */

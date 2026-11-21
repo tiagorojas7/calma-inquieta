@@ -6,6 +6,7 @@ import {
   materialAnchor,
   parseSearchText,
   studioCards,
+  studioSearch,
 } from "./material-stock-view";
 
 const row = (overrides: Partial<MaterialStockRow> = {}): MaterialStockRow => ({
@@ -45,6 +46,22 @@ describe("search parsing", () => {
 });
 
 describe("studio cards", () => {
+  it("shows at most four studio materials until a name is searched", () => {
+    const cards = studioCards(
+      Array.from({ length: 6 }, (_, index) =>
+        row({ id: `m${String(index)}`, name: `Arcilla ${String(index)}` }),
+      ),
+    );
+    expect(studioSearch(cards, "").map((card) => card.name)).toEqual([
+      "Arcilla 0",
+      "Arcilla 1",
+      "Arcilla 2",
+      "Arcilla 3",
+    ]);
+    expect(studioSearch(cards, "arcilla 5").map((card) => card.name)).toEqual([
+      "Arcilla 5",
+    ]);
+  });
   it("says Hay N with its price for a one-variant material", () => {
     const [card] = studioCards([row()]);
     expect(card).toMatchObject({
@@ -180,7 +197,7 @@ describe("catalog search", () => {
       row({ id: `m${String(index)}`, name: `Hilo ${String(index)}` }),
     );
     const result = catalogSearch(many, "hilo");
-    expect(result.rows).toHaveLength(12);
+    expect(result.rows).toHaveLength(4);
     expect(result.found).toBe(30);
   });
 });

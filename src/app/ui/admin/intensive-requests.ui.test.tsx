@@ -143,7 +143,15 @@ describe("IntensiveRequestsScreen", () => {
     render(<IntensiveRequestsScreen view={balanceView} feedback={undefined} />);
 
     const owes = card("Debe Saldo");
-    expect(owes).toHaveTextContent(/Pagó la seña · falta \$\s25\.000/);
+    expect(owes.querySelector("[data-summary-tone]")).toHaveTextContent(
+      /Debe \$\s25\.000/,
+    );
+    expect(owes.querySelector("[data-facts]")).toHaveTextContent(
+      "Pagó la seña",
+    );
+    expect(owes.querySelector("[data-facts]")).not.toHaveTextContent(
+      "$ 25.000",
+    );
     expect(
       within(owes).getByRole("button", { name: /^Cobrar saldo \$\s25\.000$/ }),
     ).toBeInTheDocument();

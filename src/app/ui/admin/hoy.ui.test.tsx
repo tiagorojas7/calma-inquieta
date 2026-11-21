@@ -103,6 +103,7 @@ describe("Hoy numbers", () => {
     ])
       expect(within(numbers).getByText(text)).toBeVisible();
     expect(screen.getByText("$ 96.000")).toHaveClass("text-status-green-fg");
+    expect(screen.getByText("$ 50.000")).toHaveClass("text-admin-warning-fg");
   });
 
   it("colours a month at a loss as money out", () => {
@@ -248,6 +249,10 @@ describe("Hoy classes and news", () => {
       name: "Cerámica",
     });
     expect(within(card).getByText("18:00 a 20:00 h · 3 alumnas")).toBeVisible();
+    expect(within(card).getByText("18:00 a 20:00 h · 3 alumnas")).toHaveClass(
+      "text-2xl",
+      "font-bold",
+    );
     expect(
       within(card).getByRole("link", { name: "Tomar asistencia" }),
     ).toHaveAttribute("href", "/admin/asistencia/p1/t1/2026-10-05");

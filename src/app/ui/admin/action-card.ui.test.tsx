@@ -30,6 +30,34 @@ describe("AdminActionCard", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("keeps the title, bold key number, details, and action in that order", () => {
+    render(
+      <AdminActionCard
+        title="Ana Pérez"
+        summary="Debe $45.000"
+        summaryTone="owed"
+        facts="Cuota de noviembre"
+        primary={<AdminButton>Cobrar</AdminButton>}
+      />,
+    );
+    const card = screen.getByRole("article", { name: "Ana Pérez" });
+    const title = within(card).getByRole("heading", { name: "Ana Pérez" });
+    const summary = within(card).getByText("Debe $45.000");
+    const facts = card.querySelector("[data-facts]");
+    const action = within(card).getByRole("button", { name: "Cobrar" });
+    if (facts === null) throw new Error("missing card facts");
+    expect(
+      title.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      summary.compareDocumentPosition(facts) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      facts.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(summary).toHaveClass("text-2xl", "font-bold", "tabular-nums");
+  });
+
   it("lists optional secondary links after the primary action", () => {
     render(
       <AdminActionCard

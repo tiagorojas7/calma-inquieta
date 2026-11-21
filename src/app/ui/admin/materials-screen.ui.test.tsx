@@ -530,4 +530,15 @@ describe("Materiales screen: every post is native", () => {
     });
     await expectNoAxeViolations(container);
   });
+
+  it("puts the stocked count and supplier total in large, bold summaries", () => {
+    view();
+
+    expect(cardOf("Bastidor").querySelector("p.text-2xl")).toHaveTextContent(
+      "Hay 4",
+    );
+    expect(
+      cardOf("Papelería Sur").querySelector("p.text-2xl"),
+    ).toHaveTextContent("$ 3.600");
+  });
 });

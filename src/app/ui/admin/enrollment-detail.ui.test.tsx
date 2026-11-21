@@ -126,6 +126,12 @@ describe("EnrollmentDetail", () => {
     expect(
       within(history as HTMLElement).getByText("public"),
     ).toBeInTheDocument();
+    expect(container.querySelector("[data-order-total]")).toHaveClass(
+      "text-2xl",
+      "font-bold",
+      "tabular-nums",
+      "text-admin-warning-fg",
+    );
     await expectNoAxeViolations(container);
   });
 

@@ -139,9 +139,15 @@ describe("AdminClassesScreen", () => {
     render(<AdminClassesScreen data={base} />);
 
     const card = screen.getByRole("article", { name: "Intensivo de cerámica" });
-    expect(card).toHaveTextContent(
-      "14 nov 2026, 10:00 · 3 de 8 lugares · 2 por confirmar",
+    expect(within(card).getByText("3 de 8 lugares")).toHaveClass(
+      "text-2xl",
+      "font-bold",
     );
+    expect(within(card).getByText("3 de 8 lugares")).toHaveAttribute(
+      "data-summary-tone",
+      "neutral",
+    );
+    expect(card).toHaveTextContent("14 nov 2026, 10:00 · 2 por confirmar");
     expect(
       within(card).getByRole("link", { name: "Ver reservas" }),
     ).toHaveAttribute(
@@ -176,12 +182,60 @@ describe("AdminClassesScreen", () => {
     ).toHaveAttribute("href", `/admin/clases#workshop-${FAKE_INTENSIVE_ID}`);
     const person = within(card).getByRole("article", { name: "Ana Pérez" });
     expect(person).toHaveTextContent("Pidió lugar");
+    expect(person.querySelector("[data-summary-tone]")).toHaveTextContent(
+      /^Seña \$/,
+    );
     const form = within(person).getByRole("form", { name: /Confirmar seña/ });
     const hidden = (name: string) =>
       form.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.value;
     expect(hidden("intensiveId")).toBe(FAKE_INTENSIVE_ID);
     expect(hidden("returnTo")).toBe(`/admin/clases?abrir=${FAKE_INTENSIVE_ID}`);
     expect(hidden("anchor")).toBe("reserva-pending-1");
+  });
+
+  it("shows an owed reservation balance once, ahead of its details", () => {
+    const group = reservations.groups[0];
+    const pending = group?.rows[0];
+    if (!group || !pending) throw new Error("missing reservation fixture");
+    render(
+      <AdminClassesScreen
+        data={{
+          ...base,
+          openId: FAKE_INTENSIVE_ID,
+          dated: [
+            {
+              ...dated,
+              reservations: {
+                today: "2026-10-28",
+                groups: [
+                  {
+                    ...group,
+                    status: "confirmed",
+                    rows: [
+                      {
+                        ...pending,
+                        balanceDue: "$ 25.000",
+                        balance: null,
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        }}
+      />,
+    );
+    const person = screen.getByRole("article", { name: "Ana Pérez" });
+    expect(person.querySelector("[data-summary-tone]")).toHaveTextContent(
+      "Debe $ 25.000",
+    );
+    expect(person.querySelector("[data-facts]")).toHaveTextContent(
+      "Pagó la seña",
+    );
+    expect(person.querySelector("[data-facts]")).not.toHaveTextContent(
+      "$ 25.000",
+    );
   });
 
   it("keeps the past list open in the address the forms return to", () => {

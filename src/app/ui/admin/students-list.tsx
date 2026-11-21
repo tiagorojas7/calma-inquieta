@@ -139,6 +139,11 @@ export function StudentsList({
                   <Heading level={2} size="h4">
                     {row.name}
                   </Heading>
+                  <p
+                    className={`text-2xl font-bold tabular-nums ${row.owes === null ? "text-admin-positive-fg" : "text-admin-warning-fg"}`}
+                  >
+                    {row.owes === null ? copy.upToDate : copy.owes(row.owes)}
+                  </p>
                   <p className="text-lg text-ink-700">
                     {row.current ?? copy.noCurrent}
                   </p>
@@ -146,14 +151,6 @@ export function StudentsList({
                 <div className="flex flex-wrap gap-2">
                   {row.active ? null : (
                     <StatusChip status="cancelled" label={copy.inactive} />
-                  )}
-                  {row.owes === null ? (
-                    <StatusChip status="paid" label={copy.upToDate} />
-                  ) : (
-                    <StatusChip
-                      status="pending_confirmation"
-                      label={copy.owes(row.owes)}
-                    />
                   )}
                 </div>
               </div>

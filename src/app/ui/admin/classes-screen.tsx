@@ -92,18 +92,22 @@ function MonthlyCard({
         ? m.noMonthOpen
         : m.openLine(card.openMonth)
       : m.status[card.status];
+  const firstTurno = card.turnos[0];
   return (
     <AdminActionCard
       id={monthlyAnchor(card.id)}
       title={card.name}
       area="workshops"
+      summary={
+        firstTurno ? m.seats(firstTurno.label, firstTurno.free) : m.noMonthOpen
+      }
       facts={`${card.teacherName ?? m.noTeacher} · ${state}`}
       headingLevel={3}
       primary={
         <div className="flex w-full flex-col gap-3">
-          {card.turnos.length > 0 ? (
+          {card.turnos.length > 1 ? (
             <ul className="flex flex-col gap-1 text-lg text-ink-900">
-              {card.turnos.map((turno) => (
+              {card.turnos.slice(1).map((turno) => (
                 <li key={turno.id}>{m.seats(turno.label, turno.free)}</li>
               ))}
             </ul>
@@ -146,20 +150,20 @@ function DatedCard({
 }) {
   const d = copy.dated;
   const open = card.reservations !== null;
-  const facts = [
-    card.when,
-    d.seats(card.taken, card.capacity),
-    card.status === "published" ? null : d.status[card.status],
-    card.pending > 0 ? d.pending(card.pending) : null,
-  ]
-    .filter((part): part is string => part !== null)
-    .join(" · ");
   return (
     <AdminActionCard
       id={datedAnchor(card.id)}
       title={card.name}
       area="intensives"
-      facts={facts}
+      summary={d.seats(card.taken, card.capacity)}
+      summaryTone="neutral"
+      facts={[
+        card.when,
+        card.status === "published" ? null : d.status[card.status],
+        card.pending > 0 ? d.pending(card.pending) : null,
+      ]
+        .filter((part): part is string => part !== null)
+        .join(" · ")}
       headingLevel={3}
       primary={
         <div className="flex w-full flex-col gap-3">

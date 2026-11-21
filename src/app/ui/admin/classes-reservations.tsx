@@ -224,7 +224,7 @@ function stateWords(
   if (status === "pending_confirmation") return copy.pending;
   if (status === "cancelled") return copy.cancelled;
   return row.balance === null && row.balanceDue !== null
-    ? copy.confirmedDue(row.balanceDue)
+    ? copy.confirmedDeposit
     : copy.paid;
 }
 
@@ -244,10 +244,20 @@ function PersonCard({
     .join(" · ");
   const owesBalance =
     status === "confirmed" && row.balance === null && row.balanceDue !== null;
+  const summary =
+    status === "pending_confirmation"
+      ? copy.depositSummary(row.deposit)
+      : owesBalance
+        ? copy.balanceSummary(row.balanceDue)
+        : copy.paidSummary(row.paidTotal ?? row.price);
   return (
     <AdminActionCard
       id={reservationAnchor(row.id)}
       title={row.name}
+      summary={summary}
+      summaryTone={
+        status === "pending_confirmation" || owesBalance ? "owed" : "paid"
+      }
       facts={facts}
       headingLevel={context.headingLevel}
       primary={
@@ -298,6 +308,7 @@ function CancelledCard({
     <AdminActionCard
       id={reservationAnchor(row.id)}
       title={row.name}
+      summary={copy.priceSummary(row.price)}
       facts={
         row.cancelReason
           ? `${copy.cancelled} · ${copy.cancelledReason(row.cancelReason)}`

@@ -138,4 +138,19 @@ describe("StudentsList", () => {
 
     await expectNoAxeViolations(container);
   });
+
+  it("leads the student card with her debt in the warning tone", () => {
+    render(<StudentsList {...props} />);
+
+    const studentCard = screen
+      .getByRole("heading", { name: "Ana Pérez" })
+      .closest("li");
+    const summary = studentCard?.querySelector("p.text-2xl");
+    expect(summary).toHaveTextContent("Debe $ 58.000");
+    expect(summary).toHaveClass(
+      "font-bold",
+      "tabular-nums",
+      "text-admin-warning-fg",
+    );
+  });
 });

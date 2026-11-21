@@ -207,8 +207,14 @@ describe("StudentDetail", () => {
     render(<StudentDetail {...props} />);
 
     const first = within(card("Acuarela"));
+    expect(first.getByText("$ 58.000", { exact: true })).toHaveClass(
+      "text-2xl",
+      "font-bold",
+      "tabular-nums",
+      "text-admin-warning-fg",
+    );
     expect(
-      first.getByText("noviembre 2026 · Martes 18:00 · $ 58.000"),
+      first.getByText("noviembre 2026 · Martes 18:00"),
     ).toBeInTheDocument();
     expect(first.getAllByText("Debe $ 58.000").length).toBeGreaterThan(0);
     // A paid fee says so as a fee: the sales under it may still be owed.

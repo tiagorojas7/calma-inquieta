@@ -7,7 +7,16 @@
 @theme {
   /* Page and card separation. */
   --color-admin-page: #f4eee6; /* warm page background, close to the brand canvas */
-  --color-admin-line: #dccfbe; /* card border on the warm page */
+  --color-admin-line: #94816d; /* visible card edge on the warm page */
+  /* Semantic foreground/fill pairs: money, completion, neutral, action. */
+  --color-admin-warning-fg: #7c2d00;
+  --color-admin-warning-bg: #ffe3c2;
+  --color-admin-positive-fg: #11502a;
+  --color-admin-positive-bg: #d3f0d9;
+  --color-admin-neutral-fg: #1f1b18;
+  --color-admin-neutral-bg: #f7f5f2;
+  --color-admin-brand-fg: #ffffff;
+  --color-admin-brand-bg: #604639;
   --color-admin-danger: #a32020; /* delete and cancel only: filled red button */
   --color-admin-danger-hover: #7f1818;
   --color-admin-success: #1f6b3a; /* create, add, positive commit: filled green button */

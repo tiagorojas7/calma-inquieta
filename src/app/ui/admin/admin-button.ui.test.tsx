@@ -10,6 +10,7 @@ describe("AdminButton", () => {
     const button = screen.getByRole("button", { name: "Guardar" });
     expect(button).toHaveAttribute("data-variant", "primary");
     expect(button).toHaveAttribute("type", "submit");
+    expect(button).toHaveClass("bg-admin-brand-bg", "text-admin-brand-fg");
   });
 
   it.each(["primary", "secondary", "success", "danger"] as const)(

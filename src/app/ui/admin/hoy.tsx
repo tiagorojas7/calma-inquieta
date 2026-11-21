@@ -139,7 +139,7 @@ function Numbers({ screen }: { screen: HoyScreen }) {
         <Figure
           label={copy.figures.toCollect}
           value={figures.toCollect}
-          tone="people"
+          tone="pending"
         />
         <Figure
           label={copy.figures.studio}
@@ -301,7 +301,7 @@ function ClassItem({ item }: { item: ClassCard }) {
   return (
     <AdminActionCard
       title={item.title}
-      facts={item.facts}
+      summary={item.facts}
       area="attendance"
       primary={
         <AdminButtonLink href={item.href}>

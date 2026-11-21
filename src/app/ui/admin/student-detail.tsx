@@ -300,7 +300,11 @@ function SaleBlock({
         <Heading level={4}>{copy.sale}</Heading>
         <StatusChip status={stateStatus[sale.state]} label={stateLabel(sale)} />
       </div>
-      <p className="text-lg text-ink-700">{sale.total}</p>
+      <p
+        className={`text-2xl font-bold tabular-nums ${sale.state === "owes" ? "text-admin-warning-fg" : sale.state === "paid" ? "text-admin-positive-fg" : "text-admin-neutral-fg"}`}
+      >
+        {sale.total}
+      </p>
       <Materials card={sale} />
       <ErrorFor form={form} orderId={sale.id} />
       {sale.canPay ? <PayForm card={sale} path={path} today={today} /> : null}
@@ -356,15 +360,18 @@ function RecordBlock({
           <Heading level={3} size="h4" id={titleId}>
             {record.workshop}
           </Heading>
-          <p className="text-lg text-ink-700">
-            {`${record.month} · ${record.turno} · ${record.total}`}
-          </p>
         </div>
         <StatusChip
           status={stateStatus[record.state]}
           label={stateLabel(record, true)}
         />
       </div>
+      <p
+        className={`text-2xl font-bold tabular-nums ${record.state === "owes" ? "text-admin-warning-fg" : record.state === "paid" ? "text-admin-positive-fg" : "text-admin-neutral-fg"}`}
+      >
+        {record.total}
+      </p>
+      <p className="text-lg text-ink-700">{`${record.month} · ${record.turno}`}</p>
       <Materials card={record} />
       <ErrorFor form={form} orderId={record.id} />
       {record.canPay ? (

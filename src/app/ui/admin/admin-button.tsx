@@ -17,7 +17,7 @@ const disabled =
  * navigation. `outline` is kept as an alias of `secondary`.
  */
 export const adminButtonClasses = {
-  primary: `${base} bg-clay-800 text-white hover:bg-ink-900 ${focus} ${disabled}`,
+  primary: `${base} bg-admin-brand-bg text-admin-brand-fg hover:bg-ink-900 ${focus} ${disabled}`,
   secondary: `${base} border-2 border-clay-800 bg-surface text-clay-800 hover:bg-sand-100 ${focus} ${disabled}`,
   danger: `${base} bg-admin-danger text-white hover:bg-admin-danger-hover ${focus} ${disabled}`,
   success: `${base} bg-admin-success text-white hover:bg-admin-success-hover ${focus} ${disabled}`,

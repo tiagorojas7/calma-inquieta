@@ -105,10 +105,12 @@ function MaterialCard({
             <Heading level={3} size="h4" id={titleId}>
               {card.name}
             </Heading>
-            <p className="text-lg text-ink-700">{card.price}</p>
           </div>
-          <StockBadge state={card.state} onHand={card.onHand} />
         </div>
+        <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
+          {card.state === "hay" ? copy.state.hay(card.onHand) : copy.state.sin}
+        </p>
+        <p className="text-lg text-ink-700">{card.price}</p>
         <FormError message={error} />
         {card.variants.length > 0 ? (
           <ul

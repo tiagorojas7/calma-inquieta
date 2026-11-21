@@ -72,7 +72,7 @@ export function AdminActionCard({
       {summary ? (
         <p
           data-summary-tone={summaryTone}
-          className={`text-2xl font-bold tabular-nums ${summaryTone === "owed" ? "text-terracotta-700" : summaryTone === "paid" ? "text-moss-700" : "text-ink-900"}`}
+          className={`text-2xl font-bold tabular-nums ${summaryTone === "owed" ? "text-admin-warning-fg" : summaryTone === "paid" ? "text-admin-positive-fg" : "text-admin-neutral-fg"}`}
         >
           {summary}
         </p>

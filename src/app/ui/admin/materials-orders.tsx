@@ -82,7 +82,7 @@ function SupplierCard({
           <Heading level={3} size="h4" id={`${anchor}-title`}>
             {supplier.supplierName}
           </Heading>
-          <p className="text-lg font-semibold text-ink-900">
+          <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
             {copy.order.total(supplier.total)}
           </p>
         </div>
@@ -234,6 +234,11 @@ function DeliveryCard({
             />
           )}
         </div>
+        <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
+          {copy.order.quantity(
+            delivery.lines.reduce((total, line) => total + line.quantity, 0),
+          )}
+        </p>
         <p className="text-lg text-ink-700">{delivery.detail}</p>
         <ul className="flex flex-col gap-1">
           {delivery.lines.map((line) => (

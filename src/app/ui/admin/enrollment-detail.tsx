@@ -387,11 +387,6 @@ export function EnrollmentDetail({
             <Heading level={2} size="h3">
               {order.studentName}
             </Heading>
-            <p className="text-lg text-ink-700">
-              {isSale
-                ? `${order.workshopName} · ${order.month}`
-                : `${order.workshopName} · ${order.month} · ${order.turno}`}
-            </p>
             {order.parent ? (
               <a href={order.parent.href} className={linkClasses}>
                 {copy.sale.parent(order.parent.number)}
@@ -402,13 +397,18 @@ export function EnrollmentDetail({
         </div>
         <div
           data-order-total
-          className="flex items-baseline justify-between gap-4 border-t-2 border-clay-800 pt-3"
+          className={`flex items-baseline justify-between gap-4 border-t-2 border-clay-800 pt-3 text-2xl font-bold tabular-nums ${order.status === "pending_confirmation" ? "text-admin-warning-fg" : order.status === "cancelled" ? "text-admin-neutral-fg" : "text-admin-positive-fg"}`}
         >
           <span>{copy.totals.total}</span>
           <span className="font-display text-3xl font-semibold tabular-nums">
             {order.total}
           </span>
         </div>
+        <p className="text-lg text-ink-700">
+          {isSale
+            ? `${order.workshopName} · ${order.month}`
+            : `${order.workshopName} · ${order.month} · ${order.turno}`}
+        </p>
         {order.lines.length > 0 ? (
           <ul
             aria-label={copy.lines}

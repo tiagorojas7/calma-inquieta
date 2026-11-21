@@ -232,7 +232,7 @@ function Task({
       {...common}
       primary={
         <div className="flex w-full flex-col gap-3">
-          <form method="post" className="flex">
+          <form method="post" action="?index" className="flex">
             <input type="hidden" name="intent" value={card.intent} />
             {Object.entries(card.fields).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />

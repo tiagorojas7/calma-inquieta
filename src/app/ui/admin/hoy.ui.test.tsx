@@ -140,6 +140,7 @@ describe("Hoy para hacer", () => {
     const form = card.querySelector<HTMLFormElement>("form");
     if (form === null) throw new Error("no form");
     expect(form).toHaveAttribute("method", "post");
+    expect(form).toHaveAttribute("action", "?index");
     const value = (name: string) =>
       form.querySelector<HTMLInputElement>(`[name="${name}"]`)?.value;
     expect(value("intent")).toBe("confirm-order");

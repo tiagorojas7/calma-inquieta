@@ -88,19 +88,25 @@ export class InMemoryMaterialRepository implements MaterialRepository {
     }
   }
 
-  update(
-    material: Material,
-    options?: { readonly preserveKeptInStudio?: boolean },
-  ): Promise<boolean> {
-    const current = this.materials.get(material.id);
-    if (!current) return Promise.resolve(false);
+  update(material: Material): Promise<boolean> {
+    if (!this.materials.has(material.id)) return Promise.resolve(false);
     try {
-      this.write(
-        options?.preserveKeptInStudio
-          ? { ...material, keptInStudio: current.keptInStudio === true }
-          : material,
-      );
+      this.write(material);
       return Promise.resolve(true);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error ? error : new Error("material update failed"),
+      );
+    }
+  }
+
+  updatePreservingKeptInStudio(material: Material): Promise<Material | null> {
+    const current = this.materials.get(material.id);
+    if (!current) return Promise.resolve(null);
+    const next = { ...material, keptInStudio: current.keptInStudio === true };
+    try {
+      this.write(next);
+      return Promise.resolve(cloneMaterial(next));
     } catch (error) {
       return Promise.reject(
         error instanceof Error ? error : new Error("material update failed"),

@@ -274,12 +274,12 @@ export function createMaterialsService(
   ): Promise<Result<Material, MaterialError>> {
     try {
       if (mode === "insert") await repository.insert(material);
-      else await repository.update(material, { preserveKeptInStudio });
-      return ok(
-        preserveKeptInStudio
-          ? ((await repository.findById(material.id)) ?? material)
-          : material,
-      );
+      else if (preserveKeptInStudio)
+        return ok(
+          (await repository.updatePreservingKeptInStudio(material)) ?? material,
+        );
+      else await repository.update(material);
+      return ok(material);
     } catch (error) {
       if (error instanceof MaterialNameConflictError)
         return err({ kind: "invalid", issues: [duplicateName] });

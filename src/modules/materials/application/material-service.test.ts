@@ -1025,6 +1025,25 @@ describe("materials kept in the studio", () => {
     });
   });
 
+  it("does not report failure after saving an edit when another read fails", async () => {
+    const { service, repository } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    const findById = repository.findById.bind(repository);
+    let reads = 0;
+    repository.findById = (id) => {
+      reads += 1;
+      if (reads > 1) throw new Error("read unavailable");
+      return findById(id);
+    };
+
+    expect(
+      valueOf(
+        await service.update(actor, created.id, draft({ name: "Arcilla" })),
+      ).name,
+    ).toBe("Arcilla");
+    expect(repository.materials.get(created.id)?.name).toBe("Arcilla");
+  });
+
   it("refuses to mark without an actor or for an unknown material", async () => {
     const { service } = await setup();
     expect(await service.setKeptInStudio(null, "id", true)).toEqual({

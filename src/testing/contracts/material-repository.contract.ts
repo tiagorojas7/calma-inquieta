@@ -138,10 +138,11 @@ export function runMaterialRepositoryContract(
       await repository.insert(original);
       await repository.setKeptInStudio(original.id, true, original.audit);
 
-      await repository.update(
-        { ...original, name: "Arcilla" },
-        { preserveKeptInStudio: true },
-      );
+      const updated = await repository.updatePreservingKeptInStudio({
+        ...original,
+        name: "Arcilla",
+      });
+      expect(updated).toMatchObject({ name: "Arcilla", keptInStudio: true });
       expect(await repository.findById(original.id)).toMatchObject({
         name: "Arcilla",
         keptInStudio: true,

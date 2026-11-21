@@ -259,6 +259,31 @@ export function createDrizzleMaterialRepository(
     }
   }
 
+  async function updateMaterial(
+    value: Material,
+    preserveKeptInStudio: boolean,
+  ): Promise<Material | null> {
+    return withSession(async (db) => {
+      try {
+        return await db.transaction(async (tx) => {
+          const [row] = await tx
+            .update(material)
+            .set(rootValues(value, !preserveKeptInStudio))
+            .where(eq(material.id, value.id))
+            .returning({ keptInStudio: material.keptInStudio });
+          if (!row) return null;
+          await tx
+            .delete(materialVariant)
+            .where(eq(materialVariant.materialId, value.id));
+          await tx.insert(materialVariant).values(variantValues(value));
+          return { ...value, keptInStudio: row.keptInStudio };
+        });
+      } catch (error) {
+        return mapMaterialConflict(error);
+      }
+    });
+  }
+
   return {
     insert: (value) =>
       withSession(async (db) => {
@@ -275,26 +300,9 @@ export function createDrizzleMaterialRepository(
         }
       }),
 
-    update: (value, options) =>
-      withSession(async (db) => {
-        try {
-          return await db.transaction(async (tx) => {
-            const rows = await tx
-              .update(material)
-              .set(rootValues(value, !options?.preserveKeptInStudio))
-              .where(eq(material.id, value.id))
-              .returning({ id: material.id });
-            if (rows.length === 0) return false;
-            await tx
-              .delete(materialVariant)
-              .where(eq(materialVariant.materialId, value.id));
-            await tx.insert(materialVariant).values(variantValues(value));
-            return true;
-          });
-        } catch (error) {
-          return mapMaterialConflict(error);
-        }
-      }),
+    update: async (value) => (await updateMaterial(value, false)) !== null,
+
+    updatePreservingKeptInStudio: (value) => updateMaterial(value, true),
 
     setKeptInStudio: (id, kept, audit) =>
       withSession(async (db) => {

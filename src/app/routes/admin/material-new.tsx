@@ -17,7 +17,11 @@ import {
   type MaterialQuickValues,
 } from "~/app/ui/admin/material-quick-form";
 import type { FieldIssue } from "~/modules/_shared";
-import type { MaterialDraft, MaterialField } from "~/modules/materials";
+import type {
+  MaterialDraft,
+  MaterialField,
+  StartingStockField,
+} from "~/modules/materials";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/material-new";
 
@@ -45,10 +49,13 @@ function draftOf(form: FormData): MaterialDraft {
 function rejectedValues(form: FormData): MaterialQuickValues {
   const draft = parseMaterialDraft(form);
   const [first, ...others] = draft.variants;
+  const stock = form
+    .getAll("startingStock")
+    .map((value) => (typeof value === "string" ? value : ""));
   return {
     name: draft.name,
     price: first?.price ?? "",
-    stock: text(form, "startingStock"),
+    stock: stock[0] ?? "",
     supplierId: draft.supplierId,
     category: draft.category,
     description: draft.description,
@@ -57,22 +64,27 @@ function rejectedValues(form: FormData): MaterialQuickValues {
     available: draft.available,
     keptInStudio: draft.keptInStudio === true,
     image: draft.image ? { ...draft.image, src: text(form, "imageSrc") } : null,
-    extras: others.map((variant) => ({
+    extras: others.map((variant, index) => ({
       label: variant.label,
       price: variant.price,
       cost: variant.cost ?? "",
+      stock: stock[index + 1] ?? "",
     })),
   };
 }
 
 function quickErrors(
-  issues: readonly FieldIssue<MaterialField | "startingStock">[],
+  issues: readonly FieldIssue<MaterialField | StartingStockField>[],
 ): MaterialQuickErrors {
   const stock = issues.find((issue) => issue.field === "startingStock");
+  const extraStock = issues.filter((issue) =>
+    issue.field.startsWith("startingStockExtra:"),
+  );
   const own = materialFormErrors(
     issues.filter(
       (issue): issue is FieldIssue<MaterialField> =>
-        issue.field !== "startingStock",
+        issue.field !== "startingStock" &&
+        !issue.field.startsWith("startingStockExtra:"),
     ),
   );
   const rows = own.variants?.rows ?? [];
@@ -93,7 +105,38 @@ function quickErrors(
               : copy.stockInvalid,
         }
       : {}),
-    ...(others.length > 0 ? { extras: others } : {}),
+    ...(others.length > 0 || extraStock.length > 0
+      ? {
+          extras: Array.from(
+            {
+              length: Math.max(
+                others.length,
+                ...extraStock.map(
+                  (issue) => Number(issue.field.split(":")[1]) + 1,
+                ),
+              ),
+            },
+            (_, index) => {
+              const row = others[index] ?? {};
+              const issue = extraStock.find(
+                (entry) =>
+                  entry.field === `startingStockExtra:${String(index)}`,
+              );
+              return {
+                ...row,
+                ...(issue
+                  ? {
+                      stock:
+                        issue.code === "out-of-range"
+                          ? copy.stockTooMany
+                          : copy.stockInvalid,
+                    }
+                  : {}),
+              };
+            },
+          ),
+        }
+      : {}),
   };
 }
 
@@ -125,7 +168,11 @@ export async function action({ request, context }: Route.ActionArgs) {
     .materials.createWithStock(
       actor,
       draft,
-      draft.keptInStudio === true ? text(form, "startingStock") : "",
+      draft.keptInStudio === true
+        ? form
+            .getAll("startingStock")
+            .map((value) => (typeof value === "string" ? value : ""))
+        : "",
     );
   if (created.ok) {
     const id = created.value.material.id;

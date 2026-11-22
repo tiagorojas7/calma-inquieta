@@ -122,7 +122,8 @@ export interface MaterialStockRow {
   readonly onHand: number;
 }
 /** The starting units of a new material, as typed. */
-export type StartingStockField = "startingStock";
+export type StartingStockField =
+  "startingStock" | `startingStockExtra:${number}`;
 /** A manual stock subtraction larger than the units on hand. */
 export interface InsufficientStock {
   readonly kind: "insufficient-stock";
@@ -323,15 +324,15 @@ export interface MaterialsService {
     f: { readonly state: "active" | "inactive" | "all" },
   ): Promise<Result<readonly MaterialStockRow[], AdminFailure>>;
   /**
-   * Creates the material like `create` and, when `startingStock` is a whole
-   * number above zero, records those units on its first variant with the
-   * reason "Stock inicial". Blank or 0 records nothing. Bad units are refused
-   * before anything is created.
+   * Creates the material like `create` and records initial units for each
+   * variant. A string is the legacy first-variant form; an array follows the
+   * variant order. Blank or 0 records nothing. Bad units are refused before
+   * anything is created.
    */
   createWithStock(
     a: AdminActor,
     d: MaterialDraft,
-    startingStock: string,
+    startingStock: string | readonly string[],
   ): Promise<
     Result<
       { readonly material: Material; readonly onHand: number },

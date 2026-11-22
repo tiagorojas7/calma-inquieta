@@ -19,6 +19,7 @@ export interface MaterialQuickExtra {
   readonly label: string;
   readonly price: string;
   readonly cost: string;
+  readonly stock?: string;
 }
 
 export interface MaterialQuickValues {
@@ -55,6 +56,7 @@ export interface MaterialQuickErrors {
         readonly label?: string | undefined;
         readonly price?: string | undefined;
         readonly cost?: string | undefined;
+        readonly stock?: string | undefined;
       }[]
     | undefined;
 }
@@ -267,6 +269,18 @@ export function MaterialQuickForm({
                   change(index, "cost", event.target.value);
                 }}
               />
+              {kept ? (
+                <TextField
+                  label="Unidades de la variante"
+                  name="startingStock"
+                  inputMode="numeric"
+                  value={extra.stock ?? ""}
+                  error={row?.stock}
+                  onChange={(event) => {
+                    change(index, "stock", event.target.value);
+                  }}
+                />
+              ) : null}
               <input type="hidden" name="variantSwatch" value="" />
               <input
                 type="hidden"
@@ -296,7 +310,7 @@ export function MaterialQuickForm({
             onClick={() => {
               setExtras((current) => [
                 ...current,
-                { key: nextKey, label: "", price: "", cost: "" },
+                { key: nextKey, label: "", price: "", cost: "", stock: "" },
               ]);
               setNextKey((current) => current + 1);
             }}

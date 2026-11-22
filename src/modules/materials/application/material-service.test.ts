@@ -741,6 +741,47 @@ describe("material service", () => {
 });
 
 describe("material stock overview and creation with starting stock", () => {
+  it("records each variant's initial units under its own id", async () => {
+    const { service, stock } = await setup();
+    const created = valueOf(
+      await service.createWithStock(
+        actor,
+        draft({
+          variants: [
+            { label: "Rojo", price: "1000", available: true, swatch: "" },
+            { label: "Azul", price: "1200", available: true, swatch: "" },
+          ],
+        }),
+        ["2", "5"],
+      ),
+    );
+    expect(created.onHand).toBe(7);
+    expect(
+      created.material.variants.map((variant) => stock.levels.get(variant.id)),
+    ).toEqual([2, 5]);
+  });
+
+  it("rejects bad units on an added variant before creating the material", async () => {
+    const { service, repository, stock } = await setup();
+    const result = await service.createWithStock(
+      actor,
+      draft({
+        variants: [
+          { label: "Rojo", price: "1000", available: true, swatch: "" },
+          { label: "Azul", price: "1200", available: true, swatch: "" },
+        ],
+      }),
+      ["2", "x"],
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        issues: [{ field: "startingStockExtra:0", code: "invalid-format" }],
+      },
+    });
+    expect(await repository.list({ state: "all" })).toEqual([]);
+    expect(stock.adjustments).toEqual([]);
+  });
   it("lists each material with its variants, price and units on hand, and the total", async () => {
     const { service, stock } = await setup();
     const paint = valueOf(

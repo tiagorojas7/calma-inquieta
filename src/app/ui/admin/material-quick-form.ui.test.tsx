@@ -179,6 +179,17 @@ describe("MaterialQuickForm", () => {
     expect(screen.getByLabelText("Nombre de la variante")).toHaveValue("Azul");
   });
 
+  it("asks for initial units on each added variant when the studio keeps the material", () => {
+    const { container } = view();
+    fireEvent.click(screen.getByLabelText("Lo tenemos en el estudio"));
+    fireEvent.click(screen.getByRole("button", { name: "Agregar variante" }));
+    expect(container.querySelectorAll('[name="startingStock"]')).toHaveLength(
+      2,
+    );
+    fireEvent.click(screen.getByText("Más opciones"));
+    expect(screen.getByLabelText("Unidades de la variante")).toBeVisible();
+  });
+
   it("opens Más opciones for an error on an extra variant and shows it on its row", () => {
     view({
       values: { extras: [{ label: "grande", price: "1", cost: "" }] },

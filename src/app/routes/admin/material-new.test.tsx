@@ -82,6 +82,42 @@ async function setup() {
 }
 
 describe("admin material create route: the short flow", () => {
+  it("records initial units of an added variant during the first save", async () => {
+    const { fixture, services } = await setup();
+    const result = await submitEntries(services, [
+      ...Object.entries(SHORT),
+      ["variantLabel", "Azul"],
+      ["variantPrice", "13000"],
+      ["variantSwatch", ""],
+      ["variantAvailable", "1"],
+      ["startingStock", "4"],
+    ]);
+    expect((result as Response).status).toBe(302);
+    const [created] = [...fixture.repository.materials.values()];
+    expect(created?.variants).toHaveLength(2);
+    expect(fixture.stock.levels.get(created?.variants[0]?.id ?? "")).toBe(6);
+    expect(fixture.stock.levels.get(created?.variants[1]?.id ?? "")).toBe(4);
+  });
+  it("shows an added variant's bad quantity without creating the material", async () => {
+    const { fixture, services } = await setup();
+    const result = await submitEntries(services, [
+      ...Object.entries(SHORT),
+      ["variantLabel", "Azul"],
+      ["variantPrice", "13000"],
+      ["variantSwatch", ""],
+      ["variantAvailable", "1"],
+      ["startingStock", "x"],
+    ]);
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        values: { extras: [{ stock: "x" }] },
+        errors: { extras: [{ stock: expect.stringMatching(/\S/) as string }] },
+      },
+    });
+    expect(fixture.repository.materials.size).toBe(0);
+    expect(fixture.stock.adjustments).toEqual([]);
+  });
   it("loads only active suppliers", async () => {
     const { fixture, services } = await setup();
     const supplier = await fixture.suppliers.findById(MATERIAL_SUPPLIER_ID);

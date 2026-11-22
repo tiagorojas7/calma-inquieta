@@ -25,6 +25,7 @@ import type {
   MaterialSummary,
   MaterialsService,
   MaterialVariant,
+  StartingStockField,
 } from "./contracts";
 import {
   MaterialNameConflictError,
@@ -62,12 +63,14 @@ export interface MaterialLookupDeps {
 }
 
 /** Blank is fine (no units); otherwise whole units up to one adjustment's limit. */
-function startingStockIssue(text: string): FieldIssue<"startingStock"> | null {
+function startingStockIssue(
+  text: string,
+  field: StartingStockField,
+): FieldIssue<StartingStockField> | null {
   if (text === "") return null;
-  if (!/^[0-9]+$/.test(text))
-    return { field: "startingStock", code: "invalid-format" };
+  if (!/^[0-9]+$/.test(text)) return { field, code: "invalid-format" };
   return Number(text) > STOCK_DELTA_MAX
-    ? { field: "startingStock", code: "out-of-range" }
+    ? { field, code: "out-of-range" }
     : null;
 }
 
@@ -364,13 +367,24 @@ export function createMaterialsService(
     async createWithStock(actor, draft, startingStock) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
-      const text = startingStock.trim();
-      const stockIssue = startingStockIssue(text);
-      if (stockIssue) {
+      const texts = (
+        typeof startingStock === "string" ? [startingStock] : startingStock
+      ).map((value) => value.trim());
+      const stockIssues = texts.flatMap((value, index) => {
+        const field: StartingStockField =
+          index === 0
+            ? "startingStock"
+            : `startingStockExtra:${String(index - 1)}`;
+        const issue = startingStockIssue(value, field);
+        return issue ? [issue] : [];
+      });
+      if (texts.length > draft.variants.length)
+        stockIssues.push({ field: "startingStock", code: "invalid-format" });
+      if (stockIssues.length > 0) {
         const valid = validateMaterialDraft(draft);
         return err({
           kind: "invalid",
-          issues: [...(valid.ok ? [] : valid.error), stockIssue],
+          issues: [...(valid.ok ? [] : valid.error), ...stockIssues],
         });
       }
       const valid = validateMaterialDraft(draft);
@@ -379,21 +393,23 @@ export function createMaterialsService(
       if (!material.ok) return material;
       const saved = await save("insert", material.value);
       if (!saved.ok) return saved;
-      const units = Number(text === "" ? "0" : text);
-      const first = saved.value.variants[0];
-      if (units === 0 || !first)
-        return ok({ material: saved.value, onHand: 0 });
-      const outcome = await deps.stock.adjust({
-        variantId: first.id,
-        delta: units,
-        reason: "Stock inicial",
-        by: authorized.value.email,
-        at: clock.now(),
-      });
-      // Adding units cannot go below zero: only a store failure lands here.
-      if (outcome.kind !== "adjusted")
-        throw new Error("starting stock was refused for a new variant");
-      return ok({ material: saved.value, onHand: outcome.onHand });
+      let onHand = 0;
+      for (const [index, variant] of saved.value.variants.entries()) {
+        const units = Number(texts[index] || "0");
+        if (units === 0) continue;
+        const outcome = await deps.stock.adjust({
+          variantId: variant.id,
+          delta: units,
+          reason: "Stock inicial",
+          by: authorized.value.email,
+          at: clock.now(),
+        });
+        // Adding units cannot go below zero: only a store failure lands here.
+        if (outcome.kind !== "adjusted")
+          throw new Error("starting stock was refused for a new variant");
+        onHand += outcome.onHand;
+      }
+      return ok({ material: saved.value, onHand });
     },
 
     async update(actor, id, draft) {

@@ -1400,7 +1400,7 @@ export const adminMicrocopy = {
     back: "Volver a materiales",
     feedback: {
       saved: "Cambios guardados",
-      deactivated: "Material desactivado",
+      deactivated: "Material archivado",
       reactivated: "Material reactivado",
       stock: "Stock ajustado",
     },
@@ -1443,12 +1443,12 @@ export const adminMicrocopy = {
       at: "Fecha y hora",
     },
     lifecycle: {
-      title: "Zona de riesgo",
-      deactivate: "Desactivar",
+      title: "Estado del material",
+      deactivate: "Archivar",
       reactivate: "Reactivar",
       failed: "No se pudo actualizar el estado del material. Probá de nuevo.",
       confirmDeactivate: {
-        title: "¿Desactivar este material?",
+        title: "¿Archivar este material?",
         message:
           "Deja de estar disponible para materiales nuevos. Podés reactivarlo cuando quieras.",
       },

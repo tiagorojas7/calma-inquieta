@@ -84,6 +84,7 @@ describe("material detail screen", () => {
     expect(
       screen.getByText("No disponible", { selector: "span" }),
     ).toBeVisible();
+    fireEvent.click(screen.getByText("Más datos"));
     expect(screen.getByText("admin@example.com")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Volver a materiales" }),
@@ -149,6 +150,35 @@ describe("material detail screen", () => {
     expect(grande.closest("li")).toHaveTextContent("En stock: 0");
   });
 
+  it("puts a one-field stock arrival form on each compact variant row and keeps full editing behind one disclosure", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+
+    const chico = screen.getByRole("form", {
+      name: "Cargar unidades de Chico",
+    });
+    expect(chico).toHaveAttribute("method", "post");
+    expect(chico.querySelector('input[name="intent"]')).toHaveValue(
+      "adjust-stock",
+    );
+    expect(chico.querySelector('input[name="variantId"]')).toHaveValue("v1");
+    expect(chico.querySelector('input[name="reason"]')).toHaveValue("Llegaron");
+    expect(
+      within(chico).getByLabelText("Unidades que llegaron de Chico"),
+    ).toHaveAttribute("name", "delta");
+    expect(within(chico).getByRole("button", { name: "Cargar" })).toBeVisible();
+    expect(
+      screen.getByText("Editar datos").closest("details"),
+    ).not.toHaveAttribute("open");
+  });
+
   it("offers a native stock adjustment form per variant with a signed delta and a required reason", () => {
     render(
       <MaterialDetail
@@ -159,6 +189,8 @@ describe("material detail screen", () => {
         stateError={undefined}
       />,
     );
+
+    fireEvent.click(screen.getAllByText("Otro ajuste")[0] as HTMLElement);
 
     const form = screen.getByRole("form", { name: "Ajustar stock de Chico" });
     expect(form).toHaveAttribute("method", "post");
@@ -212,6 +244,37 @@ describe("material detail screen", () => {
     expect(within(grande).getByLabelText(/Cantidad/)).toHaveValue("");
   });
 
+  it("keeps a rejected arrival beside its own variant instead of opening the advanced adjustment", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+        stockRejection={{
+          variantId: "v1",
+          delta: "0",
+          reason: "Llegaron",
+          errors: { delta: "Poné una cantidad mayor a cero." },
+        }}
+      />,
+    );
+
+    const arrival = screen.getByRole("form", {
+      name: "Cargar unidades de Chico",
+    });
+    expect(
+      within(arrival).getByLabelText("Unidades que llegaron de Chico"),
+    ).toHaveValue(0);
+    expect(
+      within(arrival).getByText("Poné una cantidad mayor a cero."),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText("Otro ajuste")[0]?.closest("details"),
+    ).not.toHaveAttribute("open");
+  });
+
   it("announces lifecycle feedback accessibly", () => {
     render(
       <MaterialDetail
@@ -233,7 +296,7 @@ describe("material detail screen", () => {
     render(<Active initialEntries={[`/admin/materiales/${ID}`]} />);
 
     const deactivate = await screen.findByRole("button", {
-      name: "Desactivar",
+      name: "Archivar",
     });
     const form = deactivate.closest("form");
     expect(form).toHaveAttribute("method", "post");

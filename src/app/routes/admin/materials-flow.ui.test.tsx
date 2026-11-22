@@ -61,10 +61,6 @@ const detailData = {
   audit: { updatedBy: "admin@example.com", updatedAt: "20 oct 2026, 00:30" },
 };
 
-function crumbs() {
-  return within(screen.getByRole("navigation", { name: "Migas de pan" }));
-}
-
 describe("materials guided flow", () => {
   it("list shows a saved banner, the four sections and the tools behind a closed disclosure", async () => {
     const Stub = createRoutesStub([
@@ -116,13 +112,12 @@ describe("materials guided flow", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Cambios guardados",
     );
-    expect(crumbs().getByText("Pincel plano")).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    const danger = screen.getByRole("region", { name: "Zona de riesgo" });
     expect(
-      within(danger).getByRole("button", { name: "Desactivar" }),
+      screen.queryByRole("navigation", { name: "Migas de pan" }),
+    ).not.toBeInTheDocument();
+    const danger = screen.getByRole("region", { name: "Estado del material" });
+    expect(
+      within(danger).getByRole("button", { name: "Archivar" }),
     ).toBeVisible();
   });
 });

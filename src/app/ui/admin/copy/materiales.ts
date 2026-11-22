@@ -39,6 +39,7 @@ export const materialesCopy = {
     more: (shown: number, total: number) =>
       `Mostrando ${String(shown)} de ${String(total)}. Buscá para encontrar otro.`,
     variantsLabel: (name: string) => `Variantes de ${name}`,
+    addUnits: "Cargar unidades",
     arrived: "Llegaron",
     arrivedField: (name: string) => `Cuántas llegaron de ${name}`,
     arrivedPlaceholder: "Cantidad",

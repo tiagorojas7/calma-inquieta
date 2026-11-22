@@ -122,19 +122,26 @@ function MaterialCard({
             {card.variants.map((variant) => (
               <li
                 key={variant.id}
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 py-2"
               >
-                <span className="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink-900">
+                <span className="min-w-0 text-base font-semibold leading-snug text-ink-900">
                   {variant.label}
-                  <StockBadge state={variant.state} onHand={variant.onHand} />
                 </span>
-                <ArrivedForm
-                  materialId={card.id}
-                  variantId={variant.id}
-                  label={`${card.name} ${variant.label}`}
-                  anchor={card.anchor}
-                  returnTo={returnTo}
-                />
+                <StockBadge state={variant.state} onHand={variant.onHand} />
+                <details className="col-span-2 min-w-0">
+                  <summary className="ml-auto inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 text-base font-semibold text-clay-800 underline underline-offset-4 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
+                    {copy.addUnits}
+                  </summary>
+                  <div className="mt-2">
+                    <ArrivedForm
+                      materialId={card.id}
+                      variantId={variant.id}
+                      label={`${card.name} ${variant.label}`}
+                      anchor={card.anchor}
+                      returnTo={returnTo}
+                    />
+                  </div>
+                </details>
               </li>
             ))}
           </ul>

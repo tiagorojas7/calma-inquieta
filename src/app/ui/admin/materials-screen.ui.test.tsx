@@ -169,7 +169,7 @@ describe("Materiales screen: En el estudio", () => {
     expect(screen.queryByText("Sin stock")).toBeNull();
   });
 
-  it("gives each variant its own line with its own state and its own Llegaron", () => {
+  it("keeps each variant's stock visible and reveals only its own stock form", () => {
     view();
     const lines = within(
       screen.getByRole("list", { name: "Variantes de Acrílico" }),
@@ -178,10 +178,22 @@ describe("Materiales screen: En el estudio", () => {
     expect(within(lines[0] as HTMLElement).getByText("Rojo")).toBeVisible();
     expect(within(lines[0] as HTMLElement).getByText("Hay 2")).toBeVisible();
     expect(within(lines[1] as HTMLElement).getByText("Se acabó")).toBeVisible();
-    for (const line of lines)
-      expect(
-        within(line).getByRole("button", { name: "Llegaron" }),
-      ).toBeVisible();
+    for (const line of lines) {
+      expect(within(line).getByText("Cargar unidades")).toBeVisible();
+      expect(line.querySelector("details")).not.toHaveAttribute("open");
+    }
+    fireEvent.click(
+      within(lines[1] as HTMLElement).getByText("Cargar unidades"),
+    );
+    expect(
+      within(lines[1] as HTMLElement).getByRole("button", { name: "Llegaron" }),
+    ).toBeVisible();
+    expect((lines[1] as HTMLElement).querySelector("details")).toHaveAttribute(
+      "open",
+    );
+    expect(
+      (lines[0] as HTMLElement).querySelector("details"),
+    ).not.toHaveAttribute("open");
     expect(within(cardOf("Acrílico")).getAllByText("Hay 2")).toHaveLength(2);
   });
 

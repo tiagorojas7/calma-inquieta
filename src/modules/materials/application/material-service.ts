@@ -371,10 +371,9 @@ export function createMaterialsService(
         typeof startingStock === "string" ? [startingStock] : startingStock
       ).map((value) => value.trim());
       const stockIssues = texts.flatMap((value, index) => {
+        const extraIndex = String(index - 1) as `${number}`;
         const field: StartingStockField =
-          index === 0
-            ? "startingStock"
-            : `startingStockExtra:${String(index - 1)}`;
+          index === 0 ? "startingStock" : `startingStockExtra:${extraIndex}`;
         const issue = startingStockIssue(value, field);
         return issue ? [issue] : [];
       });

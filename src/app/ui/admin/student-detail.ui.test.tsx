@@ -134,6 +134,23 @@ describe("StudentDetail", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows what she owes as the file's large figure, in the owed or paid tone", () => {
+    const { rerender } = render(<StudentDetail {...props} />);
+
+    const figure = () =>
+      screen
+        .getByRole("group", { name: "Lo que debe" })
+        .querySelector("[data-summary-tone]");
+    expect(figure()).toHaveTextContent("Debe $ 66.000");
+    expect(figure()).toHaveAttribute("data-summary-tone", "owed");
+
+    rerender(
+      <StudentDetail {...props} student={{ ...props.student, owes: null }} />,
+    );
+    expect(figure()).toHaveTextContent("Al día");
+    expect(figure()).toHaveAttribute("data-summary-tone", "paid");
+  });
+
   it("names a workshop deposit or balance she owes, which has no card in the file", () => {
     render(
       <StudentDetail

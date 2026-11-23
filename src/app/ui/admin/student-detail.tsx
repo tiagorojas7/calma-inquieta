@@ -448,8 +448,29 @@ export function StudentDetail({
       />
       <SavedBanner message={saved} />
 
-      <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card">
+        <div
+          role="group"
+          aria-label={copy.debtLabel}
+          className="flex flex-col gap-2"
+        >
+          <p
+            data-summary-tone={student.owes === null ? "paid" : "owed"}
+            className={`text-3xl font-bold tabular-nums ${student.owes === null ? "text-admin-positive-fg" : "text-admin-warning-fg"}`}
+          >
+            {student.owes === null ? copy.upToDate : copy.owes(student.owes)}
+          </p>
+          {student.seatDebts.map((debt) => (
+            <p
+              key={debt.label}
+              className="flex flex-wrap gap-x-2 text-lg text-ink-700"
+            >
+              <span>{debt.label}</span>
+              <span className="font-semibold text-ink-900">{debt.amount}</span>
+            </p>
+          ))}
+        </div>
+        <div className="flex min-w-0 flex-col gap-3 border-t border-admin-line pt-4">
           <div className="flex flex-wrap items-center gap-3">
             {student.phoneLink === null ? (
               <p className="text-lg text-ink-900">{student.phoneShown}</p>
@@ -477,29 +498,6 @@ export function StudentDetail({
           <p className="font-semibold text-ink-900">
             {student.active ? copy.active : copy.inactive}
           </p>
-        </div>
-        <div
-          role="group"
-          aria-label={copy.debtLabel}
-          className="flex flex-col gap-2 lg:items-end"
-        >
-          {student.owes === null ? (
-            <StatusChip status="paid" label={copy.upToDate} />
-          ) : (
-            <StatusChip
-              status="pending_confirmation"
-              label={copy.owes(student.owes)}
-            />
-          )}
-          {student.seatDebts.map((debt) => (
-            <p
-              key={debt.label}
-              className="flex flex-wrap gap-x-2 text-lg text-ink-700"
-            >
-              <span>{debt.label}</span>
-              <span className="font-semibold text-ink-900">{debt.amount}</span>
-            </p>
-          ))}
         </div>
         <MoreOptions label={copy.edit}>
           <form method="post" className="flex flex-col gap-3">

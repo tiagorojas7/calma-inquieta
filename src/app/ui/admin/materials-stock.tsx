@@ -71,7 +71,7 @@ function ArrivedForm({
         required
         aria-label={copy.arrivedField(label)}
         placeholder={copy.arrivedPlaceholder}
-        className="min-h-12 w-28 rounded-md border border-admin-line bg-surface px-3 text-lg text-ink-900"
+        className="min-h-12 w-36 rounded-md border border-admin-line bg-surface px-3 text-lg text-ink-900"
       />
       <Button type="submit" variant="success">
         {copy.arrived}
@@ -107,7 +107,10 @@ function MaterialCard({
             </Heading>
             <p className="text-base text-ink-700">{card.price}</p>
           </div>
-          <p className="text-2xl font-bold tabular-nums text-admin-neutral-fg">
+          <p
+            data-summary-tone={card.state === "hay" ? "paid" : "owed"}
+            className={`text-2xl font-bold tabular-nums ${card.state === "hay" ? "text-admin-positive-fg" : "text-admin-warning-fg"}`}
+          >
             {card.state === "hay"
               ? copy.state.hay(card.onHand)
               : copy.state.sin}
@@ -122,14 +125,14 @@ function MaterialCard({
             {card.variants.map((variant) => (
               <li
                 key={variant.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 py-2"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2"
               >
-                <span className="min-w-0 text-base font-semibold leading-snug text-ink-900">
+                <span className="min-w-0 flex-1 text-base font-semibold leading-snug text-ink-900">
                   {variant.label}
                 </span>
                 <StockBadge state={variant.state} onHand={variant.onHand} />
-                <details className="col-span-2 min-w-0">
-                  <summary className="ml-auto inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 text-base font-semibold text-clay-800 underline underline-offset-4 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
+                <details className="min-w-0 open:basis-full">
+                  <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 text-base font-semibold text-clay-800 underline underline-offset-4 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
                     {copy.addUnits}
                   </summary>
                   <div className="mt-2">
@@ -210,7 +213,7 @@ export function StudioSection({
         aria-label={copy.search}
         method="get"
         action={`${BASE}#en-el-estudio`}
-        className="flex flex-wrap items-end gap-2"
+        className="flex max-w-3xl flex-wrap items-end gap-2"
       >
         <input type="hidden" name="mes" value={period} />
         {catalogQuery && <input type="hidden" name="q" value={catalogQuery} />}
@@ -237,7 +240,10 @@ export function StudioSection({
         </p>
       ) : (
         <>
-          <ul aria-label={copy.listLabel} className="flex flex-col gap-3">
+          <ul
+            aria-label={copy.listLabel}
+            className="flex max-w-3xl flex-col gap-3"
+          >
             {cards.map((card) => (
               <MaterialCard
                 key={card.id}

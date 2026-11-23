@@ -143,4 +143,29 @@ describe("AdminHubCard", () => {
     );
     expect(screen.getByRole("link", { name: "Talleres" })).toBeVisible();
   });
+
+  it("gives every card title the same card style, whatever its heading level", () => {
+    render(
+      <>
+        <AdminActionCard
+          title="Nivel tres"
+          headingLevel={3}
+          primary={<AdminButton type="submit">Cobrar</AdminButton>}
+        />
+        <AdminActionCard
+          title="Nivel cuatro"
+          headingLevel={4}
+          primary={<AdminButton type="submit">Cobrar</AdminButton>}
+        />
+      </>,
+    );
+    const three = screen.getByRole("heading", { level: 3, name: "Nivel tres" });
+    const four = screen.getByRole("heading", {
+      level: 4,
+      name: "Nivel cuatro",
+    });
+    expect(three).toHaveAttribute("data-card-title");
+    expect(four).toHaveAttribute("data-card-title");
+    expect(four.className).toBe(three.className);
+  });
 });

@@ -63,6 +63,7 @@ export function AdminActionCard({
           <Heading
             level={headingLevel}
             size="h4"
+            data-card-title=""
             {...(titleId ? { id: titleId } : {})}
           >
             {title}

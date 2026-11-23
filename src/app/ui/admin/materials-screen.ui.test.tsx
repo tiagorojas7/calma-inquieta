@@ -183,6 +183,16 @@ describe("Materiales screen: En el estudio", () => {
       within(section).getByRole("list", { name: "Materiales en el estudio" }),
     ).not.toHaveClass("grid");
   });
+  it("colors the stock figure by meaning: in stock as done, run out as pending", () => {
+    view();
+    const figure = (name: string) =>
+      cardOf(name).querySelector("[data-summary-tone]");
+    expect(figure("Bastidor")).toHaveAttribute("data-summary-tone", "paid");
+    expect(figure("Bastidor")).toHaveTextContent("Hay 4");
+    expect(figure("Pincel plano")).toHaveAttribute("data-summary-tone", "owed");
+    expect(figure("Pincel plano")).toHaveTextContent("Se acabó");
+  });
+
   it("says Hay N or Se acabó in words on every material card", () => {
     view();
     expect(within(cardOf("Bastidor")).getByText("Hay 4")).toBeVisible();

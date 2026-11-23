@@ -9,11 +9,22 @@ import type {
 
 type Actor = AdminActor | Record<string, unknown> | null | undefined;
 
+/** Who some units are for: shown to the owner, never sent to the supplier. */
+export interface MaterialRecipient {
+  readonly student: string;
+  readonly workshop: string;
+  /** The turno of a monthly line, the project of a workshop line. */
+  readonly detail: string | null;
+  readonly quantity: number;
+}
+
 export interface ConsolidatedMaterial {
   readonly materialName: string;
   readonly variantLabel: string;
   readonly quantity: number;
   readonly total: Money;
+  /** One entry per student and place, by student name. */
+  readonly forWhom: readonly MaterialRecipient[];
   /** The workshop (intensivo) the units are for; absent on monthly lines. */
   readonly origin?: string;
   /** The id of that workshop, present with `origin`. */
@@ -35,6 +46,10 @@ export interface WorkshopSupplierLine {
   readonly quantity: number;
   /** The supplier cost frozen when the seat was confirmed; null when unknown. */
   readonly unitCostCentavos: number | null;
+  /** Who the units are for, for the owner's screen only. */
+  readonly studentName: string;
+  /** The project she chose; null for a request made before projects. */
+  readonly projectName: string | null;
 }
 
 /** The workshop lines of the workshops held in a month (`YYYY-MM`). */
@@ -117,6 +132,7 @@ interface NeedLine {
   readonly originId: string | null;
   /** The paid order the bulk "requested" mark applies to; null on workshop lines. */
   readonly requestableOrderId: string | null;
+  readonly recipient: Omit<MaterialRecipient, "quantity">;
 }
 
 const monthlyNeed = (line: ConsolidationLine): NeedLine => ({
@@ -129,6 +145,11 @@ const monthlyNeed = (line: ConsolidationLine): NeedLine => ({
   origin: null,
   originId: null,
   requestableOrderId: line.status === "paid" ? line.orderId : null,
+  recipient: {
+    student: line.studentName,
+    workshop: line.workshopName,
+    detail: line.turnoLabel,
+  },
 });
 
 /** A workshop line is valued at its captured cost: it has no sale price. */
@@ -147,8 +168,35 @@ const workshopNeed = (line: WorkshopSupplierLine): NeedLine => {
     origin: line.workshopName,
     originId: line.workshopId,
     requestableOrderId: null,
+    recipient: {
+      student: line.studentName,
+      workshop: line.workshopName,
+      detail: line.projectName,
+    },
   };
 };
+
+/** The units of a group added up per student and place, by student name. */
+function recipientsOf(group: readonly NeedLine[]): MaterialRecipient[] {
+  const byWho = new Map<string, MaterialRecipient>();
+  for (const item of group) {
+    const { student, workshop, detail } = item.recipient;
+    const key = `${student}\u0000${workshop}\u0000${detail ?? ""}`;
+    const seen = byWho.get(key);
+    byWho.set(key, {
+      student,
+      workshop,
+      detail,
+      quantity: (seen?.quantity ?? 0) + item.quantity,
+    });
+  }
+  return [...byWho.values()].sort(
+    (a, b) =>
+      byText(a.student, b.student) ||
+      byText(a.workshop, b.workshop) ||
+      byText(a.detail ?? "", b.detail ?? ""),
+  );
+}
 
 /** Units of the same material added up, optionally keeping each origin apart. */
 function groupMaterials(
@@ -172,6 +220,7 @@ function groupMaterials(
         total: sumOf(
           group.map((item) => item.unitPrice.multiply(item.quantity)),
         ),
+        forWhom: recipientsOf(group),
         ...(byOrigin && head.origin !== null && head.originId !== null
           ? { origin: head.origin, originId: head.originId }
           : {}),

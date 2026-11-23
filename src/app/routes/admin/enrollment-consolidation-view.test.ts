@@ -39,6 +39,20 @@ const consolidation: SupplierConsolidation = {
           variantLabel: "Grande",
           quantity: 3,
           total: pesos(3_000),
+          forWhom: [
+            {
+              student: "Ana Pérez",
+              workshop: "Cerámica",
+              detail: "Lunes 18:00",
+              quantity: 2,
+            },
+            {
+              student: "Bea Gómez",
+              workshop: "Cerámica",
+              detail: null,
+              quantity: 1,
+            },
+          ],
         },
       ],
       total: pesos(3_000),
@@ -180,6 +194,17 @@ describe("admin supplier consolidation loader", () => {
     });
   });
 
+  it("says who each line is for: the student, her workshop and turno or project", async () => {
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+    );
+
+    expect(result.suppliers[0]?.materials[0]?.forWhom).toEqual([
+      { student: "Ana Pérez", place: "Cerámica · Lunes 18:00", quantity: 2 },
+      { student: "Bea Gómez", place: "Cerámica", quantity: 1 },
+    ]);
+  });
+
   it("names the workshop on its lines, keeps monthly lines as they were and counts the workshop in Para pedir", async () => {
     const withWorkshop: SupplierConsolidation = {
       ...consolidation,
@@ -196,6 +221,14 @@ describe("admin supplier consolidation loader", () => {
               total: pesos(600),
               origin: "Torno intensivo",
               originId: "w1",
+              forWhom: [
+                {
+                  student: "Carla Torres",
+                  workshop: "Torno intensivo",
+                  detail: "Taza de torno",
+                  quantity: 2,
+                },
+              ],
             },
           ],
           total: pesos(3_600),
@@ -231,7 +264,18 @@ describe("admin supplier consolidation loader", () => {
     );
     if (!("suppliers" in monthly)) throw new Error("expected data");
     expect(monthly.suppliers[0]?.materials).toStrictEqual([
-      { label: "Arcilla Grande", quantity: 3 },
+      {
+        label: "Arcilla Grande",
+        quantity: 3,
+        forWhom: [
+          {
+            student: "Ana Pérez",
+            place: "Cerámica · Lunes 18:00",
+            quantity: 2,
+          },
+          { student: "Bea Gómez", place: "Cerámica", quantity: 1 },
+        ],
+      },
     ]);
     expect(monthly.counts.pedir).toBe(2);
   });
@@ -242,6 +286,7 @@ describe("admin supplier consolidation loader", () => {
       variantLabel: "Grande",
       quantity: 1,
       total: pesos(300),
+      forWhom: [],
       origin: "Torno intensivo",
       originId,
     }));
@@ -328,6 +373,7 @@ describe("admin supplier consolidation loader", () => {
                   variantLabel: "Grande",
                   quantity: 2,
                   total: pesos(600),
+                  forWhom: [],
                   origin: "Torno",
                   originId: "w1",
                 },
@@ -336,6 +382,7 @@ describe("admin supplier consolidation loader", () => {
                   variantLabel: "Azul",
                   quantity: 1,
                   total: pesos(300),
+                  forWhom: [],
                   origin: "Torno",
                   originId: "w1",
                 },

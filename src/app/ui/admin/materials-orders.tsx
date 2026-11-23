@@ -19,6 +19,13 @@ export interface OrderSupplierView {
     /** The workshop the units are for; absent on monthly lines. */
     origin?: string | undefined;
     originId?: string | undefined;
+    /** Who the units are for: the owner's context, never the supplier text. */
+    forWhom: readonly {
+      student: string;
+      /** Workshop and turno, or workshop and project. */
+      place: string;
+      quantity: number;
+    }[];
   }[];
   readonly total: string;
   readonly summary: string;
@@ -106,6 +113,24 @@ function SupplierCard({
               <span className="whitespace-nowrap text-ink-700">
                 {copy.order.quantity(item.quantity)}
               </span>
+              {item.forWhom.length === 0 ? null : (
+                <ul
+                  aria-label={copy.order.forWhom(
+                    `${item.label}, ${copy.order.quantity(item.quantity)}`,
+                  )}
+                  className="flex w-full flex-col gap-1 border-l-4 border-admin-line pl-3 text-base text-ink-700"
+                >
+                  {item.forWhom.map((who) => (
+                    <li key={`${who.student}|${who.place}`}>
+                      <span className="font-semibold text-ink-900">
+                        {who.student}
+                      </span>
+                      {who.place === "" ? null : ` · ${who.place}`}
+                      {` · ${copy.order.units(who.quantity)}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

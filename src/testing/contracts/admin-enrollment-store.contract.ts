@@ -680,6 +680,52 @@ export function runAdminEnrollmentStoreContract(
       ).resolves.toEqual({ lines: [], pendingOrders: 0 });
     });
 
+    it("names the student, workshop and turno of each line to order, for the owner", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder({
+        period: "2026-11",
+        workshopName: "Cerámica",
+        turnoLabel: "Lunes 18:00",
+        student: {
+          fullName: "Ana Pide",
+          email: "ana-pide@example.com",
+          phoneDigits: "5493515550009",
+        },
+        lines: [
+          {
+            materialId: "m-1",
+            variantId: "v-1",
+            materialName: "Arcilla",
+            variantLabel: "Grande",
+            unitPrice: pesos(1_000),
+            quantity: 2,
+            supplierId: "supplier-1",
+            supplierName: "Papelería Sur",
+            source: "supplier",
+          },
+        ],
+        materialsTotal: pesos(2_000),
+        total: pesos(60_000),
+      });
+      await confirm(harness.store, order);
+
+      const { lines } = await harness.store.consolidationLines("2026-11");
+
+      expect(
+        lines.map((item) => ({
+          studentName: item.studentName,
+          workshopName: item.workshopName,
+          turnoLabel: item.turnoLabel,
+        })),
+      ).toEqual([
+        {
+          studentName: "Ana Pide",
+          workshopName: "Cerámica",
+          turnoLabel: "Lunes 18:00",
+        },
+      ]);
+    });
+
     it("lists, per order, the students whose materials were paid, requested or received", async () => {
       const harness = await setup();
       const withLine = (

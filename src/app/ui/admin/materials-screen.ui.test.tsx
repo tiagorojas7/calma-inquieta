@@ -55,12 +55,34 @@ const base: MaterialsScreenProps = {
       supplierId: "s1",
       supplierName: "Papelería Sur",
       materials: [
-        { label: "Arcilla Grande", quantity: 3 },
+        {
+          label: "Arcilla Grande",
+          quantity: 3,
+          forWhom: [
+            {
+              student: "Ana Pérez",
+              place: "Cerámica · Lunes 18:00",
+              quantity: 2,
+            },
+            {
+              student: "Bea Gómez",
+              place: "Cerámica · Jueves 10:00",
+              quantity: 1,
+            },
+          ],
+        },
         {
           label: "Arcilla Grande",
           quantity: 2,
           origin: "Torno intensivo",
           originId: "w1",
+          forWhom: [
+            {
+              student: "Carla Torres",
+              place: "Torno intensivo · Taza de torno",
+              quantity: 2,
+            },
+          ],
         },
       ],
       total: "$ 3.600",
@@ -371,6 +393,27 @@ describe("Materiales screen: Para pedir", () => {
     expect(within(card).getByText("Total $ 3.600")).toBeVisible();
     expect(within(card).getAllByText("Cantidad: 3")).toHaveLength(1);
     expect(within(card).getByText("Workshop: Torno intensivo")).toBeVisible();
+  });
+
+  it("says which student, workshop and turno or project each line is for", () => {
+    view();
+    const card = screen.getByRole("article", { name: "Papelería Sur" });
+    const monthly = within(card).getByRole("list", {
+      name: "Para quién: Arcilla Grande, Cantidad: 3",
+    });
+    expect(
+      within(monthly)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "Ana Pérez · Cerámica · Lunes 18:00 · 2 unidades",
+      "Bea Gómez · Cerámica · Jueves 10:00 · 1 unidad",
+    ]);
+    expect(
+      within(card).getByText("Carla Torres").closest("li"),
+    ).toHaveTextContent(
+      "Carla Torres · Torno intensivo · Taza de torno · 2 unidades",
+    );
   });
 
   it("has one Ya lo pedí per supplier that carries the monthly orders and the workshops", () => {

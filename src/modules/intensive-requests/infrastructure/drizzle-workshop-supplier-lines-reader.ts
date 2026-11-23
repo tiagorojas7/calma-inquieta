@@ -16,6 +16,8 @@ interface LineRow extends Record<string, unknown> {
   readonly quantity: number;
   /** A bigint column: the driver returns it as text. */
   readonly unit_cost: string | null;
+  readonly student_name: string;
+  readonly project_name: string | null;
 }
 
 /**
@@ -23,7 +25,8 @@ interface LineRow extends Record<string, unknown> {
  * by the month their workshop is held. A cancelled request is left out, so its
  * lines leave the purchase list; marking them as ordered takes them out too.
  * The workshop table belongs to another module, so its schema is not imported:
- * only its name and event date are read with raw SQL.
+ * only its name and event date, and the chosen project's name, are read with
+ * raw SQL.
  */
 export function createDrizzleWorkshopSupplierLinesReader(
   openSession: DbSessionFactory,
@@ -40,11 +43,15 @@ export function createDrizzleWorkshopSupplierLinesReader(
                      ${line.materialName} AS material_name,
                      ${line.variantLabel} AS variant_label,
                      ${line.quantity} AS quantity,
-                     ${line.unitCostCentavos} AS unit_cost
+                     ${line.unitCostCentavos} AS unit_cost,
+                     ${request.fullName} AS student_name,
+                     project.name AS project_name
               FROM ${line}
               JOIN ${request} ON ${request.id} = ${line.requestId}
               JOIN intensive_workshop AS workshop
                 ON workshop.id = ${request.intensiveId}
+              LEFT JOIN intensive_project AS project
+                ON project.id = ${request.projectId}
               WHERE ${request.status} = 'confirmed'
                 AND ${line.source} = 'supplier'
                 AND ${line.requestedAt} IS NULL
@@ -61,6 +68,8 @@ export function createDrizzleWorkshopSupplierLinesReader(
           quantity: row.quantity,
           unitCostCentavos:
             row.unit_cost === null ? null : Number(row.unit_cost),
+          studentName: row.student_name,
+          projectName: row.project_name,
         }));
       } finally {
         await session.close();

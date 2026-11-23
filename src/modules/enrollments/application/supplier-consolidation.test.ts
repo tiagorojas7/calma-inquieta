@@ -28,6 +28,9 @@ function line(overrides: Partial<ConsolidationLine>): ConsolidationLine {
     variantLabel: "Grande",
     quantity: 1,
     unitPrice: pesos(1_000),
+    studentName: "Alumna",
+    workshopName: "Taller",
+    turnoLabel: "Lunes 18:00",
     ...overrides,
   };
 }
@@ -78,6 +81,14 @@ describe("supplier consolidation", () => {
         variantLabel: "Grande",
         quantity: 3,
         total: pesos(3_000),
+        forWhom: [
+          {
+            student: "Alumna",
+            workshop: "Taller",
+            detail: "Lunes 18:00",
+            quantity: 3,
+          },
+        ],
       },
     ]);
     expect(south?.total.toCentavos()).toBe(300_000);
@@ -144,18 +155,62 @@ describe("supplier consolidation", () => {
     expect(a.value.suppliers[1]?.summary).not.toMatch(/\$/);
   });
 
-  it("never copies student fields into the result", async () => {
+  it("tells the owner who each material is for, never the supplier", async () => {
+    const result = await serviceWith([
+      line({
+        orderId: "o1",
+        quantity: 2,
+        studentName: "Ana Pérez",
+        workshopName: "Cerámica",
+        turnoLabel: "Lunes 18:00",
+      }),
+      line({
+        orderId: "o2",
+        quantity: 1,
+        studentName: "Bea Gómez",
+        workshopName: "Cerámica",
+        turnoLabel: "Jueves 10:00",
+      }),
+      line({
+        orderId: "o3",
+        quantity: 1,
+        studentName: "Ana Pérez",
+        workshopName: "Cerámica",
+        turnoLabel: "Lunes 18:00",
+      }),
+    ]).service.consolidate(admin, "2026-11");
+
+    if (!result.ok) throw new Error("expected a consolidation");
+    const [section] = result.value.suppliers;
+    expect(section?.materials[0]?.forWhom).toEqual([
+      {
+        student: "Ana Pérez",
+        workshop: "Cerámica",
+        detail: "Lunes 18:00",
+        quantity: 3,
+      },
+      {
+        student: "Bea Gómez",
+        workshop: "Cerámica",
+        detail: "Jueves 10:00",
+        quantity: 1,
+      },
+    ]);
+    expect(section?.summary).not.toMatch(/Ana|Bea|Lunes|Jueves/);
+  });
+
+  it("never copies a student's contact into the result", async () => {
     const tainted = {
       ...line({}),
-      studentName: "SENTINEL-NAME",
       email: "sentinel@example.com",
+      phoneDigits: "5490000000000",
     } as ConsolidationLine;
     const result = await serviceWith([tainted]).service.consolidate(
       admin,
       "2026-11",
     );
 
-    expect(JSON.stringify(result)).not.toMatch(/SENTINEL|sentinel/);
+    expect(JSON.stringify(result)).not.toMatch(/sentinel|5490000000000/);
   });
 
   it.each([null, undefined, {}, { email: "" }])(
@@ -207,6 +262,8 @@ describe("supplier consolidation", () => {
       variantLabel: "Grande",
       quantity: 2,
       unitCostCentavos: 300_000,
+      studentName: "Carla Torres",
+      projectName: "Taza de torno",
       ...overrides,
     });
 
@@ -244,6 +301,14 @@ describe("supplier consolidation", () => {
           variantLabel: "Grande",
           quantity: 3,
           total: pesos(3_000),
+          forWhom: [
+            {
+              student: "Alumna",
+              workshop: "Taller",
+              detail: "Lunes 18:00",
+              quantity: 3,
+            },
+          ],
         },
         {
           materialName: "Arcilla",
@@ -252,10 +317,34 @@ describe("supplier consolidation", () => {
           total: pesos(6_000),
           origin: "Torno intensivo",
           originId: "w1",
+          forWhom: [
+            {
+              student: "Carla Torres",
+              workshop: "Torno intensivo",
+              detail: "Taza de torno",
+              quantity: 2,
+            },
+          ],
         },
       ]);
       expect(south?.total.toCentavos()).toBe(900_000);
       expect(result.value.grandTotal.toCentavos()).toBe(1_150_000);
+    });
+
+    it("names the student and the project of a workshop line", async () => {
+      const { service } = withWorkshops([workshopLine()], []);
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(result.value.suppliers[0]?.materials[0]?.forWhom).toEqual([
+        {
+          student: "Carla Torres",
+          workshop: "Torno intensivo",
+          detail: "Taza de torno",
+          quantity: 2,
+        },
+      ]);
     });
 
     it("asks the supplier for one quantity per material, whatever the origin", async () => {

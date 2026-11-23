@@ -928,6 +928,9 @@ export function createDrizzleAdminEnrollmentStore(
             variantLabel: orderLine.variantLabel,
             quantity: orderLine.quantity,
             unitPriceCentavos: orderLine.unitPriceCentavos,
+            studentName: enrollmentOrder.studentName,
+            workshopName: enrollmentOrder.workshopName,
+            turnoLabel: enrollmentOrder.turnoLabel,
           })
           .from(orderLine)
           .innerJoin(enrollmentOrder, eq(orderLine.orderId, enrollmentOrder.id))
@@ -957,6 +960,9 @@ export function createDrizzleAdminEnrollmentStore(
           variantLabel: row.variantLabel,
           quantity: row.quantity,
           unitPrice: money(row.unitPriceCentavos),
+          studentName: row.studentName,
+          workshopName: row.workshopName,
+          turnoLabel: row.turnoLabel,
         }));
         return { lines, pendingOrders: pending?.count ?? 0 };
       });

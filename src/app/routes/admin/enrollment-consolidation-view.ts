@@ -108,6 +108,13 @@ export async function loadConsolidation({ request, context }: Args) {
         materials: supplier.materials.map((item) => ({
           label: `${item.materialName} ${item.variantLabel}`,
           quantity: item.quantity,
+          forWhom: item.forWhom.map((who) => ({
+            student: who.student,
+            place: [who.workshop, who.detail]
+              .filter((part): part is string => part !== null && part !== "")
+              .join(" · "),
+            quantity: who.quantity,
+          })),
           ...(item.origin === undefined || item.originId === undefined
             ? {}
             : { origin: item.origin, originId: item.originId }),

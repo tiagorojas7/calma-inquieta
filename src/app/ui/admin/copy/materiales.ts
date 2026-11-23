@@ -82,6 +82,9 @@ export const materialesCopy = {
     total: (amount: string) => `Total ${amount}`,
     quantity: (count: number) => `Cantidad: ${String(count)}`,
     workshop: (name: string) => `Workshop: ${name}`,
+    forWhom: (item: string) => `Para quién: ${item}`,
+    units: (count: number) =>
+      count === 1 ? "1 unidad" : `${String(count)} unidades`,
     unconfirmed: (count: number) =>
       count === 1 ? "1 sin confirmar" : `${String(count)} sin confirmar`,
     copy: "Copiar pedido",

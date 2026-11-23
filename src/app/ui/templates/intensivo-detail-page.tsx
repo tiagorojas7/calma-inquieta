@@ -47,6 +47,7 @@ export interface IntensivoDetailProps {
     name: string;
     total: string;
     deposit: string;
+    description?: string;
     image?: DetailImage;
   }[];
   /** A discreet text link for questions, only beside a reservation action. */
@@ -164,6 +165,9 @@ export function IntensivoDetailPage({
                     ) : null}
                     <div className="flex flex-col gap-1">
                       <Heading level={3}>{project.name}</Heading>
+                      {project.description ? (
+                        <p className="text-ink-700">{project.description}</p>
+                      ) : null}
                       <p className="text-ink-700">
                         {`${microcopy.projects.total}: ${project.total}`}
                       </p>

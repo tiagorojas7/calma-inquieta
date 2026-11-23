@@ -18,8 +18,10 @@ function formOf(fields: Record<string, string>) {
     eventDate: "2026-12-10",
     startsAt: "10:00",
     endsAt: "13:00",
-    price: "30000",
-    deposit: "10000",
+    projectName: "Taza de torno",
+    projectPrice: "30000",
+    projectDeposit: "10000",
+    projectDescription: "",
     capacity: "12",
     intent: "publish",
     ...fields,
@@ -58,6 +60,33 @@ describe("parseQuickIntensive", () => {
       materialsIncluded: true,
       percentage: "35",
     });
+  });
+
+  it("builds the first project from its own fields, never from the workshop name", () => {
+    const input = parseQuickIntensive(
+      formOf({
+        projectName: "  Plato hondo ",
+        projectPrice: "45000",
+        projectDeposit: "15000",
+        projectDescription: "Un plato.",
+      }),
+    );
+
+    expect(input.draft.firstProject).toEqual({
+      name: "  Plato hondo ",
+      price: "45000",
+      deposit: "15000",
+      description: "Un plato.",
+    });
+    expect(input.firstProject).toEqual(input.draft.firstProject);
+    expect(input.draft).not.toHaveProperty("price");
+    expect(input.values).not.toHaveProperty("firstProject");
+  });
+
+  it("leaves the project name empty when the owner typed none", () => {
+    const input = parseQuickIntensive(formOf({ projectName: "" }));
+
+    expect(input.draft.firstProject.name).toBe("");
   });
 
   it("redisplays only what was typed, not the derived values", () => {
@@ -152,7 +181,7 @@ describe("publishQuickIntensive", () => {
           issues: [
             { field: "slug", code: "required" },
             { field: "name", code: "required" },
-            { field: "price", code: "required" },
+            { field: "projectPrice", code: "required" },
           ],
         },
       }),
@@ -166,7 +195,7 @@ describe("publishQuickIntensive", () => {
       kind: "invalid",
       issues: [
         { field: "name", code: "required" },
-        { field: "price", code: "required" },
+        { field: "projectPrice", code: "required" },
       ],
     });
   });

@@ -25,14 +25,13 @@ const EMPTY = {
   eventDate: "",
   startsAt: "",
   endsAt: "",
-  price: "",
-  deposit: "",
   capacity: "",
   minSeats: "",
   policyText: "",
   materialsIncluded: false,
   images: [],
 };
+const EMPTY_PROJECT = { name: "", price: "", deposit: "", description: "" };
 
 export function meta() {
   return [{ title: "Nuevo workshop | Panel | Calma Inquieta" }];
@@ -65,7 +64,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   );
   switch (outcome.kind) {
     case "invalid":
-      return invalidIntensiveResponse(input.values, outcome.issues);
+      return invalidIntensiveResponse(
+        input.values,
+        outcome.issues,
+        input.firstProject,
+      );
     case "saved":
       return redirect(withFeedback(`${LIST}/${outcome.id}`, "created"));
     case "published":
@@ -95,6 +98,7 @@ export default function AdminIntensiveNew() {
       />
       <IntensiveForm
         values={rejected?.values ?? EMPTY}
+        firstProject={rejected?.firstProject ?? EMPTY_PROJECT}
         errors={rejected?.errors ?? {}}
         formError={rejected?.formError}
         teachers={teachers}

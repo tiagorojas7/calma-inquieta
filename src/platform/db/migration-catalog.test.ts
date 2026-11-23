@@ -10,8 +10,14 @@ const drizzleDir = resolve(import.meta.dirname, "../../../drizzle");
 describe("migrationTagFor", () => {
   it("returns the journal tag for a known timestamp", () => {
     const latest = entries[entries.length - 1];
-    expect(latest?.tag).toBe("0018_durable_student_identity");
-    expect(migrationTagFor(latest?.when ?? 0)).toBe(
+    expect(latest?.tag).toBe("0019_project_description");
+    expect(migrationTagFor(latest?.when ?? 0)).toBe("0019_project_description");
+  });
+
+  it("still resolves the previous migration by its own timestamp", () => {
+    const previous = entries[entries.length - 2];
+    expect(previous?.tag).toBe("0018_durable_student_identity");
+    expect(migrationTagFor(previous?.when ?? 0)).toBe(
       "0018_durable_student_identity",
     );
   });

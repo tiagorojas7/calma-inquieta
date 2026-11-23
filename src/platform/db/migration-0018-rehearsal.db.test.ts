@@ -159,13 +159,16 @@ describe("migration 0018 rehearsal over staging-shaped legacy data", () => {
     );
   });
 
-  it("applies cleanly on top of 0017 and records exactly one new journal entry", async () => {
+  it("applies cleanly on top of 0017 and records one journal entry per later migration", async () => {
     const entries = await journalEntries();
     const { rows } = await client.query<{ created_at: string }>(
       "SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at",
     );
     expect(rows).toHaveLength(entries.length);
-    expect(entries.at(-1)?.tag).toBe("0018_durable_student_identity");
+    expect(entries.map((entry) => entry.tag).slice(-2)).toEqual([
+      "0018_durable_student_identity",
+      "0019_project_description",
+    ]);
     expect(rows.map((row) => Number(row.created_at))).toEqual(
       entries.map((entry) => entry.when),
     );

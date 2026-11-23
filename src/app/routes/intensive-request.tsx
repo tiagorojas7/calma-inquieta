@@ -48,6 +48,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
       total: formatPesos(project.price),
       deposit: formatPesos(project.deposit),
       ...(project.image ? { image: project.image } : {}),
+      ...(project.description ? { description: project.description } : {}),
     })),
     conditions: requestConditions({
       policyText: offer.policyText,

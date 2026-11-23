@@ -1,7 +1,6 @@
 import {
   err,
   ok,
-  parseWholePesos,
   type FieldIssue,
   type Invalid,
   Money,
@@ -41,8 +40,6 @@ export interface IntensiveCoreDraft extends IntensiveSchedule {
   readonly slug: string;
   readonly summary: string;
   readonly description: string;
-  readonly price: string;
-  readonly deposit: string;
   readonly capacity: string;
   readonly minSeats: string;
   readonly policyText: string;
@@ -56,8 +53,6 @@ export type IntensiveCoreField =
   | "slug"
   | "summary"
   | "description"
-  | "price"
-  | "deposit"
   | "capacity"
   | "minSeats"
   | "policyText";
@@ -69,8 +64,6 @@ export interface IntensiveCore {
   readonly summary: string;
   readonly description: string;
   readonly schedule: IntensiveSchedule;
-  readonly price: Money;
-  readonly deposit: Money;
   readonly capacity: number;
   readonly minSeats: number;
   readonly policyText: string;
@@ -196,17 +189,6 @@ export function validateIntensiveCore(
   const schedule = validateSchedule(draft);
   if (!schedule.ok) issues.push(...schedule.error.issues);
 
-  const price = parseWholePesos(draft.price.trim());
-  if (!price.ok) issues.push({ field: "price", code: price.error });
-  else if (price.value.compare(ZERO) <= 0)
-    issues.push({ field: "price", code: "out-of-range" });
-  const deposit = parseWholePesos(draft.deposit.trim());
-  if (!deposit.ok) issues.push({ field: "deposit", code: deposit.error });
-  else if (deposit.value.compare(ZERO) <= 0)
-    issues.push({ field: "deposit", code: "out-of-range" });
-  else if (price.ok && deposit.value.compare(price.value) > 0)
-    issues.push({ field: "deposit", code: "exceeds-price" });
-
   const capacity = parseCount(
     draft.capacity.trim(),
     1,
@@ -225,14 +207,7 @@ export function validateIntensiveCore(
   if (policyText.length > INTENSIVE_LIMITS.policyText)
     issues.push({ field: "policyText", code: "too-long" });
 
-  if (
-    issues.length > 0 ||
-    !schedule.ok ||
-    !price.ok ||
-    !deposit.ok ||
-    !capacity.ok ||
-    !minSeats.ok
-  )
+  if (issues.length > 0 || !schedule.ok || !capacity.ok || !minSeats.ok)
     return err({ kind: "invalid", issues });
   return ok({
     name,
@@ -240,8 +215,6 @@ export function validateIntensiveCore(
     summary,
     description,
     schedule: schedule.value,
-    price: price.value,
-    deposit: deposit.value,
     capacity: capacity.value,
     minSeats: minSeats.value,
     policyText,

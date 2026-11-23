@@ -2,13 +2,19 @@ import type { FieldIssue } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import {
   slugify,
+  type FirstProjectDraft,
+  type FirstProjectField,
   type IntensivePublishRule,
   type IntensiveWorkshopDraft,
   type IntensiveWorkshopField,
   type IntensivesService,
+  type NewIntensiveWorkshopDraft,
 } from "~/modules/workshops";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
-import { parseIntensiveDraft } from "./intensive-form-data";
+import {
+  parseFirstProjectDraft,
+  parseIntensiveDraft,
+} from "./intensive-form-data";
 import { deriveSummary } from "./workshop-quick-form";
 
 /** Policy a new intensivo gets when the owner does not write one. */
@@ -21,40 +27,48 @@ export type QuickIntensiveIntent = "publish" | "draft";
 export interface QuickIntensiveInput {
   readonly intent: QuickIntensiveIntent;
   /** What the domain receives: slug empty, summary and defaults filled in. */
-  readonly draft: IntensiveWorkshopDraft;
+  readonly draft: NewIntensiveWorkshopDraft;
   /** What the owner typed, to show again when the form is rejected. */
   readonly values: IntensiveWorkshopDraft;
+  /** The first project as typed: required, and never derived from the workshop. */
+  readonly firstProject: FirstProjectDraft;
 }
 
 /**
  * The one-page "Nuevo intensivo" form as a draft. The slug is left empty so
  * the flow derives a unique one; the summary comes from the description and
- * the seats and policy fall back to defaults, so none of them is asked.
+ * the seats and policy fall back to defaults, so none of them is asked. The
+ * workshop has no price; the first project is typed in its own block.
  */
 export function parseQuickIntensive(form: FormData): QuickIntensiveInput {
   const values = parseIntensiveDraft(form);
   const summary = values.summary.trim();
   const minSeats = values.minSeats.trim();
   const policyText = values.policyText.trim();
+  const firstProject = parseFirstProjectDraft(form);
   return {
     intent: form.get("intent") === "publish" ? "publish" : "draft",
     values,
+    firstProject,
     draft: {
       ...values,
       slug: "",
       summary: summary || deriveSummary(values.description),
       minSeats: minSeats || DEFAULT_MIN_SEATS,
       policyText: policyText || DEFAULT_INTENSIVE_POLICY,
+      firstProject,
     },
   };
 }
 
 type Failure = { readonly kind: "denied" | "unavailable" | "not-found" };
 
+type QuickIssueField = IntensiveWorkshopField | FirstProjectField;
+
 export type QuickIntensiveOutcome =
   | {
       readonly kind: "invalid";
-      readonly issues: readonly FieldIssue<IntensiveWorkshopField>[];
+      readonly issues: readonly FieldIssue<QuickIssueField>[];
     }
   | { readonly kind: "saved"; readonly id: string }
   | { readonly kind: "published"; readonly id: string }
@@ -68,14 +82,14 @@ export type QuickIntensiveOutcome =
 
 const MAX_SLUG_ATTEMPTS = 50;
 
-function isDuplicateSlug(issue: FieldIssue<IntensiveWorkshopField>): boolean {
+function isDuplicateSlug(issue: FieldIssue<QuickIssueField>): boolean {
   return issue.field === "slug" && issue.code === "duplicate";
 }
 
 /** The slug is never typed here, so a slug problem belongs to the name. */
 function reportedOnName(
-  issues: readonly FieldIssue<IntensiveWorkshopField>[],
-): FieldIssue<IntensiveWorkshopField>[] {
+  issues: readonly FieldIssue<QuickIssueField>[],
+): FieldIssue<QuickIssueField>[] {
   const seen = new Set<string>();
   return issues
     .map((issue) =>
@@ -92,7 +106,7 @@ function reportedOnName(
 async function createWithUniqueSlug(
   intensives: IntensivesService,
   actor: AdminActor,
-  draft: IntensiveWorkshopDraft,
+  draft: NewIntensiveWorkshopDraft,
 ) {
   const base = slugify(draft.name);
   for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {

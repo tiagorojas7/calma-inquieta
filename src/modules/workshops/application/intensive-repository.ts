@@ -39,6 +39,8 @@ export interface StoredIntensiveProject {
   readonly intensiveId: string;
   readonly position: number;
   readonly name: string;
+  /** What the project is about; none when the owner left it blank. */
+  readonly description: string | null;
   /** The cover picked from the media library, with its alt text. */
   readonly image: ImageUseDraft | null;
   readonly price: Money;

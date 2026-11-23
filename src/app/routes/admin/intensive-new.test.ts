@@ -21,8 +21,10 @@ const FIELDS = {
   eventDate: "2026-10-10",
   startsAt: "10:00",
   endsAt: "13:00",
-  price: "30000",
-  deposit: "10000",
+  projectName: "Taza de torno",
+  projectPrice: "30000",
+  projectDeposit: "10000",
+  projectDescription: "Tu primera taza.",
   capacity: "12",
   minSeats: "4",
   policyText: "Traé delantal.",
@@ -129,6 +131,12 @@ describe("admin intensive create", () => {
           { assetId: "img-1", alt: "Una taza" },
           { assetId: "img-2", alt: "Una mesa" },
         ],
+        firstProject: {
+          name: "Taza de torno",
+          price: "30000",
+          deposit: "10000",
+          description: "Tu primera taza.",
+        },
       }),
     );
     expect(publish).toHaveBeenCalledWith(
@@ -186,6 +194,57 @@ describe("admin intensive create", () => {
     expect((result as Response).headers.get("Location")).toBe(
       "/admin/intensivos/i1?falta=teacher,future-start",
     );
+  });
+
+  it("keeps the typed project and puts each project error on its own field on a 422", async () => {
+    const create = vi.fn(() =>
+      Promise.resolve({
+        ok: false as const,
+        error: {
+          kind: "invalid" as const,
+          issues: [
+            { field: "projectName", code: "required" as const },
+            { field: "projectDeposit", code: "exceeds-price" as const },
+          ],
+        },
+      }),
+    ) as unknown as IntensivesService["create"];
+
+    const result = await action({
+      request: post({
+        ...FIELDS,
+        projectName: "",
+        projectPrice: "1000",
+        projectDeposit: "2000",
+      }),
+      params: {},
+      context: context(
+        withOverrides(createUnavailableService<IntensivesService>(), {
+          create,
+        }),
+        createUnavailableService<TeachersService>(),
+      ),
+    } as never);
+
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        firstProject: {
+          name: "",
+          price: "1000",
+          deposit: "2000",
+          description: "Tu primera taza.",
+        },
+        errors: {
+          projectName: "Completá este campo.",
+          projectDeposit: "No puede superar el precio.",
+        },
+      },
+    });
+    const errors = (result as { data: { errors: Record<string, string> } }).data
+      .errors;
+    expect(errors).not.toHaveProperty("price");
+    expect(errors).not.toHaveProperty("deposit");
   });
 
   it("keeps every posted field and gallery image on a 422", async () => {

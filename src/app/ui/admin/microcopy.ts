@@ -1249,7 +1249,7 @@ export const adminMicrocopy = {
     projects: {
       title: "Proyectos",
       description:
-        "Cada proyecto tiene su propio precio, seña e imagen. Todos comparten la fecha y los cupos del workshop.",
+        "Cada proyecto tiene su propio precio, seña, imagen y descripción, y se ve en el sitio. Todos comparten la fecha y los cupos del workshop.",
       empty:
         "Todavía no hay proyectos. Agregá uno para poder publicar el workshop.",
       amounts: (price: string, deposit: string) =>
@@ -1275,6 +1275,7 @@ export const adminMicrocopy = {
         name: "Nombre del proyecto",
         price: "Precio total (en pesos)",
         deposit: "Seña (en pesos)",
+        description: "Descripción (opcional)",
         image: "Imagen del proyecto",
         removeImage: "Quitar la imagen",
       },
@@ -1337,8 +1338,6 @@ export const adminMicrocopy = {
       eventDate: "Fecha",
       startsAt: "Desde",
       endsAt: "Hasta",
-      price: "Precio (en pesos)",
-      deposit: "Seña fija (en pesos)",
       capacity: "Capacidad",
       minSeats: "Cupos mínimos",
       policyText: "Política de cancelación y ausencias",
@@ -1347,9 +1346,17 @@ export const adminMicrocopy = {
       sections: {
         basics: "Datos principales",
         schedule: "Fecha y horario",
-        money: "Profesor y precio",
+        money: "Profesor",
         conditions: "Cupos y condiciones",
+        firstProject: "Primer proyecto",
         images: "Imágenes",
+      },
+      firstProject: {
+        hint: "Se reserva eligiendo un proyecto. La imagen la sumás después.",
+        name: "Nombre del proyecto",
+        price: "Precio total (en pesos)",
+        deposit: "Seña (en pesos)",
+        description: "Descripción (opcional)",
       },
       moreImages: "Agregar más imágenes",
       save: "Guardar",

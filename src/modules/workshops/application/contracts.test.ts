@@ -20,6 +20,7 @@ import {
   type PeriodSummary,
   type IntensiveStatus,
   type IntensivePublishRule,
+  type FirstProjectField,
   type IntensiveWorkshopField,
   type IntensivesService,
   type IntensiveWorkshopDraft,
@@ -179,7 +180,7 @@ describe("intensive workshop contract signatures", () => {
 
   it("declares explicit error unions without unknown", () => {
     expectTypeOf<ErrorOf<ReturnType<S["create"]>>>().toEqualTypeOf<
-      AdminFailure | Invalid<IntensiveWorkshopField>
+      AdminFailure | Invalid<IntensiveWorkshopField | FirstProjectField>
     >();
     expectTypeOf<ErrorOf<ReturnType<S["publish"]>>>().toEqualTypeOf<
       | AdminFailure

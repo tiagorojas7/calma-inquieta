@@ -134,6 +134,13 @@
       "when": 1794715200000,
       "tag": "0018_durable_student_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795459566005,
+      "tag": "0019_project_description",
+      "breakpoints": true
     }
   ]
 }

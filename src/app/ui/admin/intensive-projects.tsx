@@ -2,7 +2,12 @@ import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminSection } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { CheckboxField, FormError, TextField } from "./form-fields";
+import {
+  CheckboxField,
+  FormError,
+  TextAreaField,
+  TextField,
+} from "./form-fields";
 import { ImageField } from "./image-field";
 import { uploadIntensiveImage } from "./intensive-form";
 import {
@@ -14,7 +19,8 @@ import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.intensives.projects;
 
-export type ProjectField = "name" | "price" | "deposit" | "image";
+export type ProjectField =
+  "name" | "price" | "deposit" | "description" | "image";
 type ProjectErrors = Readonly<Partial<Record<ProjectField, string>>>;
 
 /** What a project form shows: the text typed and the chosen image, if any. */
@@ -22,6 +28,7 @@ export interface ProjectFormValues {
   readonly name: string;
   readonly price: string;
   readonly deposit: string;
+  readonly description: string;
   readonly image: {
     readonly assetId: string;
     readonly src?: string;
@@ -32,6 +39,7 @@ export interface ProjectFormValues {
 export interface IntensiveProjectCard {
   readonly id: string;
   readonly name: string;
+  readonly description: string | null;
   /** Already formatted for reading, e.g. "$ 30.000". */
   readonly amounts: { readonly price: string; readonly deposit: string };
   readonly image: { readonly src: string; readonly alt: string } | null;
@@ -59,6 +67,7 @@ const EMPTY_VALUES: ProjectFormValues = {
   name: "",
   price: "",
   deposit: "",
+  description: "",
   image: null,
 };
 
@@ -115,6 +124,13 @@ function ProjectForm({
           error={errors.deposit}
         />
       </div>
+      <TextAreaField
+        label={copy.form.description}
+        name="description"
+        rows={3}
+        defaultValue={values.description}
+        error={errors.description}
+      />
       <ImageField
         name="image"
         label={copy.form.image}
@@ -218,6 +234,11 @@ export function IntensiveProjects({
                         project.amounts.deposit,
                       )}
                     </p>
+                    {project.description && (
+                      <p className="text-sm text-ink-700">
+                        {project.description}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

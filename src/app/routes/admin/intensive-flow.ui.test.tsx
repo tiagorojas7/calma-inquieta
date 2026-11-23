@@ -16,8 +16,6 @@ const values = {
   eventDate: "2026-12-12",
   startsAt: "10:00",
   endsAt: "13:00",
-  price: "30000",
-  deposit: "10000",
   capacity: "12",
   minSeats: "4",
   policyText: "Política",
@@ -134,12 +132,14 @@ describe("intensives guided flow", () => {
             {
               id: "p1",
               name: "Taza de torno",
+              description: null,
               amounts: { price: "$ 45.000", deposit: "$ 15.000" },
               image: null,
               values: {
                 name: "Taza de torno",
                 price: "45000",
                 deposit: "15000",
+                description: "",
                 image: null,
               },
               materials: [
@@ -197,12 +197,14 @@ describe("intensives guided flow", () => {
         {
           id: "p1",
           name: "Taza de torno",
+          description: null,
           amounts: { price: "$ 45.000", deposit: "$ 15.000" },
           image: null,
           values: {
             name: "Taza de torno",
             price: "45000",
             deposit: "15000",
+            description: "",
             image: null,
           },
           materials: [],
@@ -286,6 +288,7 @@ describe("intensives guided flow", () => {
                   name: "",
                   price: "1000",
                   deposit: "2000",
+                  description: "",
                   image: null,
                 },
                 errors: { name: "Completá este campo." },

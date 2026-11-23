@@ -33,6 +33,9 @@ const PROJECT_FIELD_MESSAGES = {
     "too-long": "El texto alternativo es demasiado largo. Acortalo.",
     "unknown-reference": "La imagen ya no existe. Volvé a subirla.",
   },
+  description: {
+    "too-long": "La descripción es demasiado larga. Acortala.",
+  },
 } as const satisfies FieldMessages<IntensiveProjectField>;
 
 /**
@@ -49,6 +52,7 @@ export function parseProjectDraft(form: FormData): IntensiveProjectDraft {
     name: text(form, "name"),
     price: text(form, "price"),
     deposit: text(form, "deposit"),
+    description: text(form, "description"),
     image,
   };
 }
@@ -73,6 +77,7 @@ export function rejectedProject(
     name: draft.name,
     price: draft.price,
     deposit: draft.deposit,
+    description: draft.description,
     image: draft.image
       ? {
           assetId: draft.image.assetId,
@@ -134,6 +139,7 @@ export function projectCards(
   return projects.map((project) => ({
     id: project.id,
     name: project.name,
+    description: project.description,
     amounts: {
       price: formatPesos(project.price),
       deposit: formatPesos(project.deposit),
@@ -145,6 +151,7 @@ export function projectCards(
       name: project.name,
       price: formatWholePesos(project.price),
       deposit: formatWholePesos(project.deposit),
+      description: project.description ?? "",
       image: project.image
         ? {
             assetId: project.image.assetId,

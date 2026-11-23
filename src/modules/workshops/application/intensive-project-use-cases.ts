@@ -78,6 +78,7 @@ export function createIntensiveProjectUseCases(
       intensiveId: s.intensiveId,
       position: s.position,
       name: s.name,
+      description: s.description,
       image: s.image
         ? {
             assetId: s.image.assetId,
@@ -155,6 +156,7 @@ export function createIntensiveProjectUseCases(
         id: newId(),
         intensiveId: id,
         name: fields.value.name,
+        description: fields.value.description,
         image: fields.value.image,
         price: fields.value.price,
         deposit: fields.value.deposit,
@@ -176,6 +178,7 @@ export function createIntensiveProjectUseCases(
       const next: StoredIntensiveProject = {
         ...current,
         name: fields.value.name,
+        description: fields.value.description,
         image: fields.value.image,
         price: fields.value.price,
         deposit: fields.value.deposit,

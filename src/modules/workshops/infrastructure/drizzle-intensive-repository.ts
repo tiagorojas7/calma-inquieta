@@ -125,6 +125,7 @@ function toStoredProject(row: ProjectRow): StoredIntensiveProject {
     intensiveId: row.intensiveId,
     position: row.position,
     name: row.name,
+    description: row.description,
     image:
       row.mediaAssetId === null || row.alt === null
         ? null
@@ -139,6 +140,7 @@ function toStoredProject(row: ProjectRow): StoredIntensiveProject {
 function projectValues(project: NewIntensiveProject) {
   return {
     name: project.name,
+    description: project.description,
     mediaAssetId: project.image?.assetId ?? null,
     alt: project.image?.alt ?? null,
     priceCentavos: project.price.toCentavos(),

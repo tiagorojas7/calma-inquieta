@@ -1,0 +1,2 @@
+ALTER TABLE "intensive_project" ADD COLUMN "description" text;--> statement-breakpoint
+ALTER TABLE "intensive_project" ADD CONSTRAINT "intensive_project_description_check" CHECK ("intensive_project"."description" IS NULL OR (btrim("intensive_project"."description") <> '' AND length("intensive_project"."description") <= 600));

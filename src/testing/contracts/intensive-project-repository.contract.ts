@@ -32,6 +32,7 @@ export function buildNewProject(
     id: PROJECT_1,
     intensiveId: ID_A,
     name: "Taza de torno",
+    description: null,
     image: null,
     price: pesos(30000),
     deposit: pesos(10000),
@@ -86,6 +87,7 @@ export function runIntensiveProjectContract(
       const { repo } = await create();
       const first = buildNewProject({
         name: "Ñandú & Árbol: ¡taza!",
+        description: "Una taza hecha en torno, con esmalte a elección.",
         image: { assetId: ASSET_1, alt: "Una taza" },
         price: pesos(123_456_789),
         deposit: pesos(100),
@@ -152,6 +154,20 @@ export function runIntensiveProjectContract(
       );
 
       expect(result).toEqual({ ok: false, error: { kind: "not-found" } });
+    });
+
+    it("changes and clears the description, and keeps the longest allowed one", async () => {
+      const { repo } = await withProjects(1);
+      const current = await repo.findProject(ID_A, PROJECT_1);
+      if (!current) throw new Error("missing project");
+
+      await repo.updateProject({ ...current, description: "d".repeat(600) });
+      expect((await repo.findProject(ID_A, PROJECT_1))?.description).toBe(
+        "d".repeat(600),
+      );
+
+      await repo.updateProject({ ...current, description: null });
+      expect((await repo.findProject(ID_A, PROJECT_1))?.description).toBeNull();
     });
 
     it("updates name, image, price, deposit and audit but not the position", async () => {

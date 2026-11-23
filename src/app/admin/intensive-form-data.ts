@@ -1,6 +1,8 @@
 import { data } from "react-router";
 import type { FieldIssue } from "~/modules/_shared";
 import type {
+  FirstProjectDraft,
+  FirstProjectField,
   IntensiveWorkshopDraft,
   IntensiveWorkshopField,
   IntensiveStatus,
@@ -56,13 +58,24 @@ export function parseIntensiveDraft(form: FormData): IntensiveWorkshopDraft {
     eventDate: text(form, "eventDate"),
     startsAt: text(form, "startsAt"),
     endsAt: text(form, "endsAt"),
-    price: text(form, "price"),
-    deposit: text(form, "deposit"),
     capacity: text(form, "capacity"),
     minSeats: text(form, "minSeats"),
     policyText: text(form, "policyText"),
     materialsIncluded: form.has("materialsIncluded"),
     images: parseGallery(form),
+  };
+}
+
+/**
+ * The first project of a new workshop, from its own fields. The workshop has
+ * no price: this one is required and is never derived from the workshop name.
+ */
+export function parseFirstProjectDraft(form: FormData): FirstProjectDraft {
+  return {
+    name: text(form, "projectName"),
+    price: text(form, "projectPrice"),
+    deposit: text(form, "projectDeposit"),
+    description: text(form, "projectDescription"),
   };
 }
 
@@ -90,13 +103,19 @@ export function parseIntensiveFilter(
   return FILTERS[parseIntensiveFilterKey(value)];
 }
 
+/**
+ * A refused form as the screen shows it again: what was typed (the first
+ * project too, when the form has one) and one message per field.
+ */
 export function invalidIntensiveResponse(
   draft: IntensiveWorkshopDraft,
-  issues: readonly FieldIssue<IntensiveWorkshopField>[],
+  issues: readonly FieldIssue<IntensiveWorkshopField | FirstProjectField>[],
+  firstProject?: FirstProjectDraft,
 ) {
   return data(
     {
       values: draft,
+      ...(firstProject ? { firstProject } : {}),
       errors: fieldErrors(issues, INTENSIVE_FIELD_MESSAGES),
       formError: "Revisá los campos marcados e intentá de nuevo.",
     },

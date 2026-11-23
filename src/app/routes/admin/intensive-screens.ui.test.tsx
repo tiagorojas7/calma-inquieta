@@ -91,6 +91,24 @@ describe("intensive admin screens", () => {
     expect(screen.getByLabelText("Fecha")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Incluye materiales")).not.toBeChecked();
     expect(screen.getAllByLabelText("Imagen")).toHaveLength(6);
+    // The workshop has no price: its first project does.
+    expect(container.querySelector("input[name=price]")).toBeNull();
+    expect(container.querySelector("input[name=deposit]")).toBeNull();
+    const first = screen.getByRole("region", { name: "Primer proyecto" });
+    expect(first.querySelector("input[name=projectName]")).toBe(
+      within(first).getByLabelText("Nombre del proyecto"),
+    );
+    expect(
+      within(first).getByLabelText("Precio total (en pesos)"),
+    ).toHaveAttribute("name", "projectPrice");
+    expect(within(first).getByLabelText("Seña (en pesos)")).toHaveAttribute(
+      "name",
+      "projectDeposit",
+    );
+    expect(
+      within(first).getByLabelText("Descripción (opcional)"),
+    ).toHaveAttribute("name", "projectDescription");
+    expect(within(first).queryByLabelText("Imagen")).toBeNull();
     const advanced = screen
       .getByText("Opciones avanzadas")
       .closest("details") as HTMLDetailsElement;
@@ -130,6 +148,64 @@ describe("intensive admin screens", () => {
     await expectNoAxeViolations(container);
   }, 30_000);
 
+  it("shows what was typed and each refusal beside its own field, project fields included", () => {
+    render(
+      <IntensiveForm
+        values={{
+          name: "Cerámica de sábado",
+          slug: "",
+          summary: "",
+          description: "Un detalle",
+          teacherId: "t1",
+          percentage: "",
+          eventDate: "2026-10-10",
+          startsAt: "10:00",
+          endsAt: "13:00",
+          capacity: "12",
+          minSeats: "",
+          policyText: "",
+          materialsIncluded: false,
+          images: [],
+        }}
+        firstProject={{
+          name: "",
+          price: "1000",
+          deposit: "2000",
+          description: "Mi texto",
+        }}
+        errors={{
+          capacity: "Completá este campo.",
+          projectName: "Completá el nombre del proyecto.",
+          projectDeposit: "No puede superar el precio.",
+        }}
+        teachers={[{ id: "t1", name: "Ana", modality: "own" }]}
+        cancelHref="/admin/intensivos"
+        mode="new"
+      />,
+    );
+
+    const first = screen.getByRole("region", { name: "Primer proyecto" });
+    expect(within(first).getByLabelText("Nombre del proyecto")).toHaveValue("");
+    expect(within(first).getByLabelText("Precio total (en pesos)")).toHaveValue(
+      "1000",
+    );
+    expect(within(first).getByLabelText("Seña (en pesos)")).toHaveValue("2000");
+    expect(within(first).getByLabelText("Descripción (opcional)")).toHaveValue(
+      "Mi texto",
+    );
+    expect(
+      within(first).getByText("Completá el nombre del proyecto."),
+    ).toBeVisible();
+    expect(
+      within(first).getByText("No puede superar el precio."),
+    ).toBeVisible();
+    // A project error is never shown as a workshop field error.
+    expect(within(first).queryByText("Completá este campo.")).toBeNull();
+    expect(screen.getByLabelText("Capacidad")).toHaveAccessibleDescription(
+      "Completá este campo.",
+    );
+  });
+
   it("renders the edit screen and audit without axe violations", async () => {
     const Stub = createRoutesStub([
       {
@@ -148,8 +224,6 @@ describe("intensive admin screens", () => {
             eventDate: "2026-10-10",
             startsAt: "10:00",
             endsAt: "13:00",
-            price: "30000",
-            deposit: "10000",
             capacity: "12",
             minSeats: "4",
             policyText: "Traé delantal.",
@@ -183,8 +257,6 @@ describe("intensive admin screens", () => {
                 eventDate: "2026-10-10",
                 startsAt: "10:00",
                 endsAt: "13:00",
-                price: "30000",
-                deposit: "10000",
                 capacity: "12",
                 minSeats: "4",
                 policyText: "Traé delantal.",
@@ -230,8 +302,6 @@ describe("intensive admin screens", () => {
           eventDate: "2026-10-10",
           startsAt: "10:00",
           endsAt: "13:00",
-          price: "30000",
-          deposit: "10000",
           capacity: "12",
           minSeats: "4",
           policyText: "Traé delantal.",
@@ -266,8 +336,6 @@ const values = {
   eventDate: "2026-10-10",
   startsAt: "10:00",
   endsAt: "13:00",
-  price: "30000",
-  deposit: "10000",
   capacity: "12",
   minSeats: "4",
   policyText: "Traé delantal.",

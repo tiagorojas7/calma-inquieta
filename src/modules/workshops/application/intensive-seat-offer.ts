@@ -12,6 +12,7 @@ import { projectImages } from "./public-projection";
 export interface IntensiveSeatOfferProject {
   readonly id: string;
   readonly name: string;
+  readonly description: string | null;
   readonly image: PublicImage | null;
   readonly price: Money;
   readonly deposit: Money;
@@ -78,6 +79,7 @@ export function createIntensiveSeatOfferLookup(
     return stored.map((project: StoredIntensiveProject) => ({
       id: project.id,
       name: project.name,
+      description: project.description,
       image:
         project.image === null
           ? null

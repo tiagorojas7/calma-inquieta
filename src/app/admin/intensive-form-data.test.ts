@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseFirstProjectDraft,
   parseIntensiveDraft,
   parseIntensiveFilter,
   parseIntensiveFilterKey,
@@ -25,8 +26,6 @@ describe("intensive form data", () => {
           ["eventDate", "2026-10-10"],
           ["startsAt", "10:00"],
           ["endsAt", "13:00"],
-          ["price", "30000"],
-          ["deposit", "10000"],
           ["capacity", "12"],
           ["minSeats", "4"],
           ["policyText", "Traé delantal."],
@@ -49,8 +48,6 @@ describe("intensive form data", () => {
       eventDate: "2026-10-10",
       startsAt: "10:00",
       endsAt: "13:00",
-      price: "30000",
-      deposit: "10000",
       capacity: "12",
       minSeats: "4",
       policyText: "Traé delantal.",
@@ -67,6 +64,44 @@ describe("intensive form data", () => {
           alt: "Una mesa",
         },
       ],
+    });
+  });
+
+  it("has no price or deposit of its own: the workshop is not a project", () => {
+    const draft = parseIntensiveDraft(
+      form([
+        ["price", "30000"],
+        ["deposit", "10000"],
+      ]),
+    );
+
+    expect(draft).not.toHaveProperty("price");
+    expect(draft).not.toHaveProperty("deposit");
+  });
+
+  it("reads the first project from its own fields, as typed", () => {
+    expect(
+      parseFirstProjectDraft(
+        form([
+          ["projectName", " Taza de torno "],
+          ["projectPrice", "45000"],
+          ["projectDeposit", "15000"],
+          ["projectDescription", "Tu primera taza."],
+          ["price", "1"],
+          ["name", "Workshop"],
+        ]),
+      ),
+    ).toEqual({
+      name: " Taza de torno ",
+      price: "45000",
+      deposit: "15000",
+      description: "Tu primera taza.",
+    });
+    expect(parseFirstProjectDraft(form([]))).toEqual({
+      name: "",
+      price: "",
+      deposit: "",
+      description: "",
     });
   });
 

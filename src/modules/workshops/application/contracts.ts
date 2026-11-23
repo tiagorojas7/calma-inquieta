@@ -375,14 +375,29 @@ export interface IntensiveWorkshopDraft {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
-  readonly price: string;
-  readonly deposit: string;
   readonly capacity: string;
   readonly minSeats: string;
   readonly policyText: string;
   readonly materialsIncluded: boolean;
   readonly images: readonly ImageUseDraft[];
 }
+/**
+ * The first project a new workshop is created with. The workshop itself has no
+ * price: it is not a project, so the owner must type this one.
+ */
+export interface FirstProjectDraft {
+  readonly name: string;
+  readonly price: string;
+  readonly deposit: string;
+  /** Optional; blank means none. */
+  readonly description: string;
+}
+export interface NewIntensiveWorkshopDraft extends IntensiveWorkshopDraft {
+  readonly firstProject: FirstProjectDraft;
+}
+/** Where a first-project issue is reported, apart from the workshop fields. */
+export type FirstProjectField =
+  "projectName" | "projectPrice" | "projectDeposit" | "projectDescription";
 export type IntensiveWorkshopField =
   | "name"
   | "slug"
@@ -392,8 +407,6 @@ export type IntensiveWorkshopField =
   | "percentage"
   | "eventDate"
   | "timeRange"
-  | "price"
-  | "deposit"
   | "capacity"
   | "minSeats"
   | "policyText"
@@ -420,6 +433,7 @@ export interface IntensiveProject {
   /** Display order, ascending; gaps are possible after a delete. */
   readonly position: number;
   readonly name: string;
+  readonly description: string | null;
   readonly image: ImageUse | null;
   readonly price: Money;
   readonly deposit: Money;
@@ -429,9 +443,12 @@ export interface IntensiveProjectDraft {
   readonly name: string;
   readonly price: string;
   readonly deposit: string;
+  /** Optional; blank means none. */
+  readonly description: string;
   readonly image: ImageUseDraft | null;
 }
-export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
+export type IntensiveProjectField =
+  "name" | "price" | "deposit" | "description" | "image";
 /** Why a project cannot be deleted: a request chose it, or it is the last of a live workshop. */
 export type IntensiveProjectRule = "in-use" | "last-project";
 /**
@@ -462,11 +479,18 @@ export interface IntensivesService {
     a: AdminActor,
   ): Promise<Result<readonly IntensiveWorkshop[], AdminFailure>>;
   get(a: AdminActor, id: string): R<IntensiveWorkshop>;
+  /**
+   * Creates a draft with its required first project in one write. The workshop
+   * has no price of its own; its stored price and deposit are the project's.
+   */
   create(
     a: AdminActor,
-    d: IntensiveWorkshopDraft,
+    d: NewIntensiveWorkshopDraft,
   ): Promise<
-    Result<IntensiveWorkshop, AdminFailure | Invalid<IntensiveWorkshopField>>
+    Result<
+      IntensiveWorkshop,
+      AdminFailure | Invalid<IntensiveWorkshopField | FirstProjectField>
+    >
   >;
   update(
     a: AdminActor,

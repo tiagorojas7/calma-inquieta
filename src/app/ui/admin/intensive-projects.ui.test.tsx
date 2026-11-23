@@ -10,12 +10,14 @@ import {
 const taza: IntensiveProjectCard = {
   id: "p1",
   name: "Taza de torno",
+  description: "Una taza al torno, lista para usar.",
   amounts: { price: "$ 30.000", deposit: "$ 10.000" },
   image: { src: "/imagenes/taza.webp", alt: "Una taza" },
   values: {
     name: "Taza de torno",
     price: "30000",
     deposit: "10000",
+    description: "Una taza al torno, lista para usar.",
     image: { assetId: "a1", src: "/imagenes/taza.webp", alt: "Una taza" },
   },
   materials: [
@@ -31,12 +33,14 @@ const taza: IntensiveProjectCard = {
 const plato: IntensiveProjectCard = {
   id: "p2",
   name: "Plato hondo",
+  description: null,
   amounts: { price: "$ 45.000", deposit: "$ 15.000" },
   image: null,
   values: {
     name: "Plato hondo",
     price: "45000",
     deposit: "15000",
+    description: "",
     image: null,
   },
   materials: [],
@@ -69,6 +73,14 @@ describe("IntensiveProjects", () => {
     ).toBeVisible();
     expect(within(secondItem).getByText("Plato hondo")).toBeVisible();
     expect(within(secondItem).getByText("Sin imagen")).toBeVisible();
+    expect(
+      within(firstItem).getByText("Una taza al torno, lista para usar.", {
+        selector: "p",
+      }),
+    ).toBeVisible();
+    expect(
+      within(secondItem).queryByText("Una taza al torno", { exact: false }),
+    ).toBeNull();
   });
 
   it("explains that a workshop needs a project when it has none", () => {
@@ -118,6 +130,9 @@ describe("IntensiveProjects", () => {
       "30000",
     );
     expect(within(item).getByLabelText("Seña (en pesos)")).toHaveValue("10000");
+    expect(within(item).getByLabelText("Descripción (opcional)")).toHaveValue(
+      "Una taza al torno, lista para usar.",
+    );
     expect(hidden(form, "imageAssetId")).toBe("a1");
     expect(
       within(item).getByRole("checkbox", { name: "Quitar la imagen" }),
@@ -164,10 +179,17 @@ describe("IntensiveProjects", () => {
         projects={[taza, plato]}
         rejected={{
           target: "p2",
-          values: { name: "", price: "1000", deposit: "2000", image: null },
+          values: {
+            name: "",
+            price: "1000",
+            deposit: "2000",
+            description: "Lo que escribí",
+            image: null,
+          },
           errors: {
             name: "Completá este campo.",
             deposit: "No puede superar el precio.",
+            description: "La descripción es demasiado larga. Acortala.",
           },
           formError: "Revisá los campos marcados e intentá de nuevo.",
         }}
@@ -180,6 +202,12 @@ describe("IntensiveProjects", () => {
       "1000",
     );
     expect(within(item).getByLabelText("Seña (en pesos)")).toHaveValue("2000");
+    expect(within(item).getByLabelText("Descripción (opcional)")).toHaveValue(
+      "Lo que escribí",
+    );
+    expect(
+      within(item).getByText("La descripción es demasiado larga. Acortala."),
+    ).toBeVisible();
     expect(within(item).getByText("Completá este campo.")).toBeVisible();
     expect(within(item).getByText("No puede superar el precio.")).toBeVisible();
     expect(within(item).getByText("Guardar proyecto")).toBeVisible();
@@ -191,7 +219,13 @@ describe("IntensiveProjects", () => {
         projects={[taza]}
         rejected={{
           target: "new",
-          values: { name: "Nuevo", price: "abc", deposit: "1", image: null },
+          values: {
+            name: "Nuevo",
+            price: "abc",
+            deposit: "1",
+            description: "",
+            image: null,
+          },
           errors: { price: "El formato no es válido. Revisalo." },
         }}
       />,

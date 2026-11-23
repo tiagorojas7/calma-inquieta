@@ -5,6 +5,7 @@ import {
   type Clock,
   type FieldIssue,
   type Invalid,
+  type Money,
   type NotFound,
   type Result,
   type RulesUnmet,
@@ -31,7 +32,10 @@ import {
   type IntensiveSchedule,
   type PercentageSubmission,
 } from "../domain/intensive-core";
-import { defaultProjectName } from "../domain/intensive-project-core";
+import {
+  validateIntensiveProject,
+  type IntensiveProjectCore,
+} from "../domain/intensive-project-core";
 import {
   parsePercentage,
   slugify,
@@ -39,8 +43,10 @@ import {
   type IntensiveStatus,
   type IntensiveWorkshop,
   type IntensiveWorkshopDraft,
+  type FirstProjectField,
   type IntensiveWorkshopField,
   type IntensivesService,
+  type NewIntensiveWorkshopDraft,
   type Percentage,
 } from "./contracts";
 import { createIntensiveProjectMaterialsUseCases } from "./intensive-project-materials-use-cases";
@@ -78,6 +84,12 @@ const LIVE: readonly IntensiveStatus[] = [
 ];
 const VISIBLE: readonly IntensiveStatus[] = ["published", "paused"];
 const notFound: NotFound = { kind: "not-found" };
+const PROJECT_FIELDS = {
+  name: "projectName",
+  price: "projectPrice",
+  deposit: "projectDeposit",
+  description: "projectDescription",
+} as const satisfies Record<string, FirstProjectField>;
 const duplicateSlug: FieldIssue<"slug"> = { field: "slug", code: "duplicate" };
 
 function submissionOf(text: string): PercentageSubmission {
@@ -268,10 +280,16 @@ export function createIntensivesService(
     });
   }
 
+  /**
+   * The workshop is not a project and has no price of its own; the stored
+   * price and deposit are an internal fallback (old requests, publish rules),
+   * copied from the first project on creation and never touched by an edit.
+   */
   const merge = (
     base: { id: string; status: IntensiveStatus },
     fields: ResolvedFields,
     actor: AdminActor,
+    money: { readonly price: Money; readonly deposit: Money },
   ): StoredIntensive => ({
     id: base.id,
     status: base.status,
@@ -284,8 +302,8 @@ export function createIntensivesService(
     eventDate: fields.core.schedule.eventDate,
     startsAt: fields.core.schedule.startsAt,
     endsAt: fields.core.schedule.endsAt,
-    price: fields.core.price,
-    deposit: fields.core.deposit,
+    price: money.price,
+    deposit: money.deposit,
     capacity: fields.core.capacity,
     minSeats: fields.core.minSeats,
     policyText: fields.core.policyText,
@@ -298,6 +316,22 @@ export function createIntensivesService(
     kind: "invalid",
     issues: [duplicateSlug],
   } as const);
+
+  /** The first project of a new workshop, its issues named apart from the workshop fields. */
+  function firstProjectCore(
+    draft: NewIntensiveWorkshopDraft,
+  ): Result<IntensiveProjectCore, readonly FieldIssue<FirstProjectField>[]> {
+    const core = validateIntensiveProject(draft.firstProject);
+    return core.ok
+      ? core
+      : err(
+          core.error.issues.flatMap((issue) =>
+            issue.field === "image"
+              ? []
+              : [{ ...issue, field: PROJECT_FIELDS[issue.field] }],
+          ),
+        );
+  }
 
   async function load(
     actor: MaybeActor,
@@ -416,21 +450,31 @@ export function createIntensivesService(
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       const fields = await resolveFields(draft, null);
-      if (!fields.ok) return fields;
+      const first = firstProjectCore(draft);
+      if (!fields.ok || !first.ok)
+        return err({
+          kind: "invalid",
+          issues: [
+            ...(fields.ok ? [] : fields.error.issues),
+            ...(first.ok ? [] : first.error),
+          ],
+        });
       const stored = merge(
         { id: newId(), status: "draft" },
         fields.value,
         authorized.value,
+        first.value,
       );
-      // A new workshop starts with one project made from its own price and
-      // deposit, so it can be published without further steps.
+      // A new workshop starts with the one project the owner typed, so it can
+      // be published without further steps; it is a project, the workshop is not.
       const inserted = await repository.insert(stored, {
         id: newId(),
         intensiveId: stored.id,
-        name: defaultProjectName(stored.name),
+        name: first.value.name,
+        description: first.value.description,
         image: null,
-        price: stored.price,
-        deposit: stored.deposit,
+        price: first.value.price,
+        deposit: first.value.deposit,
         audit: stored.audit,
       });
       return inserted.ok ? ok(await readModel(stored)) : duplicateSlugResult;
@@ -441,7 +485,7 @@ export function createIntensivesService(
       const { current, actor: admin } = loaded.value;
       const fields = await resolveFields(draft, current);
       if (!fields.ok) return fields;
-      const next = merge(current, fields.value, admin);
+      const next = merge(current, fields.value, admin, current);
       // A live intensivo must keep meeting the publish rules after the edit.
       if (current.status === "published" || current.status === "paused") {
         const unmet = await unmetRules(next, "edit", current);

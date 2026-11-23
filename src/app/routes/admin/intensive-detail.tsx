@@ -31,10 +31,7 @@ import {
   projectDeleteMessage,
   rejectedProject,
 } from "~/app/admin/intensive-project-form-data";
-import {
-  formatPercentage,
-  formatWholePesos,
-} from "~/app/admin/workshop-form-data";
+import { formatPercentage } from "~/app/admin/workshop-form-data";
 import type { FieldIssue } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import type { IntensivesService, IntensiveWorkshop } from "~/modules/workshops";
@@ -108,8 +105,6 @@ function formValues(intensive: IntensiveWorkshop) {
     eventDate: intensive.eventDate,
     startsAt: intensive.startsAt,
     endsAt: intensive.endsAt,
-    price: formatWholePesos(intensive.price),
-    deposit: formatWholePesos(intensive.deposit),
     capacity: String(intensive.capacity),
     minSeats: String(intensive.minSeats),
     policyText: intensive.policyText,

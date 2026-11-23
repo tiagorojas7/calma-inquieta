@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  defaultProjectName,
   validateIntensiveProject,
   type ProjectFieldsDraft,
 } from "./intensive-project-core";
@@ -11,6 +10,7 @@ const draft = (
   name: "Taza de torno",
   price: "30000",
   deposit: "10000",
+  description: "",
   ...overrides,
 });
 
@@ -85,6 +85,15 @@ describe("validateIntensiveProject", () => {
     ]);
   });
 
+  it("refuses an amount beyond the safe range and skips the comparison when the price is invalid", () => {
+    expect(issuesOf({ price: "99999999999999999999", deposit: "5" })).toEqual([
+      { field: "price", code: "out-of-range" },
+    ]);
+    expect(issuesOf({ price: "", deposit: "999999" })).toEqual([
+      { field: "price", code: "required" },
+    ]);
+  });
+
   it("reports every invalid field at once", () => {
     expect(issuesOf({ name: "", price: "x", deposit: "" })).toEqual([
       { field: "name", code: "required" },
@@ -92,19 +101,21 @@ describe("validateIntensiveProject", () => {
       { field: "deposit", code: "required" },
     ]);
   });
-});
 
-describe("defaultProjectName", () => {
-  it("keeps the workshop name when it fits", () => {
-    expect(defaultProjectName("Cerámica de otoño")).toBe("Cerámica de otoño");
+  it("keeps a trimmed description and treats a blank one as none", () => {
+    const kept = validateIntensiveProject(
+      draft({ description: "  Una taza en el torno.  " }),
+    );
+    const blank = validateIntensiveProject(draft({ description: "   " }));
+
+    expect(kept.ok && kept.value.description).toBe("Una taza en el torno.");
+    expect(blank.ok && blank.value.description).toBeNull();
   });
 
-  it("cuts a long workshop name to the project limit without trailing spaces", () => {
-    const name = `${"a".repeat(79)} bbbbbbbb`;
-
-    const result = defaultProjectName(name);
-
-    expect(result).toBe("a".repeat(79));
-    expect(result.length).toBeLessThanOrEqual(80);
+  it("accepts a description of exactly 600 characters and refuses 601", () => {
+    expect(issuesOf({ description: "d".repeat(600) })).toEqual([]);
+    expect(issuesOf({ description: "d".repeat(601) })).toEqual([
+      { field: "description", code: "too-long" },
+    ]);
   });
 });

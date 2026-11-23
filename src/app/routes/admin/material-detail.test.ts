@@ -76,6 +76,7 @@ function context(
     admin?: boolean;
     get?: MaterialsService["get"];
     deactivate?: MaterialsService["deactivate"];
+    deletePermanent?: MaterialsService["deletePermanent"];
     reactivate?: MaterialsService["reactivate"];
     update?: MaterialsService["update"];
     stockOf?: MaterialsService["stockOf"];
@@ -88,6 +89,9 @@ function context(
       materials: withOverrides(createUnavailableService<MaterialsService>(), {
         ...(options.get ? { get: options.get } : {}),
         ...(options.deactivate ? { deactivate: options.deactivate } : {}),
+        ...(options.deletePermanent
+          ? { deletePermanent: options.deletePermanent }
+          : {}),
         ...(options.reactivate ? { reactivate: options.reactivate } : {}),
         ...(options.update ? { update: options.update } : {}),
         ...(options.stockOf ? { stockOf: options.stockOf } : {}),
@@ -358,6 +362,34 @@ describe("admin material detail action", () => {
         `/admin/materiales/${ID}?ok=${intent === "deactivate" ? "deactivated" : "reactivated"}`,
       );
     }
+  });
+
+  it("deletes an unused material permanently and refuses a referenced one without redirecting", async () => {
+    const deleted = vi
+      .fn<MaterialsService["deletePermanent"]>()
+      .mockResolvedValue({ ok: true, value: undefined });
+    const response = await submit("delete", { deletePermanent: deleted });
+    expect(deleted).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      ID,
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/materiales?ok=deleted",
+    );
+
+    const refused = await submit("delete", {
+      deletePermanent: () =>
+        Promise.resolve({
+          ok: false as const,
+          error: { kind: "in-use" as const },
+        }),
+    });
+    expect(refused).toMatchObject({
+      init: { status: 422 },
+    });
+    expect(
+      (refused as { data: { stateError: string } }).data.stateError,
+    ).toContain("archivar");
   });
 
   it("rejects unknown intents and maps lifecycle failures", async () => {

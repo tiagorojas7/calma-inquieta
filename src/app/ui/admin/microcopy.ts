@@ -1446,7 +1446,15 @@ export const adminMicrocopy = {
       title: "Estado del material",
       deactivate: "Archivar",
       reactivate: "Reactivar",
+      delete: "Borrar definitivamente",
+      deleteInUse:
+        "No se puede borrar: tiene ventas, pedidos, ofertas o movimientos de stock. Podés archivarlo.",
       failed: "No se pudo actualizar el estado del material. Probá de nuevo.",
+      confirmDelete: {
+        title: "¿Borrar este material definitivamente?",
+        message:
+          "No se puede deshacer. Solo se borrará si nunca se usó ni tuvo movimientos de stock.",
+      },
       confirmDeactivate: {
         title: "¿Archivar este material?",
         message:

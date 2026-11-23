@@ -260,6 +260,13 @@ describe("materials screen loader: En el estudio and Catálogo", () => {
     expect((await load(env, "?ok=whatever&n=5")).saved).toBeNull();
   });
 
+  it("announces permanent deletion on return to Materiales", async () => {
+    const env = await seeded();
+    expect((await load(env, "?ok=deleted")).saved).toBe(
+      "Material borrado definitivamente",
+    );
+  });
+
   it("answers 403 to a non-admin and 503 when the services are unavailable", async () => {
     const env = await seeded();
     expect(await thrownStatus(() => load(env, "", { admin: false }))).toBe(403);

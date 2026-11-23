@@ -101,6 +101,7 @@ describe("material service", () => {
       expect(await service.create(missingActor, draft())).toEqual(denied);
       expect(await service.update(missingActor, "id", draft())).toEqual(denied);
       expect(await service.deactivate(missingActor, "id")).toEqual(denied);
+      expect(await service.deletePermanent(missingActor, "id")).toEqual(denied);
       expect(await service.reactivate(missingActor, "id")).toEqual(denied);
       expect(await service.categorySuggestions(missingActor)).toEqual(denied);
       expect(await service.stockOf(missingActor, "id")).toEqual(denied);
@@ -616,6 +617,29 @@ describe("material service", () => {
       error: { issues: [{ field: "name", code: "duplicate" }] },
     });
     expect(await service.deactivate(actor, "missing")).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+
+  it("permanently deletes only a material the repository confirms is unused", async () => {
+    const { repository, service } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    const refused = vi
+      .spyOn(repository, "deleteIfUnused")
+      .mockResolvedValueOnce("in-use");
+    expect(await service.deletePermanent(actor, created.id)).toEqual({
+      ok: false,
+      error: { kind: "in-use" },
+    });
+    expect(await repository.findById(created.id)).not.toBeNull();
+    refused.mockRestore();
+    expect(await service.deletePermanent(actor, created.id)).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(await repository.findById(created.id)).toBeNull();
+    expect(await service.deletePermanent(actor, created.id)).toEqual({
       ok: false,
       error: { kind: "not-found" },
     });

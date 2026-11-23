@@ -96,6 +96,14 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const intent = form.get("intent");
   const materials = context.get(servicesContext).materials;
 
+  if (intent === "delete") {
+    const removed = await materials.deletePermanent(actor, params.id);
+    if (removed.ok) return redirect(withFeedback(LIST, "deleted"));
+    if (removed.error.kind === "in-use")
+      return data({ stateError: copy.lifecycle.deleteInUse }, { status: 422 });
+    throw failureResponse(removed.error);
+  }
+
   if (intent === "deactivate" || intent === "reactivate") {
     const changed =
       intent === "deactivate"

@@ -310,6 +310,37 @@ export function MaterialDetail({
           ))}
         </ul>
       </section>
+      <AdminDangerZone title={copy.lifecycle.title}>
+        <div className="flex flex-col gap-3">
+          <FormError message={stateError} />
+          <ConfirmedSubmit
+            intent={active ? "deactivate" : "reactivate"}
+            label={
+              active ? copy.lifecycle.deactivate : copy.lifecycle.reactivate
+            }
+            tone="default"
+            variant={active ? "outline" : "success"}
+            title={
+              active
+                ? copy.lifecycle.confirmDeactivate.title
+                : copy.lifecycle.confirmReactivate.title
+            }
+            message={
+              active
+                ? copy.lifecycle.confirmDeactivate.message
+                : copy.lifecycle.confirmReactivate.message
+            }
+          />
+          <ConfirmedSubmit
+            intent="delete"
+            label={copy.lifecycle.delete}
+            tone="destructive"
+            variant="danger"
+            title={copy.lifecycle.confirmDelete.title}
+            message={copy.lifecycle.confirmDelete.message}
+          />
+        </div>
+      </AdminDangerZone>
       <details
         className={ADMIN_PANEL}
         open={formError || Object.keys(errors).length ? true : undefined}
@@ -377,30 +408,6 @@ export function MaterialDetail({
           </section>
         </div>
       </details>
-
-      <AdminDangerZone title={copy.lifecycle.title}>
-        <div className="flex flex-col gap-3">
-          <FormError message={stateError} />
-          <ConfirmedSubmit
-            intent={active ? "deactivate" : "reactivate"}
-            label={
-              active ? copy.lifecycle.deactivate : copy.lifecycle.reactivate
-            }
-            tone={active ? "destructive" : "default"}
-            variant={active ? "danger" : "success"}
-            title={
-              active
-                ? copy.lifecycle.confirmDeactivate.title
-                : copy.lifecycle.confirmReactivate.title
-            }
-            message={
-              active
-                ? copy.lifecycle.confirmDeactivate.message
-                : copy.lifecycle.confirmReactivate.message
-            }
-          />
-        </div>
-      </AdminDangerZone>
     </section>
   );
 }

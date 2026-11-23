@@ -88,6 +88,15 @@ export class InMemoryMaterialRepository implements MaterialRepository {
     }
   }
 
+  deleteIfUnused(id: string): Promise<"deleted" | "not-found" | "in-use"> {
+    const current = this.materials.get(id);
+    if (!current) return Promise.resolve("not-found");
+    if (current.variants.some((variant) => variant.used))
+      return Promise.resolve("in-use");
+    this.materials.delete(id);
+    return Promise.resolve("deleted");
+  }
+
   update(material: Material): Promise<boolean> {
     if (!this.materials.has(material.id)) return Promise.resolve(false);
     try {

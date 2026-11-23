@@ -281,6 +281,13 @@ export interface MaterialsService {
     a: AdminActor,
     id: string,
   ): Promise<Result<Material, AdminFailure | NotFound>>;
+  /** Irreversible removal, refused when stock history or another record refers to it. */
+  deletePermanent(
+    a: AdminActor,
+    id: string,
+  ): Promise<
+    Result<void, AdminFailure | NotFound | { readonly kind: "in-use" }>
+  >;
   reactivate(
     a: AdminActor,
     id: string,

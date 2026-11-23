@@ -41,6 +41,7 @@ describe("materials contracts", () => {
       "create",
       "update",
       "deactivate",
+      "deletePermanent",
       "reactivate",
       "categorySuggestions",
       "setImage",
@@ -48,7 +49,7 @@ describe("materials contracts", () => {
       "importCatalog",
       "previewPriceRaise",
       "raisePrices",
-    ] as const).toHaveLength(13);
+    ] as const).toHaveLength(14);
     expectTypeOf<import("~/modules/materials").MaterialDraft>().toHaveProperty(
       "variants",
     );
@@ -80,6 +81,7 @@ describe("materials contract signatures", () => {
       "create",
       "update",
       "deactivate",
+      "deletePermanent",
       "reactivate",
       "categorySuggestions",
       "setImage",
@@ -97,7 +99,7 @@ describe("materials contract signatures", () => {
     expectTypeOf<keyof SuppliersService>().toEqualTypeOf<
       (typeof supplierKeys)[number]
     >();
-    expect(materialKeys).toHaveLength(19);
+    expect(materialKeys).toHaveLength(20);
     expectTypeOf<keyof MaterialsService>().toEqualTypeOf<
       (typeof materialKeys)[number]
     >();

@@ -305,6 +305,45 @@ describe("material detail screen", () => {
     expect(await screen.findByRole("dialog")).toBeVisible();
   });
 
+  it("separately confirms irreversible deletion without submitting the archive intent", async () => {
+    const Active = stub();
+    render(<Active initialEntries={[`/admin/materiales/${ID}`]} />);
+    const remove = await screen.findByRole("button", {
+      name: "Borrar definitivamente",
+    });
+    expect(remove.closest("form")).toHaveAttribute("method", "post");
+    expect(
+      remove.closest("form")?.querySelector('input[name="intent"]'),
+    ).toHaveValue("delete");
+    fireEvent.click(remove);
+    expect(
+      await screen.findByRole("dialog", {
+        name: "¿Borrar este material definitivamente?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "No se puede deshacer",
+    );
+  });
+
+  it("keeps removal actions before secondary editing details", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+    const section = screen.getByRole("region", { name: "Estado del material" });
+    const edit = screen.getByText("Editar datos").closest("details");
+    if (!edit) throw new Error("missing edit disclosure");
+    expect(
+      section.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("uses a ConfirmedSubmit native document form to reactivate an inactive material", async () => {
     const Inactive = stub({ ...detail, active: false });
     render(<Inactive initialEntries={[`/admin/materiales/${ID}`]} />);

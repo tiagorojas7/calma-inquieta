@@ -27,6 +27,7 @@ import type { Route } from "./+types/materials";
 const copy = adminCopy.materiales;
 const FEEDBACK = [
   "created",
+  "deleted",
   "arrived",
   "kept",
   "unkept",
@@ -76,6 +77,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   else if (highlighted) saved = copy.saved.created(highlighted.name);
   else if (code === "arrived" && count !== null)
     saved = copy.saved.arrived(count);
+  else if (code === "deleted") saved = copy.saved.deleted;
   else if (notice) saved = copy.saved[notice.kind](notice.count);
 
   const view = new URLSearchParams();

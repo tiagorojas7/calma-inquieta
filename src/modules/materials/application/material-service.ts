@@ -444,6 +444,15 @@ export function createMaterialsService(
       return ok(next);
     },
 
+    async deletePermanent(actor, id) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const outcome = await repository.deleteIfUnused(id);
+      if (outcome === "not-found") return err(notFound);
+      if (outcome === "in-use") return err({ kind: "in-use" });
+      return ok(undefined);
+    },
+
     async reactivate(actor, id) {
       const loaded = await loadForToggle(actor, id);
       if (!loaded.ok) return err(loaded.error);

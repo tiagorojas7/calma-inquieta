@@ -12,6 +12,7 @@ export const materialesCopy = {
   /** The words of a saved banner, after "Guardado:". */
   saved: {
     created: (name: string) => name,
+    deleted: "Material borrado definitivamente",
     arrived: (count: number) =>
       count === 1 ? "llegó 1 unidad" : `llegaron ${String(count)} unidades`,
     requested: (count: number) =>

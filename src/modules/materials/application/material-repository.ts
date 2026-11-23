@@ -28,6 +28,8 @@ export interface MaterialWrite {
 export interface MaterialRepository {
   /** Inserts the root and every variant atomically. */
   insert(material: Material): Promise<void>;
+  /** One transaction: refuse references/stock history, remove zero stock rows, then delete. */
+  deleteIfUnused(id: string): Promise<"deleted" | "not-found" | "in-use">;
   /** Replaces the root and complete variant list atomically. */
   update(material: Material): Promise<boolean>;
   /** Preserves and returns the current studio flag in the same atomic update. */

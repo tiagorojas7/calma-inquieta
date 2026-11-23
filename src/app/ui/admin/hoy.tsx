@@ -278,9 +278,9 @@ function ToDo({
       {cards.length === 0 ? (
         <p className="text-lg text-ink-900">{copy.todo.empty}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {cards.map((card) => (
-            <li key={card.id}>
+            <li key={card.id} className="grid">
               <Task card={card} returnTo={returnTo} failure={failure} />
             </li>
           ))}

@@ -243,6 +243,16 @@ describe("Hoy para hacer", () => {
   });
 });
 
+describe("Hoy para hacer layout", () => {
+  it("lays the task cards in two even columns on wide screens and one on phones", () => {
+    renderHoy();
+    const list = within(section("Para hacer")).getByRole("list");
+    expect(list).toHaveClass("grid", "lg:grid-cols-2");
+    for (const item of within(list).getAllByRole("listitem"))
+      expect(item).toHaveClass("grid");
+  });
+});
+
 describe("Hoy classes and news", () => {
   it("lists today's classes with their time, students and attendance", () => {
     renderHoy();

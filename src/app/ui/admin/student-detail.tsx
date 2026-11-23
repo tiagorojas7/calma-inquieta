@@ -477,7 +477,7 @@ export function StudentDetail({
             ) : (
               <a
                 href={student.phoneLink}
-                className="text-lg font-semibold text-ink-900 underline underline-offset-4"
+                className="inline-flex min-h-12 items-center text-lg font-semibold text-ink-900 underline underline-offset-4"
               >
                 {student.phoneShown}
               </a>

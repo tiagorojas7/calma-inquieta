@@ -134,6 +134,15 @@ describe("StudentDetail", () => {
     ).toBeInTheDocument();
   });
 
+  it("gives the phone link a full touch target", () => {
+    render(<StudentDetail {...props} />);
+
+    const phone = screen
+      .getAllByRole("link")
+      .find((link) => link.getAttribute("href")?.startsWith("tel:"));
+    expect(phone).toHaveClass("min-h-12");
+  });
+
   it("shows what she owes as the file's large figure, in the owed or paid tone", () => {
     const { rerender } = render(<StudentDetail {...props} />);
 

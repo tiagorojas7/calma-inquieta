@@ -131,6 +131,7 @@ export function MaterialDetail({
         back={{ href: "/admin/materiales", label: copy.back }}
       />
       {feedback ? <AdminFeedback tone="success" title={feedback} /> : null}
+      <FormError message={stateError} />
       <header>
         <dl className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-700">
           <div>
@@ -312,7 +313,6 @@ export function MaterialDetail({
       </section>
       <AdminDangerZone title={copy.lifecycle.title}>
         <div className="flex flex-col gap-3">
-          <FormError message={stateError} />
           <ConfirmedSubmit
             intent={active ? "deactivate" : "reactivate"}
             label={

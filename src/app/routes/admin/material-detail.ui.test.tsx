@@ -141,7 +141,8 @@ describe("material detail screen", () => {
     );
 
     const chico = screen.getByRole("form", { name: "Ajustar stock de Chico" });
-    expect(chico.closest("li")).toHaveTextContent("Costo: $800");
+    expect(chico.closest("li")).toHaveTextContent(/Costo: \$\s800/);
+    expect(chico.closest("li")).toHaveTextContent(/\$\s2\.500/);
     expect(chico.closest("li")).toHaveTextContent("En stock: 3");
     const grande = screen.getByRole("form", {
       name: "Ajustar stock de Grande",
@@ -289,6 +290,29 @@ describe("material detail screen", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Ya existe uno activo con el mismo nombre.",
     );
+  });
+
+  it("shows a refused archive or deletion right under the title, ahead of the variants", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        errors={{}}
+        formError={undefined}
+        values={detail}
+        stateError="No se puede borrar: tiene ventas, pedidos, ofertas o movimientos de stock. Podés archivarlo."
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    const title = screen.getByRole("heading", { level: 1 });
+    const variants = screen.getByRole("heading", { name: "Variantes" });
+    expect(
+      title.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(variants) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("uses a ConfirmedSubmit native document form to deactivate an active material", async () => {

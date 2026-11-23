@@ -2,6 +2,12 @@
  * Admin primitive strings (es-AR, voseo). F0a extends this file with the
  * layout and navigation copy; the same copy rule scans both.
  */
+
+/** Whole pesos typed as digits, with thousands dots: "12500" reads "12.500". */
+function groupPesos(value: string): string {
+  return value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 export const adminMicrocopy = {
   status: {
     draft: "Borrador",
@@ -1429,8 +1435,8 @@ export const adminMicrocopy = {
     image: "Imagen",
     imageUnavailable: "La imagen ya no está disponible.",
     variants: "Variantes",
-    price: (value: string) => `$${value}`,
-    cost: (value: string) => `Costo: $${value}`,
+    price: (value: string) => `$\u00a0${groupPesos(value)}`,
+    cost: (value: string) => `Costo: $\u00a0${groupPesos(value)}`,
     costMissing: "Costo sin cargar",
     stock: {
       onHand: (units: number) => `En stock: ${String(units)}`,

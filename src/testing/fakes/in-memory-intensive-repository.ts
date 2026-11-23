@@ -8,6 +8,7 @@ import type {
   MoveProjectOutcome,
   NewIntensiveProject,
   NewProjectMaterial,
+  NewWorkshopProject,
   ProjectDirection,
   SlugConflict,
   StoredIntensive,
@@ -35,16 +36,50 @@ export class InMemoryIntensiveRepository implements IntensiveRepository {
 
   insert(
     intensive: StoredIntensive,
-    firstProject?: NewIntensiveProject,
+    projects?: NewWorkshopProject | readonly NewWorkshopProject[],
   ): Promise<Result<void, SlugConflict>> {
     if (this.items.has(intensive.id))
       return Promise.reject(new Error("intensive already exists"));
     if (this.slugTakenByAnother(intensive))
       return Promise.resolve(err({ kind: "slug-conflict" }));
+    const given = projects === undefined ? [] : [projects].flat();
+    // Everything is checked before anything is stored, like a rolled-back transaction.
+    const refusal = this.refusalOf(given);
+    if (refusal) return Promise.reject(new Error(refusal));
     this.items.set(intensive.id, intensive);
-    if (firstProject)
-      this.projects.set(firstProject.id, { ...firstProject, position: 0 });
+    given.forEach((project, position) => {
+      const { materials = [], ...fields } = project;
+      this.projects.set(project.id, { ...fields, position });
+      if (materials.length > 0)
+        this.materials.set(
+          project.id,
+          materials.map((line, at) => ({
+            projectId: project.id,
+            variantId: line.variantId,
+            quantity: line.quantity,
+            position: at,
+          })),
+        );
+    });
     return Promise.resolve(ok(undefined));
+  }
+
+  /** What the database would refuse in a batch of new projects, or null. */
+  private refusalOf(given: readonly NewWorkshopProject[]): string | null {
+    const ids = new Set<string>();
+    for (const project of given) {
+      if (ids.has(project.id) || this.projects.has(project.id))
+        return "project already exists";
+      ids.add(project.id);
+      const variants = new Set<string>();
+      for (const line of project.materials ?? []) {
+        if (line.quantity < 1 || line.quantity > 20)
+          return "bill quantity out of range";
+        if (variants.has(line.variantId)) return "variant repeated in a bill";
+        variants.add(line.variantId);
+      }
+    }
+    return null;
   }
 
   update(

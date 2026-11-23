@@ -10,6 +10,7 @@ import {
 } from "~/testing/fakes/intensive-request-builders";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { IntensiveRequestsScreen } from "./intensive-requests";
+import { parseReservationBrowse } from "./reservation-browse";
 
 const money = (pesos: number): Money => {
   const value = Money.fromCentavos(pesos * 100);
@@ -110,7 +111,10 @@ describe("IntensiveRequestsScreen", () => {
   it("shows each person as a card with her project and the state in words", () => {
     render(<IntensiveRequestsScreen view={view} feedback={undefined} />);
 
-    expect(card("Ana Pérez")).toHaveTextContent("Taza de torno · Pidió lugar");
+    expect(
+      within(card("Ana Pérez")).getByText("Proyecto: Taza de torno"),
+    ).toBeInTheDocument();
+    expect(card("Ana Pérez")).toHaveTextContent("Pidió lugar");
     expect(card("Bea Gómez")).toHaveTextContent("Pagó todo");
   });
 
@@ -131,7 +135,7 @@ describe("IntensiveRequestsScreen", () => {
     expect(hidden("requestId")).toBe("pending-1");
     expect(hidden("intensiveId")).toBe(view.intensivo.id);
     expect(hidden("returnTo")).toBe(
-      `/admin/intensivos/${view.intensivo.id}/reservas`,
+      `/admin/intensivos/${view.intensivo.id}/reservas?ver=pending-1`,
     );
     expect(hidden("anchor")).toBe("reserva-pending-1");
     expect(within(form).getByLabelText("Monto")).toHaveValue("15000");
@@ -276,6 +280,165 @@ describe("IntensiveRequestsScreen", () => {
     for (const form of container.querySelectorAll("form"))
       expect(form).toHaveAttribute("method", "post");
     expect(container.querySelectorAll("a").length).toBeGreaterThan(0);
+    await expectNoAxeViolations(container);
+  });
+});
+
+const crowd = intensiveRequestsView(
+  {
+    intensivo: buildIntensiveOffer({ capacity: 30 }),
+    confirmedSeats: 4,
+    requests: [
+      ...Array.from({ length: 8 }, (_, index) =>
+        buildStoredRequest({
+          id: `pending-${String(index)}`,
+          fullName: `Pendiente ${String(index)}`,
+          email: `pending${String(index)}@example.com`,
+          projectId: FAKE_PROJECT_ID,
+        }),
+      ),
+      ...Array.from({ length: 3 }, (_, index) =>
+        buildStoredRequest({
+          ...confirmedBase,
+          id: `owes-${String(index)}`,
+          fullName: `Saldo ${String(index)}`,
+          email: `owes${String(index)}@example.com`,
+        }),
+      ),
+      buildStoredRequest({
+        ...confirmedBase,
+        id: "settled-0",
+        fullName: "Josefina Núñez",
+        email: "jose@example.com",
+        balance: {
+          amount: money(25000),
+          paidOn: "2026-10-25",
+          note: null,
+          by: "duena@example.com",
+          at: new Date("2026-10-25T15:00:00.000Z"),
+        },
+      }),
+    ],
+  },
+  "2026-10-28",
+);
+const crowdPath = `/admin/intensivos/${crowd.intensivo.id}/reservas`;
+const browse = (query: string) =>
+  parseReservationBrowse(new URLSearchParams(query));
+
+describe("IntensiveRequestsScreen with many reservations", () => {
+  it("shows at most six people, says how many there are and counts each state", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("")}
+      />,
+    );
+
+    expect(screen.getAllByRole("article")).toHaveLength(6);
+    expect(screen.getByText("Mostrando 6 de 12")).toBeInTheDocument();
+    const filters = screen.getByRole("navigation", { name: "Ver reservas" });
+    expect(
+      within(filters).getByRole("link", { name: "Todas 12" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(filters).getByRole("link", { name: "Por confirmar 8" }),
+    ).toHaveAttribute("href", `${crowdPath}?estado=por-confirmar#reservas`);
+    expect(
+      within(filters).getByRole("link", { name: "Deben saldo 3" }),
+    ).toBeInTheDocument();
+    expect(
+      within(filters).getByRole("link", { name: "Pagadas 1" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the people of the chosen state", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("estado=deben-saldo")}
+      />,
+    );
+
+    const names = screen
+      .getAllByRole("article")
+      .map((article) => article.getAttribute("aria-label") ?? article.id);
+    expect(names).toHaveLength(3);
+    expect(card("Saldo 0")).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Pendiente 0" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Deben saldo 3" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("finds a person by name without accents or capitals, with a native search form", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("buscar=nunez")}
+      />,
+    );
+
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(card("Josefina Núñez")).toBeInTheDocument();
+    const search = screen.getByRole("search");
+    const form = search.closest("form") ?? search;
+    expect(form).toHaveAttribute("method", "get");
+    expect(form).toHaveAttribute("action", `${crowdPath}#reservas`);
+    expect(within(search).getByLabelText("Buscar por nombre")).toHaveValue(
+      "nunez",
+    );
+    expect(
+      screen.getByRole("link", { name: "Borrar búsqueda" }),
+    ).toHaveAttribute("href", `${crowdPath}#reservas`);
+  });
+
+  it("says so when nobody matches", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("buscar=zzz")}
+      />,
+    );
+
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+    expect(
+      screen.getByText("No hay reservas con ese nombre."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the person just acted on in view, and her forms come back with the same filter", () => {
+    render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("estado=por-confirmar&ver=settled-0")}
+      />,
+    );
+
+    const kept = card("Josefina Núñez");
+    expect(kept).toBeInTheDocument();
+    const form = within(card("Pendiente 0")).getByRole("form", {
+      name: /Confirmar seña/,
+    });
+    expect(
+      form.querySelector<HTMLInputElement>('input[name="returnTo"]')?.value,
+    ).toBe(`${crowdPath}?estado=por-confirmar&ver=pending-0`);
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(
+      <IntensiveRequestsScreen
+        view={crowd}
+        feedback={undefined}
+        browse={browse("")}
+      />,
+    );
     await expectNoAxeViolations(container);
   });
 });

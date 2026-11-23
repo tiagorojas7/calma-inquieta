@@ -8,6 +8,7 @@ import {
   FAKE_PROJECT_ID,
 } from "~/testing/fakes/intensive-request-builders";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
+import { DEFAULT_BROWSE } from "./reservation-browse";
 import {
   AdminClassesScreen,
   classesPath,
@@ -169,6 +170,7 @@ describe("AdminClassesScreen", () => {
               reservations: {
                 today: "2026-10-28",
                 groups: reservations.groups,
+                browse: DEFAULT_BROWSE,
               },
             },
           ],
@@ -189,7 +191,9 @@ describe("AdminClassesScreen", () => {
     const hidden = (name: string) =>
       form.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.value;
     expect(hidden("intensiveId")).toBe(FAKE_INTENSIVE_ID);
-    expect(hidden("returnTo")).toBe(`/admin/clases?abrir=${FAKE_INTENSIVE_ID}`);
+    expect(hidden("returnTo")).toBe(
+      `/admin/clases?abrir=${FAKE_INTENSIVE_ID}&ver=pending-1`,
+    );
     expect(hidden("anchor")).toBe("reserva-pending-1");
   });
 
@@ -207,6 +211,7 @@ describe("AdminClassesScreen", () => {
               ...dated,
               reservations: {
                 today: "2026-10-28",
+                browse: DEFAULT_BROWSE,
                 groups: [
                   {
                     ...group,
@@ -251,6 +256,7 @@ describe("AdminClassesScreen", () => {
               reservations: {
                 today: "2026-10-28",
                 groups: reservations.groups,
+                browse: DEFAULT_BROWSE,
               },
             },
           ],
@@ -261,7 +267,9 @@ describe("AdminClassesScreen", () => {
     const form = screen.getByRole("form", { name: /Confirmar seña/ });
     expect(
       form.querySelector<HTMLInputElement>('input[name="returnTo"]')?.value,
-    ).toBe(`/admin/clases?abrir=${FAKE_INTENSIVE_ID}&anteriores=1`);
+    ).toBe(
+      `/admin/clases?abrir=${FAKE_INTENSIVE_ID}&anteriores=1&ver=pending-1`,
+    );
   });
 
   it("keeps Nuevo taller and Nuevo workshop as secondary buttons to the existing forms", () => {
@@ -344,6 +352,7 @@ describe("AdminClassesScreen", () => {
               reservations: {
                 today: "2026-10-28",
                 groups: reservations.groups,
+                browse: DEFAULT_BROWSE,
               },
             },
           ],

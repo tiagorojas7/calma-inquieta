@@ -2,6 +2,7 @@ import { adminCopy } from "./copy";
 import { AdminPageHeader } from "./admin-page";
 import { ReservationList } from "./classes-reservations";
 import { SavedBanner } from "./saved-banner";
+import type { ReservationBrowse } from "./reservation-browse";
 
 const copy = adminCopy.clases.reservations;
 
@@ -100,10 +101,13 @@ export function IntensiveRequestsScreen({
   view,
   feedback,
   done = null,
+  browse,
 }: {
   view: IntensiveRequestsViewData;
   feedback: IntensiveRequestFeedback | undefined;
   done?: "confirmed" | "balance" | "cancelled" | null | undefined;
+  /** Filter, search and the request just acted on, from the address. */
+  browse?: ReservationBrowse | undefined;
 }) {
   const { intensivo, groups } = view;
   return (
@@ -120,6 +124,7 @@ export function IntensiveRequestsScreen({
         groups={groups}
         returnTo={`/admin/intensivos/${intensivo.id}/reservas`}
         feedback={feedback}
+        browse={browse}
         headingLevel={2}
         justCancelled={done === "cancelled" || feedback?.intent === "cancel"}
       />

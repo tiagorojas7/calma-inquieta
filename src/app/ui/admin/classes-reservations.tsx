@@ -8,6 +8,17 @@ import type {
   IntensiveRequestRow,
 } from "./intensive-requests";
 import { MoreOptions } from "./more-options";
+import {
+  baseFields,
+  browseHref,
+  browseReservations,
+  DEFAULT_BROWSE,
+  needsBrowsing,
+  RESERVATION_FILTERS,
+  RESERVATIONS_ANCHOR,
+  type ReservationBrowse,
+  type ReservationFilter,
+} from "./reservation-browse";
 
 const copy = adminCopy.clases.reservation;
 
@@ -228,6 +239,26 @@ function stateWords(
     : copy.paid;
 }
 
+/** The chosen project on its own line, in ink, then the state in words. */
+function ProjectFacts({
+  row,
+  state,
+}: {
+  row: IntensiveRequestRow;
+  state: string;
+}) {
+  return (
+    <>
+      {row.projectName === null ? null : (
+        <span className="block font-semibold text-ink-900">
+          {copy.project(row.projectName)}
+        </span>
+      )}
+      <span className="block">{state}</span>
+    </>
+  );
+}
+
 function PersonCard({
   status,
   row,
@@ -239,9 +270,7 @@ function PersonCard({
 }) {
   const own =
     context.feedback?.requestId === row.id ? context.feedback : undefined;
-  const facts = [row.projectName ?? null, stateWords(status, row)]
-    .filter((part): part is string => part !== null)
-    .join(" · ");
+  const facts = <ProjectFacts row={row} state={stateWords(status, row)} />;
   const owesBalance =
     status === "confirmed" && row.balance === null && row.balanceDue !== null;
   const summary =
@@ -310,9 +339,14 @@ function CancelledCard({
       title={row.name}
       summary={copy.priceSummary(row.price)}
       facts={
-        row.cancelReason
-          ? `${copy.cancelled} · ${copy.cancelledReason(row.cancelReason)}`
-          : copy.cancelled
+        <ProjectFacts
+          row={row}
+          state={
+            row.cancelReason
+              ? `${copy.cancelled} · ${copy.cancelledReason(row.cancelReason)}`
+              : copy.cancelled
+          }
+        />
       }
       headingLevel={headingLevel}
       primary={null}
@@ -320,10 +354,100 @@ function CancelledCard({
   );
 }
 
+const chip =
+  "inline-flex min-h-12 items-center gap-2 rounded-md border-2 px-3 text-lg font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+const chipIdle = "border-sand-300 bg-surface text-ink-900 hover:bg-sand-100";
+const chipActive = "border-clay-800 bg-clay-800 text-white";
+const plainLink =
+  "inline-flex min-h-12 items-center rounded-md px-2 text-lg font-semibold text-clay-800 underline underline-offset-4 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+
+/** State chips with their counts and a native name search, for a long list. */
+function BrowseControls({
+  basePath,
+  browse,
+  counts,
+}: {
+  basePath: string;
+  browse: ReservationBrowse;
+  counts: Readonly<Record<ReservationFilter, number>>;
+}) {
+  const b = copy.browse;
+  const [action = ""] = basePath.split("?");
+  return (
+    <div className="flex flex-col gap-3">
+      <nav aria-label={b.label}>
+        <ul className="flex flex-wrap gap-2">
+          {RESERVATION_FILTERS.map((filter) => {
+            const active = browse.filter === filter;
+            return (
+              <li key={filter}>
+                <a
+                  href={browseHref(
+                    basePath,
+                    { filter, search: browse.search, focus: null },
+                    RESERVATIONS_ANCHOR,
+                  )}
+                  aria-current={active ? "page" : undefined}
+                  className={`${chip} ${active ? chipActive : chipIdle}`}
+                >
+                  {b.filters[filter]}{" "}
+                  <span className="tabular-nums">{counts[filter]}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      <form
+        method="get"
+        role="search"
+        aria-label={b.search}
+        action={`${action}#${RESERVATIONS_ANCHOR}`}
+        className="flex flex-wrap items-end gap-3"
+      >
+        <div className="flex grow flex-wrap items-end gap-3">
+          {baseFields(basePath).map(([name, value]) => (
+            <input key={name} type="hidden" name={name} value={value} />
+          ))}
+          {browse.filter === "todas" ? null : (
+            <input type="hidden" name="estado" value={browse.filter} />
+          )}
+          <div className="min-w-0 grow">
+            <TextField
+              label={b.search}
+              name="buscar"
+              type="search"
+              autoComplete="off"
+              defaultValue={browse.search}
+            />
+          </div>
+          <Button type="submit" variant="secondary">
+            {b.searchSubmit}
+          </Button>
+        </div>
+        {browse.search === "" ? null : (
+          <a
+            href={browseHref(
+              basePath,
+              { filter: browse.filter, search: "", focus: null },
+              RESERVATIONS_ANCHOR,
+            )}
+            className={plainLink}
+          >
+            {b.clear}
+          </a>
+        )}
+      </form>
+    </div>
+  );
+}
+
 /**
  * Everyone who asked for a place in one workshop, as cards: the pending ones
- * first, then the confirmed ones, with the cancelled ones behind a link. Every
- * action is a native post that comes back to the same card.
+ * first, then the confirmed ones, with the cancelled ones behind a link. A long
+ * list shows one page at a time, with state chips and a name search, and the
+ * person just acted on always stays in view. Every action is a native post that
+ * comes back to the same card, filter and search.
  */
 export function ReservationList({
   intensivoId,
@@ -331,27 +455,23 @@ export function ReservationList({
   groups,
   returnTo,
   feedback,
+  browse = DEFAULT_BROWSE,
   justCancelled = false,
   headingLevel = 4,
 }: {
   intensivoId: string;
   today: string;
   groups: readonly IntensiveRequestGroup[];
+  /** The page the list is on, with its own query. */
   returnTo: string;
   feedback: IntensiveRequestFeedback | undefined;
+  /** Filter, search and the request just acted on, from the address. */
+  browse?: ReservationBrowse | undefined;
   /** Opens the cancelled list right after a cancel, so the card is in view. */
   justCancelled?: boolean;
   /** The level of each name: one below the heading above the list. */
   headingLevel?: 2 | 3 | 4;
 }) {
-  const context: CardContext = {
-    intensivoId,
-    today,
-    returnTo,
-    feedback,
-    headingLevel,
-  };
-  const active = groups.filter((group) => group.status !== "cancelled");
   const cancelled = groups.find((group) => group.status === "cancelled");
   const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
   if (total === 0)
@@ -360,18 +480,39 @@ export function ReservationList({
         {adminCopy.clases.dated.noReservations}
       </p>
     );
+  const { cards, counts, matching } = browseReservations(groups, browse);
+  const browsing = needsBrowsing(counts, browse);
+  const contextFor = (rowId: string): CardContext => ({
+    intensivoId,
+    today,
+    returnTo: browseHref(returnTo, { ...browse, focus: rowId }),
+    feedback,
+    headingLevel,
+  });
+  const shown = cards.length;
   return (
-    <div className="flex flex-col gap-3">
-      {active.flatMap((group) =>
-        group.rows.map((row) => (
-          <PersonCard
-            key={row.id}
-            status={group.status}
-            row={row}
-            context={context}
-          />
-        )),
-      )}
+    <div id={RESERVATIONS_ANCHOR} className="flex scroll-mt-20 flex-col gap-3">
+      {browsing ? (
+        <BrowseControls basePath={returnTo} browse={browse} counts={counts} />
+      ) : null}
+      {browsing && matching > shown ? (
+        <p className="text-lg font-semibold text-ink-900">
+          {copy.browse.showing(shown, matching)}
+        </p>
+      ) : null}
+      {browsing && shown === 0 ? (
+        <p className="text-lg text-ink-700">
+          {browse.search === "" ? copy.browse.noneInState : copy.browse.noMatch}
+        </p>
+      ) : null}
+      {cards.map(({ status, row }) => (
+        <PersonCard
+          key={row.id}
+          status={status}
+          row={row}
+          context={contextFor(row.id)}
+        />
+      ))}
       {cancelled && cancelled.rows.length > 0 ? (
         <MoreOptions
           label={copy.seeCancelled(cancelled.rows.length)}

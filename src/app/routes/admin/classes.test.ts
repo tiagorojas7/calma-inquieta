@@ -277,6 +277,21 @@ describe("admin clases loader: dated workshops", () => {
     expect([...repository.seenMarks.keys()].sort()).toEqual([...ids].sort());
   });
 
+  it("keeps the filter and search of the open reservations", async () => {
+    const { services } = await setup();
+
+    const result = await load(
+      services,
+      `?abrir=${FAKE_INTENSIVE_ID}&estado=deben-saldo&buscar=ana`,
+    );
+
+    expect(result.dated[0]?.reservations?.browse).toEqual({
+      filter: "deben-saldo",
+      search: "ana",
+      focus: null,
+    });
+  });
+
   it("ignores an abrir that is not a listed workshop and marks nothing", async () => {
     const { services, repository } = await setup();
 

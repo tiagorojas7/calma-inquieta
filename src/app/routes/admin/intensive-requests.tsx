@@ -7,6 +7,7 @@ import { markOpened } from "~/app/admin/notifications-view";
 import { servicesContext } from "~/app/context";
 import { intensiveRequestsView } from "~/app/intensive-requests/admin-view";
 import { IntensiveRequestsScreen } from "~/app/ui/admin/intensive-requests";
+import { parseReservationBrowse } from "~/app/ui/admin/reservation-browse";
 import { cordobaDateOf } from "~/modules/intensive-requests";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/intensive-requests";
@@ -28,6 +29,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   return {
     ...intensiveRequestsView(found.value, cordobaDateOf(new Date())),
     done: feedbackCode(request, DONE),
+    browse: parseReservationBrowse(new URL(request.url).searchParams),
   };
 }
 
@@ -46,13 +48,14 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function AdminIntensiveRequests() {
-  const { done, ...view } = useLoaderData<typeof loader>();
+  const { done, browse, ...view } = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
   return (
     <IntensiveRequestsScreen
       view={view}
       feedback={rejected?.feedback}
       done={done}
+      browse={browse}
     />
   );
 }

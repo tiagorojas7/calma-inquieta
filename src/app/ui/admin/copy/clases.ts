@@ -89,6 +89,23 @@ export const clasesCopy = {
     whatsapp: "WhatsApp",
     seeCancelled: (count: number) => `Canceladas (${String(count)})`,
     cancelledReason: (reason: string) => `Motivo: ${reason}`,
+    project: (name: string) => `Proyecto: ${name}`,
+    browse: {
+      label: "Ver reservas",
+      filters: {
+        todas: "Todas",
+        "por-confirmar": "Por confirmar",
+        "deben-saldo": "Deben saldo",
+        pagadas: "Pagadas",
+      },
+      search: "Buscar por nombre",
+      searchSubmit: "Buscar",
+      clear: "Borrar búsqueda",
+      showing: (shown: number, total: number) =>
+        `Mostrando ${String(shown)} de ${String(total)}`,
+      noMatch: "No hay reservas con ese nombre.",
+      noneInState: "No hay reservas en este estado.",
+    },
   },
   reservations: {
     title: "Reservas",

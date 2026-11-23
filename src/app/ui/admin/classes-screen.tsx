@@ -11,6 +11,7 @@ import type {
   IntensiveRequestFeedback,
   IntensiveRequestGroup,
 } from "./intensive-requests";
+import type { ReservationBrowse } from "./reservation-browse";
 import { SavedBanner } from "./saved-banner";
 
 const copy = adminCopy.clases;
@@ -50,6 +51,8 @@ export interface DatedCardData {
   readonly reservations: {
     readonly today: string;
     readonly groups: readonly IntensiveRequestGroup[];
+    /** Filter, search and the request just acted on, from the address. */
+    readonly browse: ReservationBrowse;
   } | null;
 }
 
@@ -188,6 +191,7 @@ function DatedCard({
               groups={card.reservations.groups}
               returnTo={classesPath({ open: card.id, past: showPast })}
               feedback={feedback}
+              browse={card.reservations.browse}
               justCancelled={justCancelled}
             />
           ) : null}

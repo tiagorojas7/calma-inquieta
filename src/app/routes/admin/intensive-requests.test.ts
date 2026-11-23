@@ -48,9 +48,9 @@ async function seeded(capacity = 2) {
   return { repository, services: { intensiveRequests: service }, ids };
 }
 
-const load = (id: string, services: object, admin = true) =>
+const load = (id: string, services: object, admin = true, query = "") =>
   loader({
-    request: getRequest(`/admin/intensivos/${id}/reservas`),
+    request: getRequest(`/admin/intensivos/${id}/reservas${query}`),
     params: { id },
     context: adminContext(services, { admin }),
   } as never);
@@ -107,6 +107,27 @@ describe("admin intensive requests loader", () => {
       "Taza de torno",
       "Taza de torno",
     ]);
+  });
+
+  it("reads the filter, the search and the person just acted on from the address", async () => {
+    const { services, ids } = await seeded();
+
+    const plain = await load(FAKE_INTENSIVE_ID, services);
+    const asked = await load(
+      FAKE_INTENSIVE_ID,
+      services,
+      true,
+      `?estado=por-confirmar&buscar=Ana&ver=${ids[0] ?? ""}`,
+    );
+    const unknown = await load(FAKE_INTENSIVE_ID, services, true, "?estado=x");
+
+    expect(plain.browse).toEqual({ filter: "todas", search: "", focus: null });
+    expect(asked.browse).toEqual({
+      filter: "por-confirmar",
+      search: "Ana",
+      focus: ids[0],
+    });
+    expect(unknown.browse.filter).toBe("todas");
   });
 
   it("answers 404 for a non-UUID or unknown intensivo, 403 for a non-admin and 503 when unavailable", async () => {

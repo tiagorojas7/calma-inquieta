@@ -26,6 +26,7 @@ import {
   AdminClassesScreen,
   type ClassesScreenData,
 } from "~/app/ui/admin/classes-screen";
+import { parseReservationBrowse } from "~/app/ui/admin/reservation-browse";
 import { cordobaDateOf } from "~/modules/intensive-requests";
 import { cordobaMonthOf } from "~/modules/workshops";
 import { requireAdmin } from "./require-admin";
@@ -45,6 +46,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const showPast = url.searchParams.get("anteriores") === "1";
   const asked = url.searchParams.get("abrir");
   const askedId = asked !== null && isUuid(asked) ? asked : null;
+  const browse = parseReservationBrowse(url.searchParams);
   const now = new Date();
   const month = cordobaMonthOf(now);
   const today = cordobaDateOf(now);
@@ -124,7 +126,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       taken: found.value.confirmedSeats,
       pending,
       reservations:
-        workshop.id === opened ? { today, groups: view.groups } : null,
+        workshop.id === opened ? { today, groups: view.groups, browse } : null,
     });
   };
 

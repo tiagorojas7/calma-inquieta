@@ -558,6 +558,7 @@ export function createMaterialsService(
         by: authorized.value.email,
         at: clock.now(),
       });
+      if (outcome.kind === "missing") return err(notFound);
       return outcome.kind === "adjusted"
         ? ok({ onHand: outcome.onHand })
         : err({ kind: "insufficient-stock", onHand: outcome.onHand });

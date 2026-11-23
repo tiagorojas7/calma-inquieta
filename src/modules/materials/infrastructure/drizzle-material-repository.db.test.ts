@@ -20,6 +20,11 @@ import {
   type TestDatabase,
 } from "~/testing/db/test-database";
 import { createDrizzleMaterialRepository } from "./drizzle-material-repository";
+import { createDrizzleStockStore } from "./drizzle-stock-store";
+import { createDrizzleSupplierRepository } from "./drizzle-supplier-repository";
+import { createMaterialsService } from "~/modules/materials";
+import { testAdminActor } from "~/testing/fakes/admin-actor";
+import { advancingClock } from "~/testing/fakes/fixed-clock";
 
 const SECOND_SUPPLIER_ID = "00000000-0000-4000-8000-000000000302";
 const created: TestDatabase[] = [];
@@ -86,6 +91,65 @@ runMaterialRepositoryContract(async () => ({
 }));
 
 describe("createDrizzleMaterialRepository", () => {
+  it("does not write orphan stock when a previously validated arrival resumes after deletion", async () => {
+    const { repository, openSession } = await freshRepository();
+    const stored = buildStoredMaterial();
+    const variant = stored.variants[0];
+    if (!variant) throw new Error("expected variant");
+    await repository.insert(stored);
+    const stock = createDrizzleStockStore(openSession);
+    let signal: () => void = () => {};
+    let resume: () => void = () => {};
+    const entered = new Promise<void>((resolve) => {
+      signal = resolve;
+    });
+    const paused = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const service = createMaterialsService({
+      repository,
+      suppliers: createDrizzleSupplierRepository(openSession),
+      media: { findAssets: () => Promise.resolve(new Map()) },
+      clock: advancingClock(new Date("2026-11-23T12:00:00Z")),
+      stock: {
+        ...stock,
+        adjust: async (write) => {
+          signal();
+          await paused;
+          return stock.adjust(write);
+        },
+      },
+    });
+    const actor = testAdminActor("owner@example.com");
+    const arrival = service.adjustStock(actor, stored.id, variant.id, {
+      delta: "2",
+      reason: "Llegaron",
+    });
+    await entered;
+    const deletion = await service.deletePermanent(actor, stored.id);
+    resume();
+    expect(deletion).toEqual({ ok: true, value: undefined });
+    expect(await arrival).toEqual({ ok: false, error: { kind: "not-found" } });
+    const check = await openSession();
+    try {
+      expect(
+        (
+          await check.db.execute(
+            sql`SELECT * FROM variant_stock WHERE variant_id = ${variant.id}`,
+          )
+        ).rows,
+      ).toHaveLength(0);
+      expect(
+        (
+          await check.db.execute(
+            sql`SELECT * FROM stock_adjustment WHERE variant_id = ${variant.id}`,
+          )
+        ).rows,
+      ).toHaveLength(0);
+    } finally {
+      await check.close();
+    }
+  });
   it("deletes only an unreferenced material and its zero stock row without removing the shared image", async () => {
     const { openSession, repository } = await freshRepository();
     const stored = buildStoredMaterial();

@@ -23,6 +23,7 @@ import {
 import { createDrizzleMaterialRepository } from "./drizzle-material-repository";
 import { createDrizzleStockStore } from "./drizzle-stock-store";
 import { createDrizzleSupplierRepository } from "./drizzle-supplier-repository";
+import { MissingStockVariantError } from "./stock-claim";
 
 const created: TestDatabase[] = [];
 const AT = new Date("2026-11-16T12:00:00.000Z");
@@ -37,12 +38,44 @@ afterAll(async () => {
   await Promise.all(created.map((database) => database.drop()));
 });
 
-async function fresh() {
+async function fresh(seedCatalog = true) {
   const database = await createTestDatabase();
   created.push(database);
   const openSession = createDbSessionFactory({
     connectionString: database.url,
   });
+  if (seedCatalog) {
+    const seed = await openSession();
+    try {
+      await seed.db.insert(supplier).values({
+        id: MATERIAL_SUPPLIER_ID,
+        name: "Proveedor",
+        nameKey: "proveedor",
+        active: true,
+        updatedBy: BY,
+        updatedAt: AT,
+      });
+    } finally {
+      await seed.close();
+    }
+    const repository = createDrizzleMaterialRepository(
+      openSession,
+      unusedVariants,
+    );
+    await repository.insert(
+      buildStoredMaterial({
+        image: null,
+        variants: [
+          buildStoredVariant({ id: VARIANT }),
+          buildStoredVariant({
+            id: "00000000-0000-4000-8000-0000000000a2",
+            label: "Otra",
+            position: 1,
+          }),
+        ],
+      }),
+    );
+  }
   const store = createDrizzleStockStore(openSession);
   /** Runs `run` inside one transaction, as the enrollments store will. */
   async function inTransaction<T>(
@@ -134,8 +167,7 @@ describe("Drizzle stock store", () => {
 
     const unknown = "00000000-0000-4000-8000-0000000000a3";
     expect(await adjust(store, -1, "Rotura", unknown)).toEqual({
-      kind: "insufficient",
-      onHand: 0,
+      kind: "missing",
     });
     expect(await snapshot()).toEqual(before);
   });
@@ -176,6 +208,15 @@ describe("Drizzle stock store", () => {
       }),
     ).rejects.toThrow("abort");
     expect(await store.onHand([VARIANT])).toEqual(new Map([[VARIANT, 5]]));
+  });
+
+  it("refuses a put for a deleted variant before creating any stock row", async () => {
+    const { store, inTransaction, snapshot } = await fresh();
+    const missing = crypto.randomUUID();
+    await expect(
+      inTransaction((tx) => store.put(tx, missing, 2, { by: BY, at: AT })),
+    ).rejects.toBeInstanceOf(MissingStockVariantError);
+    expect(await snapshot()).toEqual({ stock: [], audit: [] });
   });
 
   it("rejects a non-positive or fractional quantity", async () => {
@@ -262,7 +303,7 @@ describe("Drizzle stock store", () => {
 
 describe("stock survives the catalog writes that replace variant rows", () => {
   it("keeps the count across a material save, a CSV import and a price raise", async () => {
-    const { openSession, store } = await fresh();
+    const { openSession, store } = await fresh(false);
     const session = await openSession();
     try {
       await session.db.insert(supplier).values({

@@ -10,6 +10,8 @@ export interface StockAdjustmentWrite {
 
 export type StockAdjustmentOutcome =
   | { readonly kind: "adjusted"; readonly onHand: number }
+  /** The variant was deleted after a caller's earlier catalog read. */
+  | { readonly kind: "missing" }
   /** The change would leave fewer than 0 units; nothing was written. */
   | { readonly kind: "insufficient"; readonly onHand: number };
 

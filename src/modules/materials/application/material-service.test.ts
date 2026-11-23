@@ -645,6 +645,21 @@ describe("material service", () => {
     });
   });
 
+  it("maps a variant removed between catalog read and stock write to not-found", async () => {
+    const { service, stock } = await setup();
+    const created = valueOf(await service.create(actor, draft()));
+    const variant = created.variants[0];
+    if (!variant) throw new Error("expected variant");
+    vi.spyOn(stock, "adjust").mockResolvedValueOnce({ kind: "missing" });
+    expect(
+      await service.adjustStock(actor, created.id, variant.id, {
+        delta: "2",
+        reason: "Llegaron",
+      }),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
+    expect(stock.adjustments).toEqual([]);
+  });
+
   it("filters lists, returns active+available selectable items, and suggests categories", async () => {
     const { service } = await setup();
     const alpha = valueOf(

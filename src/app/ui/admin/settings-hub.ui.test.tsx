@@ -39,3 +39,13 @@ describe("AdminSettingsHub", () => {
     }
   });
 });
+
+describe("AdminSettingsHub desktop width", () => {
+  it("spreads the cards over three columns on a desktop", () => {
+    render(<AdminSettingsHub />);
+    expect(screen.getByRole("list", { name: "Ajustes" })).toHaveClass(
+      "sm:grid-cols-2",
+      "lg:grid-cols-3",
+    );
+  });
+});

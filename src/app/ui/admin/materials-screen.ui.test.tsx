@@ -173,7 +173,7 @@ describe("Materiales screen: the order of the sections", () => {
 });
 
 describe("Materiales screen: En el estudio", () => {
-  it("keeps the studio list compact and searchable instead of stretching cards in a grid", () => {
+  it("keeps the studio list searchable and its cards at their own height in the grid", () => {
     view();
     const section = screen.getByRole("region", { name: "En el estudio" });
     expect(
@@ -181,7 +181,7 @@ describe("Materiales screen: En el estudio", () => {
     ).toBeVisible();
     expect(
       within(section).getByRole("list", { name: "Materiales en el estudio" }),
-    ).not.toHaveClass("grid");
+    ).toHaveClass("lg:items-start");
   });
   it("colors the stock figure by meaning: in stock as done, run out as pending", () => {
     view();
@@ -617,5 +617,39 @@ describe("Materiales screen: every post is native", () => {
     expect(
       cardOf("Papelería Sur").querySelector("p.text-2xl"),
     ).toHaveTextContent("$ 3.600");
+  });
+});
+
+describe("MaterialsScreen desktop width", () => {
+  it("keeps each section full width, flows the studio cards into the grid and caps no screen container", () => {
+    const { container } = render(<MaterialsScreen {...base} />);
+    expect(container.querySelector("[data-columns]")).toBeNull();
+    const studio = screen.getByRole("region", { name: /En el estudio/ });
+    expect(
+      within(studio).getByRole("list", { name: "Materiales en el estudio" }),
+    ).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
+    expect(container.querySelector(".max-w-3xl, .max-w-4xl")).toBeNull();
+  });
+
+  it("flows the deliveries and the catalog results into the shared grid", () => {
+    render(
+      <MaterialsScreen
+        {...base}
+        catalog={{
+          rows: catalogRows,
+          found: 2,
+          total: 99,
+        }}
+        query="arcilla"
+      />,
+    );
+    const results = within(
+      screen.getByRole("region", { name: "Catálogo" }),
+    ).getByRole("list", { name: "Resultados" });
+    expect(results).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
+    const deliver = within(
+      screen.getByRole("region", { name: /Para entregar/ }),
+    ).getAllByRole("list")[0] as HTMLElement;
+    expect(deliver).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
   });
 });

@@ -29,7 +29,10 @@ export function AdminSettingsHub() {
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader title={copy.title} />
-      <ul aria-label={copy.title} className="grid gap-3 sm:grid-cols-2">
+      <ul
+        aria-label={copy.title}
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {CARDS.map((card) => (
           <li key={card.key}>
             <AdminHubCard

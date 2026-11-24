@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Heading } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import { adminCopy } from "./copy";
 import { ReturnToFields, TextAreaField } from "./form-fields";
 import { MaterialsSectionTitle } from "./materials-section-title";
@@ -215,7 +216,7 @@ export function OrderSection({
       {suppliers.length === 0 ? (
         <p className="text-lg text-ink-700">{copy.order.empty}</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ul className="flex flex-col gap-4">
           {suppliers.map((supplier) => (
             <SupplierCard
               key={`${supplier.supplierId}-${supplier.supplierName}`}
@@ -355,7 +356,7 @@ export function DeliverSection({
       {toDeliver.length === 0 ? (
         <p className="text-lg text-ink-700">{copy.deliver.empty}</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ul className={ADMIN_CARD_GRID}>
           {toDeliver.map((delivery) => (
             <DeliveryCard
               key={delivery.id}
@@ -370,7 +371,7 @@ export function DeliverSection({
         <MoreOptions label={copy.deliver.delivered(delivered.length)}>
           <ul
             aria-label={copy.deliver.deliveredLabel}
-            className="grid grid-cols-1 gap-4 lg:grid-cols-2"
+            className={ADMIN_CARD_GRID}
           >
             {delivered.map((delivery) => (
               <DeliveryCard

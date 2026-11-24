@@ -1,5 +1,6 @@
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import { adminCopy } from "./copy";
 import { ReturnToFields } from "./form-fields";
 import { MaterialsSectionTitle } from "./materials-section-title";
@@ -124,7 +125,7 @@ export function CatalogSection({
         {estado === "activos" ? null : (
           <input type="hidden" name="estado" value={estado} />
         )}
-        <label className="flex min-w-0 flex-1 basis-64 flex-col gap-1 font-semibold text-ink-900">
+        <label className="flex min-w-0 flex-1 basis-64 flex-col gap-1 font-semibold text-ink-900 lg:max-w-xl">
           {copy.search}
           <input
             type="search"
@@ -146,7 +147,7 @@ export function CatalogSection({
         <p className="text-lg text-ink-700">{copy.emptyFound}</p>
       ) : (
         <>
-          <ul aria-label={copy.listLabel} className="flex flex-col gap-3">
+          <ul aria-label={copy.listLabel} className={ADMIN_CARD_GRID}>
             {rows.map((row) => (
               <CatalogResult
                 key={row.id}

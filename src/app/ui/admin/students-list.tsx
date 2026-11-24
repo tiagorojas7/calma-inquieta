@@ -2,6 +2,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import { ADMIN_CARD_GRID, AdminColumns } from "./admin-sections";
 import { adminCopy } from "./copy";
 import { SelectField, TextField } from "./form-fields";
 import { MoreOptions } from "./more-options";
@@ -74,61 +75,69 @@ export function StudentsList({
         method="get"
         action="/admin/alumnas"
         aria-label={copy.searchLabel}
-        className="flex max-w-3xl flex-col gap-3 rounded-md bg-surface p-5 shadow-card"
+        className="flex flex-col gap-3 rounded-md bg-surface p-5 shadow-card lg:p-6"
       >
-        <TextField
-          label={copy.searchLabel}
-          hint={copy.searchHint}
-          name="q"
-          type="search"
-          autoComplete="off"
-          defaultValue={filter.q}
+        <AdminColumns
+          start={
+            <>
+              <TextField
+                label={copy.searchLabel}
+                hint={copy.searchHint}
+                name="q"
+                type="search"
+                autoComplete="off"
+                defaultValue={filter.q}
+              />
+              <div>
+                <AdminButton type="submit">{copy.search}</AdminButton>
+              </div>
+            </>
+          }
+          end={
+            <MoreOptions label={copy.filter} defaultOpen={filtered}>
+              <SelectField
+                label={copy.workshop}
+                name="taller"
+                defaultValue={filter.taller}
+                options={[
+                  { value: "", label: copy.allWorkshops },
+                  ...workshops.map((w) => ({ value: w.id, label: w.name })),
+                ]}
+              />
+              <SelectField
+                label={copy.orderState}
+                name="estado"
+                defaultValue={filter.estado}
+                options={[
+                  { value: "", label: copy.allOrderStates },
+                  ...statuses,
+                ]}
+              />
+              <SelectField
+                label={copy.show}
+                name="mostrar"
+                defaultValue={filter.mostrar}
+                options={[
+                  { value: "activas", label: copy.shows.activas },
+                  { value: "inactivas", label: copy.shows.inactivas },
+                  { value: "todas", label: copy.shows.todas },
+                ]}
+              />
+              <div>
+                <AdminButton type="submit" variant="outline">
+                  {copy.apply}
+                </AdminButton>
+              </div>
+            </MoreOptions>
+          }
         />
-        <div>
-          <AdminButton type="submit">{copy.search}</AdminButton>
-        </div>
-        <MoreOptions label={copy.filter} defaultOpen={filtered}>
-          <SelectField
-            label={copy.workshop}
-            name="taller"
-            defaultValue={filter.taller}
-            options={[
-              { value: "", label: copy.allWorkshops },
-              ...workshops.map((w) => ({ value: w.id, label: w.name })),
-            ]}
-          />
-          <SelectField
-            label={copy.orderState}
-            name="estado"
-            defaultValue={filter.estado}
-            options={[{ value: "", label: copy.allOrderStates }, ...statuses]}
-          />
-          <SelectField
-            label={copy.show}
-            name="mostrar"
-            defaultValue={filter.mostrar}
-            options={[
-              { value: "activas", label: copy.shows.activas },
-              { value: "inactivas", label: copy.shows.inactivas },
-              { value: "todas", label: copy.shows.todas },
-            ]}
-          />
-          <div>
-            <AdminButton type="submit" variant="outline">
-              {copy.apply}
-            </AdminButton>
-          </div>
-        </MoreOptions>
       </form>
       {rows.length === 0 ? (
         <p role="status" className="text-lg text-ink-700">
           {copy.empty}
         </p>
       ) : (
-        <ul
-          aria-label={copy.title}
-          className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3"
-        >
+        <ul aria-label={copy.title} className={ADMIN_CARD_GRID}>
           {rows.map((row) => (
             <li
               key={row.email}

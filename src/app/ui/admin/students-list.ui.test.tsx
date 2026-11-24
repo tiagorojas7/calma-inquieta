@@ -154,3 +154,23 @@ describe("StudentsList", () => {
     );
   });
 });
+
+describe("StudentsList desktop width", () => {
+  it("fills the width: the cards use the shared grid and the search sheet has no width cap", () => {
+    const { container } = render(<StudentsList {...props} />);
+
+    expect(screen.getByRole("list", { name: "Alumnas" })).toHaveClass(
+      "grid",
+      "lg:grid-cols-2",
+      "2xl:grid-cols-3",
+    );
+    const search = screen.getByRole("search", { name: "Buscar alumna" });
+    expect(search).not.toHaveClass("max-w-3xl");
+    expect(container.querySelector("[class*='max-w-']")).toBeNull();
+    const columns = search.querySelector("[data-columns]") as HTMLElement;
+    expect(within(columns).getByRole("searchbox")).toBeInTheDocument();
+    expect(
+      within(columns).getByRole("button", { name: "Buscar" }),
+    ).toBeInTheDocument();
+  });
+});

@@ -4,6 +4,7 @@ import { AdminActionCard } from "./action-card";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import { ReservationList } from "./classes-reservations";
 import { adminCopy } from "./copy";
 import { ReturnToFields } from "./form-fields";
@@ -220,7 +221,9 @@ function CardList({
       {count === 0 ? (
         <p className="text-lg text-ink-700">{empty}</p>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+        <div
+          className={`${ADMIN_CARD_GRID} lg:items-start lg:[&>*:only-child]:col-span-full`}
+        >
           {children}
         </div>
       )}

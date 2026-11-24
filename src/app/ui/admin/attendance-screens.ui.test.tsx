@@ -368,3 +368,14 @@ describe("AttendanceSheet", () => {
     });
   });
 });
+
+describe("AttendanceSheet desktop width", () => {
+  it("lays the students in the shared card grid", () => {
+    render(<AttendanceSheet {...sheet} />);
+    expect(screen.getByRole("list", { name: "Alumnas" })).toHaveClass(
+      "grid",
+      "lg:grid-cols-2",
+      "2xl:grid-cols-3",
+    );
+  });
+});

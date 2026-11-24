@@ -1,6 +1,7 @@
 import { Heading, Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminPageHeader } from "./admin-page";
+import { AdminColumns } from "./admin-sections";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { materialCatalogCopy } from "./material-catalog-copy";
 
@@ -52,7 +53,7 @@ export function MaterialPrices({
   percentError?: string | undefined;
 }) {
   return (
-    <section className="flex max-w-3xl flex-col gap-6">
+    <section className="flex flex-col gap-6">
       <AdminPageHeader
         title={copy.title}
         description={copy.intro}
@@ -66,38 +67,48 @@ export function MaterialPrices({
       <form method="post" noValidate className="flex flex-col gap-4">
         <input type="hidden" name="intent" value="preview" />
         <FormError message={formError} />
-        <SelectField
-          label={copy.supplier}
-          name="supplierId"
-          defaultValue={values.supplierId}
-          options={[
-            { value: "", label: copy.anySupplier },
-            ...suppliers.map((supplier) => ({
-              value: supplier.id,
-              label: supplier.name,
-            })),
-          ]}
+        <AdminColumns
+          start={
+            <>
+              <SelectField
+                label={copy.supplier}
+                name="supplierId"
+                defaultValue={values.supplierId}
+                options={[
+                  { value: "", label: copy.anySupplier },
+                  ...suppliers.map((supplier) => ({
+                    value: supplier.id,
+                    label: supplier.name,
+                  })),
+                ]}
+              />
+              <SelectField
+                label={copy.category}
+                name="category"
+                defaultValue={values.category}
+                options={[
+                  { value: "", label: copy.anyCategory },
+                  ...categories.map((name) => ({ value: name, label: name })),
+                ]}
+              />
+            </>
+          }
+          end={
+            <>
+              <TextField
+                label={copy.percent}
+                hint={copy.percentHint}
+                name="percent"
+                inputMode="decimal"
+                defaultValue={values.percent}
+                error={percentError}
+              />
+              <div>
+                <Button type="submit">{copy.preview}</Button>
+              </div>
+            </>
+          }
         />
-        <SelectField
-          label={copy.category}
-          name="category"
-          defaultValue={values.category}
-          options={[
-            { value: "", label: copy.anyCategory },
-            ...categories.map((name) => ({ value: name, label: name })),
-          ]}
-        />
-        <TextField
-          label={copy.percent}
-          hint={copy.percentHint}
-          name="percent"
-          inputMode="decimal"
-          defaultValue={values.percent}
-          error={percentError}
-        />
-        <div>
-          <Button type="submit">{copy.preview}</Button>
-        </div>
       </form>
       {plan ? (
         <section

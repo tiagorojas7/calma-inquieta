@@ -4,6 +4,7 @@ import { AdminActionCard, AdminHubCard } from "./action-card";
 import { adminButtonClasses, AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import {
   ADMIN_TONE_FILL,
   ADMIN_TONE_TEXT,
@@ -321,7 +322,7 @@ function Classes({ items }: { items: readonly ClassCard[] }) {
       {items.length === 0 ? (
         <p className="text-lg text-ink-900">{copy.classes.empty}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className={ADMIN_CARD_GRID}>
           {items.map((item) => (
             <li key={item.key}>
               <ClassItem item={item} />

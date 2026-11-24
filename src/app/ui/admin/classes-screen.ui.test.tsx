@@ -365,3 +365,13 @@ describe("AdminClassesScreen", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("AdminClassesScreen desktop width", () => {
+  it("uses the shared card grid and lets a lone card take the whole row", () => {
+    render(<AdminClassesScreen data={base} />);
+    const section = screen.getByRole("region", { name: "Talleres del mes" });
+    const grid = section.querySelector("div.grid") as HTMLElement;
+    expect(grid).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
+    expect(grid.className).toContain("only-child");
+  });
+});

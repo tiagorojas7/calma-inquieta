@@ -1,3 +1,4 @@
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import { Heading } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { adminCopy } from "./copy";
@@ -213,7 +214,7 @@ export function StudioSection({
         aria-label={copy.search}
         method="get"
         action={`${BASE}#en-el-estudio`}
-        className="flex max-w-3xl flex-wrap items-end gap-2"
+        className="flex flex-wrap items-end gap-2"
       >
         <input type="hidden" name="mes" value={period} />
         {catalogQuery && <input type="hidden" name="q" value={catalogQuery} />}
@@ -242,7 +243,7 @@ export function StudioSection({
         <>
           <ul
             aria-label={copy.listLabel}
-            className="flex max-w-3xl flex-col gap-3"
+            className={`${ADMIN_CARD_GRID} lg:items-start`}
           >
             {cards.map((card) => (
               <MaterialCard

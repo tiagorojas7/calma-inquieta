@@ -161,3 +161,32 @@ describe("MaterialPhoto", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("Material tools desktop width", () => {
+  it("lets prices and import fill the content width, with the form fields in two columns", () => {
+    const prices = renderInRouter(
+      <MaterialPrices
+        suppliers={suppliers}
+        categories={["Pinceles"]}
+        values={{ supplierId: "", category: "", percent: "" }}
+        plan={null}
+      />,
+    );
+    expect(prices.container.querySelector(".max-w-3xl")).toBeNull();
+    expect(
+      prices.container.querySelector("form [data-columns]"),
+    ).not.toBeNull();
+    prices.unmount();
+    const imported = renderInRouter(
+      <MaterialImport
+        suppliers={suppliers}
+        values={{ supplierId: "", csv: "" }}
+        plan={null}
+      />,
+    );
+    expect(imported.container.querySelector(".max-w-3xl")).toBeNull();
+    expect(
+      imported.container.querySelector("form [data-columns]"),
+    ).not.toBeNull();
+  });
+});

@@ -1,6 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { ADMIN_CARD_GRID } from "./admin-sections";
 import { adminCopy } from "./copy";
 import {
   FormError,
@@ -234,7 +235,7 @@ export function AttendanceSheet(props: AttendanceSheetProps) {
           </AdminButtonLink>
         </div>
       ) : (
-        <ul aria-label={copy.list} className="flex flex-col gap-3">
+        <ul aria-label={copy.list} className={ADMIN_CARD_GRID}>
           {rows.map((row, index) => (
             <StudentRow key={row.email} row={row} index={index} props={props} />
           ))}

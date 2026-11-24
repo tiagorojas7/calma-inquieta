@@ -310,3 +310,11 @@ describe("Hoy page", () => {
     await expectNoAxeViolations(container);
   });
 });
+
+describe("Hoy classes desktop width", () => {
+  it("lays today's classes in the shared card grid", () => {
+    renderHoy();
+    const list = within(section("Clases de hoy")).getByRole("list");
+    expect(list).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
+  });
+});

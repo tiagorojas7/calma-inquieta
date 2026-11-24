@@ -62,11 +62,16 @@ export function whenLabel(eventDate: string, startsAt: string): string {
   }).format(new Date(`${eventDate}T${startsAt}:00-03:00`));
 }
 
-/** A workshop is over once its day passed or it was cancelled or archived. */
+/**
+ * A workshop is over once its day passed or it was cancelled or archived. A
+ * draft is never over: it is still being written, and an old date is one more
+ * thing to fix in it, so it stays in the main list where it can be opened.
+ */
 export function isPastWorkshop(
   workshop: Pick<IntensiveWorkshop, "eventDate" | "status">,
   today: string,
 ): boolean {
+  if (workshop.status === "draft") return false;
   return (
     workshop.eventDate < today ||
     workshop.status === "cancelled" ||

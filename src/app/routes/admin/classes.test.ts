@@ -313,6 +313,16 @@ describe("admin clases loader: dated workshops", () => {
     expect(shown.dated).toEqual([]);
   });
 
+  it("keeps a draft in the main list even when its date has passed, so it can still be opened", async () => {
+    const draft = intensiveRow({ eventDate: "2020-01-10", status: "draft" });
+    const { services } = await setup({ intensives: [draft] });
+
+    expect((await load(services)).dated.map((card) => card.id)).toEqual([
+      FAKE_INTENSIVE_ID,
+    ]);
+    expect((await load(services, "?anteriores=1")).pastDated).toEqual([]);
+  });
+
   it("carries the saved code of the address", async () => {
     const { services } = await setup();
     expect((await load(services, "?ok=confirmed")).saved).toBe("confirmed");

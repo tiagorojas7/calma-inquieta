@@ -71,6 +71,7 @@ describe("intensive admin screens", () => {
         Component: AdminIntensiveNew,
         loader: () => ({
           teachers: [{ id: "t1", name: "Ana", modality: "own" }],
+          materialChoices: [],
         }),
         action: () => null,
       },
@@ -82,6 +83,7 @@ describe("intensive admin screens", () => {
           loaderData: {
             "intensive-new": {
               teachers: [{ id: "t1", name: "Ana", modality: "own" }],
+              materialChoices: [],
             },
           },
         }}
@@ -94,21 +96,29 @@ describe("intensive admin screens", () => {
     // The workshop has no price: its first project does.
     expect(container.querySelector("input[name=price]")).toBeNull();
     expect(container.querySelector("input[name=deposit]")).toBeNull();
-    const first = screen.getByRole("region", { name: "Primer proyecto" });
-    expect(first.querySelector("input[name=projectName]")).toBe(
+    const first = screen.getByRole("group", { name: "Proyecto 1" });
+    expect(first.querySelector("input[name=project0Name]")).toBe(
       within(first).getByLabelText("Nombre del proyecto"),
     );
     expect(
       within(first).getByLabelText("Precio total (en pesos)"),
-    ).toHaveAttribute("name", "projectPrice");
+    ).toHaveAttribute("name", "project0Price");
     expect(within(first).getByLabelText("Seña (en pesos)")).toHaveAttribute(
       "name",
-      "projectDeposit",
+      "project0Deposit",
     );
     expect(
       within(first).getByLabelText("Descripción (opcional)"),
-    ).toHaveAttribute("name", "projectDescription");
-    expect(within(first).queryByLabelText("Imagen")).toBeNull();
+    ).toHaveAttribute("name", "project0Description");
+    expect(
+      within(first).getByText("Imagen del proyecto (opcional)"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Agregar otro proyecto" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /^Quitar proyecto/ }),
+    ).toBeNull();
     const advanced = screen
       .getByText("Opciones avanzadas")
       .closest("details") as HTMLDetailsElement;
@@ -167,16 +177,30 @@ describe("intensive admin screens", () => {
           materialsIncluded: false,
           images: [],
         }}
-        firstProject={{
-          name: "",
-          price: "1000",
-          deposit: "2000",
-          description: "Mi texto",
-        }}
+        projects={[
+          {
+            name: "",
+            price: "1000",
+            deposit: "2000",
+            description: "Mi texto",
+            image: null,
+            materials: [],
+          },
+          {
+            name: "Plato",
+            price: "",
+            deposit: "",
+            description: "",
+            image: null,
+            materials: [],
+          },
+        ]}
+        materialChoices={[]}
         errors={{
           capacity: "Completá este campo.",
-          projectName: "Completá el nombre del proyecto.",
-          projectDeposit: "No puede superar el precio.",
+          project0Name: "Completá el nombre del proyecto.",
+          project0Deposit: "No puede superar el precio.",
+          project1Price: "Completá este campo.",
         }}
         teachers={[{ id: "t1", name: "Ana", modality: "own" }]}
         cancelHref="/admin/intensivos"
@@ -184,7 +208,7 @@ describe("intensive admin screens", () => {
       />,
     );
 
-    const first = screen.getByRole("region", { name: "Primer proyecto" });
+    const first = screen.getByRole("group", { name: "Proyecto 1" });
     expect(within(first).getByLabelText("Nombre del proyecto")).toHaveValue("");
     expect(within(first).getByLabelText("Precio total (en pesos)")).toHaveValue(
       "1000",
@@ -199,8 +223,16 @@ describe("intensive admin screens", () => {
     expect(
       within(first).getByText("No puede superar el precio."),
     ).toBeVisible();
-    // A project error is never shown as a workshop field error.
+    // A project error is never shown as a workshop field error, nor in another block.
     expect(within(first).queryByText("Completá este campo.")).toBeNull();
+    const second = screen.getByRole("group", { name: "Proyecto 2" });
+    expect(within(second).getByLabelText("Nombre del proyecto")).toHaveValue(
+      "Plato",
+    );
+    expect(within(second).getByText("Completá este campo.")).toBeVisible();
+    expect(
+      within(second).queryByText("Completá el nombre del proyecto."),
+    ).toBeNull();
     expect(screen.getByLabelText("Capacidad")).toHaveAccessibleDescription(
       "Completá este campo.",
     );

@@ -18,10 +18,10 @@ function formOf(fields: Record<string, string>) {
     eventDate: "2026-12-10",
     startsAt: "10:00",
     endsAt: "13:00",
-    projectName: "Taza de torno",
-    projectPrice: "30000",
-    projectDeposit: "10000",
-    projectDescription: "",
+    project0Name: "Taza de torno",
+    project0Price: "30000",
+    project0Deposit: "10000",
+    project0Description: "",
     capacity: "12",
     intent: "publish",
     ...fields,
@@ -62,31 +62,62 @@ describe("parseQuickIntensive", () => {
     });
   });
 
-  it("builds the first project from its own fields, never from the workshop name", () => {
+  it("builds every project from its own fields, never from the workshop name", () => {
     const input = parseQuickIntensive(
       formOf({
-        projectName: "  Plato hondo ",
-        projectPrice: "45000",
-        projectDeposit: "15000",
-        projectDescription: "Un plato.",
+        project0Name: "  Plato hondo ",
+        project0Price: "45000",
+        project0Deposit: "15000",
+        project0Description: "Un plato.",
+        project1Name: "Taza",
+        project1Price: "30000",
+        project1Deposit: "10000",
+        project1ImageAssetId: "img-1",
+        project1ImageSrc: "/imagenes/img-1.webp",
+        project1ImageAlt: "Una taza",
+        project1MaterialVariant0: "v-1",
+        project1MaterialQuantity0: "2",
       }),
     );
 
-    expect(input.draft.firstProject).toEqual({
-      name: "  Plato hondo ",
-      price: "45000",
-      deposit: "15000",
-      description: "Un plato.",
-    });
-    expect(input.firstProject).toEqual(input.draft.firstProject);
+    expect(input.draft.projects).toEqual([
+      {
+        name: "  Plato hondo ",
+        price: "45000",
+        deposit: "15000",
+        description: "Un plato.",
+        image: null,
+        materials: [],
+      },
+      {
+        name: "Taza",
+        price: "30000",
+        deposit: "10000",
+        description: "",
+        image: { assetId: "img-1", alt: "Una taza" },
+        materials: [{ variantId: "v-1", quantity: "2" }],
+      },
+    ]);
+    expect(input.projects.map((block) => block.name)).toEqual([
+      "  Plato hondo ",
+      "Taza",
+    ]);
+    expect(input.projects[1]?.image?.src).toBe("/imagenes/img-1.webp");
     expect(input.draft).not.toHaveProperty("price");
-    expect(input.values).not.toHaveProperty("firstProject");
+    expect(input.values).not.toHaveProperty("projects");
   });
 
   it("leaves the project name empty when the owner typed none", () => {
-    const input = parseQuickIntensive(formOf({ projectName: "" }));
+    const input = parseQuickIntensive(formOf({ project0Name: "" }));
 
-    expect(input.draft.firstProject.name).toBe("");
+    expect(input.draft.projects[0]?.name).toBe("");
+  });
+
+  it("sends no project when the form has no block, so the service asks for the first", () => {
+    const data = new FormData();
+    data.append("name", "Taller");
+
+    expect(parseQuickIntensive(data).draft.projects).toEqual([]);
   });
 
   it("redisplays only what was typed, not the derived values", () => {
@@ -122,6 +153,8 @@ const duplicate = () =>
     },
   });
 
+const NO_CATALOG: ReadonlySet<string> = new Set();
+
 describe("publishQuickIntensive", () => {
   it("creates then publishes", async () => {
     const create = vi.fn(() => created("i1"));
@@ -130,6 +163,7 @@ describe("publishQuickIntensive", () => {
       service({ create, publish }),
       actor,
       parseQuickIntensive(formOf({})),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({ kind: "published", id: "i1" });
     expect(create).toHaveBeenCalledWith(
@@ -146,6 +180,7 @@ describe("publishQuickIntensive", () => {
       service({ create, publish }),
       actor,
       parseQuickIntensive(formOf({ intent: "draft" })),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({ kind: "saved", id: "i1" });
     expect(publish).not.toHaveBeenCalled();
@@ -161,6 +196,7 @@ describe("publishQuickIntensive", () => {
       service({ create, publish: () => created("i2") }),
       actor,
       parseQuickIntensive(formOf({})),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({ kind: "published", id: "i2" });
     expect(
@@ -181,7 +217,7 @@ describe("publishQuickIntensive", () => {
           issues: [
             { field: "slug", code: "required" },
             { field: "name", code: "required" },
-            { field: "projectPrice", code: "required" },
+            { field: "project0Price", code: "required" },
           ],
         },
       }),
@@ -190,12 +226,13 @@ describe("publishQuickIntensive", () => {
       service({ create }),
       actor,
       parseQuickIntensive(formOf({ name: "" })),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({
       kind: "invalid",
       issues: [
         { field: "name", code: "required" },
-        { field: "projectPrice", code: "required" },
+        { field: "project0Price", code: "required" },
       ],
     });
   });
@@ -214,6 +251,7 @@ describe("publishQuickIntensive", () => {
       service({ create: () => created("i1"), publish }),
       actor,
       parseQuickIntensive(formOf({})),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({
       kind: "partial",
@@ -234,6 +272,7 @@ describe("publishQuickIntensive", () => {
       }),
       actor,
       parseQuickIntensive(formOf({})),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({ kind: "partial", id: "i1", rules: [] });
   });
@@ -249,7 +288,93 @@ describe("publishQuickIntensive", () => {
       }),
       actor,
       parseQuickIntensive(formOf({})),
+      NO_CATALOG,
     );
     expect(outcome).toEqual({ kind: "failed", failure: { kind: "denied" } });
+  });
+
+  describe("the materials of the projects", () => {
+    const withBill = (...lines: string[][]) =>
+      parseQuickIntensive(
+        formOf(
+          Object.fromEntries(
+            lines.flatMap(([block, line, variant, quantity], at) => [
+              [
+                `project${block ?? "0"}MaterialVariant${line ?? String(at)}`,
+                variant ?? "",
+              ],
+              [
+                `project${block ?? "0"}MaterialQuantity${line ?? String(at)}`,
+                quantity ?? "1",
+              ],
+            ]),
+          ),
+        ),
+      );
+
+    it("refuses a variant that is not in the catalog before creating anything, naming its block and line", async () => {
+      const create = vi.fn(() => created("i1"));
+      const outcome = await publishQuickIntensive(
+        service({ create }),
+        actor,
+        withBill(["0", "0", "v-ok", "1"], ["0", "1", "v-gone", "2"]),
+        new Set(["v-ok"]),
+      );
+
+      expect(outcome).toEqual({
+        kind: "invalid",
+        issues: [
+          { field: "project0MaterialVariant1", code: "unknown-reference" },
+        ],
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("names every unknown variant of every block", async () => {
+      const outcome = await publishQuickIntensive(
+        service({ create: () => created("i1") }),
+        actor,
+        parseQuickIntensive(
+          formOf({
+            project1Name: "Plato",
+            project1MaterialVariant0: "v-a",
+            project1MaterialQuantity0: "1",
+            project0MaterialVariant0: "v-b",
+            project0MaterialQuantity0: "1",
+          }),
+        ),
+        NO_CATALOG,
+      );
+
+      expect(outcome).toEqual({
+        kind: "invalid",
+        issues: [
+          { field: "project0MaterialVariant0", code: "unknown-reference" },
+          { field: "project1MaterialVariant0", code: "unknown-reference" },
+        ],
+      });
+    });
+
+    it("creates when every variant is in the catalog", async () => {
+      const create = vi.fn(() => created("i1"));
+      const outcome = await publishQuickIntensive(
+        service({ create, publish: () => created("i1") }),
+        actor,
+        withBill(["0", "0", "v-ok", "3"]),
+        new Set(["v-ok"]),
+      );
+
+      expect(outcome).toEqual({ kind: "published", id: "i1" });
+      expect(create).toHaveBeenCalledWith(
+        actor,
+        expect.objectContaining({
+          projects: [
+            expect.objectContaining({
+              materials: [{ variantId: "v-ok", quantity: "3" }],
+            }),
+          ],
+        }),
+      );
+    });
   });
 });

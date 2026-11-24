@@ -70,7 +70,7 @@ describe("intensives guided flow", () => {
       {
         path: "/admin/intensivos/nuevo",
         Component: AdminIntensiveNew,
-        loader: () => ({ teachers: [] }),
+        loader: () => ({ teachers: [], materialChoices: [] }),
         action: () => null,
       },
     ]);

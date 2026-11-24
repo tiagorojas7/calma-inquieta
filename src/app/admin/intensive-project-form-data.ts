@@ -27,7 +27,7 @@ function text(form: FormData, key: string): string {
 }
 
 /** Field wording that replaces the generic text where it would mislead. */
-const PROJECT_FIELD_MESSAGES = {
+export const PROJECT_FIELD_MESSAGES = {
   image: {
     required: "Describí la imagen en el texto alternativo.",
     "too-long": "El texto alternativo es demasiado largo. Acortalo.",
@@ -123,6 +123,22 @@ export function materialChoices(
     name: variant.materialName,
     label: variant.variantLabel,
     onHand: onHand === null ? null : (onHand.get(variant.variantId) ?? 0),
+  }));
+}
+
+/**
+ * The same choices for the new-workshop picker, each also saying whether the
+ * studio keeps the material: only then do its units count as stock; the rest
+ * read "Se pide", as in the sale and enrollment pickers.
+ */
+export function stockedMaterialChoices(
+  variants: readonly SaleVariantOption[],
+  onHand: ReadonlyMap<string, number> | null,
+): ProjectMaterialChoice[] {
+  const kept = new Map(variants.map((v) => [v.variantId, v.keptInStudio]));
+  return materialChoices(variants, onHand).map((choice) => ({
+    ...choice,
+    keptInStudio: kept.get(choice.variantId) === true,
   }));
 }
 

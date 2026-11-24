@@ -7,10 +7,10 @@ import { advancingClock } from "~/testing/fakes/fixed-clock";
 import { InMemoryIntensiveRepository } from "~/testing/fakes/in-memory-intensive-repository";
 import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-repository";
 import type {
-  FirstProjectDraft,
   IntensiveWorkshop,
   IntensiveWorkshopDraft,
   NewIntensiveWorkshopDraft,
+  NewProjectDraft,
 } from "./contracts";
 import { createIntensivesService } from "./intensive-service";
 
@@ -32,12 +32,14 @@ const OLD = buildTeacher({
 });
 
 const project = (
-  overrides: Partial<FirstProjectDraft> = {},
-): FirstProjectDraft => ({
+  overrides: Partial<NewProjectDraft> = {},
+): NewProjectDraft => ({
   name: "Taza de torno",
   price: "30000",
   deposit: "10000",
   description: "",
+  image: null,
+  materials: [],
   ...overrides,
 });
 
@@ -45,7 +47,7 @@ const draft = (
   overrides: Partial<NewIntensiveWorkshopDraft> = {},
 ): NewIntensiveWorkshopDraft => ({
   ...edit(),
-  firstProject: project(),
+  projects: [project()],
   ...overrides,
 });
 
@@ -173,12 +175,14 @@ describe("create", () => {
       await service.create(
         owner,
         draft({
-          firstProject: project({
-            name: "  Taza de torno  ",
-            price: "45000",
-            deposit: "15000",
-            description: "  Tu primera taza.  ",
-          }),
+          projects: [
+            project({
+              name: "  Taza de torno  ",
+              price: "45000",
+              deposit: "15000",
+              description: "  Tu primera taza.  ",
+            }),
+          ],
         }),
       ),
     );
@@ -203,7 +207,9 @@ describe("create", () => {
     const created = valueOf(
       await service.create(
         owner,
-        draft({ firstProject: project({ price: "45000", deposit: "15000" }) }),
+        draft({
+          projects: [project({ price: "45000", deposit: "15000" })],
+        }),
       ),
     );
 
@@ -220,7 +226,7 @@ describe("create", () => {
     valueOf(
       await service.create(
         owner,
-        draft({ firstProject: project({ description: "   " }) }),
+        draft({ projects: [project({ description: "   " })] }),
       ),
     );
 
@@ -233,21 +239,23 @@ describe("create", () => {
     const result = await service.create(
       owner,
       draft({
-        firstProject: project({
-          name: " ",
-          price: "x",
-          deposit: "",
-          description: "d".repeat(601),
-        }),
+        projects: [
+          project({
+            name: " ",
+            price: "x",
+            deposit: "",
+            description: "d".repeat(601),
+          }),
+        ],
       }),
     );
 
     expect(result).toEqual(
       invalid(
-        { field: "projectName", code: "required" },
-        { field: "projectDescription", code: "too-long" },
-        { field: "projectPrice", code: "invalid-format" },
-        { field: "projectDeposit", code: "required" },
+        { field: "project0Name", code: "required" },
+        { field: "project0Description", code: "too-long" },
+        { field: "project0Price", code: "invalid-format" },
+        { field: "project0Deposit", code: "required" },
       ),
     );
     expect(repository.items.size).toBe(0);
@@ -259,13 +267,192 @@ describe("create", () => {
 
     const result = await service.create(
       owner,
-      draft({ name: "", firstProject: project({ name: "" }) }),
+      draft({ name: "", projects: [project({ name: "" })] }),
     );
 
     const issues =
       !result.ok && result.error.kind === "invalid" ? result.error.issues : [];
     expect(issues).toContainEqual({ field: "name", code: "required" });
-    expect(issues).toContainEqual({ field: "projectName", code: "required" });
+    expect(issues).toContainEqual({ field: "project0Name", code: "required" });
+  });
+
+  describe("with several projects", () => {
+    const V1 = "d0000000-0000-4000-8000-000000000001";
+    const V2 = "d0000000-0000-4000-8000-000000000002";
+    const three = () => [
+      project({
+        name: "Taza",
+        price: "45000",
+        deposit: "15000",
+        image: { assetId: "a1", alt: "Una taza" },
+        materials: [
+          { variantId: V1, quantity: "2" },
+          { variantId: V2, quantity: " 20 " },
+        ],
+      }),
+      project({ name: "Plato", price: "30000", deposit: "10000" }),
+      project({
+        name: "Cuenco",
+        description: "Hondo.",
+        materials: [{ variantId: V1, quantity: "1" }],
+      }),
+    ];
+
+    it("stores the workshop, every project in order, their images and their bills", async () => {
+      const { repository, service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three() })),
+      );
+
+      const stored = await repository.listProjects(created.id);
+      expect(stored.map((p) => [p.name, p.position])).toEqual([
+        ["Taza", 0],
+        ["Plato", 1],
+        ["Cuenco", 2],
+      ]);
+      expect(stored[0]?.image).toEqual({ assetId: "a1", alt: "Una taza" });
+      expect(stored[1]?.image).toBeNull();
+      expect(stored[2]?.description).toBe("Hondo.");
+      expect(
+        (await repository.listProjectMaterials(created.id)).map((l) => [
+          l.projectId,
+          l.variantId,
+          l.quantity,
+          l.position,
+        ]),
+      ).toEqual([
+        [stored[0]?.id, V1, 2, 0],
+        [stored[0]?.id, V2, 20, 1],
+        [stored[2]?.id, V1, 1, 0],
+      ]);
+    });
+
+    it("copies the workshop price and deposit from the first project only", async () => {
+      const { service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three() })),
+      );
+
+      expect(created.price.toCentavos()).toBe(4_500_000);
+      expect(created.deposit.toCentavos()).toBe(1_500_000);
+    });
+
+    it("leaves the workshop gallery apart from the project images", async () => {
+      const { repository, service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three(), images: [] })),
+      );
+
+      expect(repository.items.get(created.id)?.images).toEqual([]);
+    });
+
+    it("asks for at least one project", async () => {
+      const { repository, service } = setup();
+
+      expect(await service.create(owner, draft({ projects: [] }))).toEqual(
+        invalid({ field: "project0Name", code: "required" }),
+      );
+      expect(repository.items.size).toBe(0);
+    });
+
+    it("validates every block and names the block of each issue, storing nothing", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project(),
+            project({ name: "", price: "10", deposit: "20" }),
+            project({
+              deposit: "",
+              image: { assetId: "nope", alt: "x" },
+            }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid(
+          { field: "project1Name", code: "required" },
+          { field: "project1Deposit", code: "exceeds-price" },
+          { field: "project2Deposit", code: "required" },
+          { field: "project2Image", code: "unknown-reference" },
+        ),
+      );
+      expect(repository.items.size).toBe(0);
+      expect(repository.projects.size).toBe(0);
+      expect(repository.materials.size).toBe(0);
+    });
+
+    it("asks for the image description of a block that has an image", async () => {
+      const { service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project(),
+            project({ image: { assetId: "a1", alt: " " } }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid({ field: "project1Image", code: "required" }),
+      );
+    });
+
+    it("names the bill line and the field of each refused line", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project({
+              materials: [
+                { variantId: V1, quantity: "1" },
+                { variantId: V2, quantity: "0" },
+                { variantId: "no-es-un-id", quantity: "2" },
+                { variantId: V1, quantity: "3" },
+                { variantId: V2, quantity: "x" },
+              ],
+            }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid(
+          { field: "project0MaterialQuantity1", code: "out-of-range" },
+          { field: "project0MaterialVariant2", code: "unknown-reference" },
+          { field: "project0MaterialVariant3", code: "duplicate" },
+          { field: "project0MaterialQuantity4", code: "invalid-format" },
+        ),
+      );
+      expect(repository.items.size).toBe(0);
+    });
+
+    it("allows the same variant on different projects and a blank bill", async () => {
+      const { service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project({ materials: [{ variantId: V1, quantity: "1" }] }),
+            project({ materials: [{ variantId: V1, quantity: "2" }] }),
+            project(),
+          ],
+        }),
+      );
+
+      expect(result.ok).toBe(true);
+    });
   });
 
   it("keeps an explicit slug and an unassigned draft", async () => {
@@ -301,9 +488,9 @@ describe("create", () => {
     expect(
       await service.create(
         owner,
-        draft({ firstProject: project({ deposit: "30001" }) }),
+        draft({ projects: [project({ deposit: "30001" })] }),
       ),
-    ).toEqual(invalid({ field: "projectDeposit", code: "exceeds-price" }));
+    ).toEqual(invalid({ field: "project0Deposit", code: "exceeds-price" }));
     expect(repository.items.size).toBe(0);
     expect(repository.projects.size).toBe(0);
   });
@@ -322,7 +509,7 @@ describe("create", () => {
       owner,
       draft({
         slug: "torno",
-        firstProject: project({ price: "" }),
+        projects: [project({ price: "" })],
         teacherId: "t-old",
         percentage: "1",
         images: [{ assetId: "nope", alt: "x" }],
@@ -333,7 +520,7 @@ describe("create", () => {
         { field: "teacherId", code: "not-selectable" },
         { field: "images", code: "unknown-reference" },
         { field: "slug", code: "duplicate" },
-        { field: "projectPrice", code: "required" },
+        { field: "project0Price", code: "required" },
       ),
     );
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import type {
   IntensiveRepository,
-  NewIntensiveProject,
+  NewWorkshopProject,
   StoredIntensiveProject,
   StoredProjectMaterial,
 } from "~/modules/workshops/application/intensive-repository";
@@ -26,8 +26,8 @@ const pesos = (amount: number): Money => {
 };
 
 export function buildNewProject(
-  overrides: Partial<NewIntensiveProject> = {},
-): NewIntensiveProject {
+  overrides: Partial<NewWorkshopProject> = {},
+): NewWorkshopProject {
   return {
     id: PROJECT_1,
     intensiveId: ID_A,

@@ -14,6 +14,7 @@ import {
   parseQuantity,
   parseVariantId,
   projectCards,
+  stockedMaterialChoices,
   rejectedProject,
 } from "./intensive-project-form-data";
 
@@ -206,6 +207,33 @@ describe("bill of materials form data", () => {
     expect(
       materialChoices(variants, null).map((choice) => choice.onHand),
     ).toEqual([null, null]);
+  });
+
+  it("tells the new-workshop picker which materials the studio keeps, leaving the others as they are", () => {
+    const variants = [
+      { ...variant("v1", "Arcilla blanca", "5 kg"), keptInStudio: true },
+      variant("v2", "Esmalte", "Celeste"),
+    ];
+
+    expect(stockedMaterialChoices(variants, new Map([["v1", 7]]))).toEqual([
+      {
+        variantId: "v1",
+        name: "Arcilla blanca",
+        label: "5 kg",
+        onHand: 7,
+        keptInStudio: true,
+      },
+      {
+        variantId: "v2",
+        name: "Esmalte",
+        label: "Celeste",
+        onHand: 0,
+        keptInStudio: false,
+      },
+    ]);
+    expect(
+      materialChoices(variants, new Map([["v1", 7]]))[0],
+    ).not.toHaveProperty("keptInStudio");
   });
 
   it("puts each project's lines on its card, named from the catalog and flagged when the variant is gone", () => {

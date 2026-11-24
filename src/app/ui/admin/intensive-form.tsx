@@ -9,6 +9,11 @@ import {
   TextAreaField,
   TextField,
 } from "./form-fields";
+import {
+  NewProjectBlocks,
+  type NewProjectBlockValues,
+} from "./intensive-new-projects";
+import type { ProjectMaterialChoice } from "./intensive-project-materials";
 import { adminMicrocopy } from "./microcopy";
 import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
 
@@ -17,41 +22,19 @@ const copy = adminMicrocopy.intensives;
 const VISIBLE_IMAGES = 2;
 const IMAGE_SLOTS = 6;
 
-const EMPTY_PROJECT: FirstProjectValues = {
+const EMPTY_PROJECT: NewProjectBlockValues = {
   name: "",
   price: "",
   deposit: "",
   description: "",
+  image: null,
+  materials: [],
 };
 
 type Teacher = {
   readonly id: string;
   readonly name: string;
   readonly modality: "own" | "third_party";
-};
-type Field =
-  | "name"
-  | "slug"
-  | "summary"
-  | "description"
-  | "teacherId"
-  | "percentage"
-  | "eventDate"
-  | "timeRange"
-  | "capacity"
-  | "minSeats"
-  | "policyText"
-  | "images"
-  | "projectName"
-  | "projectPrice"
-  | "projectDeposit"
-  | "projectDescription";
-/** What the owner typed for the first project of a new workshop. */
-type FirstProjectValues = {
-  readonly name: string;
-  readonly price: string;
-  readonly deposit: string;
-  readonly description: string;
 };
 type Draft = {
   readonly name: string;
@@ -103,13 +86,15 @@ export async function uploadIntensiveImage(file: File) {
  * denies `/admin/**.data`). Main fields first; the seats, policy, percentage
  * and materials live under "Opciones avanzadas", closed unless a third-party
  * teacher or an error needs them. In `new` mode the slug and summary are not
- * asked (they are derived), the required first project has its own block (the
- * workshop has no price) and the first submit button, Publicar, is the
- * primary one so Enter publishes; in `edit` mode a single save button posts.
+ * asked (they are derived), every project has its own block (the workshop has
+ * no price) with its image and materials, all in this one native post, and the
+ * first submit button, Publicar, is the primary one so Enter publishes; in
+ * `edit` mode a single save button posts.
  */
 export function IntensiveForm({
   values,
-  firstProject = EMPTY_PROJECT,
+  projects = [EMPTY_PROJECT],
+  materialChoices = [],
   errors,
   formError,
   teachers,
@@ -118,9 +103,12 @@ export function IntensiveForm({
   saveVariant = "primary",
 }: {
   values: Draft;
-  /** The text typed for the first project; only a new workshop asks for it. */
-  firstProject?: FirstProjectValues;
-  errors: Readonly<Partial<Record<Field, string>>>;
+  /** The project blocks typed; only a new workshop asks for them. */
+  projects?: readonly NewProjectBlockValues[];
+  /** The catalog variants a project's bill may list; only a new workshop asks. */
+  materialChoices?: readonly ProjectMaterialChoice[];
+  /** One message per field; project fields are named by their block's index. */
+  errors: Readonly<Partial<Record<string, string>>>;
   formError?: string | undefined;
   teachers: readonly Teacher[];
   cancelHref: string;
@@ -221,45 +209,12 @@ export function IntensiveForm({
         />
       </div>
       {mode === "new" && (
-        <section
-          className="flex flex-col gap-3"
-          aria-label={copy.form.sections.firstProject}
-        >
-          <h2 className="font-display text-xl text-ink-900">
-            {copy.form.sections.firstProject}
-          </h2>
-          <Text tone="muted">{copy.form.firstProject.hint}</Text>
-          <TextField
-            label={copy.form.firstProject.name}
-            name="projectName"
-            defaultValue={firstProject.name}
-            error={errors.projectName}
-            autoComplete="off"
-          />
-          <AdminFieldPair>
-            <TextField
-              label={copy.form.firstProject.price}
-              name="projectPrice"
-              inputMode="numeric"
-              defaultValue={firstProject.price}
-              error={errors.projectPrice}
-            />
-            <TextField
-              label={copy.form.firstProject.deposit}
-              name="projectDeposit"
-              inputMode="numeric"
-              defaultValue={firstProject.deposit}
-              error={errors.projectDeposit}
-            />
-          </AdminFieldPair>
-          <TextAreaField
-            label={copy.form.firstProject.description}
-            name="projectDescription"
-            rows={3}
-            defaultValue={firstProject.description}
-            error={errors.projectDescription}
-          />
-        </section>
+        <NewProjectBlocks
+          initial={projects}
+          errors={errors}
+          choices={materialChoices}
+          upload={uploadIntensiveImage}
+        />
       )}
       <section
         className="flex flex-col gap-3"

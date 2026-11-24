@@ -29,12 +29,16 @@ const draft = (
   eventDate: "2026-11-07",
   startsAt: "10:00",
   endsAt: "18:00",
-  firstProject: {
-    name: "Primer proyecto",
-    price: "30000",
-    deposit: "10000",
-    description: "",
-  },
+  projects: [
+    {
+      name: "Primer proyecto",
+      price: "30000",
+      deposit: "10000",
+      description: "",
+      image: null,
+      materials: [],
+    },
+  ],
   capacity: "8",
   minSeats: "4",
   policyText: "Cancelación hasta 48 horas antes.",
@@ -113,12 +117,16 @@ const namesOf = async (
 describe("a new intensivo", () => {
   it("starts with the one project the owner typed, with its own description", async () => {
     const { service, id } = await workshop({
-      firstProject: {
-        name: "Taza de torno",
-        price: "45000",
-        deposit: "15000",
-        description: "  Tu primera taza.  ",
-      },
+      projects: [
+        {
+          name: "Taza de torno",
+          price: "45000",
+          deposit: "15000",
+          description: "  Tu primera taza.  ",
+          image: null,
+          materials: [],
+        },
+      ],
     });
 
     const projects = valueOf(await service.listProjects(owner, id));
@@ -153,12 +161,16 @@ describe("a new intensivo", () => {
     const result = await service.create(
       owner,
       draft({
-        firstProject: {
-          name: "",
-          price: "1",
-          deposit: "1",
-          description: "",
-        },
+        projects: [
+          {
+            name: "",
+            price: "1",
+            deposit: "1",
+            description: "",
+            image: null,
+            materials: [],
+          },
+        ],
       }),
     );
 

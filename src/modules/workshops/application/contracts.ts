@@ -382,22 +382,27 @@ export interface IntensiveWorkshopDraft {
   readonly images: readonly ImageUseDraft[];
 }
 /**
- * The first project a new workshop is created with. The workshop itself has no
- * price: it is not a project, so the owner must type this one.
+ * One project a new workshop is created with: its fields, its optional image
+ * and the optional bill of materials it starts with. The workshop itself has
+ * no price: it is not a project, so the owner must type at least one.
  */
-export interface FirstProjectDraft {
-  readonly name: string;
-  readonly price: string;
-  readonly deposit: string;
-  /** Optional; blank means none. */
-  readonly description: string;
+export interface NewProjectDraft extends IntensiveProjectDraft {
+  /** Catalog variants per participant, in the order the owner listed them. */
+  readonly materials: readonly IntensiveProjectMaterialDraft[];
 }
+/** The workshop fields plus one or more projects, stored together or not at all. */
 export interface NewIntensiveWorkshopDraft extends IntensiveWorkshopDraft {
-  readonly firstProject: FirstProjectDraft;
+  readonly projects: readonly NewProjectDraft[];
 }
-/** Where a first-project issue is reported, apart from the workshop fields. */
-export type FirstProjectField =
-  "projectName" | "projectPrice" | "projectDeposit" | "projectDescription";
+/**
+ * Where an issue of a new workshop's project is reported, apart from the
+ * workshop fields. Every name carries the block's index (from 0, in the order
+ * submitted): `project0Name`, `project1Price`, and for the bill the line's
+ * index too: `project0MaterialVariant2`, `project0MaterialQuantity2`.
+ */
+export type NewProjectField =
+  | `project${string}${"Name" | "Price" | "Deposit" | "Description" | "Image"}`
+  | `project${string}Material${"Variant" | "Quantity"}${string}`;
 export type IntensiveWorkshopField =
   | "name"
   | "slug"
@@ -480,8 +485,8 @@ export interface IntensivesService {
   ): Promise<Result<readonly IntensiveWorkshop[], AdminFailure>>;
   get(a: AdminActor, id: string): R<IntensiveWorkshop>;
   /**
-   * Creates a draft with its required first project in one write. The workshop
-   * has no price of its own; its stored price and deposit are the project's.
+   * Creates a draft with its projects, their images and bills in one write. The workshop
+   * has no price of its own; its stored price and deposit are the first project's.
    */
   create(
     a: AdminActor,
@@ -489,7 +494,7 @@ export interface IntensivesService {
   ): Promise<
     Result<
       IntensiveWorkshop,
-      AdminFailure | Invalid<IntensiveWorkshopField | FirstProjectField>
+      AdminFailure | Invalid<IntensiveWorkshopField | NewProjectField>
     >
   >;
   update(

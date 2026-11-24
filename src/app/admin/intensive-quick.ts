@@ -2,18 +2,19 @@ import type { FieldIssue } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import {
   slugify,
-  type FirstProjectDraft,
-  type FirstProjectField,
   type IntensivePublishRule,
   type IntensiveWorkshopDraft,
   type IntensiveWorkshopField,
   type IntensivesService,
   type NewIntensiveWorkshopDraft,
+  type NewProjectField,
 } from "~/modules/workshops";
+import type { NewProjectBlockValues } from "~/app/ui/admin/intensive-new-projects";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
-  parseFirstProjectDraft,
+  newProjectDrafts,
   parseIntensiveDraft,
+  parseNewProjectBlocks,
 } from "./intensive-form-data";
 import { deriveSummary } from "./workshop-quick-form";
 
@@ -30,40 +31,40 @@ export interface QuickIntensiveInput {
   readonly draft: NewIntensiveWorkshopDraft;
   /** What the owner typed, to show again when the form is rejected. */
   readonly values: IntensiveWorkshopDraft;
-  /** The first project as typed: required, and never derived from the workshop. */
-  readonly firstProject: FirstProjectDraft;
+  /** The project blocks as typed, to show them again: at least one is required. */
+  readonly projects: readonly NewProjectBlockValues[];
 }
 
 /**
  * The one-page "Nuevo intensivo" form as a draft. The slug is left empty so
  * the flow derives a unique one; the summary comes from the description and
  * the seats and policy fall back to defaults, so none of them is asked. The
- * workshop has no price; the first project is typed in its own block.
+ * workshop has no price; every project is typed in its own block.
  */
 export function parseQuickIntensive(form: FormData): QuickIntensiveInput {
   const values = parseIntensiveDraft(form);
   const summary = values.summary.trim();
   const minSeats = values.minSeats.trim();
   const policyText = values.policyText.trim();
-  const firstProject = parseFirstProjectDraft(form);
+  const projects = parseNewProjectBlocks(form);
   return {
     intent: form.get("intent") === "publish" ? "publish" : "draft",
     values,
-    firstProject,
+    projects,
     draft: {
       ...values,
       slug: "",
       summary: summary || deriveSummary(values.description),
       minSeats: minSeats || DEFAULT_MIN_SEATS,
       policyText: policyText || DEFAULT_INTENSIVE_POLICY,
-      firstProject,
+      projects: newProjectDrafts(projects),
     },
   };
 }
 
 type Failure = { readonly kind: "denied" | "unavailable" | "not-found" };
 
-type QuickIssueField = IntensiveWorkshopField | FirstProjectField;
+type QuickIssueField = IntensiveWorkshopField | NewProjectField;
 
 export type QuickIntensiveOutcome =
   | {
@@ -127,16 +128,45 @@ async function createWithUniqueSlug(
 }
 
 /**
+ * The bill lines whose variant is not in the catalog. The workshops module
+ * never reads the catalog, so the delivery layer checks them against the same
+ * list the picker offered; a blank variant is left for the service to refuse.
+ */
+function unknownVariants(
+  projects: readonly NewProjectBlockValues[],
+  catalog: ReadonlySet<string>,
+): FieldIssue<NewProjectField>[] {
+  return projects.flatMap((project, block) =>
+    project.materials.flatMap((line, index) =>
+      line.variantId.trim() === "" || catalog.has(line.variantId.trim())
+        ? []
+        : [
+            {
+              field:
+                `project${String(block)}MaterialVariant${String(index)}` as const,
+              code: "unknown-reference" as const,
+            },
+          ],
+    ),
+  );
+}
+
+/**
  * The one-page "Nuevo intensivo" flow over the existing service, so every
  * domain rule still applies: create, and for the publish intent publish it.
- * Nothing is rolled back: when publishing is refused the intensivo stays a
+ * The workshop, every project, their images and bills are stored together or
+ * not at all, and a variant missing from `catalog` refuses the whole form
+ * before anything is stored. When publishing is refused the intensivo stays a
  * draft and the missing publish rules are returned.
  */
 export async function publishQuickIntensive(
   intensives: IntensivesService,
   actor: AdminActor,
   input: QuickIntensiveInput,
+  catalog: ReadonlySet<string>,
 ): Promise<QuickIntensiveOutcome> {
+  const unknown = unknownVariants(input.projects, catalog);
+  if (unknown.length > 0) return { kind: "invalid", issues: unknown };
   const created = await createWithUniqueSlug(intensives, actor, input.draft);
   if (!created.ok) {
     if (created.error.kind === "invalid")

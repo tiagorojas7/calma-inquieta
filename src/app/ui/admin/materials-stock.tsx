@@ -94,12 +94,12 @@ function MaterialCard({
 }) {
   const titleId = `${card.anchor}-title`;
   return (
-    <li>
+    <li className="flex">
       <article
         id={card.anchor}
         aria-labelledby={titleId}
         data-highlight={highlighted ? "" : undefined}
-        className={`flex scroll-mt-20 flex-col gap-2 rounded-md bg-surface p-4 shadow-card ${highlighted ? "ring-4 ring-clay-800" : ""}`}
+        className={`flex h-full w-full scroll-mt-20 flex-col gap-2 rounded-md bg-surface p-4 shadow-card ${highlighted ? "ring-4 ring-clay-800" : ""}`}
       >
         <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-1">
           <div className="flex min-w-0 flex-col gap-1">
@@ -150,7 +150,7 @@ function MaterialCard({
             ))}
           </ul>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
           {card.variantId ? (
             <ArrivedForm
               materialId={card.id}
@@ -241,10 +241,7 @@ export function StudioSection({
         </p>
       ) : (
         <>
-          <ul
-            aria-label={copy.listLabel}
-            className={`${ADMIN_CARD_GRID} lg:items-start`}
-          >
+          <ul aria-label={copy.listLabel} className={ADMIN_CARD_GRID}>
             {cards.map((card) => (
               <MaterialCard
                 key={card.id}

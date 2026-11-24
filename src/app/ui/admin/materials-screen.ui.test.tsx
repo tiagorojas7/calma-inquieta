@@ -173,15 +173,21 @@ describe("Materiales screen: the order of the sections", () => {
 });
 
 describe("Materiales screen: En el estudio", () => {
-  it("keeps the studio list searchable and its cards at their own height in the grid", () => {
+  it("keeps the studio list searchable and its cards even in each row, actions at the bottom", () => {
     view();
     const section = screen.getByRole("region", { name: "En el estudio" });
     expect(
       within(section).getByRole("search", { name: "Buscar en el estudio" }),
     ).toBeVisible();
-    expect(
-      within(section).getByRole("list", { name: "Materiales en el estudio" }),
-    ).toHaveClass("lg:items-start");
+    const list = within(section).getByRole("list", {
+      name: "Materiales en el estudio",
+    });
+    expect(list).toHaveClass("grid");
+    expect(list).not.toHaveClass("lg:items-start");
+    const card = cardOf("Bastidor");
+    expect(card).toHaveClass("h-full");
+    const edit = within(card).getByRole("link", { name: /Editar/ });
+    expect(edit.parentElement).toHaveClass("mt-auto");
   });
   it("colors the stock figure by meaning: in stock as done, run out as pending", () => {
     view();

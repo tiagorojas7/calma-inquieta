@@ -923,6 +923,9 @@ export class InMemoryAdminEnrollmentStore implements AdminEnrollmentStore {
                 variantLabel: line.variantLabel,
                 quantity: line.quantity,
                 unitPrice: line.unitPrice,
+                studentName: order.student.fullName,
+                workshopName: order.workshopName,
+                turnoLabel: order.turnoLabel,
               });
         if (rows.length < 50) break;
       }

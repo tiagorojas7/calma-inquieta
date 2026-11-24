@@ -182,6 +182,22 @@ describe("IntensivoRequestPage", () => {
     expect(within(group).getAllByRole("img")).toHaveLength(1);
   });
 
+  it("shows the description of a project that has one, inside its choice", () => {
+    renderForm({
+      projects: [
+        { ...TWO_PROJECTS[0], description: "Una taza al torno." },
+        TWO_PROJECTS[1],
+      ] as typeof TWO_PROJECTS,
+    });
+
+    expect(
+      screen.getByRole("radio", { name: /Taza de torno/ }),
+    ).toHaveAccessibleName(/Una taza al torno./);
+    expect(
+      screen.getByRole("radio", { name: /Plato hondo/ }),
+    ).not.toHaveAccessibleName(/Una taza/);
+  });
+
   it("preselects the only project, but leaves several unchosen until the visitor picks", () => {
     const { unmount } = renderForm();
     expect(screen.getByRole("radio", { name: /Taza de torno/ })).toBeChecked();

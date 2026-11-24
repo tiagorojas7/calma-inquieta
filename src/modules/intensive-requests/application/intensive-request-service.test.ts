@@ -1259,3 +1259,100 @@ describe("cancelling a request that paid", () => {
     expect(context.repository.requests.get(requestId)).toEqual(before);
   });
 });
+
+describe("owedPayments", () => {
+  const owedOf = async (context: ReturnType<typeof setup>) => {
+    const owed = await context.service.owedPayments(ADMIN);
+    if (!owed.ok) throw new Error("no debts");
+    return owed.value.map((payment) => ({
+      email: payment.email,
+      workshopName: payment.workshopName,
+      kind: payment.kind,
+      centavos: payment.amount.toCentavos(),
+    }));
+  };
+
+  it("denies the read without an admin actor", async () => {
+    const { service } = setup();
+
+    expect(await service.owedPayments(null)).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+  });
+
+  it("limits the student-file read by normalized email at the repository", async () => {
+    const { service, repository } = setup();
+    let readEmail: string | undefined;
+    repository.listOwed = (email?: string) => {
+      readEmail = email;
+      return Promise.resolve([]);
+    };
+
+    expect(await service.owedPayments(ADMIN, " Ana@Example.com ")).toEqual({
+      ok: true,
+      value: [],
+    });
+    expect(readEmail).toBe("ana@example.com");
+  });
+
+  it("owes the deposit while pending and the balance once confirmed, by email and workshop name", async () => {
+    const context = setup();
+    await pendingRequest(context.service);
+
+    expect(await owedOf(context)).toEqual([
+      {
+        email: "ana@example.com",
+        workshopName: "Intensivo de cerámica",
+        kind: "deposit",
+        centavos: 1_500_000,
+      },
+    ]);
+
+    const requestId = await onlyRequestId(context.service);
+    await context.service.confirm(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      ...DEPOSIT_FORM,
+    });
+
+    expect(await owedOf(context)).toEqual([
+      {
+        email: "ana@example.com",
+        workshopName: "Intensivo de cerámica",
+        kind: "balance",
+        centavos: 2_500_000,
+      },
+    ]);
+  });
+
+  it("owes nothing once the balance is paid or the request is cancelled", async () => {
+    const paid = setup();
+    const requestId = await confirmedRequest(paid);
+    await paid.service.recordBalance(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      ...BALANCE_FORM,
+    });
+    const cancelled = setup();
+    await pendingRequest(cancelled.service);
+    await cancelled.service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId: await onlyRequestId(cancelled.service),
+      reason: "no puede asistir",
+    });
+
+    expect(await owedOf(paid)).toEqual([]);
+    expect(await owedOf(cancelled)).toEqual([]);
+  });
+
+  it("answers unavailable when the repository fails", async () => {
+    const { service, repository } = setup();
+    repository.listOwed = () => Promise.reject(new Error("down"));
+
+    expect(await service.owedPayments(ADMIN)).toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+  });
+});

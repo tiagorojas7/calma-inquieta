@@ -14,6 +14,10 @@ export interface WorkshopSupplierLineRow {
   readonly quantity: number;
   /** The supplier cost frozen on the line; null when none was loaded. */
   readonly unitCostCentavos: number | null;
+  /** Who the units are for, for the owner's screen only. */
+  readonly studentName: string;
+  /** The project she chose; null for a request made before projects. */
+  readonly projectName: string | null;
 }
 
 /** What the supplier purchase list reads and marks about workshops. */

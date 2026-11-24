@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { Heading, Text } from "../atoms/heading";
 import { AdminPageHeader } from "./admin-page";
-import { ADMIN_SHEET, AdminCardList } from "./admin-sections";
+import { ADMIN_SHEET, AdminCardList, AdminColumns } from "./admin-sections";
 import { FormError, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -51,24 +51,32 @@ export function WorkshopPeriodsList({
         back={{ href: workshopHref, label: copy.back }}
       />
       <section className={ADMIN_SHEET}>
-        <Heading level={2}>{copy.form.title}</Heading>
-        <Text tone="muted">{copy.form.intro}</Text>
-        <form method="post" noValidate className="flex flex-col gap-4">
-          <input type="hidden" name="intent" value="open-month" />
-          <FormError message={form.formError} />
-          <TextField
-            label={copy.form.period}
-            hint={copy.form.hint(openableNames)}
-            name="period"
-            defaultValue={form.period}
-            error={form.error}
-            autoComplete="off"
-            inputMode="numeric"
-          />
-          <Button type="submit" variant="success">
-            {copy.form.submit(submitMonth)}
-          </Button>
-        </form>
+        <AdminColumns
+          start={
+            <>
+              <Heading level={2}>{copy.form.title}</Heading>
+              <Text tone="muted">{copy.form.intro}</Text>
+            </>
+          }
+          end={
+            <form method="post" noValidate className="flex flex-col gap-4">
+              <input type="hidden" name="intent" value="open-month" />
+              <FormError message={form.formError} />
+              <TextField
+                label={copy.form.period}
+                hint={copy.form.hint(openableNames)}
+                name="period"
+                defaultValue={form.period}
+                error={form.error}
+                autoComplete="off"
+                inputMode="numeric"
+              />
+              <Button type="submit" variant="success">
+                {copy.form.submit(submitMonth)}
+              </Button>
+            </form>
+          }
+        />
       </section>
       <AdminCardList
         label={copy.listLabel}

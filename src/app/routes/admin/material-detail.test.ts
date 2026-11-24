@@ -76,6 +76,7 @@ function context(
     admin?: boolean;
     get?: MaterialsService["get"];
     deactivate?: MaterialsService["deactivate"];
+    deletePermanent?: MaterialsService["deletePermanent"];
     reactivate?: MaterialsService["reactivate"];
     update?: MaterialsService["update"];
     stockOf?: MaterialsService["stockOf"];
@@ -88,6 +89,9 @@ function context(
       materials: withOverrides(createUnavailableService<MaterialsService>(), {
         ...(options.get ? { get: options.get } : {}),
         ...(options.deactivate ? { deactivate: options.deactivate } : {}),
+        ...(options.deletePermanent
+          ? { deletePermanent: options.deletePermanent }
+          : {}),
         ...(options.reactivate ? { reactivate: options.reactivate } : {}),
         ...(options.update ? { update: options.update } : {}),
         ...(options.stockOf ? { stockOf: options.stockOf } : {}),
@@ -230,7 +234,10 @@ const saveFields: [string, string][] = [
 describe("admin material detail loader", () => {
   it("hydrates the detail, active supplier choices with its archived supplier, variants, image and Córdoba audit", async () => {
     const get = vi.fn(() =>
-      Promise.resolve({ ok: true as const, value: material }),
+      Promise.resolve({
+        ok: true as const,
+        value: { ...material, keptInStudio: true },
+      }),
     );
     const list = vi.fn(() =>
       Promise.resolve({
@@ -256,6 +263,7 @@ describe("admin material detail loader", () => {
       id: ID,
       name: "Pincel plano",
       available: false,
+      keptInStudio: true,
       active: true,
       image: { src: "/imagenes/pincel.webp", alt: "Un pincel" },
       suppliers: [
@@ -356,6 +364,34 @@ describe("admin material detail action", () => {
     }
   });
 
+  it("deletes an unused material permanently and refuses a referenced one without redirecting", async () => {
+    const deleted = vi
+      .fn<MaterialsService["deletePermanent"]>()
+      .mockResolvedValue({ ok: true, value: undefined });
+    const response = await submit("delete", { deletePermanent: deleted });
+    expect(deleted).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      ID,
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      "/admin/materiales?ok=deleted",
+    );
+
+    const refused = await submit("delete", {
+      deletePermanent: () =>
+        Promise.resolve({
+          ok: false as const,
+          error: { kind: "in-use" as const },
+        }),
+    });
+    expect(refused).toMatchObject({
+      init: { status: 422 },
+    });
+    expect(
+      (refused as { data: { stateError: string } }).data.stateError,
+    ).toContain("archivar");
+  });
+
   it("rejects unknown intents and maps lifecycle failures", async () => {
     await expect(thrownStatus(() => submit("unknown"))).resolves.toBe(400);
     for (const [kind, status] of [
@@ -440,6 +476,17 @@ describe("admin material detail action", () => {
     expect(update.mock.calls[0]?.[2]).toMatchObject({
       variants: [{ id: "v1", price: "2500", cost: "800" }],
     });
+  });
+
+  it("saves the studio box: checked keeps it, unchecked clears it", async () => {
+    const update = vi.fn<MaterialsService["update"]>();
+    update.mockResolvedValue({ ok: true as const, value: material } as never);
+
+    await save([...saveFields, ["keptInStudio", "on"]], { update });
+    expect(update.mock.calls[0]?.[2]).toMatchObject({ keptInStudio: true });
+
+    await save(saveFields, { update });
+    expect(update.mock.calls[1]?.[2]).toMatchObject({ keptInStudio: false });
   });
 
   it("keeps a new first variant unidentifed while retaining the reordered existing variant id", async () => {

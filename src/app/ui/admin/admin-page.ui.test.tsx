@@ -123,7 +123,7 @@ describe("AdminPageHeader wayfinding", () => {
     );
   });
 
-  it("sets the title on a raised sheet, with the actions beside it", () => {
+  it("sets the title on a plain row with no card, with the actions beside it", () => {
     render(
       <AdminPageHeader
         title="Talleres"
@@ -133,9 +133,10 @@ describe("AdminPageHeader wayfinding", () => {
     );
     const sheet = screen
       .getByRole("heading", { level: 1 })
-      .closest("[data-title-sheet]");
+      .closest("[data-title-row]");
 
-    expect(sheet).toHaveClass("bg-surface", "shadow-card", "lg:flex-row");
+    expect(sheet).toHaveClass("lg:flex-row");
+    expect(sheet?.className).not.toMatch(/bg-|shadow-|rounded|p-d/);
     expect(sheet).toContainElement(
       screen.getByRole("link", { name: "Nuevo taller" }),
     );
@@ -144,7 +145,7 @@ describe("AdminPageHeader wayfinding", () => {
     );
   });
 
-  it("keeps the header unfilled and carries the area color only on its icon chip", () => {
+  it("keeps the header unfilled, with no icon chip repeating the nav", () => {
     render(
       <AdminAreaProvider area="workshops">
         <AdminPageHeader title="Talleres" />
@@ -153,9 +154,8 @@ describe("AdminPageHeader wayfinding", () => {
     const header = screen.getByRole("banner");
     expect(header).toHaveAttribute("data-area", "workshops");
     expect(header.className).not.toMatch(/bg-area-/);
-    const icon = header.querySelector("svg");
-    expect(icon).toHaveAttribute("aria-hidden", "true");
-    expect(icon?.parentElement?.className).toMatch(/bg-area-workshops-bg/);
+    expect(header.querySelector("svg")).toBeNull();
+    expect(header.querySelector("[data-area-chip]")).toBeNull();
   });
 
   it("stays plain outside an area", () => {

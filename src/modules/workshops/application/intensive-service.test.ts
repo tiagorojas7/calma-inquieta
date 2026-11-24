@@ -6,7 +6,12 @@ import { buildMediaAsset, buildTeacher } from "~/testing/fakes/admin-builders";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
 import { InMemoryIntensiveRepository } from "~/testing/fakes/in-memory-intensive-repository";
 import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-repository";
-import type { IntensiveWorkshop, IntensiveWorkshopDraft } from "./contracts";
+import type {
+  IntensiveWorkshop,
+  IntensiveWorkshopDraft,
+  NewIntensiveWorkshopDraft,
+  NewProjectDraft,
+} from "./contracts";
 import { createIntensivesService } from "./intensive-service";
 
 const START = new Date("2026-10-14T12:00:00.000Z");
@@ -26,27 +31,48 @@ const OLD = buildTeacher({
   active: false,
 });
 
-const draft = (
-  overrides: Partial<IntensiveWorkshopDraft> = {},
-): IntensiveWorkshopDraft => ({
-  name: "Cerámica de fin de semana",
-  slug: "",
-  summary: "Un día de torno",
-  description: "Descripción larga",
-  teacherId: "t-paid",
-  percentage: "50",
-  eventDate: "2026-11-07",
-  startsAt: "10:00",
-  endsAt: "18:00",
+const project = (
+  overrides: Partial<NewProjectDraft> = {},
+): NewProjectDraft => ({
+  name: "Taza de torno",
   price: "30000",
   deposit: "10000",
-  capacity: "8",
-  minSeats: "4",
-  policyText: "Cancelación hasta 48 horas antes.",
-  materialsIncluded: false,
-  images: [],
+  description: "",
+  image: null,
+  materials: [],
   ...overrides,
 });
+
+const draft = (
+  overrides: Partial<NewIntensiveWorkshopDraft> = {},
+): NewIntensiveWorkshopDraft => ({
+  ...edit(),
+  projects: [project()],
+  ...overrides,
+});
+
+/** The workshop fields alone, as the edit form sends them. */
+function edit(
+  overrides: Partial<IntensiveWorkshopDraft> = {},
+): IntensiveWorkshopDraft {
+  return {
+    name: "Cerámica de fin de semana",
+    slug: "",
+    summary: "Un día de torno",
+    description: "Descripción larga",
+    teacherId: "t-paid",
+    percentage: "50",
+    eventDate: "2026-11-07",
+    startsAt: "10:00",
+    endsAt: "18:00",
+    capacity: "8",
+    minSeats: "4",
+    policyText: "Cancelación hasta 48 horas antes.",
+    materialsIncluded: false,
+    images: [],
+    ...overrides,
+  };
+}
 
 function setup(teachers: readonly Teacher[] = [OWN, PAID, OLD]) {
   const repository = new InMemoryIntensiveRepository();
@@ -142,6 +168,293 @@ describe("create", () => {
     });
   });
 
+  it("stores the first project as typed, never named after the workshop", async () => {
+    const { repository, service } = setup();
+
+    const created = valueOf(
+      await service.create(
+        owner,
+        draft({
+          projects: [
+            project({
+              name: "  Taza de torno  ",
+              price: "45000",
+              deposit: "15000",
+              description: "  Tu primera taza.  ",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(repository.projects.size).toBe(1);
+    const [stored] = [...repository.projects.values()];
+    expect(stored).toMatchObject({
+      intensiveId: created.id,
+      position: 0,
+      name: "Taza de torno",
+      description: "Tu primera taza.",
+      image: null,
+    });
+    expect(stored?.price.toCentavos()).toBe(4_500_000);
+    expect(stored?.deposit.toCentavos()).toBe(1_500_000);
+    expect(stored?.name).not.toBe(created.name);
+  });
+
+  it("keeps the internal price and deposit of the workshop equal to the first project", async () => {
+    const { repository, service } = setup();
+
+    const created = valueOf(
+      await service.create(
+        owner,
+        draft({
+          projects: [project({ price: "45000", deposit: "15000" })],
+        }),
+      ),
+    );
+
+    expect(created.price.toCentavos()).toBe(4_500_000);
+    expect(created.deposit.toCentavos()).toBe(1_500_000);
+    expect(repository.items.get(created.id)?.price.toCentavos()).toBe(
+      4_500_000,
+    );
+  });
+
+  it("stores no description for a blank one", async () => {
+    const { repository, service } = setup();
+
+    valueOf(
+      await service.create(
+        owner,
+        draft({ projects: [project({ description: "   " })] }),
+      ),
+    );
+
+    expect([...repository.projects.values()][0]?.description).toBeNull();
+  });
+
+  it("names each project field on its own and stores nothing", async () => {
+    const { repository, service } = setup();
+
+    const result = await service.create(
+      owner,
+      draft({
+        projects: [
+          project({
+            name: " ",
+            price: "x",
+            deposit: "",
+            description: "d".repeat(601),
+          }),
+        ],
+      }),
+    );
+
+    expect(result).toEqual(
+      invalid(
+        { field: "project0Name", code: "required" },
+        { field: "project0Description", code: "too-long" },
+        { field: "project0Price", code: "invalid-format" },
+        { field: "project0Deposit", code: "required" },
+      ),
+    );
+    expect(repository.items.size).toBe(0);
+    expect(repository.projects.size).toBe(0);
+  });
+
+  it("reports workshop and project issues together", async () => {
+    const { service } = setup();
+
+    const result = await service.create(
+      owner,
+      draft({ name: "", projects: [project({ name: "" })] }),
+    );
+
+    const issues =
+      !result.ok && result.error.kind === "invalid" ? result.error.issues : [];
+    expect(issues).toContainEqual({ field: "name", code: "required" });
+    expect(issues).toContainEqual({ field: "project0Name", code: "required" });
+  });
+
+  describe("with several projects", () => {
+    const V1 = "d0000000-0000-4000-8000-000000000001";
+    const V2 = "d0000000-0000-4000-8000-000000000002";
+    const three = () => [
+      project({
+        name: "Taza",
+        price: "45000",
+        deposit: "15000",
+        image: { assetId: "a1", alt: "Una taza" },
+        materials: [
+          { variantId: V1, quantity: "2" },
+          { variantId: V2, quantity: " 20 " },
+        ],
+      }),
+      project({ name: "Plato", price: "30000", deposit: "10000" }),
+      project({
+        name: "Cuenco",
+        description: "Hondo.",
+        materials: [{ variantId: V1, quantity: "1" }],
+      }),
+    ];
+
+    it("stores the workshop, every project in order, their images and their bills", async () => {
+      const { repository, service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three() })),
+      );
+
+      const stored = await repository.listProjects(created.id);
+      expect(stored.map((p) => [p.name, p.position])).toEqual([
+        ["Taza", 0],
+        ["Plato", 1],
+        ["Cuenco", 2],
+      ]);
+      expect(stored[0]?.image).toEqual({ assetId: "a1", alt: "Una taza" });
+      expect(stored[1]?.image).toBeNull();
+      expect(stored[2]?.description).toBe("Hondo.");
+      expect(
+        (await repository.listProjectMaterials(created.id)).map((l) => [
+          l.projectId,
+          l.variantId,
+          l.quantity,
+          l.position,
+        ]),
+      ).toEqual([
+        [stored[0]?.id, V1, 2, 0],
+        [stored[0]?.id, V2, 20, 1],
+        [stored[2]?.id, V1, 1, 0],
+      ]);
+    });
+
+    it("copies the workshop price and deposit from the first project only", async () => {
+      const { service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three() })),
+      );
+
+      expect(created.price.toCentavos()).toBe(4_500_000);
+      expect(created.deposit.toCentavos()).toBe(1_500_000);
+    });
+
+    it("leaves the workshop gallery apart from the project images", async () => {
+      const { repository, service } = setup();
+
+      const created = valueOf(
+        await service.create(owner, draft({ projects: three(), images: [] })),
+      );
+
+      expect(repository.items.get(created.id)?.images).toEqual([]);
+    });
+
+    it("asks for at least one project", async () => {
+      const { repository, service } = setup();
+
+      expect(await service.create(owner, draft({ projects: [] }))).toEqual(
+        invalid({ field: "project0Name", code: "required" }),
+      );
+      expect(repository.items.size).toBe(0);
+    });
+
+    it("validates every block and names the block of each issue, storing nothing", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project(),
+            project({ name: "", price: "10", deposit: "20" }),
+            project({
+              deposit: "",
+              image: { assetId: "nope", alt: "x" },
+            }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid(
+          { field: "project1Name", code: "required" },
+          { field: "project1Deposit", code: "exceeds-price" },
+          { field: "project2Deposit", code: "required" },
+          { field: "project2Image", code: "unknown-reference" },
+        ),
+      );
+      expect(repository.items.size).toBe(0);
+      expect(repository.projects.size).toBe(0);
+      expect(repository.materials.size).toBe(0);
+    });
+
+    it("asks for the image description of a block that has an image", async () => {
+      const { service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project(),
+            project({ image: { assetId: "a1", alt: " " } }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid({ field: "project1Image", code: "required" }),
+      );
+    });
+
+    it("names the bill line and the field of each refused line", async () => {
+      const { repository, service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project({
+              materials: [
+                { variantId: V1, quantity: "1" },
+                { variantId: V2, quantity: "0" },
+                { variantId: "no-es-un-id", quantity: "2" },
+                { variantId: V1, quantity: "3" },
+                { variantId: V2, quantity: "x" },
+              ],
+            }),
+          ],
+        }),
+      );
+
+      expect(result).toEqual(
+        invalid(
+          { field: "project0MaterialQuantity1", code: "out-of-range" },
+          { field: "project0MaterialVariant2", code: "unknown-reference" },
+          { field: "project0MaterialVariant3", code: "duplicate" },
+          { field: "project0MaterialQuantity4", code: "invalid-format" },
+        ),
+      );
+      expect(repository.items.size).toBe(0);
+    });
+
+    it("allows the same variant on different projects and a blank bill", async () => {
+      const { service } = setup();
+
+      const result = await service.create(
+        owner,
+        draft({
+          projects: [
+            project({ materials: [{ variantId: V1, quantity: "1" }] }),
+            project({ materials: [{ variantId: V1, quantity: "2" }] }),
+            project(),
+          ],
+        }),
+      );
+
+      expect(result.ok).toBe(true);
+    });
+  });
+
   it("keeps an explicit slug and an unassigned draft", async () => {
     const { service } = setup();
     const created = valueOf(
@@ -172,10 +485,14 @@ describe("create", () => {
 
   it("names the field and stores nothing when the draft is invalid", async () => {
     const { repository, service } = setup();
-    expect(await service.create(owner, draft({ deposit: "30001" }))).toEqual(
-      invalid({ field: "deposit", code: "exceeds-price" }),
-    );
+    expect(
+      await service.create(
+        owner,
+        draft({ projects: [project({ deposit: "30001" })] }),
+      ),
+    ).toEqual(invalid({ field: "project0Deposit", code: "exceeds-price" }));
     expect(repository.items.size).toBe(0);
+    expect(repository.projects.size).toBe(0);
   });
 
   it("allows a draft dated in the past", async () => {
@@ -192,7 +509,7 @@ describe("create", () => {
       owner,
       draft({
         slug: "torno",
-        price: "",
+        projects: [project({ price: "" })],
         teacherId: "t-old",
         percentage: "1",
         images: [{ assetId: "nope", alt: "x" }],
@@ -200,10 +517,10 @@ describe("create", () => {
     );
     expect(result).toEqual(
       invalid(
-        { field: "price", code: "required" },
         { field: "teacherId", code: "not-selectable" },
         { field: "images", code: "unknown-reference" },
         { field: "slug", code: "duplicate" },
+        { field: "project0Price", code: "required" },
       ),
     );
   });
@@ -303,14 +620,14 @@ describe("assignment", () => {
     const edited = await service.update(
       owner,
       created.id,
-      draft({ price: "31000" }),
+      edit({ capacity: "9" }),
     );
     expect(edited).toMatchObject({
       ok: true,
       value: { assignment: { teacher: { id: "t-paid", active: false } } },
     });
     expect(
-      await service.update(owner, created.id, draft({ teacherId: "t-old" })),
+      await service.update(owner, created.id, edit({ teacherId: "t-old" })),
     ).toEqual(invalid({ field: "teacherId", code: "not-selectable" }));
   });
 
@@ -321,7 +638,7 @@ describe("assignment", () => {
       await service.update(
         owner,
         created.id,
-        draft({ teacherId: "", percentage: "" }),
+        edit({ teacherId: "", percentage: "" }),
       ),
     ).toMatchObject({ ok: true, value: { assignment: null } });
   });
@@ -355,7 +672,7 @@ describe("gallery", () => {
       await service.update(
         owner,
         created.id,
-        draft({
+        edit({
           images: [
             { assetId: "a2", alt: "Dos" },
             { assetId: "a3", alt: "Tres" },
@@ -452,12 +769,25 @@ describe("update", () => {
     });
   });
 
-  it("refuses a price lowered below the deposit", async () => {
-    const { service } = setup();
+  it("keeps the stored price and deposit exactly as they were", async () => {
+    const { repository, service } = setup();
     const created = valueOf(await service.create(owner, draft()));
-    expect(
-      await service.update(owner, created.id, draft({ price: "8000" })),
-    ).toEqual(invalid({ field: "deposit", code: "exceeds-price" }));
+    const before = repository.items.get(created.id);
+
+    const edited = valueOf(
+      await service.update(
+        owner,
+        created.id,
+        edit({ name: "Otro nombre", capacity: "12" }),
+      ),
+    );
+
+    expect(edited.price.toCentavos()).toBe(3_000_000);
+    expect(edited.deposit.toCentavos()).toBe(1_000_000);
+    const after = repository.items.get(created.id);
+    expect(after?.price.toCentavos()).toBe(before?.price.toCentavos());
+    expect(after?.deposit.toCentavos()).toBe(before?.deposit.toCentavos());
+    expect(after?.name).toBe("Otro nombre");
   });
 
   it("accepts the intensivo's own slug and refuses another one's", async () => {
@@ -465,10 +795,10 @@ describe("update", () => {
     const first = valueOf(await service.create(owner, draft({ slug: "uno" })));
     valueOf(await service.create(owner, draft({ slug: "dos" })));
     expect(
-      await service.update(owner, first.id, draft({ slug: "uno" })),
+      await service.update(owner, first.id, edit({ slug: "uno" })),
     ).toMatchObject({ ok: true });
     expect(
-      await service.update(owner, first.id, draft({ slug: "dos" })),
+      await service.update(owner, first.id, edit({ slug: "dos" })),
     ).toEqual(invalid({ field: "slug", code: "duplicate" }));
   });
 
@@ -478,16 +808,17 @@ describe("update", () => {
     await service.create(owner, draft({ slug: "dos" }));
     repository.findBySlug = () => Promise.resolve(null);
     expect(
-      await service.update(owner, first.id, draft({ slug: "dos" })),
+      await service.update(owner, first.id, edit({ slug: "dos" })),
     ).toEqual(invalid({ field: "slug", code: "duplicate" }));
     expect(repository.items.get(first.id)?.slug).toBe("uno");
   });
 
   it("reports an unknown intensivo before validating", async () => {
     const { service } = setup();
-    expect(
-      await service.update(owner, "missing", draft({ price: "" })),
-    ).toEqual({ ok: false, error: { kind: "not-found" } });
+    expect(await service.update(owner, "missing", edit({ name: "" }))).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
   });
 
   it("applies the future rule when a published intensivo's schedule changes", async () => {
@@ -498,7 +829,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, eventDate: "2026-10-01" }),
+        edit({ slug: created.slug, eventDate: "2026-10-01" }),
       ),
     ).toEqual(invalid({ field: "eventDate", code: "in-past" }));
   });
@@ -512,7 +843,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, capacity: "9" }),
+        edit({ slug: created.slug, capacity: "9" }),
       ),
     ).toMatchObject({ ok: true, value: { capacity: 9, status: "published" } });
   });
@@ -530,7 +861,7 @@ describe("update", () => {
         await service.update(
           owner,
           created.id,
-          draft({
+          edit({
             slug: created.slug,
             name: "Otro nombre",
             teacherId: "",
@@ -555,7 +886,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, percentage: "" }),
+        edit({ slug: created.slug, percentage: "" }),
       ),
     ).toEqual(invalid({ field: "percentage", code: "required" }));
     expect(repository.items.get(created.id)).toBe(before);
@@ -574,7 +905,7 @@ describe("update", () => {
         await service.update(
           owner,
           created.id,
-          draft({ slug: created.slug, description: "Descripción corregida" }),
+          edit({ slug: created.slug, description: "Descripción corregida" }),
         ),
       ).toMatchObject({
         ok: true,
@@ -593,7 +924,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, teacherId: "", percentage: "" }),
+        edit({ slug: created.slug, teacherId: "", percentage: "" }),
       ),
     ).toEqual({
       ok: false,
@@ -603,7 +934,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, percentage: "60" }),
+        edit({ slug: created.slug, percentage: "60" }),
       ),
     ).toEqual({
       ok: false,
@@ -620,7 +951,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, teacherId: "", percentage: "", price: "" }),
+        edit({ slug: created.slug, teacherId: "", percentage: "", name: "" }),
       ),
     ).toMatchObject({ ok: false, error: { kind: "invalid" } });
   });
@@ -635,7 +966,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, name: "Ya ocurrió" }),
+        edit({ slug: created.slug, name: "Ya ocurrió" }),
       ),
     ).toMatchObject({ ok: true, value: { name: "Ya ocurrió" } });
   });
@@ -655,7 +986,7 @@ describe("update", () => {
         await service.update(
           owner,
           created.id,
-          draft({ slug: created.slug, teacherId: "", percentage: "" }),
+          edit({ slug: created.slug, teacherId: "", percentage: "" }),
         ),
       ).toMatchObject({ ok: true, value: { assignment: null, status } });
     },
@@ -668,7 +999,7 @@ describe("update", () => {
       await service.update(
         owner,
         created.id,
-        draft({ slug: created.slug, eventDate: "2020-01-04" }),
+        edit({ slug: created.slug, eventDate: "2020-01-04" }),
       ),
     ).toMatchObject({ ok: true });
   });

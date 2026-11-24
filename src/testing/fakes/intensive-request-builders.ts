@@ -28,6 +28,7 @@ export function buildOfferProject(
   return {
     id: FAKE_PROJECT_ID,
     name: "Taza de torno",
+    description: null,
     image: null,
     price: pesos(40000),
     deposit: pesos(15000),

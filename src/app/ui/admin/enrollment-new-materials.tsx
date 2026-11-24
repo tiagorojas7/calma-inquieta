@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { TextField } from "./form-fields";
 
@@ -13,6 +13,8 @@ export interface EnrollmentMaterialChoice {
   readonly priceLabel: string;
   /** Units the studio holds; none or absent means the variant is ordered from the supplier. */
   readonly onHand?: number;
+  /** "Lo tenemos en el estudio": only then do the units on hand count as stock. */
+  readonly keptInStudio?: boolean | undefined;
 }
 
 /** A chosen variant as the form posts it: the quantity stays as typed. */
@@ -24,15 +26,16 @@ export interface EnrollmentMaterialLine {
 
 export const enrollmentMaterialsCopy = {
   legend: "Materiales (opcional)",
-  hint: "Sumá materiales del catálogo a esta inscripción. Si no elegís ninguno, queda solo la cuota.",
+  hint: "Si no elegís ninguno, queda solo la cuota.",
   search: "Buscar material",
-  searchHint: "Buscá por nombre o por medida, por ejemplo: arcilla 5 kg.",
-  typeToSearch: "Escribí para buscar en el catálogo.",
-  noMatches: "No encontramos materiales con ese nombre.",
-  noCatalog: "No hay materiales con precio en el catálogo.",
+  searchHint: "Nombre o medida, por ejemplo: arcilla 5 kg.",
+  typeToSearch: "Escribí para buscar.",
+  noMatches: "No hay materiales con ese nombre.",
+  noCatalog: "No hay materiales con precio.",
   inStock: (units: number) => `En stock: ${String(units)}`,
-  toOrder: "A pedir",
+  toOrder: "Se pide",
   add: "Agregar",
+  added: (name: string) => `Agregado: ${name}`,
   remove: "Quitar",
   quantity: "Cantidad",
   chosen: "Materiales elegidos",
@@ -69,9 +72,11 @@ function feeOf(typed: string): number | null {
 const keyOf = (line: { materialId: string; variantId: string }) =>
   `${line.materialId}:${line.variantId}`;
 
-/** "En stock: N" while the studio holds units, otherwise the supplier path. */
+/** "En stock: N" while the studio keeps it and holds units, otherwise "Se pide". */
 const availabilityLabel = (choice: EnrollmentMaterialChoice): string =>
-  choice.onHand !== undefined && choice.onHand > 0
+  choice.keptInStudio === true &&
+  choice.onHand !== undefined &&
+  choice.onHand > 0
     ? copy.inStock(choice.onHand)
     : copy.toOrder;
 
@@ -85,6 +90,7 @@ export function EnrollmentNewMaterials({
   initialLines = [],
   fee,
   hint = copy.hint,
+  legend = copy.legend,
   error,
 }: {
   choices: readonly EnrollmentMaterialChoice[];
@@ -94,13 +100,18 @@ export function EnrollmentNewMaterials({
    * material sale, which has no fee: the materials are then its only total.
    */
   fee?: string | undefined;
-  /** What the legend explains; a sale words it its own way. */
+  /** What the legend explains; a sale words it its own way. Empty shows nothing. */
   hint?: string;
+  /** The group's name; a sale is not optional, so it words it its own way. */
+  legend?: string;
   error?: string | undefined;
 }) {
   const [lines, setLines] =
     useState<readonly EnrollmentMaterialLine[]>(initialLines);
   const [query, setQuery] = useState("");
+  /** The line just added: confirmed in words until the owner searches again. */
+  const [added, setAdded] = useState<string | null>(null);
+  const searchBox = useRef<HTMLDivElement>(null);
   const choiceOf = (line: EnrollmentMaterialLine) =>
     choices.find((choice) => keyOf(choice) === keyOf(line));
 
@@ -135,24 +146,37 @@ export function EnrollmentNewMaterials({
 
   return (
     <fieldset className="flex flex-col gap-3 border-t border-admin-line pt-4">
-      <legend className="font-semibold text-ink-900">{copy.legend}</legend>
-      <p className="text-sm text-ink-700">{hint}</p>
-      <TextField
-        label={copy.search}
-        hint={copy.searchHint}
-        type="search"
-        autoComplete="off"
-        value={query}
-        onChange={(event) => {
-          setQuery(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          // Enter in the search box must never submit the enrollment.
-          if (event.key === "Enter") event.preventDefault();
-        }}
-      />
+      <legend className="font-semibold text-ink-900">{legend}</legend>
+      {hint === "" ? null : <p className="text-sm text-ink-700">{hint}</p>}
+      <div ref={searchBox}>
+        <TextField
+          label={copy.search}
+          hint={copy.searchHint}
+          type="search"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setAdded(null);
+          }}
+          onKeyDown={(event) => {
+            // Enter in the search box must never submit the enrollment.
+            if (event.key === "Enter") event.preventDefault();
+          }}
+        />
+      </div>
+      {added === null ? null : (
+        <p
+          role="status"
+          className="rounded-md bg-sand-200 p-3 font-semibold text-ink-900"
+        >
+          {added}
+        </p>
+      )}
       {tokens.length === 0 ? (
-        <p className="text-sm text-ink-700">{copy.typeToSearch}</p>
+        lines.length > 0 ? null : (
+          <p className="text-sm text-ink-700">{copy.typeToSearch}</p>
+        )
       ) : shown.length === 0 ? (
         <p role="status" className="text-sm text-ink-700">
           {copy.noMatches}
@@ -186,6 +210,11 @@ export function EnrollmentNewMaterials({
                       quantity: String(MIN_QUANTITY),
                     },
                   ]);
+                  // Collapse the results and be ready for the next material;
+                  // the chosen items stay right under the search box.
+                  setQuery("");
+                  setAdded(copy.added(`${choice.name} ${choice.label}`));
+                  searchBox.current?.querySelector("input")?.focus();
                 }}
               >
                 {copy.add}
@@ -254,6 +283,7 @@ export function EnrollmentNewMaterials({
                         setLines(
                           lines.filter((other) => keyOf(other) !== keyOf(line)),
                         );
+                        setAdded(null);
                       }}
                     >
                       {copy.remove}

@@ -3,12 +3,7 @@ import { Icon } from "../atoms/icon";
 import { SkipLink } from "../atoms/skip-link";
 import { AdminAreaProvider, AreaChip } from "./admin-area";
 import { ADMIN_AREAS } from "./admin-areas";
-import {
-  ADMIN_NAV_MAIN,
-  ADMIN_NAV_MORE,
-  activeAdminEntry,
-  type AdminNavEntry,
-} from "./admin-nav";
+import { ADMIN_NAV, activeAdminEntry, type AdminNavEntry } from "./admin-nav";
 import { adminMicrocopy } from "./microcopy";
 
 export const ADMIN_SIGN_OUT_HREF = "/cdn-cgi/access/logout";
@@ -19,7 +14,7 @@ export function AdminNoIndex() {
 }
 
 const linkBase =
-  "flex min-h-12 items-center gap-3 rounded-md px-2 text-base hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
+  "flex min-h-12 items-center gap-3 rounded-md px-2 text-lg hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 function NavLinks({
   entries,
@@ -54,26 +49,13 @@ function NavLinks({
   );
 }
 
-/**
- * Six main entries plus a native `<details>` "Más" group: no JavaScript is
- * needed to open it, and it starts open on one of its own pages.
- */
+/** The five sections: always visible, no group to open. */
 function NavList({ pathname }: { pathname: string }) {
-  const activeHref = activeAdminEntry(pathname)?.href;
-  const moreActive = ADMIN_NAV_MORE.some((entry) => entry.href === activeHref);
   return (
-    <div className="flex flex-col gap-1">
-      <NavLinks entries={ADMIN_NAV_MAIN} activeHref={activeHref} />
-      <details data-more open={moreActive || undefined} className="mt-1">
-        <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-md px-3 font-bold text-ink-900 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800">
-          {adminMicrocopy.shell.more}
-          <Icon name="chevron-right" size={20} aria-hidden="true" />
-        </summary>
-        <div className="mt-1 border-l-2 border-admin-line pl-2">
-          <NavLinks entries={ADMIN_NAV_MORE} activeHref={activeHref} />
-        </div>
-      </details>
-    </div>
+    <NavLinks
+      entries={ADMIN_NAV}
+      activeHref={activeAdminEntry(pathname)?.href}
+    />
   );
 }
 

@@ -2,7 +2,7 @@ import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageActions, AdminPageHeader } from "./admin-page";
-import { enrollmentNewCopy } from "./enrollment-new-form";
+import { adminCopy } from "./copy";
 import { AdminCardList, adminFilterClasses } from "./admin-sections";
 import { SelectField, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -354,7 +354,7 @@ export function EnrollmentsList({
           <AdminPageActions
             primary={
               <AdminButtonLink href="/admin/inscripciones/nueva">
-                {enrollmentNewCopy.title}
+                {adminCopy.alumnas.enroll.title}
               </AdminButtonLink>
             }
             secondary={

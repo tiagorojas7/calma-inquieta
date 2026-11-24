@@ -2,73 +2,103 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_NAV,
   ADMIN_NAV_MAIN,
-  ADMIN_NAV_MORE,
   activeAdminEntry,
+  isActiveAdminEntry,
 } from "./admin-nav";
 
-const labels = (entries: readonly { label: string }[]) =>
-  entries.map((entry) => entry.label);
-
-describe("short admin navigation", () => {
-  it("has six main entries in the approved order", () => {
-    expect(labels(ADMIN_NAV_MAIN)).toEqual([
-      "Inicio",
-      "Inscripciones",
-      "Talleres",
-      "Workshops",
-      "Materiales",
-      "Asistencia",
-    ]);
-    expect(ADMIN_NAV_MAIN.map((entry) => entry.href)).toEqual([
-      "/admin",
-      "/admin/inscripciones",
-      "/admin/talleres",
-      "/admin/intensivos",
-      "/admin/inscripciones/materiales",
-      "/admin/asistencia",
+describe("five-section admin navigation", () => {
+  it("has exactly Hoy, Alumnas, Clases, Materiales and Ajustes, in that order", () => {
+    expect(ADMIN_NAV.map((entry) => [entry.label, entry.href])).toEqual([
+      ["Hoy", "/admin"],
+      ["Alumnas", "/admin/alumnas"],
+      ["Clases", "/admin/clases"],
+      ["Materiales", "/admin/materiales"],
+      ["Ajustes", "/admin/ajustes"],
     ]);
   });
 
-  it("groups the rest under Más and keeps the catalog reachable", () => {
-    expect(labels(ADMIN_NAV_MORE)).toEqual([
-      "Profesoras",
-      "Proveedores",
-      "Alumnas",
-      "Eventos privados",
-      "Recordatorios",
-      "Estadísticas",
-      "Políticas",
-      "Catálogo de materiales",
+  it("keeps ADMIN_NAV_MAIN as the same five entries", () => {
+    expect(ADMIN_NAV_MAIN).toEqual(ADMIN_NAV);
+  });
+
+  it("gives every section its own area key and icon", () => {
+    expect(new Set(ADMIN_NAV.map((entry) => entry.area)).size).toBe(5);
+    expect(new Set(ADMIN_NAV.map((entry) => entry.icon)).size).toBe(5);
+    expect(ADMIN_NAV.map((entry) => entry.area)).toEqual([
+      "home",
+      "students",
+      "workshops",
+      "materials",
+      "settings",
     ]);
-  });
-
-  it("lists every area except Inicio in ADMIN_NAV", () => {
-    expect(labels(ADMIN_NAV)).not.toContain("Inicio");
-    expect(ADMIN_NAV).toHaveLength(
-      ADMIN_NAV_MAIN.length - 1 + ADMIN_NAV_MORE.length,
-    );
-  });
-
-  it("marks Inicio only on the exact panel path", () => {
-    expect(activeAdminEntry("/admin")?.label).toBe("Inicio");
-    expect(activeAdminEntry("/admin/desconocido")).toBeUndefined();
-  });
-
-  it("prefers the most specific entry", () => {
-    const active = (path: string) => activeAdminEntry(path)?.label;
-    expect(active("/admin/inscripciones")).toBe("Inscripciones");
-    expect(active("/admin/inscripciones/abc")).toBe("Inscripciones");
-    expect(active("/admin/inscripciones/materiales")).toBe("Materiales");
-    expect(active("/admin/profesores/p1")).toBe("Profesoras");
-    expect(active("/admin/talleres-x")).toBeUndefined();
   });
 });
 
-describe("area identity", () => {
-  it("gives every entry an area key and an icon, one of each per area", () => {
-    const all = [...ADMIN_NAV_MAIN, ...ADMIN_NAV_MORE];
-    expect(all).toHaveLength(14);
-    expect(new Set(all.map((entry) => entry.area)).size).toBe(14);
-    expect(new Set(all.map((entry) => entry.icon)).size).toBe(14);
+describe("the active section, also on deep pages", () => {
+  const active = (pathname: string) => activeAdminEntry(pathname)?.label;
+
+  it.each([
+    ["/admin", "Hoy"],
+    ["/admin/novedades", "Hoy"],
+    ["/admin/alumnas", "Alumnas"],
+    ["/admin/alumnas/ana%40example.com", "Alumnas"],
+    ["/admin/inscripciones", "Alumnas"],
+    ["/admin/inscripciones/nueva", "Alumnas"],
+    ["/admin/inscripciones/e1", "Alumnas"],
+    ["/admin/inscripciones/e1/venta-nueva", "Alumnas"],
+    ["/admin/clases", "Clases"],
+    ["/admin/talleres", "Clases"],
+    ["/admin/talleres/nuevo", "Clases"],
+    ["/admin/talleres/w1", "Clases"],
+    ["/admin/talleres/w1/periodos/2026-11", "Clases"],
+    ["/admin/intensivos", "Clases"],
+    ["/admin/intensivos/i1/reservas", "Clases"],
+    ["/admin/asistencia", "Clases"],
+    ["/admin/asistencia/0b6f7a3e/7c9d1a52", "Clases"],
+    ["/admin/materiales", "Materiales"],
+    ["/admin/materiales/nuevo", "Materiales"],
+    ["/admin/materiales/m1", "Materiales"],
+    ["/admin/materiales/importar", "Materiales"],
+    ["/admin/inscripciones/materiales", "Materiales"],
+    ["/admin/ajustes", "Ajustes"],
+    ["/admin/profesores", "Ajustes"],
+    ["/admin/profesores/p1", "Ajustes"],
+    ["/admin/materiales/proveedores", "Ajustes"],
+    ["/admin/materiales/proveedores/nuevo", "Ajustes"],
+    ["/admin/materiales/proveedores/s1", "Ajustes"],
+    ["/admin/politicas", "Ajustes"],
+    ["/admin/estadisticas", "Ajustes"],
+    ["/admin/eventos", "Ajustes"],
+    ["/admin/eventos/ev1", "Ajustes"],
+    ["/admin/recordatorios", "Ajustes"],
+  ])("%s belongs to %s", (pathname, label) => {
+    expect(active(pathname)).toBe(label);
+  });
+
+  it("marks Hoy only on the exact panel path or its own pages", () => {
+    expect(active("/admin/desconocido")).toBeUndefined();
+  });
+
+  it("matches on a segment boundary, so a look-alike path is no section", () => {
+    expect(active("/admin/alumnas-x")).toBeUndefined();
+    expect(active("/admin/talleres-x")).toBeUndefined();
+    expect(active("/admin/ajustes-x")).toBeUndefined();
+    expect(active("/admin/materiales-x")).toBeUndefined();
+  });
+
+  it("tells isActiveAdminEntry the same thing for one entry", () => {
+    const [hoy, alumnas, clases, materiales, ajustes] = ADMIN_NAV;
+    if (!hoy || !alumnas || !clases || !materiales || !ajustes)
+      throw new Error("five entries expected");
+    expect(isActiveAdminEntry(clases, "/admin/talleres/w1")).toBe(true);
+    expect(isActiveAdminEntry(ajustes, "/admin/talleres/w1")).toBe(false);
+    expect(
+      isActiveAdminEntry(materiales, "/admin/materiales/proveedores"),
+    ).toBe(false);
+    expect(isActiveAdminEntry(ajustes, "/admin/materiales/proveedores")).toBe(
+      true,
+    );
+    expect(isActiveAdminEntry(hoy, "/admin")).toBe(true);
+    expect(isActiveAdminEntry(alumnas, "/admin/alumnas-x")).toBe(false);
   });
 });

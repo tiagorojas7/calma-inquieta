@@ -257,3 +257,36 @@ describe("admin enrollment service: material sales", () => {
     ).resolves.toEqual(err({ kind: "unavailable" }));
   });
 });
+
+describe("admin enrollment service: a sale paid when it is made", () => {
+  it("hands the store the payment date (the Córdoba day) when the owner took the payment", async () => {
+    const { service, calls, parentId } = await fixture();
+
+    const result = await service.createMaterialSale(admin, {
+      orderId: parentId,
+      lines: [cart("v-1", 1)],
+      paid: true,
+    });
+
+    expect(result).toEqual(ok({ id: "sale-1", number: "CI-2026-0002" }));
+    // 23:30 on 31 December in Córdoba: the payment is dated that day.
+    expect(calls[0]?.paidAt).toEqual(new Date("2026-12-31T03:00:00.000Z"));
+  });
+
+  it("leaves the sale pending when the payment was not taken", async () => {
+    const { service, calls, parentId } = await fixture();
+
+    await service.createMaterialSale(admin, {
+      orderId: parentId,
+      lines: [cart("v-1", 1)],
+    });
+    await service.createMaterialSale(admin, {
+      orderId: parentId,
+      lines: [cart("v-1", 1)],
+      paid: false,
+    });
+
+    expect(calls).toHaveLength(2);
+    for (const call of calls) expect("paidAt" in call).toBe(false);
+  });
+});

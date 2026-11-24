@@ -8,8 +8,11 @@ import {
 export class InMemoryStudentOrderSource implements StudentOrderSource {
   readonly orders: StudentSourceOrder[] = [];
 
+  /** Every monthly record; a material sale is never listed here, like the database. */
   all(): Promise<readonly StudentSourceOrder[]> {
-    return Promise.resolve([...this.orders]);
+    return Promise.resolve(
+      this.orders.filter((order) => order.kind !== "material_sale"),
+    );
   }
 
   byEmail(email: string): Promise<readonly StudentSourceOrder[]> {

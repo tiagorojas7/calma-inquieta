@@ -5,7 +5,6 @@ import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { MaterialImport, type CatalogPlanView } from "./material-import";
 import { MaterialPhoto } from "./material-photo";
 import { MaterialPrices, type PriceRaisePlanView } from "./material-prices";
-import { MaterialsList } from "./materials-list";
 
 const suppliers = [{ id: "s1", name: "Casa Pincel" }];
 
@@ -163,57 +162,31 @@ describe("MaterialPhoto", () => {
   });
 });
 
-describe("MaterialsList photo tools", () => {
-  const row = (id: string, hasImage: boolean) => ({
-    id,
-    name: `Material ${id}`,
-    category: "Tazas",
-    supplierName: "Casa Pincel",
-    hasImage,
-    variantCount: 1,
-    active: true,
-    available: true,
-  });
-
-  it("marks photoless rows and links each one to its photo screen", async () => {
-    renderInRouter(
-      <MaterialsList
-        rows={[row("a", false), row("b", true)]}
-        filter="activos"
-        category=""
-        supplierId=""
-        categories={[]}
-        suppliers={[]}
+describe("Material tools desktop width", () => {
+  it("lets prices and import fill the content width, with the form fields in two columns", () => {
+    const prices = renderInRouter(
+      <MaterialPrices
+        suppliers={suppliers}
+        categories={["Pinceles"]}
+        values={{ supplierId: "", category: "", percent: "" }}
+        plan={null}
       />,
     );
-    expect(await screen.findAllByText("Sin foto")).toHaveLength(1);
-    const links = screen.getAllByRole("link", { name: /foto de Material/i });
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/admin/materiales/a/foto",
-      "/admin/materiales/b/foto",
-    ]);
+    expect(prices.container.querySelector(".max-w-3xl")).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Mostrar solo materiales sin foto" }),
-    ).toHaveAttribute("href", "/admin/materiales?sinfoto=1&estado=activos");
-  });
-
-  it("keeps the Sin foto filter in the photo links and offers to show all", async () => {
-    renderInRouter(
-      <MaterialsList
-        rows={[row("a", false)]}
-        filter="activos"
-        category=""
-        supplierId=""
-        categories={[]}
-        suppliers={[]}
-        withoutImage
+      prices.container.querySelector("form [data-columns]"),
+    ).not.toBeNull();
+    prices.unmount();
+    const imported = renderInRouter(
+      <MaterialImport
+        suppliers={suppliers}
+        values={{ supplierId: "", csv: "" }}
+        plan={null}
       />,
     );
+    expect(imported.container.querySelector(".max-w-3xl")).toBeNull();
     expect(
-      (
-        await screen.findByRole("link", { name: /foto de Material a/i })
-      ).getAttribute("href"),
-    ).toBe("/admin/materiales/a/foto?sinfoto=1");
-    expect(screen.getByRole("link", { name: "Mostrar todos" })).toBeVisible();
+      imported.container.querySelector("form [data-columns]"),
+    ).not.toBeNull();
   });
 });

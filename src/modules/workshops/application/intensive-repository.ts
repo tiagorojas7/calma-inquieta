@@ -39,6 +39,8 @@ export interface StoredIntensiveProject {
   readonly intensiveId: string;
   readonly position: number;
   readonly name: string;
+  /** What the project is about; none when the owner left it blank. */
+  readonly description: string | null;
   /** The cover picked from the media library, with its alt text. */
   readonly image: ImageUseDraft | null;
   readonly price: Money;
@@ -74,6 +76,20 @@ export interface NewProjectMaterial {
   readonly quantity: number;
 }
 
+/** A bill line stored together with its new project. */
+export interface NewBillLine {
+  readonly variantId: string;
+  readonly quantity: number;
+}
+
+/**
+ * A project written together with its workshop, and the bill of materials it
+ * starts with (none when omitted). Projects are stored in the order given.
+ */
+export type NewWorkshopProject = NewIntensiveProject & {
+  readonly materials?: readonly NewBillLine[];
+};
+
 /** The variant is already on that project's list. */
 export interface DuplicateVariant {
   readonly kind: "duplicate-variant";
@@ -94,12 +110,17 @@ export type DeleteDraftOutcome = "deleted" | "not-draft" | "not-found";
  */
 export interface IntensiveRepository {
   /**
-   * Inserts the intensivo and, in the same write, its first project at
-   * position 0 when one is given.
+   * Inserts the intensivo and, in the same atomic write, its projects at
+   * positions 0, 1, ... in the order given, each with its bill of materials
+   * (lines at positions 0, 1, ... in the order given). Either everything is
+   * stored or nothing: a project or a bill line that cannot be stored (a
+   * repeated project id or variant, a quantity outside 1..20) rejects and
+   * leaves no workshop, project or line behind. A single project is accepted
+   * as a one-item list.
    */
   insert(
     intensive: StoredIntensive,
-    firstProject?: NewIntensiveProject,
+    projects?: NewWorkshopProject | readonly NewWorkshopProject[],
   ): Promise<Result<void, SlugConflict>>;
   /** Replaces every field, the gallery included, in one atomic write. */
   update(

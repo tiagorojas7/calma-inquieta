@@ -1,6 +1,7 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
 import { isUuid } from "~/app/admin/enrollment-ids";
-import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { feedbackCode } from "~/app/admin/feedback-code";
+import { stayOnPage } from "~/app/admin/return-to";
 import { failureResponse } from "~/app/admin/failure-response";
 import {
   parseStatusEntries,
@@ -14,13 +15,20 @@ import {
   AttendanceSheet,
   type MakeUpFeedback,
 } from "~/app/ui/admin/attendance-sheet";
-import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { adminCopy } from "~/app/ui/admin/copy";
 import type { AdminActor } from "~/modules/admin-access";
 import { isIsoDate } from "~/modules/attendance";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/attendance-sheet";
 
-const copy = adminMicrocopy.attendance;
+const copy = adminCopy.clases.attendance;
+
+const sheetPath = (session: {
+  periodId: string;
+  turnoId: string;
+  date: string;
+}) =>
+  `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`;
 
 export function meta() {
   return [{ title: "Asistencia de la clase | Panel | Calma Inquieta" }];
@@ -107,10 +115,10 @@ async function scheduleMakeUp(
     });
   if (planned.ok)
     return redirect(
-      withFeedback(
-        `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
-        planned.value.targetFull ? "makeup-full" : "makeup-scheduled",
-      ),
+      stayOnPage(form, {
+        fallback: sheetPath(session),
+        code: planned.value.targetFull ? "makeup-full" : "makeup-scheduled",
+      }),
     );
   const error = planned.error;
   if (error.kind === "make-up-exists")
@@ -148,13 +156,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
   if (saved.ok)
     return redirect(
-      withFeedback(
-        `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
-        "saved",
-      ),
+      stayOnPage(form, { fallback: sheetPath(session), code: "saved" }),
     );
   if (saved.error.kind === "invalid")
-    return data({ error: copy.sheet.invalid }, { status: 422 });
+    return data({ error: copy.saveFailed }, { status: 422 });
   if (saved.error.kind === "make-up-booked")
     return data(
       { error: attendanceRulesCopy.errors.makeUpBooked },

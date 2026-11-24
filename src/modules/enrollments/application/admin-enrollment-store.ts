@@ -158,6 +158,10 @@ export interface ConsolidationLine {
   readonly variantLabel: string;
   readonly quantity: number;
   readonly unitPrice: Money;
+  /** For the owner only: who the units are for, never sent to the supplier. */
+  readonly studentName: string;
+  readonly workshopName: string;
+  readonly turnoLabel: string;
 }
 
 /** One paid order with materials: still to request, requested from the supplier, or already handed to the student. */
@@ -268,7 +272,9 @@ export interface AdminEnrollmentStore {
   /**
    * The `supplier` lines of `paid` and `materials_requested` orders whose
    * stored period is `period` (lines served from stock are never ordered),
-   * plus how many orders still await confirmation. Never carries student data.
+   * plus how many orders still await confirmation. Each line names its
+   * student, workshop and turno for the owner's screen; the supplier text
+   * never carries them.
    */
   consolidationLines(period: string): Promise<{
     readonly lines: readonly ConsolidationLine[];
@@ -291,6 +297,12 @@ export interface CreateSaleInput {
   /** The sum of the lines, in whole pesos; it is the sale total (a sale has no fee). */
   readonly materialsTotal: Money;
   readonly lines: readonly OrderLineDraft[];
+  /**
+   * The Córdoba day the owner took the payment. The sale is then stored
+   * already paid in full, its stock lines taken in the same transaction;
+   * absent, it is stored pending.
+   */
+  readonly paidAt?: Date;
   readonly actor: AdminEnrollmentActor;
   readonly now: Date;
 }

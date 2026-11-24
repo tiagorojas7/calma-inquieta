@@ -10,7 +10,8 @@ import {
   parseOpenMonthIntent,
   parsePeriodValue,
 } from "~/app/admin/workshop-period-form-data";
-import { monthName, workshopReadiness } from "~/app/admin/workshop-readiness";
+import { workshopReadiness } from "~/app/admin/workshop-readiness";
+import { openableMonth } from "~/app/admin/next-month";
 import { openNextMonth } from "~/app/admin/workshop-quick-publish";
 import { withFailure } from "~/app/admin/failure-code";
 import { cordobaMonthOf } from "~/modules/workshops";
@@ -53,22 +54,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
             }
           : null,
       });
-      // "Abrir <mes>" is offered for the next month nobody has opened yet,
-      // unless the latest month is still a draft that needs publishing first.
-      const { suggestedNext } = periods.value;
-      const latest = periods.value.periods.reduce<
-        (typeof periods.value.periods)[number] | null
-      >(
-        (best, item) => (best && best.period > item.period ? best : item),
-        null,
-      );
-      const openNext =
-        workshop.status === "published" &&
-        suggestedNext !== null &&
-        (latest === null || latest.status !== "draft") &&
-        !periods.value.periods.some((item) => item.period === suggestedNext)
-          ? { period: suggestedNext, label: monthName(suggestedNext) }
-          : null;
+      const openNext = openableMonth({
+        workshopStatus: workshop.status,
+        periods: periods.value.periods,
+        suggestedNext: periods.value.suggestedNext,
+      });
       const monthStep = readiness.next?.key === "month";
       return {
         id: workshop.id,

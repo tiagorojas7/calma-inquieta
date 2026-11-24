@@ -117,7 +117,7 @@ export function IntensiveOtherActions({
   const canDelete = status === "draft";
   return (
     <details
-      className="max-w-prose rounded-md border border-admin-line p-4"
+      className="rounded-md border border-admin-line p-4"
       open={reschedule ? true : undefined}
     >
       <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">

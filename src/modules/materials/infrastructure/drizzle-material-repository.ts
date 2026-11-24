@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import {
   material,
   materialVariant,
@@ -85,6 +85,7 @@ function toMaterial(
     supplier: toSupplier(row.supplier),
     available: row.material.available,
     active: row.material.active,
+    keptInStudio: row.material.keptInStudio,
     image:
       row.material.imageAssetId && row.material.imageAlt
         ? {
@@ -101,7 +102,7 @@ function toMaterial(
   };
 }
 
-function rootValues(value: Material) {
+function rootValues(value: Material, includeKeptInStudio = true) {
   return {
     name: value.name,
     nameKey: materialNameKey(value.name),
@@ -111,6 +112,9 @@ function rootValues(value: Material) {
     supplierId: value.supplier.id,
     available: value.available,
     active: value.active,
+    ...(includeKeptInStudio
+      ? { keptInStudio: value.keptInStudio === true }
+      : {}),
     imageAssetId: value.image?.assetId ?? null,
     imageAlt: value.image?.alt ?? null,
     updatedBy: value.audit.updatedBy,
@@ -255,6 +259,31 @@ export function createDrizzleMaterialRepository(
     }
   }
 
+  async function updateMaterial(
+    value: Material,
+    preserveKeptInStudio: boolean,
+  ): Promise<Material | null> {
+    return withSession(async (db) => {
+      try {
+        return await db.transaction(async (tx) => {
+          const [row] = await tx
+            .update(material)
+            .set(rootValues(value, !preserveKeptInStudio))
+            .where(eq(material.id, value.id))
+            .returning({ keptInStudio: material.keptInStudio });
+          if (!row) return null;
+          await tx
+            .delete(materialVariant)
+            .where(eq(materialVariant.materialId, value.id));
+          await tx.insert(materialVariant).values(variantValues(value));
+          return { ...value, keptInStudio: row.keptInStudio };
+        });
+      } catch (error) {
+        return mapMaterialConflict(error);
+      }
+    });
+  }
+
   return {
     insert: (value) =>
       withSession(async (db) => {
@@ -271,25 +300,66 @@ export function createDrizzleMaterialRepository(
         }
       }),
 
-    update: (value) =>
+    deleteIfUnused: (id) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          // These writers have no catalog FK. Hold their tables until the check
+          // and deletion commit, so simultaneous inserts cannot slip between them.
+          await tx.execute(sql`LOCK TABLE material_variant, variant_stock,
+            stock_adjustment, order_line, period_material_offer,
+            intensive_project_material, intensive_request_material
+            IN SHARE ROW EXCLUSIVE MODE`);
+          const root = await tx.execute<{ id: string }>(
+            sql`SELECT id FROM material WHERE id = ${id} FOR UPDATE`,
+          );
+          if (root.rows.length === 0) return "not-found" as const;
+          const referenced = await tx.execute<{ blocked: boolean }>(sql`
+            WITH own_variants AS (
+              SELECT id FROM material_variant WHERE material_id = ${id}
+            )
+            SELECT (
+              EXISTS (SELECT 1 FROM period_material_offer WHERE material_id = ${id})
+              OR EXISTS (SELECT 1 FROM order_line WHERE material_id = ${id}
+                OR variant_id IN (SELECT id FROM own_variants))
+              OR EXISTS (SELECT 1 FROM intensive_project_material
+                WHERE variant_id IN (SELECT id FROM own_variants))
+              OR EXISTS (SELECT 1 FROM intensive_request_material
+                WHERE variant_id IN (SELECT id FROM own_variants))
+              OR EXISTS (SELECT 1 FROM variant_stock
+                WHERE variant_id IN (SELECT id FROM own_variants) AND on_hand <> 0)
+              OR EXISTS (SELECT 1 FROM stock_adjustment
+                WHERE variant_id IN (SELECT id FROM own_variants))
+            ) AS blocked`);
+          if (referenced.rows[0]?.blocked) return "in-use" as const;
+          await tx.execute(sql`DELETE FROM variant_stock WHERE variant_id IN
+            (SELECT id FROM material_variant WHERE material_id = ${id})`);
+          await tx.delete(material).where(eq(material.id, id));
+          return "deleted" as const;
+        }),
+      ),
+
+    update: async (value) => (await updateMaterial(value, false)) !== null,
+
+    updatePreservingKeptInStudio: (value) => updateMaterial(value, true),
+
+    setKeptInStudio: (id, kept, audit) =>
       withSession(async (db) => {
-        try {
-          return await db.transaction(async (tx) => {
-            const rows = await tx
-              .update(material)
-              .set(rootValues(value))
-              .where(eq(material.id, value.id))
-              .returning({ id: material.id });
-            if (rows.length === 0) return false;
-            await tx
-              .delete(materialVariant)
-              .where(eq(materialVariant.materialId, value.id));
-            await tx.insert(materialVariant).values(variantValues(value));
-            return true;
-          });
-        } catch (error) {
-          return mapMaterialConflict(error);
-        }
+        const rows = await db
+          .update(material)
+          .set({
+            keptInStudio: kept,
+            updatedBy: audit.updatedBy,
+            updatedAt: audit.updatedAt,
+          })
+          .where(eq(material.id, id))
+          .returning({ id: material.id });
+        if (rows.length === 0) return null;
+        const values = await loadMaterials(
+          db,
+          eq(material.id, id),
+          variantUsage,
+        );
+        return values[0] ?? null;
       }),
 
     findById: (id) =>

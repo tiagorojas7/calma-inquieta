@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_CARD_GRID,
   ADMIN_CARD_TITLE,
   ADMIN_SHEET,
   adminFilterClasses,
@@ -15,10 +16,18 @@ const screens = readdirSync(folder)
   }));
 
 describe("panel surfaces", () => {
-  it("lays forms and panels on a raised sheet wider than a text column", () => {
+  it("lays forms and panels on a raised sheet as wide as the content", () => {
     expect(ADMIN_SHEET).toContain("bg-surface");
     expect(ADMIN_SHEET).toContain("shadow-card");
-    expect(ADMIN_SHEET).toContain("max-w-3xl");
+    expect(ADMIN_SHEET).toContain("w-full");
+    expect(ADMIN_SHEET).not.toMatch(/max-w-/);
+  });
+
+  it("flows list cards into more columns as the screen widens", () => {
+    expect(ADMIN_CARD_GRID).toContain("lg:grid-cols-2");
+    expect(ADMIN_CARD_GRID).toContain("2xl:grid-cols-3");
+    const cardList = screens.find(({ name }) => name === "admin-sections.tsx");
+    expect(cardList?.source).toContain("className={ADMIN_CARD_GRID}");
   });
 
   it("leaves no main form as a bare narrow column", () => {
@@ -71,6 +80,31 @@ describe("panel surfaces", () => {
     );
 
     expect(unpaired.map(({ name }) => name)).toEqual([]);
+  });
+
+  it("splits every long form into two balanced columns on a desktop", () => {
+    const forms = [
+      "enrollment-new-form.tsx",
+      "enrollment-sale-new-form.tsx",
+      "intensive-form.tsx",
+      "material-form.tsx",
+      "material-quick-form.tsx",
+      "supplier-form.tsx",
+      "teacher-form.tsx",
+      "turnos-screen.tsx",
+      "workshop-form.tsx",
+      "workshop-period-form.tsx",
+      "workshop-quick-form.tsx",
+    ];
+    const single = screens.filter(
+      ({ name, source }) =>
+        forms.includes(name) && !source.includes("<AdminColumns"),
+    );
+
+    expect(single.map(({ name }) => name)).toEqual([]);
+    expect(screens.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(forms),
+    );
   });
 
   it("sets the facts of a detail screen on panels", () => {

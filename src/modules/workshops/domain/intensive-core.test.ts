@@ -24,8 +24,6 @@ const draft = (
   eventDate: "2026-11-07",
   startsAt: "10:00",
   endsAt: "18:00",
-  price: "30000",
-  deposit: "10000",
   capacity: "8",
   minSeats: "4",
   policyText: "Cancelación hasta 48 horas antes.",
@@ -38,12 +36,6 @@ const issuesOf = (overrides: Partial<IntensiveCoreDraft>) => {
   return result.ok ? [] : result.error.issues;
 };
 
-/** Money hides its field from toEqual, so tests compare centavos. */
-const centavosOf = (result: ReturnType<typeof validateIntensiveCore>) =>
-  result.ok
-    ? [result.value.price.toCentavos(), result.value.deposit.toCentavos()]
-    : [];
-
 const pesos = (amount: number) => {
   const money = Money.fromCentavos(amount * 100);
   if (!money.ok) throw new Error("bad money");
@@ -51,18 +43,7 @@ const pesos = (amount: number) => {
 };
 
 describe("validateIntensiveCore", () => {
-  it("converts whole pesos to exact centavos", () => {
-    expect(centavosOf(validateIntensiveCore(draft()))).toEqual([
-      3_000_000, 1_000_000,
-    ]);
-    expect(
-      centavosOf(
-        validateIntensiveCore(draft({ price: " 30000 ", deposit: " 007 " })),
-      ),
-    ).toEqual([3_000_000, 700]);
-  });
-
-  it("accepts a valid draft and exposes money as Money", () => {
+  it("accepts a valid draft and has no price of its own", () => {
     const result = validateIntensiveCore(draft());
     expect(result).toEqual({
       ok: true,
@@ -76,8 +57,6 @@ describe("validateIntensiveCore", () => {
           startsAt: "10:00",
           endsAt: "18:00",
         },
-        price: pesos(30000),
-        deposit: pesos(10000),
         capacity: 8,
         minSeats: 4,
         policyText: "Cancelación hasta 48 horas antes.",
@@ -96,8 +75,6 @@ describe("validateIntensiveCore", () => {
         eventDate: " 2026-11-07 ",
         startsAt: " 10:00 ",
         endsAt: " 18:00 ",
-        price: " 30000 ",
-        deposit: " 10000 ",
         capacity: " 8 ",
         minSeats: " 4 ",
         policyText: "  Política  ",
@@ -115,8 +92,6 @@ describe("validateIntensiveCore", () => {
           startsAt: "10:00",
           endsAt: "18:00",
         },
-        price: pesos(30000),
-        deposit: pesos(10000),
         capacity: 8,
         minSeats: 4,
         policyText: "Política",
@@ -140,8 +115,6 @@ describe("validateIntensiveCore", () => {
         description: " ",
         eventDate: "",
         startsAt: "",
-        price: "",
-        deposit: "",
         capacity: "",
         minSeats: "",
       }),
@@ -152,8 +125,6 @@ describe("validateIntensiveCore", () => {
       { field: "description", code: "required" },
       { field: "eventDate", code: "required" },
       { field: "timeRange", code: "required" },
-      { field: "price", code: "required" },
-      { field: "deposit", code: "required" },
       { field: "capacity", code: "required" },
       { field: "minSeats", code: "required" },
     ]);
@@ -191,56 +162,6 @@ describe("validateIntensiveCore", () => {
       ]);
     },
   );
-
-  describe("price and deposit", () => {
-    it("accepts a deposit below and equal to the price", () => {
-      expect(validateIntensiveCore(draft({ deposit: "29999" })).ok).toBe(true);
-      expect(validateIntensiveCore(draft({ deposit: "30000" })).ok).toBe(true);
-    });
-
-    it("refuses a deposit above the price", () => {
-      expect(issuesOf({ deposit: "30001" })).toEqual([
-        { field: "deposit", code: "exceeds-price" },
-      ]);
-    });
-
-    it("refuses a price lowered below the deposit", () => {
-      expect(issuesOf({ price: "8000" })).toEqual([
-        { field: "deposit", code: "exceeds-price" },
-      ]);
-    });
-
-    it("refuses a zero deposit and a zero price", () => {
-      expect(issuesOf({ deposit: "0" })).toEqual([
-        { field: "deposit", code: "out-of-range" },
-      ]);
-      expect(issuesOf({ price: "0", deposit: "5" })).toEqual([
-        { field: "price", code: "out-of-range" },
-        { field: "deposit", code: "exceeds-price" },
-      ]);
-    });
-
-    it.each(["12.5", "-5", "1e3", "abc", "1 000"])(
-      "refuses the amount %j as an invalid format",
-      (price) => {
-        expect(issuesOf({ price, deposit: "5" })).toEqual([
-          { field: "price", code: "invalid-format" },
-        ]);
-      },
-    );
-
-    it("refuses an amount beyond the safe range", () => {
-      expect(issuesOf({ price: "99999999999999999999", deposit: "5" })).toEqual(
-        [{ field: "price", code: "out-of-range" }],
-      );
-    });
-
-    it("skips the comparison when the price itself is invalid", () => {
-      expect(issuesOf({ price: "", deposit: "999999" })).toEqual([
-        { field: "price", code: "required" },
-      ]);
-    });
-  });
 
   describe("capacity and minimum seats", () => {
     it("accepts equal values and the 1 to 500 bounds", () => {

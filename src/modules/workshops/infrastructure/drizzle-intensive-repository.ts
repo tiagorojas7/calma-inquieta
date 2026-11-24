@@ -12,6 +12,7 @@ import type {
   IntensiveRepository,
   NewIntensiveProject,
   NewProjectMaterial,
+  NewWorkshopProject,
   StoredIntensive,
   StoredIntensiveProject,
 } from "../application/intensive-repository";
@@ -125,6 +126,7 @@ function toStoredProject(row: ProjectRow): StoredIntensiveProject {
     intensiveId: row.intensiveId,
     position: row.position,
     name: row.name,
+    description: row.description,
     image:
       row.mediaAssetId === null || row.alt === null
         ? null
@@ -139,6 +141,7 @@ function toStoredProject(row: ProjectRow): StoredIntensiveProject {
 function projectValues(project: NewIntensiveProject) {
   return {
     name: project.name,
+    description: project.description,
     mediaAssetId: project.image?.assetId ?? null,
     alt: project.image?.alt ?? null,
     priceCentavos: project.price.toCentavos(),
@@ -146,6 +149,25 @@ function projectValues(project: NewIntensiveProject) {
     updatedBy: project.audit.updatedBy,
     updatedAt: project.audit.updatedAt,
   };
+}
+
+/**
+ * The lines of one new project's bill, positions 0, 1, ... in the order
+ * given. The table has no unique variant per project, so a repeated variant
+ * is refused here and rolls the whole write back.
+ */
+function billRows(
+  projectId: string,
+  lines: readonly { readonly variantId: string; readonly quantity: number }[],
+) {
+  if (new Set(lines.map((line) => line.variantId)).size !== lines.length)
+    throw new Error("variant repeated in a project bill");
+  return lines.map((line, position) => ({
+    projectId,
+    position,
+    variantId: line.variantId,
+    quantity: line.quantity,
+  }));
 }
 
 function galleryRows(value: StoredIntensive) {
@@ -213,8 +235,10 @@ export function createDrizzleIntensiveRepository(
   }
 
   return {
-    insert: (value, firstProject) =>
+    insert: (value, projects) =>
       withSession(async (db) => {
+        const given: readonly NewWorkshopProject[] =
+          projects === undefined ? [] : [projects].flat();
         try {
           await db.transaction(async (tx) => {
             await tx
@@ -223,13 +247,20 @@ export function createDrizzleIntensiveRepository(
             const images = galleryRows(value);
             if (images.length > 0)
               await tx.insert(intensiveImage).values(images);
-            if (firstProject)
-              await tx.insert(intensiveProject).values({
-                id: firstProject.id,
-                intensiveId: value.id,
-                position: 0,
-                ...projectValues(firstProject),
-              });
+            if (given.length > 0)
+              await tx.insert(intensiveProject).values(
+                given.map((project, position) => ({
+                  id: project.id,
+                  intensiveId: value.id,
+                  position,
+                  ...projectValues(project),
+                })),
+              );
+            const bill = given.flatMap((project) =>
+              billRows(project.id, project.materials ?? []),
+            );
+            if (bill.length > 0)
+              await tx.insert(intensiveProjectMaterial).values(bill);
           });
           return ok(undefined);
         } catch (error) {

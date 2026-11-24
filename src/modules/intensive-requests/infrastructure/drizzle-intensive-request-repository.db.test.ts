@@ -27,7 +27,8 @@ import { createDrizzleWorkshopSupplierLinesReader } from "./drizzle-workshop-sup
 
 const created: TestDatabase[] = [];
 afterAll(async () => {
-  await Promise.all(created.map((database) => database.drop()));
+  // Each drop opens an admin connection; avoid exceeding embedded PG's limit.
+  for (const database of created) await database.drop();
 });
 
 async function freshRepository() {

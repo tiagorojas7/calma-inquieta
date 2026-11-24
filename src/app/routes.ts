@@ -10,6 +10,8 @@ export default [
   route("admin", "routes/admin/layout.tsx", [
     index("routes/admin/home.tsx"),
     route("imagenes", "routes/admin/image-upload.ts"),
+    route("clases", "routes/admin/classes.tsx"),
+    route("ajustes", "routes/admin/settings.tsx"),
     route("talleres", "routes/admin/workshops.tsx"),
     route("talleres/nuevo", "routes/admin/workshop-new.tsx"),
     route("talleres/:id", "routes/admin/workshop-detail.tsx"),

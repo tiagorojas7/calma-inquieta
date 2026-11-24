@@ -94,6 +94,43 @@ const paidOrder: EnrollmentDetailProps["order"] = {
 };
 
 describe("EnrollmentDetail", () => {
+  it("fills a desktop: the summary beside the sales and the correction, no width cap", () => {
+    const { container } = render(<EnrollmentDetail {...base} />);
+
+    expect(container.querySelector(".max-w-3xl")).toBeNull();
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    const [start, end] = Array.from(columns?.children ?? []);
+    expect(start).toContainElement(
+      screen.getByRole("region", { name: "Resumen" }),
+    );
+    expect(end).toContainElement(
+      screen.getByRole("heading", { level: 2, name: "Ventas de materiales" }),
+    );
+    expect(end).toContainElement(
+      screen.getByText("Corregir inscripción").closest("details"),
+    );
+    expect(columns).not.toContainElement(
+      screen.getByText("Historial").closest("details"),
+    );
+  });
+
+  it("pairs a sale's summary with its details when it has no side sections", () => {
+    const { container } = render(
+      <EnrollmentDetail
+        {...base}
+        order={{ ...base.order, kind: "material_sale", correction: null }}
+      />,
+    );
+
+    const [, end] = Array.from(
+      container.querySelector("[data-columns]")?.children ?? [],
+    );
+    expect(end).toContainElement(
+      screen.getByText("Historial").closest("details"),
+    );
+  });
+
   it("shows the summary, the contact data and the collapsed history", async () => {
     const { container } = render(<EnrollmentDetail {...base} />);
 
@@ -126,6 +163,12 @@ describe("EnrollmentDetail", () => {
     expect(
       within(history as HTMLElement).getByText("public"),
     ).toBeInTheDocument();
+    expect(container.querySelector("[data-order-total]")).toHaveClass(
+      "text-2xl",
+      "font-bold",
+      "tabular-nums",
+      "text-admin-warning-fg",
+    );
     await expectNoAxeViolations(container);
   });
 
@@ -162,17 +205,20 @@ describe("EnrollmentDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("works in two columns: the job on the left, the facts on the right", () => {
+  it("opens with one card: who, workshop, month and turno, the amount and the action it needs", () => {
     render(<EnrollmentDetail {...base} />);
 
-    const summary = screen.getByRole("region", { name: "Resumen" });
-    const next = screen.getByRole("heading", { name: "Próximo paso" });
-
-    expect(summary.closest("[data-detail-grid]")).toHaveClass(
-      "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]",
-    );
-    expect(summary.closest("[data-detail-facts]")).toHaveClass("lg:order-2");
-    expect(next.closest("section")).toHaveClass("bg-surface", "shadow-card");
+    const card = within(screen.getByRole("region", { name: "Resumen" }));
+    expect(card.getByText("Ana Pérez")).toBeVisible();
+    expect(
+      card.getByText("Cerámica · noviembre 2026 · Lunes · 10:00 a 12:00 h"),
+    ).toBeVisible();
+    expect(card.getByText("$ 58.000")).toBeVisible();
+    expect(card.getByRole("button", { name: "Cobrar" })).toBeVisible();
+    // The facts that are not needed to act sit behind Ver más, closed.
+    expect(
+      screen.getByText("Ver más", { selector: "summary" }).closest("details"),
+    ).not.toHaveAttribute("open");
   });
 
   it("gives the total of the order its own weight", () => {
@@ -183,41 +229,16 @@ describe("EnrollmentDetail", () => {
     ).not.toBeNull();
   });
 
-  it("shows the progress and the one next step for each status", () => {
+  it("says the state in words for each status, with no steps to read", () => {
     const { rerender } = render(<EnrollmentDetail {...base} />);
-    const steps = () => screen.getByRole("list", { name: "Avance del pedido" });
+    const card = () => within(screen.getByRole("region", { name: "Resumen" }));
+    expect(card().getByText("Debe $ 58.000")).toBeVisible();
     expect(
-      within(steps())
-        .getByText(/Confirmar cobro/)
-        .closest("li"),
-    ).toHaveAttribute("aria-current", "step");
-    expect(
-      screen.getByText(/Siguiente paso: confirmar el cobro/),
-    ).toBeVisible();
+      screen.queryByRole("list", { name: "Avance del pedido" }),
+    ).toBeNull();
 
-    rerender(
-      <EnrollmentDetail
-        order={{
-          ...base.order,
-          status: "materials_requested",
-          statusLabel: "Solicitado al proveedor",
-          actions: {
-            confirm: false,
-            cancel: false,
-            materialsRequested: false,
-            materialsReceived: true,
-          },
-        }}
-      />,
-    );
-    expect(
-      within(steps())
-        .getByText(/Recibir materiales/)
-        .closest("li"),
-    ).toHaveAttribute("aria-current", "step");
-    expect(
-      screen.getByText(/Siguiente paso: marcar como recibido/),
-    ).toBeVisible();
+    rerender(<EnrollmentDetail order={paidOrder} />);
+    expect(card().getByText("Pagado")).toBeVisible();
 
     rerender(
       <EnrollmentDetail
@@ -235,10 +256,8 @@ describe("EnrollmentDetail", () => {
         }}
       />,
     );
-    expect(
-      screen.queryByRole("list", { name: "Avance del pedido" }),
-    ).toBeNull();
-    expect(screen.getByText(/Este pedido está cancelado/)).toBeVisible();
+    expect(card().getByText("Cancelada")).toBeVisible();
+    expect(screen.queryByText(/Siguiente paso/)).toBeNull();
   });
 
   it("shows the success banner for a feedback code", () => {
@@ -255,7 +274,7 @@ describe("EnrollmentDetail", () => {
       within(zone).getByRole("button", { name: "Cancelar pedido" }),
     ).toBeVisible();
     expect(
-      within(screen.getByRole("form", { name: "Confirmar cobro" })).queryByRole(
+      within(screen.getByRole("form", { name: "Cobrar" })).queryByRole(
         "button",
         { name: "Cancelar pedido" },
       ),
@@ -265,7 +284,7 @@ describe("EnrollmentDetail", () => {
   it("confirms with the order total prefilled and disables the submit while pending", () => {
     render(<EnrollmentDetail {...base} />);
 
-    const form = screen.getByRole("form", { name: "Confirmar cobro" });
+    const form = screen.getByRole("form", { name: "Cobrar" });
     expect(within(form).getByLabelText("Monto cobrado")).toHaveValue("58000");
     expect(within(form).getByLabelText("Monto cobrado")).toHaveAttribute(
       "inputmode",
@@ -279,7 +298,7 @@ describe("EnrollmentDetail", () => {
       "2026-10-31",
     );
     const submit = within(form).getByRole("button", {
-      name: "Confirmar cobro",
+      name: "Cobrar",
     });
     expect(submit).toBeEnabled();
     fireEvent.submit(form);
@@ -430,12 +449,19 @@ describe("EnrollmentDetail", () => {
         />,
       );
 
-      const refund = screen.getByRole("region", { name: "Devolución" });
-      expect(within(refund).getByText(amount)).toBeVisible();
-      expect(within(refund).getByText("31/10/2026")).toBeVisible();
-      expect(within(refund).getByText("Transferencia")).toBeVisible();
-      expect(within(refund).getByText("owner@x.test")).toBeVisible();
-      expect(screen.getByRole("region", { name: "Cobro" })).toBeVisible();
+      // Payment and refund are secondary facts: they sit behind Ver más.
+      const refund = screen.getByRole("region", {
+        name: "Devolución",
+        hidden: true,
+      });
+      expect(refund.closest("details")).not.toHaveAttribute("open");
+      expect(within(refund).getByText(amount)).toBeInTheDocument();
+      expect(within(refund).getByText("31/10/2026")).toBeInTheDocument();
+      expect(within(refund).getByText("Transferencia")).toBeInTheDocument();
+      expect(within(refund).getByText("owner@x.test")).toBeInTheDocument();
+      expect(
+        screen.getByRole("region", { name: "Cobro", hidden: true }),
+      ).toBeInTheDocument();
     },
   );
 
@@ -469,8 +495,8 @@ describe("EnrollmentDetail", () => {
       />,
     );
 
-    expect(screen.queryByRole("form", { name: "Confirmar cobro" })).toBeNull();
-    expect(screen.getByText("admin@x.test")).toBeVisible();
+    expect(screen.queryByRole("form", { name: "Cobrar" })).toBeNull();
+    expect(screen.getByText("admin@x.test")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Marcar como solicitado" }),
     ).toBeVisible();
@@ -649,9 +675,6 @@ describe("EnrollmentDetail: where the materials come from", () => {
     );
 
     expect(
-      screen.getByText(/Siguiente paso: marcar como entregado/),
-    ).toBeVisible();
-    expect(
       screen.getByRole("button", { name: "Marcar como recibido" }),
     ).toBeVisible();
     expect(
@@ -731,13 +754,32 @@ describe("EnrollmentDetail: material sales", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("shows what each sale holds inside the record's card", () => {
+    render(
+      <EnrollmentDetail
+        order={{
+          ...record,
+          sales: [
+            {
+              ...sales[0],
+              lines: [{ label: "Arcilla 1 kg", quantity: 2 }],
+            } as NonNullable<EnrollmentDetailProps["order"]["sales"]>[number],
+          ],
+        }}
+      />,
+    );
+
+    const section = screen.getByRole("region", {
+      name: "Ventas de materiales",
+    });
+    expect(within(section).getByText("Arcilla 1 kg × 2")).toBeVisible();
+  });
+
   it("says there are no sales yet, and offers none on a record that cannot take one", () => {
     const { rerender } = render(
       <EnrollmentDetail order={{ ...record, sales: [] }} />,
     );
-    expect(
-      screen.getByText(/Todavía no hay ventas de materiales/),
-    ).toBeVisible();
+    expect(screen.getByText("Todavía no hay ventas.")).toBeVisible();
 
     rerender(
       <EnrollmentDetail order={{ ...record, sales: [], newSaleHref: null }} />,
@@ -765,7 +807,7 @@ describe("EnrollmentDetail: material sales", () => {
     expect(
       screen.queryByRole("region", { name: "Ventas de materiales" }),
     ).toBeNull();
-    expect(screen.getByRole("form", { name: "Confirmar cobro" })).toBeVisible();
+    expect(screen.getByRole("form", { name: "Cobrar" })).toBeVisible();
     await expectNoAxeViolations(container);
   });
 

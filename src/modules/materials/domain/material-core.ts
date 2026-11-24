@@ -24,6 +24,11 @@ export interface MaterialDraft {
   readonly category: string;
   readonly supplierId: string;
   readonly available: boolean;
+  /**
+   * "Lo tenemos en el estudio". Absent leaves a saved material as it is, and a
+   * new one not kept.
+   */
+  readonly keptInStudio?: boolean;
   readonly image: { readonly assetId: string; readonly alt: string } | null;
   readonly variants: readonly {
     readonly id?: string;
@@ -56,6 +61,7 @@ export interface ValidMaterialDraft {
   readonly category: string;
   readonly supplierId: string;
   readonly available: boolean;
+  readonly keptInStudio?: boolean;
   readonly image: { readonly assetId: string; readonly alt: string } | null;
   readonly variants: readonly ValidMaterialVariantDraft[];
 }
@@ -177,6 +183,9 @@ export function validateMaterialDraft(
       category,
       supplierId,
       available: draft.available,
+      ...(draft.keptInStudio === undefined
+        ? {}
+        : { keptInStudio: draft.keptInStudio }),
       image,
       variants,
     },

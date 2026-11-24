@@ -84,6 +84,7 @@ describe("material detail screen", () => {
     expect(
       screen.getByText("No disponible", { selector: "span" }),
     ).toBeVisible();
+    fireEvent.click(screen.getByText("Más datos"));
     expect(screen.getByText("admin@example.com")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Volver a materiales" }),
@@ -140,13 +141,43 @@ describe("material detail screen", () => {
     );
 
     const chico = screen.getByRole("form", { name: "Ajustar stock de Chico" });
-    expect(chico.closest("li")).toHaveTextContent("Costo: $800");
+    expect(chico.closest("li")).toHaveTextContent(/Costo: \$\s800/);
+    expect(chico.closest("li")).toHaveTextContent(/\$\s2\.500/);
     expect(chico.closest("li")).toHaveTextContent("En stock: 3");
     const grande = screen.getByRole("form", {
       name: "Ajustar stock de Grande",
     });
     expect(grande.closest("li")).toHaveTextContent("Costo sin cargar");
     expect(grande.closest("li")).toHaveTextContent("En stock: 0");
+  });
+
+  it("puts a one-field stock arrival form on each compact variant row and keeps full editing behind one disclosure", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+
+    const chico = screen.getByRole("form", {
+      name: "Cargar unidades de Chico",
+    });
+    expect(chico).toHaveAttribute("method", "post");
+    expect(chico.querySelector('input[name="intent"]')).toHaveValue(
+      "adjust-stock",
+    );
+    expect(chico.querySelector('input[name="variantId"]')).toHaveValue("v1");
+    expect(chico.querySelector('input[name="reason"]')).toHaveValue("Llegaron");
+    expect(
+      within(chico).getByLabelText("Unidades que llegaron de Chico"),
+    ).toHaveAttribute("name", "delta");
+    expect(within(chico).getByRole("button", { name: "Cargar" })).toBeVisible();
+    expect(
+      screen.getByText("Editar datos").closest("details"),
+    ).not.toHaveAttribute("open");
   });
 
   it("offers a native stock adjustment form per variant with a signed delta and a required reason", () => {
@@ -159,6 +190,8 @@ describe("material detail screen", () => {
         stateError={undefined}
       />,
     );
+
+    fireEvent.click(screen.getAllByText("Otro ajuste")[0] as HTMLElement);
 
     const form = screen.getByRole("form", { name: "Ajustar stock de Chico" });
     expect(form).toHaveAttribute("method", "post");
@@ -212,6 +245,37 @@ describe("material detail screen", () => {
     expect(within(grande).getByLabelText(/Cantidad/)).toHaveValue("");
   });
 
+  it("keeps a rejected arrival beside its own variant instead of opening the advanced adjustment", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+        stockRejection={{
+          variantId: "v1",
+          delta: "0",
+          reason: "Llegaron",
+          errors: { delta: "Poné una cantidad mayor a cero." },
+        }}
+      />,
+    );
+
+    const arrival = screen.getByRole("form", {
+      name: "Cargar unidades de Chico",
+    });
+    expect(
+      within(arrival).getByLabelText("Unidades que llegaron de Chico"),
+    ).toHaveValue(0);
+    expect(
+      within(arrival).getByText("Poné una cantidad mayor a cero."),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText("Otro ajuste")[0]?.closest("details"),
+    ).not.toHaveAttribute("open");
+  });
+
   it("announces lifecycle feedback accessibly", () => {
     render(
       <MaterialDetail
@@ -228,18 +292,80 @@ describe("material detail screen", () => {
     );
   });
 
+  it("shows a refused archive or deletion right under the title, ahead of the variants", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        errors={{}}
+        formError={undefined}
+        values={detail}
+        stateError="No se puede borrar: tiene ventas, pedidos, ofertas o movimientos de stock. Podés archivarlo."
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    const title = screen.getByRole("heading", { level: 1 });
+    const variants = screen.getByRole("heading", { name: "Variantes" });
+    expect(
+      title.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(variants) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("uses a ConfirmedSubmit native document form to deactivate an active material", async () => {
     const Active = stub();
     render(<Active initialEntries={[`/admin/materiales/${ID}`]} />);
 
     const deactivate = await screen.findByRole("button", {
-      name: "Desactivar",
+      name: "Archivar",
     });
     const form = deactivate.closest("form");
     expect(form).toHaveAttribute("method", "post");
     expect(form?.querySelector("input[name=intent]")).toHaveValue("deactivate");
     fireEvent.click(deactivate);
     expect(await screen.findByRole("dialog")).toBeVisible();
+  });
+
+  it("separately confirms irreversible deletion without submitting the archive intent", async () => {
+    const Active = stub();
+    render(<Active initialEntries={[`/admin/materiales/${ID}`]} />);
+    const remove = await screen.findByRole("button", {
+      name: "Borrar definitivamente",
+    });
+    expect(remove.closest("form")).toHaveAttribute("method", "post");
+    expect(
+      remove.closest("form")?.querySelector('input[name="intent"]'),
+    ).toHaveValue("delete");
+    fireEvent.click(remove);
+    expect(
+      await screen.findByRole("dialog", {
+        name: "¿Borrar este material definitivamente?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "No se puede deshacer",
+    );
+  });
+
+  it("keeps removal actions before secondary editing details", () => {
+    render(
+      <MaterialDetail
+        {...detail}
+        values={detail}
+        errors={{}}
+        formError={undefined}
+        stateError={undefined}
+      />,
+    );
+    const section = screen.getByRole("region", { name: "Estado del material" });
+    const edit = screen.getByText("Editar datos").closest("details");
+    if (!edit) throw new Error("missing edit disclosure");
+    expect(
+      section.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("uses a ConfirmedSubmit native document form to reactivate an inactive material", async () => {

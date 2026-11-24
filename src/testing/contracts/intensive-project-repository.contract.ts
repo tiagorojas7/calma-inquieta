@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import type {
   IntensiveRepository,
-  NewIntensiveProject,
+  NewWorkshopProject,
   StoredIntensiveProject,
   StoredProjectMaterial,
 } from "~/modules/workshops/application/intensive-repository";
@@ -26,12 +26,13 @@ const pesos = (amount: number): Money => {
 };
 
 export function buildNewProject(
-  overrides: Partial<NewIntensiveProject> = {},
-): NewIntensiveProject {
+  overrides: Partial<NewWorkshopProject> = {},
+): NewWorkshopProject {
   return {
     id: PROJECT_1,
     intensiveId: ID_A,
     name: "Taza de torno",
+    description: null,
     image: null,
     price: pesos(30000),
     deposit: pesos(10000),
@@ -86,6 +87,7 @@ export function runIntensiveProjectContract(
       const { repo } = await create();
       const first = buildNewProject({
         name: "Ñandú & Árbol: ¡taza!",
+        description: "Una taza hecha en torno, con esmalte a elección.",
         image: { assetId: ASSET_1, alt: "Una taza" },
         price: pesos(123_456_789),
         deposit: pesos(100),
@@ -117,6 +119,146 @@ export function runIntensiveProjectContract(
       expect(conflict.ok).toBe(false);
       expect(await repo.listProjects(ID_B)).toEqual([]);
       expect(await repo.findProject(ID_B, PROJECT_2)).toBeNull();
+    });
+
+    describe("inserting a workshop with all its projects", () => {
+      const V1 = "e0000000-0000-4000-8000-000000000001";
+      const V2 = "e0000000-0000-4000-8000-000000000002";
+      const everything = () => [
+        buildNewProject({
+          id: PROJECT_1,
+          name: "Taza",
+          image: { assetId: ASSET_1, alt: "Una taza" },
+          materials: [
+            { variantId: V1, quantity: 2 },
+            { variantId: V2, quantity: 20 },
+          ],
+        }),
+        buildNewProject({ id: PROJECT_2, name: "Plato" }),
+        buildNewProject({
+          id: PROJECT_3,
+          name: "Cuenco",
+          description: "Un cuenco hondo.",
+          materials: [{ variantId: V1, quantity: 1 }],
+        }),
+      ];
+      const bill = async (repo: IntensiveRepository) =>
+        (await repo.listProjectMaterials(ID_A)).map((line) => [
+          line.projectId,
+          line.variantId,
+          line.quantity,
+          line.position,
+        ]);
+      const nothingStored = async (repo: IntensiveRepository) => {
+        expect(await repo.findById(ID_A)).toBeNull();
+        expect(await repo.listProjects(ID_A)).toEqual([]);
+        expect(await bill(repo)).toEqual([]);
+      };
+
+      it("stores every project in order, with its image and its bill, in the order given", async () => {
+        const { repo } = await create();
+
+        const inserted = await repo.insert(
+          buildStoredIntensive(),
+          everything(),
+        );
+
+        expect(inserted.ok).toBe(true);
+        const projects = await repo.listProjects(ID_A);
+        expect(projects.map((project) => project.name)).toEqual([
+          "Taza",
+          "Plato",
+          "Cuenco",
+        ]);
+        expect(projects.map((project) => project.position)).toEqual([0, 1, 2]);
+        expect(projects[0]?.image).toEqual({
+          assetId: ASSET_1,
+          alt: "Una taza",
+        });
+        expect(projects[2]?.description).toBe("Un cuenco hondo.");
+        expect(await bill(repo)).toEqual([
+          [PROJECT_1, V1, 2, 0],
+          [PROJECT_1, V2, 20, 1],
+          [PROJECT_3, V1, 1, 0],
+        ]);
+      });
+
+      it("stores nothing when a later project's bill has a quantity the database refuses", async () => {
+        const { repo } = await create();
+        const projects = everything();
+        projects[2] = buildNewProject({
+          id: PROJECT_3,
+          materials: [{ variantId: V1, quantity: 21 }],
+        });
+
+        await expect(
+          repo.insert(buildStoredIntensive(), projects),
+        ).rejects.toThrow();
+
+        await nothingStored(repo);
+      });
+
+      it("stores nothing when a later project cannot be stored", async () => {
+        const { repo } = await create();
+        const projects = everything();
+        projects[2] = buildNewProject({ id: PROJECT_1, name: "Repetido" });
+
+        await expect(
+          repo.insert(buildStoredIntensive(), projects),
+        ).rejects.toThrow();
+
+        await nothingStored(repo);
+      });
+
+      it("stores nothing when one bill repeats a variant", async () => {
+        const { repo } = await create();
+        const projects = [
+          buildNewProject({
+            materials: [
+              { variantId: V1, quantity: 1 },
+              { variantId: V1, quantity: 2 },
+            ],
+          }),
+        ];
+
+        await expect(
+          repo.insert(buildStoredIntensive(), projects),
+        ).rejects.toThrow();
+
+        await nothingStored(repo);
+      });
+
+      it("allows the same variant on different projects", async () => {
+        const { repo } = await create();
+
+        await repo.insert(buildStoredIntensive(), everything());
+
+        expect(
+          (await bill(repo)).filter((line) => line[1] === V1),
+        ).toHaveLength(2);
+      });
+
+      it("writes no project and no bill on a slug conflict", async () => {
+        const { repo } = await create();
+        await repo.insert(buildStoredIntensive());
+
+        const conflict = await repo.insert(
+          buildStoredIntensive({ id: ID_B }),
+          everything().map((project) => ({ ...project, intensiveId: ID_B })),
+        );
+
+        expect(conflict.ok).toBe(false);
+        expect(await repo.listProjects(ID_B)).toEqual([]);
+        expect(await repo.listProjectMaterials(ID_B)).toEqual([]);
+      });
+
+      it("still takes one project on its own", async () => {
+        const { repo } = await create();
+
+        await repo.insert(buildStoredIntensive(), buildNewProject());
+
+        expect(await repo.listProjects(ID_A)).toHaveLength(1);
+      });
     });
 
     it("appends projects in order, assigning increasing positions", async () => {
@@ -152,6 +294,20 @@ export function runIntensiveProjectContract(
       );
 
       expect(result).toEqual({ ok: false, error: { kind: "not-found" } });
+    });
+
+    it("changes and clears the description, and keeps the longest allowed one", async () => {
+      const { repo } = await withProjects(1);
+      const current = await repo.findProject(ID_A, PROJECT_1);
+      if (!current) throw new Error("missing project");
+
+      await repo.updateProject({ ...current, description: "d".repeat(600) });
+      expect((await repo.findProject(ID_A, PROJECT_1))?.description).toBe(
+        "d".repeat(600),
+      );
+
+      await repo.updateProject({ ...current, description: null });
+      expect((await repo.findProject(ID_A, PROJECT_1))?.description).toBeNull();
     });
 
     it("updates name, image, price, deposit and audit but not the position", async () => {

@@ -348,6 +348,9 @@ export function createRequestServices(
               ...(options?.paidAtIfFree === undefined
                 ? {}
                 : { paidAtIfFree: options.paidAtIfFree }),
+              ...(options?.paidAt === undefined
+                ? {}
+                : { paidAt: options.paidAt }),
             }),
         }),
         consolidation: createSupplierConsolidationService({

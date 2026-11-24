@@ -68,6 +68,7 @@ async function setup() {
     request: async (
       intensiveId: string,
       status: "confirmed" | "cancelled" | "pending_confirmation",
+      who: { fullName?: string; projectId?: string | null } = {},
     ) => {
       counter += 1;
       const n = String(counter).padStart(12, "0");
@@ -76,6 +77,7 @@ async function setup() {
         publicId: `public-id-${n}-abcdefgh`,
         email: `alumna${String(counter)}@example.com`,
         intensiveId,
+        ...who,
       };
       const stored =
         status === "pending_confirmation"
@@ -201,6 +203,8 @@ describe("createDrizzleWorkshopSupplierLinesReader", () => {
         variantLabel: "1 kg",
         quantity: 2,
         unitCostCentavos: 300_000,
+        studentName: "Ana Pérez",
+        projectName: null,
       },
       {
         workshopId: ID_A,
@@ -211,6 +215,8 @@ describe("createDrizzleWorkshopSupplierLinesReader", () => {
         variantLabel: "1 kg",
         quantity: 3,
         unitCostCentavos: null,
+        studentName: "Ana Pérez",
+        projectName: null,
       },
       {
         workshopId: ID_A,
@@ -221,7 +227,24 @@ describe("createDrizzleWorkshopSupplierLinesReader", () => {
         variantLabel: "1 kg",
         quantity: 1,
         unitCostCentavos: 80_000,
+        studentName: "Ana Pérez",
+        projectName: null,
       },
+    ]);
+  });
+
+  it("names the student and the project each line is for", async () => {
+    const { reader, request, allocate } = await setup();
+    const confirmed = await request(ID_A, "confirmed", {
+      fullName: "Carla Torres",
+      projectId: "c0000000-0000-4000-8000-0000000000c1",
+    });
+    await allocate(confirmed, 0, arcilla());
+
+    const lines = await reader.lines("2026-11");
+
+    expect(lines.map((line) => [line.studentName, line.projectName])).toEqual([
+      ["Carla Torres", "Taza de torno"],
     ]);
   });
 
@@ -246,6 +269,8 @@ describe("createDrizzleWorkshopSupplierLinesReader", () => {
         variantLabel: "1 kg",
         quantity: 4,
         unitCostCentavos: 300_000,
+        studentName: "Ana Pérez",
+        projectName: null,
       },
     ]);
   });

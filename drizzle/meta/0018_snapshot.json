@@ -2021,6 +2021,13 @@
                                                                           "notNull":  true,
                                                                           "default":  true
                                                                       },
+                                                           "kept_in_studio":  {
+                                                                                  "name":  "kept_in_studio",
+                                                                                  "type":  "boolean",
+                                                                                  "primaryKey":  false,
+                                                                                  "notNull":  true,
+                                                                                  "default":  false
+                                                                              },
                                                            "image_asset_id":  {
                                                                                   "name":  "image_asset_id",
                                                                                   "type":  "uuid",

@@ -3,8 +3,9 @@ import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { AdminButtonLink } from "./admin-button-link";
-import { AdminDangerZone, AdminSection } from "./admin-sections";
+import { AdminColumns, AdminDangerZone, AdminSection } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
+import { adminCopy } from "./copy";
 import {
   EnrollmentCorrectionForm,
   EnrollmentCorrectionHistory,
@@ -14,7 +15,9 @@ import {
 } from "./enrollment-correction";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
+import { MoreOptions } from "./more-options";
 import { OrderStatusBadge } from "./order-status-badge";
+import { StatusChip } from "./status-chip";
 
 export interface EnrollmentDetailOrder {
   readonly id: string;
@@ -74,6 +77,8 @@ export interface EnrollmentDetailOrder {
     readonly statusLabel: string;
     readonly total: string;
     readonly requestedOn: string;
+    /** What the sale holds, so the record shows it in place. */
+    readonly lines?: readonly { label: string; quantity: number }[];
   }[];
   /** Where a new sale of this record starts; null when it cannot take one. */
   readonly newSaleHref?: string | null;
@@ -169,47 +174,54 @@ function ConfirmPaymentForm({
   form: EnrollmentDetailProps["form"];
 }) {
   const [pending, setPending] = useState(false);
+  // A refused amount or day opens the options again, with what was typed.
+  const typed =
+    form?.errors?.amount !== undefined ||
+    form?.errors?.paidOn !== undefined ||
+    form?.values?.note !== undefined;
   return (
     <form
       method="post"
-      aria-label={copy.confirm.title}
-      className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
+      aria-label={adminCopy.alumnas.file.pay}
+      className="flex flex-col gap-3"
       onSubmit={() => {
         setPending(true);
       }}
     >
-      <Heading level={2} size="h3">
-        {copy.confirm.title}
-      </Heading>
       <input type="hidden" name="intent" value="confirm" />
-      <TextField
-        label={copy.confirm.amount}
-        hint={copy.confirm.amountHint(total)}
-        name="amount"
-        inputMode="numeric"
-        required
-        defaultValue={form?.values?.amount ?? totalPesos}
-        error={form?.errors?.amount}
-      />
-      <TextField
-        label={copy.confirm.paidOn}
-        name="paidOn"
-        type="date"
-        max={today}
-        required
-        defaultValue={form?.values?.paidOn ?? today}
-        error={form?.errors?.paidOn}
-      />
-      <TextField
-        label={copy.confirm.note}
-        name="note"
-        defaultValue={form?.values?.note ?? ""}
-      />
       <div>
         <Button type="submit" variant="success" disabled={pending}>
-          {copy.confirm.submit}
+          {adminCopy.alumnas.file.pay}
         </Button>
       </div>
+      <MoreOptions
+        label={adminCopy.alumnas.file.otherAmount}
+        defaultOpen={typed}
+      >
+        <TextField
+          label={copy.confirm.amount}
+          hint={copy.confirm.amountHint(total)}
+          name="amount"
+          inputMode="numeric"
+          required
+          defaultValue={form?.values?.amount ?? totalPesos}
+          error={form?.errors?.amount}
+        />
+        <TextField
+          label={copy.confirm.paidOn}
+          name="paidOn"
+          type="date"
+          max={today}
+          required
+          defaultValue={form?.values?.paidOn ?? today}
+          error={form?.errors?.paidOn}
+        />
+        <TextField
+          label={copy.confirm.note}
+          name="note"
+          defaultValue={form?.values?.note ?? ""}
+        />
+      </MoreOptions>
     </form>
   );
 }
@@ -314,46 +326,220 @@ function MaterialsStep({ intent, label }: { intent: string; label: string }) {
   );
 }
 
-type StepState = keyof typeof copy.stepState;
-
-/** The workflow steps and where the order is; a cancelled order has none. */
-function progress(order: EnrollmentDetailOrder) {
-  if (order.status === "cancelled") return null;
-  const steps = [
-    copy.steps.confirm,
-    ...(order.lines.length > 0 ? [copy.steps.request, copy.steps.receive] : []),
-  ];
-  const current =
-    order.status === "pending_confirmation"
-      ? 0
-      : order.status === "paid"
-        ? 1
-        : order.status === "materials_requested"
-          ? 2
-          : 3;
-  return steps.map((label, index): { label: string; state: StepState } => ({
-    label,
-    state: index < current ? "done" : index === current ? "current" : "todo",
-  }));
+/** The state of an order in plain words: paid, how much is owed, or cancelled. */
+function stateOf(order: EnrollmentDetailOrder): {
+  status: string;
+  label: string;
+} {
+  if (order.status === "cancelled")
+    return { status: "cancelled", label: adminCopy.alumnas.file.cancelled };
+  if (order.status === "pending_confirmation")
+    return {
+      status: "pending_confirmation",
+      label: adminCopy.alumnas.file.owes(order.total),
+    };
+  return { status: "paid", label: adminCopy.alumnas.file.paid };
 }
 
-function nextStepText(order: EnrollmentDetailOrder): string {
-  if (order.status === "paid" && order.lines.length === 0)
-    return copy.next.paidNoMaterials;
-  if (order.status === "paid" && order.actions.materialsReceived)
-    return copy.next.paidFromStock;
-  const known: Record<string, string> = copy.next;
-  return known[order.status] ?? copy.next.cancelled;
-}
-
-/** One order for the admin: summary, progress, the one next step, and the rest behind disclosures. */
+/**
+ * One order for the admin: a card with its state in words, the amount and the
+ * action it needs right there, its sales nested under it, and everything else
+ * (contact, totals, payment, history) behind "Ver más".
+ */
 export function EnrollmentDetail({
   order,
   form,
   feedback = null,
 }: EnrollmentDetailProps) {
-  const steps = progress(order);
   const isSale = order.kind === "material_sale";
+  const state = stateOf(order);
+  const hasAction =
+    order.actions.confirm ||
+    order.actions.materialsRequested ||
+    order.actions.materialsReceived;
+  const summaryCard = (
+    <section
+      aria-label={copy.summary}
+      className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Heading level={2} size="h3">
+            {order.studentName}
+          </Heading>
+          {order.parent ? (
+            <a href={order.parent.href} className={linkClasses}>
+              {copy.sale.parent(order.parent.number)}
+            </a>
+          ) : null}
+        </div>
+        <StatusChip status={state.status} label={state.label} />
+      </div>
+      <div
+        data-order-total
+        className={`flex items-baseline justify-between gap-4 border-t-2 border-clay-800 pt-3 text-2xl font-bold tabular-nums ${order.status === "pending_confirmation" ? "text-admin-warning-fg" : order.status === "cancelled" ? "text-admin-neutral-fg" : "text-admin-positive-fg"}`}
+      >
+        <span>{copy.totals.total}</span>
+        <span className="font-display text-3xl font-semibold tabular-nums">
+          {order.total}
+        </span>
+      </div>
+      <p className="text-lg text-ink-700">
+        {isSale
+          ? `${order.workshopName} · ${order.month}`
+          : `${order.workshopName} · ${order.month} · ${order.turno}`}
+      </p>
+      {order.lines.length > 0 ? (
+        <ul
+          aria-label={copy.lines}
+          className="flex flex-col gap-1 text-lg text-ink-700"
+        >
+          {order.lines.map((line) => (
+            <li key={line.label} className="flex flex-col">
+              <span>{`${line.label} × ${String(line.quantity)}`}</span>
+              {line.source === undefined ? null : (
+                <span className="text-sm text-ink-600">
+                  {copy.lineSource[line.source]}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {hasAction ? (
+        <div className="flex flex-col gap-3">
+          {order.actions.confirm ? (
+            <ConfirmPaymentForm
+              total={order.total}
+              totalPesos={order.totalPesos}
+              today={order.today}
+              form={form}
+            />
+          ) : null}
+          {order.actions.materialsRequested ? (
+            <MaterialsStep
+              intent="materials-requested"
+              label={copy.materials.requested}
+            />
+          ) : null}
+          {order.actions.materialsReceived ? (
+            <MaterialsStep
+              intent="materials-received"
+              label={copy.materials.received}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+  const sideSections = !isSale || order.correction !== null;
+  const more = (
+    <MoreOptions label={adminCopy.alumnas.file.more}>
+      <dl className="grid gap-3 md:grid-cols-2">
+        <Fact label={copy.name}>{order.studentName}</Fact>
+        <Fact label={copy.email}>{order.email}</Fact>
+        <Fact label={copy.phone}>{order.phone}</Fact>
+        <Fact label={copy.workshop}>{order.workshopName}</Fact>
+        <Fact label={copy.month}>{order.month}</Fact>
+        {isSale ? null : <Fact label={copy.turno}>{order.turno}</Fact>}
+        {isSale ? null : <Fact label={copy.totals.fee}>{order.fee}</Fact>}
+        <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
+      </dl>
+
+      <AdminSection title={copy.lines}>
+        {order.lines.length === 0 ? (
+          <p>{copy.noLines}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-admin-line">
+            {order.lines.map((line) => (
+              <li
+                key={line.label}
+                className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0"
+              >
+                <span className="font-semibold text-ink-900">{line.label}</span>
+                <span className="text-ink-700">{line.supplier}</span>
+                <span className="text-ink-700">
+                  {`${String(line.quantity)} × ${line.unitPrice}`}
+                </span>
+                <span className="text-ink-900">{line.lineTotal}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminSection>
+
+      {order.payment ? (
+        <AdminSection title={copy.payment.title}>
+          <dl className="grid gap-4 md:grid-cols-2">
+            <Fact label={copy.payment.paidOn}>{order.payment.paidOn}</Fact>
+            <Fact label={copy.payment.amount}>{order.payment.amount}</Fact>
+            <Fact label={copy.payment.confirmedBy}>
+              {order.payment.confirmedBy}
+            </Fact>
+            {order.payment.note ? (
+              <Fact label={copy.payment.note}>{order.payment.note}</Fact>
+            ) : null}
+          </dl>
+        </AdminSection>
+      ) : null}
+
+      {order.refund ? (
+        <AdminSection title={copy.refund.title}>
+          <dl className="grid gap-4 md:grid-cols-2">
+            <Fact label={copy.refund.amount}>{order.refund.amount}</Fact>
+            <Fact label={copy.refund.refundedOn}>
+              {order.refund.refundedOn}
+            </Fact>
+            <Fact label={copy.refund.refundedBy}>
+              {order.refund.refundedBy}
+            </Fact>
+            {order.refund.note ? (
+              <Fact label={copy.refund.note}>{order.refund.note}</Fact>
+            ) : null}
+          </dl>
+        </AdminSection>
+      ) : null}
+
+      <EnrollmentCorrectionHistory entries={order.corrections} />
+
+      <details className="rounded-md bg-surface p-4 shadow-card">
+        <summary className={summaryClasses}>{copy.moreData}</summary>
+        <dl className="mt-3 grid gap-4 md:grid-cols-2">
+          <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
+          {order.policyVersion === null ? null : (
+            <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
+          )}
+          <Fact label={copy.acceptance}>{order.acceptance}</Fact>
+          {isSale ? null : (
+            <Fact label={copy.order}>
+              {copy.seat(order.seat.confirmed, order.seat.capacity)}
+            </Fact>
+          )}
+        </dl>
+      </details>
+
+      <details className="rounded-md bg-surface p-4 shadow-card">
+        <summary className={summaryClasses}>{copy.audit.title}</summary>
+        <ol className="mt-3 flex flex-col gap-3">
+          {order.audit.map((entry, index) => (
+            <li
+              key={`${entry.at}-${String(index)}`}
+              className="flex flex-col gap-1 border-l-2 border-sand-200 pl-3"
+            >
+              <span className="text-sm text-ink-600">{entry.at}</span>
+              <span className="text-ink-900">
+                {`${entry.from ?? copy.audit.creation} → ${entry.to}`}
+              </span>
+              <span className="text-ink-700">{entry.actor}</span>
+              {entry.note ? (
+                <span className="text-ink-700">{entry.note}</span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </details>
+    </MoreOptions>
+  );
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -369,273 +555,102 @@ export function EnrollmentDetail({
           { label: order.number },
         ]}
         back={{ href: "/admin/inscripciones", label: copy.back }}
-        actions={
-          <OrderStatusBadge status={order.status} label={order.statusLabel} />
-        }
       />
       {feedback ? (
         <AdminFeedback tone="success" title={copy.feedback[feedback]} />
       ) : null}
       <FormError message={form?.formError} />
 
-      <div
-        data-detail-grid
-        className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-      >
-        <div data-detail-facts className="flex flex-col gap-6 lg:order-2">
-          <AdminSection title={copy.summary}>
-            <dl className="flex flex-col gap-3">
-              {order.parent ? (
-                <Fact label={copy.sale.parentLabel}>
-                  <a href={order.parent.href} className={linkClasses}>
-                    {copy.sale.parent(order.parent.number)}
-                  </a>
-                </Fact>
-              ) : null}
-              <Fact label={copy.name}>{order.studentName}</Fact>
-              <Fact label={copy.email}>{order.email}</Fact>
-              <Fact label={copy.phone}>{order.phone}</Fact>
-              <Fact label={copy.workshop}>{order.workshopName}</Fact>
-              <Fact label={copy.month}>{order.month}</Fact>
-              {isSale ? null : <Fact label={copy.turno}>{order.turno}</Fact>}
-            </dl>
-          </AdminSection>
-          <div className="flex flex-col gap-2 rounded-md bg-surface p-5 shadow-card lg:p-6">
-            <dl className="flex flex-col gap-2">
-              {isSale ? null : <Fact label={copy.totals.fee}>{order.fee}</Fact>}
-              <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
-              <div
-                data-order-total
-                className="mt-1 flex items-baseline justify-between gap-4 border-t-2 border-clay-800 pt-3"
-              >
-                <dt>{copy.totals.total}</dt>
-                <dd className="font-display text-3xl font-semibold tabular-nums">
-                  {order.total}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-col gap-6 lg:order-1">
-          {steps ? (
-            <ol
-              aria-label={copy.progressLabel}
-              className="grid gap-2 md:grid-cols-3"
-            >
-              {steps.map((step) => (
-                <li
-                  key={step.label}
-                  aria-current={step.state === "current" ? "step" : undefined}
-                  className={`rounded-md p-3 ${step.state === "current" ? "bg-sand-200 font-semibold text-ink-900" : "bg-surface text-ink-700 shadow-card"}`}
-                >
-                  {`${step.label} (${copy.stepState[step.state]})`}
-                </li>
-              ))}
-            </ol>
-          ) : null}
-
-          <AdminSection
-            title={copy.nextStepTitle}
-            description={nextStepText(order)}
-          >
-            {order.actions.confirm ? (
-              <ConfirmPaymentForm
-                total={order.total}
-                totalPesos={order.totalPesos}
-                today={order.today}
-                form={form}
-              />
-            ) : null}
-            {order.actions.materialsRequested ? (
-              <MaterialsStep
-                intent="materials-requested"
-                label={copy.materials.requested}
-              />
-            ) : null}
-            {order.actions.materialsReceived ? (
-              <MaterialsStep
-                intent="materials-received"
-                label={copy.materials.received}
-              />
-            ) : null}
-          </AdminSection>
-
-          {order.correction ? (
-            <details
-              open={hasCorrectionFeedback(form)}
-              className="rounded-md bg-surface p-4 shadow-card"
-            >
-              <summary className={summaryClasses}>
-                {copy.correction.title}
-              </summary>
-              <div className="mt-3">
-                <EnrollmentCorrectionForm
-                  correction={order.correction}
-                  today={order.today}
-                  form={form}
-                />
-              </div>
-            </details>
-          ) : null}
-
-          {isSale ? null : (
-            <AdminSection
-              title={copy.sale.sectionTitle}
-              description={copy.sale.sectionHint}
-              actions={
-                order.newSaleHref ? (
-                  <AdminButtonLink href={order.newSaleHref} variant="outline">
-                    {copy.sale.newSale}
-                  </AdminButtonLink>
-                ) : undefined
-              }
-            >
-              {(order.sales ?? []).length === 0 ? (
-                <p>{copy.sale.empty}</p>
-              ) : (
-                <ul className="flex flex-col divide-y divide-admin-line">
-                  {(order.sales ?? []).map((sale) => (
-                    <li
-                      key={sale.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div className="flex min-w-0 flex-col">
-                        <a href={sale.href} className={linkClasses}>
-                          {sale.number}
-                        </a>
-                        <span className="text-sm text-ink-700">
-                          {sale.requestedOn}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-ink-900">{sale.total}</span>
-                        <OrderStatusBadge
-                          status={sale.status}
-                          label={sale.statusLabel}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </AdminSection>
-          )}
-
-          <AdminSection title={copy.lines}>
-            {order.lines.length === 0 ? (
-              <p>{copy.noLines}</p>
-            ) : (
-              <ul
-                aria-label={copy.lines}
-                className="flex flex-col divide-y divide-admin-line"
-              >
-                {order.lines.map((line) => (
-                  <li
-                    key={line.label}
-                    className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0"
-                  >
-                    <span className="font-semibold text-ink-900">
-                      {line.label}
-                    </span>
-                    <span className="text-ink-700">{line.supplier}</span>
-                    {line.source === undefined ? null : (
-                      <span className="text-ink-700">
-                        {copy.lineSource[line.source]}
-                      </span>
-                    )}
-                    <span className="text-ink-700">
-                      {`${String(line.quantity)} × ${line.unitPrice}`}
-                    </span>
-                    <span className="text-ink-900">{line.lineTotal}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </AdminSection>
-
-          {order.payment ? (
-            <AdminSection title={copy.payment.title}>
-              <dl className="grid gap-4 md:grid-cols-2">
-                <Fact label={copy.payment.paidOn}>{order.payment.paidOn}</Fact>
-                <Fact label={copy.payment.amount}>{order.payment.amount}</Fact>
-                <Fact label={copy.payment.confirmedBy}>
-                  {order.payment.confirmedBy}
-                </Fact>
-                {order.payment.note ? (
-                  <Fact label={copy.payment.note}>{order.payment.note}</Fact>
-                ) : null}
-              </dl>
-            </AdminSection>
-          ) : null}
-
-          {order.refund ? (
-            <AdminSection title={copy.refund.title}>
-              <dl className="grid gap-4 md:grid-cols-2">
-                <Fact label={copy.refund.amount}>{order.refund.amount}</Fact>
-                <Fact label={copy.refund.refundedOn}>
-                  {order.refund.refundedOn}
-                </Fact>
-                <Fact label={copy.refund.refundedBy}>
-                  {order.refund.refundedBy}
-                </Fact>
-                {order.refund.note ? (
-                  <Fact label={copy.refund.note}>{order.refund.note}</Fact>
-                ) : null}
-              </dl>
-            </AdminSection>
-          ) : null}
-
-          <EnrollmentCorrectionHistory entries={order.corrections} />
-
-          <details className="rounded-md bg-surface p-4 shadow-card">
-            <summary className={summaryClasses}>{copy.moreData}</summary>
-            <dl className="mt-3 grid gap-4 md:grid-cols-2">
-              <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
-              {order.policyVersion === null ? null : (
-                <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
-              )}
-              <Fact label={copy.acceptance}>{order.acceptance}</Fact>
+      <AdminColumns
+        start={summaryCard}
+        end={
+          sideSections ? (
+            <>
               {isSale ? null : (
-                <Fact label={copy.order}>
-                  {copy.seat(order.seat.confirmed, order.seat.capacity)}
-                </Fact>
-              )}
-            </dl>
-          </details>
-
-          <details className="rounded-md bg-surface p-4 shadow-card">
-            <summary className={summaryClasses}>{copy.audit.title}</summary>
-            <ol className="mt-3 flex flex-col gap-3">
-              {order.audit.map((entry, index) => (
-                <li
-                  key={`${entry.at}-${String(index)}`}
-                  className="flex flex-col gap-1 border-l-2 border-sand-200 pl-3"
+                <AdminSection
+                  title={copy.sale.sectionTitle}
+                  actions={
+                    order.newSaleHref ? (
+                      <AdminButtonLink
+                        href={order.newSaleHref}
+                        variant="outline"
+                      >
+                        {copy.sale.newSale}
+                      </AdminButtonLink>
+                    ) : undefined
+                  }
                 >
-                  <span className="text-sm text-ink-600">{entry.at}</span>
-                  <span className="text-ink-900">
-                    {`${entry.from ?? copy.audit.creation} → ${entry.to}`}
-                  </span>
-                  <span className="text-ink-700">{entry.actor}</span>
-                  {entry.note ? (
-                    <span className="text-ink-700">{entry.note}</span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </details>
+                  {(order.sales ?? []).length === 0 ? (
+                    <p>{adminCopy.alumnas.file.noSales}</p>
+                  ) : (
+                    <ul className="flex flex-col gap-3">
+                      {(order.sales ?? []).map((sale) => (
+                        <li
+                          key={sale.id}
+                          className="flex flex-col gap-2 rounded-md bg-sand-100 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <a href={sale.href} className={linkClasses}>
+                              {sale.number}
+                            </a>
+                            <OrderStatusBadge
+                              status={sale.status}
+                              label={sale.statusLabel}
+                            />
+                          </div>
+                          <span className="text-lg text-ink-900">
+                            {sale.total}
+                          </span>
+                          {(sale.lines ?? []).length > 0 ? (
+                            <ul className="text-lg text-ink-700">
+                              {(sale.lines ?? []).map((line) => (
+                                <li key={line.label}>
+                                  {`${line.label} × ${String(line.quantity)}`}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </AdminSection>
+              )}
+              {order.correction ? (
+                <details
+                  open={hasCorrectionFeedback(form)}
+                  className="rounded-md bg-surface p-4 shadow-card"
+                >
+                  <summary className={summaryClasses}>
+                    {copy.correction.title}
+                  </summary>
+                  <div className="mt-3">
+                    <EnrollmentCorrectionForm
+                      correction={order.correction}
+                      today={order.today}
+                      form={form}
+                    />
+                  </div>
+                </details>
+              ) : null}
+            </>
+          ) : (
+            more
+          )
+        }
+      />
+      {sideSections ? more : null}
 
-          {order.actions.cancel ? (
-            <AdminDangerZone title={copy.dangerTitle}>
-              <CancelOrderForm
-                form={form}
-                refund={order.cancelRefund}
-                today={order.today}
-                isSale={isSale}
-              />
-            </AdminDangerZone>
-          ) : null}
-        </div>
-      </div>
+      {order.actions.cancel ? (
+        <AdminDangerZone title={copy.dangerTitle}>
+          <CancelOrderForm
+            form={form}
+            refund={order.cancelRefund}
+            today={order.today}
+            isSale={isSale}
+          />
+        </AdminDangerZone>
+      ) : null}
     </section>
   );
 }

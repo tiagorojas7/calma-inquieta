@@ -31,15 +31,13 @@ import {
   projectDeleteMessage,
   rejectedProject,
 } from "~/app/admin/intensive-project-form-data";
-import {
-  formatPercentage,
-  formatWholePesos,
-} from "~/app/admin/workshop-form-data";
+import { formatPercentage } from "~/app/admin/workshop-form-data";
 import type { FieldIssue } from "~/modules/_shared";
 import type { AdminActor } from "~/modules/admin-access";
 import type { IntensivesService, IntensiveWorkshop } from "~/modules/workshops";
 import type { AppServices } from "~/composition/request-services";
 import { Heading } from "~/app/ui/atoms/heading";
+import { AdminColumns } from "~/app/ui/admin/admin-sections";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
@@ -108,8 +106,6 @@ function formValues(intensive: IntensiveWorkshop) {
     eventDate: intensive.eventDate,
     startsAt: intensive.startsAt,
     endsAt: intensive.endsAt,
-    price: formatWholePesos(intensive.price),
-    deposit: formatWholePesos(intensive.deposit),
     capacity: String(intensive.capacity),
     minSeats: String(intensive.minSeats),
     policyText: intensive.policyText,
@@ -462,29 +458,35 @@ export default function AdminIntensiveDetail() {
           error={projectError}
         />
       </div>
-      <IntensiveOtherActions
-        status={intensive.status}
-        schedule={intensive.values}
-        reschedule={reschedule}
+      <AdminColumns
+        start={
+          <IntensiveOtherActions
+            status={intensive.status}
+            schedule={intensive.values}
+            reschedule={reschedule}
+          />
+        }
+        end={
+          <section
+            aria-labelledby="intensive-audit-title"
+            className="rounded-md bg-sand-100 p-4"
+          >
+            <Heading level={2} id="intensive-audit-title">
+              {copy.audit.title}
+            </Heading>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <dt className="font-semibold">{copy.audit.by}</dt>
+                <dd>{intensive.audit.updatedBy}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">{copy.audit.at}</dt>
+                <dd>{intensive.audit.updatedAt}</dd>
+              </div>
+            </dl>
+          </section>
+        }
       />
-      <section
-        aria-labelledby="intensive-audit-title"
-        className="rounded-md bg-sand-100 p-4"
-      >
-        <Heading level={2} id="intensive-audit-title">
-          {copy.audit.title}
-        </Heading>
-        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
-          <div>
-            <dt className="font-semibold">{copy.audit.by}</dt>
-            <dd>{intensive.audit.updatedBy}</dd>
-          </div>
-          <div>
-            <dt className="font-semibold">{copy.audit.at}</dt>
-            <dd>{intensive.audit.updatedAt}</dd>
-          </div>
-        </dl>
-      </section>
     </section>
   );
 }

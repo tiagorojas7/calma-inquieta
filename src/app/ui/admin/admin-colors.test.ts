@@ -6,7 +6,11 @@ const adminCss = readFileSync(
   new URL("../styles/admin.css", import.meta.url),
   "utf-8",
 );
-const tokens = parseColorTokens(adminCss);
+const brandCss = readFileSync(
+  new URL("../styles/tokens.css", import.meta.url),
+  "utf-8",
+);
+const tokens = parseColorTokens(`${brandCss}\n${adminCss}`);
 const get = (name: string) => {
   const value = tokens.get(name);
   if (!value) throw new Error(`missing token ${name}`);
@@ -25,12 +29,44 @@ describe("admin status palette", () => {
 
   it("keeps body and title text readable on the page and on cards", () => {
     for (const fg of ["ink-900", "ink-700"]) {
-      const color = fg === "ink-900" ? "#1f1b18" : "#5e5b57";
-      expect(contrastRatio(color, get("admin-page"))).toBeGreaterThanOrEqual(
+      expect(contrastRatio(get(fg), get("admin-page"))).toBeGreaterThanOrEqual(
         4.5,
       );
     }
   });
+
+  it.each([
+    ["admin-warning-fg", "admin-warning-bg"],
+    ["admin-positive-fg", "admin-positive-bg"],
+    ["admin-neutral-fg", "admin-neutral-bg"],
+    ["admin-brand-fg", "admin-brand-bg"],
+  ])("keeps semantic %s on %s at WCAG AA", (fg, bg) => {
+    expect(contrastRatio(get(fg), get(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps muted body text and card edges at their actual WCAG thresholds", () => {
+    expect(
+      contrastRatio(get("ink-700"), get("admin-page")),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(get("admin-line"), get("admin-page")),
+    ).toBeGreaterThanOrEqual(3);
+    expect(
+      contrastRatio(get("admin-line"), get("surface")),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(["admin-warning-fg", "admin-positive-fg", "admin-neutral-fg"])(
+    "keeps %s summaries readable on cards and on the page",
+    (fg) => {
+      expect(contrastRatio(get(fg), get("surface"))).toBeGreaterThanOrEqual(
+        4.5,
+      );
+      expect(contrastRatio(get(fg), get("admin-page"))).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    },
+  );
 
   it("sits on a warm page, like the public site", () => {
     const page = get("admin-page");
@@ -135,7 +171,7 @@ describe("admin area palette", () => {
       expect(contrastRatio(fg, "#ffffff")).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(fg, get("admin-page"))).toBeGreaterThanOrEqual(4.5);
       expect(
-        contrastRatio("#1f1b18", get(`area-${area}-bg`)),
+        contrastRatio(get("ink-900"), get(`area-${area}-bg`)),
       ).toBeGreaterThanOrEqual(4.5);
     },
   );

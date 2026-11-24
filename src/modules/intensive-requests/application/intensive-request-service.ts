@@ -45,6 +45,7 @@ import type {
   IllegalTransition,
   IntensiveFull,
   IntensiveRequestRepository,
+  OwedPayment,
   StoredIntensiveRequest,
 } from "./intensive-request-repository";
 
@@ -100,6 +101,12 @@ export interface AdminIntensiveOverview {
   readonly confirmedSeats: number;
   /** Oldest first. */
   readonly requests: readonly StoredIntensiveRequest[];
+}
+
+/** A payment a live request still owes, with the name of its workshop. */
+export interface SeatDebt extends OwedPayment {
+  /** Null when the workshop row is gone. */
+  readonly workshopName: string | null;
 }
 
 export interface ConfirmDepositInput {
@@ -180,6 +187,15 @@ export interface IntensiveRequestUseCases {
     actor: MaybeActor,
     intensiveId: string,
   ): Promise<Result<{ readonly marked: number }, AdminFailure>>;
+  /**
+   * What the live requests still owe, by student email, oldest first: the
+   * deposit of a pending request and the balance of a confirmed one. Nothing
+   * else changes.
+   */
+  owedPayments(
+    actor: MaybeActor,
+    email?: string,
+  ): Promise<Result<readonly SeatDebt[], AdminFailure>>;
   confirm(
     actor: MaybeActor,
     input: ConfirmDepositInput,
@@ -421,6 +437,31 @@ export function createIntensiveRequestService(
       return marked.ok ? ok({ marked: marked.value }) : marked;
     },
 
+    async owedPayments(actor, email) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const read = await unavailableOnReject(
+        repository.listOwed(email?.trim().toLowerCase()),
+      );
+      if (!read.ok) return read;
+      const names = await unavailableOnReject(
+        Promise.all(
+          [...new Set(read.value.map((payment) => payment.intensiveId))].map(
+            async (id) =>
+              [id, (await offers.findById(id))?.name ?? null] as const,
+          ),
+        ),
+      );
+      if (!names.ok) return names;
+      const byId = new Map(names.value);
+      return ok(
+        read.value.map((payment) => ({
+          ...payment,
+          workshopName: byId.get(payment.intensiveId) ?? null,
+        })),
+      );
+    },
+
     async confirm(actor, input) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -547,6 +588,7 @@ export function createUnavailableIntensiveRequestService(): IntensiveRequestUseC
     getRequestByPublicId: fail,
     overview: failAdmin,
     markSeen: failAdmin,
+    owedPayments: failAdmin,
     confirm: failAdmin,
     recordBalance: failAdmin,
     cancel: failAdmin,

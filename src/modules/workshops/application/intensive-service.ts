@@ -5,6 +5,7 @@ import {
   type Clock,
   type FieldIssue,
   type Invalid,
+  type Money,
   type NotFound,
   type Result,
   type RulesUnmet,
@@ -31,7 +32,8 @@ import {
   type IntensiveSchedule,
   type PercentageSubmission,
 } from "../domain/intensive-core";
-import { defaultProjectName } from "../domain/intensive-project-core";
+import type { IntensiveProjectField } from "../domain/intensive-project-core";
+import { validateProjectMaterial } from "../domain/intensive-project-material-core";
 import {
   parsePercentage,
   slugify,
@@ -41,12 +43,19 @@ import {
   type IntensiveWorkshopDraft,
   type IntensiveWorkshopField,
   type IntensivesService,
+  type NewProjectDraft,
+  type NewProjectField,
   type Percentage,
 } from "./contracts";
 import { createIntensiveProjectMaterialsUseCases } from "./intensive-project-materials-use-cases";
-import { createIntensiveProjectUseCases } from "./intensive-project-use-cases";
+import {
+  createIntensiveProjectUseCases,
+  createProjectDraftResolver,
+} from "./intensive-project-use-cases";
 import type {
   IntensiveRepository,
+  NewBillLine,
+  NewWorkshopProject,
   StoredIntensive,
 } from "./intensive-repository";
 
@@ -78,6 +87,13 @@ const LIVE: readonly IntensiveStatus[] = [
 ];
 const VISIBLE: readonly IntensiveStatus[] = ["published", "paused"];
 const notFound: NotFound = { kind: "not-found" };
+const PROJECT_FIELDS = {
+  name: "Name",
+  price: "Price",
+  deposit: "Deposit",
+  description: "Description",
+  image: "Image",
+} as const satisfies Record<IntensiveProjectField, string>;
 const duplicateSlug: FieldIssue<"slug"> = { field: "slug", code: "duplicate" };
 
 function submissionOf(text: string): PercentageSubmission {
@@ -89,6 +105,11 @@ function submissionOf(text: string): PercentageSubmission {
     ? { kind: "blank" }
     : { kind: "invalid", code: parsed.error };
 }
+
+type ResolvedProject = Extract<
+  Awaited<ReturnType<ReturnType<typeof createProjectDraftResolver>>>,
+  { ok: true }
+>["value"];
 
 interface ResolvedFields {
   readonly core: IntensiveCore;
@@ -113,6 +134,7 @@ export function createIntensivesService(
 ): IntensiveUseCases {
   const { repository, teachers, media, clock } = deps;
   const newId = deps.newId ?? (() => crypto.randomUUID());
+  const resolveProjectDraft = createProjectDraftResolver(media);
   const stamp = (actor: AdminActor) => ({
     updatedBy: actor.email,
     updatedAt: clock.now(),
@@ -268,10 +290,16 @@ export function createIntensivesService(
     });
   }
 
+  /**
+   * The workshop is not a project and has no price of its own; the stored
+   * price and deposit are an internal fallback (old requests, publish rules),
+   * copied from the first project on creation and never touched by an edit.
+   */
   const merge = (
     base: { id: string; status: IntensiveStatus },
     fields: ResolvedFields,
     actor: AdminActor,
+    money: { readonly price: Money; readonly deposit: Money },
   ): StoredIntensive => ({
     id: base.id,
     status: base.status,
@@ -284,8 +312,8 @@ export function createIntensivesService(
     eventDate: fields.core.schedule.eventDate,
     startsAt: fields.core.schedule.startsAt,
     endsAt: fields.core.schedule.endsAt,
-    price: fields.core.price,
-    deposit: fields.core.deposit,
+    price: money.price,
+    deposit: money.deposit,
     capacity: fields.core.capacity,
     minSeats: fields.core.minSeats,
     policyText: fields.core.policyText,
@@ -298,6 +326,77 @@ export function createIntensivesService(
     kind: "invalid",
     issues: [duplicateSlug],
   } as const);
+
+  /** The bill of one new project, each refused line named by its block and its own index. */
+  function resolveBill(
+    block: number,
+    lines: NewProjectDraft["materials"],
+  ): Result<readonly NewBillLine[], readonly FieldIssue<NewProjectField>[]> {
+    const issues: FieldIssue<NewProjectField>[] = [];
+    const bill: NewBillLine[] = [];
+    const listed = new Set<string>();
+    lines.forEach((line, index) => {
+      const checked = validateProjectMaterial(line);
+      if (!checked.ok) {
+        issues.push(
+          ...checked.error.issues.map((issue) => ({
+            field:
+              issue.field === "variantId"
+                ? (`project${String(block)}MaterialVariant${String(index)}` as const)
+                : (`project${String(block)}MaterialQuantity${String(index)}` as const),
+            code: issue.code,
+          })),
+        );
+        return;
+      }
+      const variant = checked.value.variantId.toLowerCase();
+      if (listed.has(variant))
+        issues.push({
+          field: `project${String(block)}MaterialVariant${String(index)}`,
+          code: "duplicate",
+        });
+      else bill.push(checked.value);
+      listed.add(variant);
+    });
+    return issues.length > 0 ? err(issues) : ok(bill);
+  }
+
+  /**
+   * Every project block of a new workshop: the editor's own rules for its
+   * fields and image, plus its bill. Each issue names its block, and every
+   * block is checked so the owner sees all the problems at once.
+   */
+  async function resolveProjects(
+    drafts: readonly NewProjectDraft[],
+  ): Promise<
+    Result<
+      readonly (ResolvedProject & { readonly bill: readonly NewBillLine[] })[],
+      readonly FieldIssue<NewProjectField>[]
+    >
+  > {
+    if (drafts.length === 0)
+      return err([{ field: "project0Name", code: "required" }]);
+    const issues: FieldIssue<NewProjectField>[] = [];
+    const resolved: (ResolvedProject & {
+      readonly bill: readonly NewBillLine[];
+    })[] = [];
+    for (const [block, draft] of drafts.entries()) {
+      const fields = await resolveProjectDraft(draft);
+      if (!fields.ok)
+        issues.push(
+          ...fields.error.issues.map((issue) => ({
+            field:
+              `project${String(block)}${PROJECT_FIELDS[issue.field]}` as const,
+            code: issue.code,
+          })),
+        );
+      const bill = resolveBill(block, draft.materials);
+      if (!bill.ok) issues.push(...bill.error);
+      if (fields.ok && bill.ok)
+        resolved.push({ ...fields.value, bill: bill.value });
+    }
+    return issues.length > 0 ? err(issues) : ok(resolved);
+  }
 
   async function load(
     actor: MaybeActor,
@@ -416,23 +515,39 @@ export function createIntensivesService(
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       const fields = await resolveFields(draft, null);
-      if (!fields.ok) return fields;
+      const projects = await resolveProjects(draft.projects);
+      const [first] = projects.ok ? projects.value : [];
+      if (!fields.ok || !projects.ok || !first)
+        return err({
+          kind: "invalid",
+          issues: [
+            ...(fields.ok ? [] : fields.error.issues),
+            ...(projects.ok ? [] : projects.error),
+          ],
+        });
       const stored = merge(
         { id: newId(), status: "draft" },
         fields.value,
         authorized.value,
+        first,
       );
-      // A new workshop starts with one project made from its own price and
-      // deposit, so it can be published without further steps.
-      const inserted = await repository.insert(stored, {
-        id: newId(),
-        intensiveId: stored.id,
-        name: defaultProjectName(stored.name),
-        image: null,
-        price: stored.price,
-        deposit: stored.deposit,
-        audit: stored.audit,
-      });
+      // A new workshop is written with every project the owner typed, their
+      // images and bills, in one atomic write, so it can be published without
+      // further steps; the projects are projects, the workshop is not.
+      const inserted = await repository.insert(
+        stored,
+        projects.value.map((project): NewWorkshopProject => ({
+          id: newId(),
+          intensiveId: stored.id,
+          name: project.name,
+          description: project.description,
+          image: project.image,
+          price: project.price,
+          deposit: project.deposit,
+          audit: stored.audit,
+          materials: project.bill,
+        })),
+      );
       return inserted.ok ? ok(await readModel(stored)) : duplicateSlugResult;
     },
     async update(actor, id, draft) {
@@ -441,7 +556,7 @@ export function createIntensivesService(
       const { current, actor: admin } = loaded.value;
       const fields = await resolveFields(draft, current);
       if (!fields.ok) return fields;
-      const next = merge(current, fields.value, admin);
+      const next = merge(current, fields.value, admin, current);
       // A live intensivo must keep meeting the publish rules after the edit.
       if (current.status === "published" || current.status === "paused") {
         const unmet = await unmetRules(next, "edit", current);

@@ -39,6 +39,7 @@ describe("parseMaterialDraft", () => {
       category: " Pinturas ",
       supplierId: "s1",
       available: true,
+      keptInStudio: false,
       image: { assetId: "image-1", alt: "Pote azul" },
       variants: [
         {
@@ -51,6 +52,16 @@ describe("parseMaterialDraft", () => {
         { label: "Grande", price: "2500", swatch: "#abcdef", available: true },
       ],
     });
+  });
+
+  it("reads the studio box: checked means we keep it, unchecked means it is ordered", () => {
+    expect(
+      parseMaterialDraft(formOf({ name: "Hilo", keptInStudio: "on" }))
+        .keptInStudio,
+    ).toBe(true);
+    expect(parseMaterialDraft(formOf({ name: "Hilo" })).keptInStudio).toBe(
+      false,
+    );
   });
 
   it("marks only the rows whose Consultar precio box is checked", () => {
@@ -127,6 +138,7 @@ describe("parseMaterialDraft", () => {
       category: "",
       supplierId: "",
       available: false,
+      keptInStudio: false,
       image: null,
       variants: [{ label: "Única", price: "", swatch: "", available: true }],
     });

@@ -105,6 +105,8 @@ describe("supplier admin screens", () => {
     const name = await screen.findByLabelText("Nombre");
     expect(name).toHaveValue("");
     expect(screen.getByLabelText("Teléfono")).toBeVisible();
+    expect(screen.getByLabelText("Notas")).not.toBeVisible();
+    fireEvent.click(screen.getByText("Más opciones"));
     expect(screen.getByLabelText("Notas")).toBeVisible();
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
       "href",

@@ -375,14 +375,34 @@ export interface IntensiveWorkshopDraft {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
-  readonly price: string;
-  readonly deposit: string;
   readonly capacity: string;
   readonly minSeats: string;
   readonly policyText: string;
   readonly materialsIncluded: boolean;
   readonly images: readonly ImageUseDraft[];
 }
+/**
+ * One project a new workshop is created with: its fields, its optional image
+ * and the optional bill of materials it starts with. The workshop itself has
+ * no price: it is not a project, so the owner must type at least one.
+ */
+export interface NewProjectDraft extends IntensiveProjectDraft {
+  /** Catalog variants per participant, in the order the owner listed them. */
+  readonly materials: readonly IntensiveProjectMaterialDraft[];
+}
+/** The workshop fields plus one or more projects, stored together or not at all. */
+export interface NewIntensiveWorkshopDraft extends IntensiveWorkshopDraft {
+  readonly projects: readonly NewProjectDraft[];
+}
+/**
+ * Where an issue of a new workshop's project is reported, apart from the
+ * workshop fields. Every name carries the block's index (from 0, in the order
+ * submitted): `project0Name`, `project1Price`, and for the bill the line's
+ * index too: `project0MaterialVariant2`, `project0MaterialQuantity2`.
+ */
+export type NewProjectField =
+  | `project${string}${"Name" | "Price" | "Deposit" | "Description" | "Image"}`
+  | `project${string}Material${"Variant" | "Quantity"}${string}`;
 export type IntensiveWorkshopField =
   | "name"
   | "slug"
@@ -392,8 +412,6 @@ export type IntensiveWorkshopField =
   | "percentage"
   | "eventDate"
   | "timeRange"
-  | "price"
-  | "deposit"
   | "capacity"
   | "minSeats"
   | "policyText"
@@ -420,6 +438,7 @@ export interface IntensiveProject {
   /** Display order, ascending; gaps are possible after a delete. */
   readonly position: number;
   readonly name: string;
+  readonly description: string | null;
   readonly image: ImageUse | null;
   readonly price: Money;
   readonly deposit: Money;
@@ -429,9 +448,12 @@ export interface IntensiveProjectDraft {
   readonly name: string;
   readonly price: string;
   readonly deposit: string;
+  /** Optional; blank means none. */
+  readonly description: string;
   readonly image: ImageUseDraft | null;
 }
-export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
+export type IntensiveProjectField =
+  "name" | "price" | "deposit" | "description" | "image";
 /** Why a project cannot be deleted: a request chose it, or it is the last of a live workshop. */
 export type IntensiveProjectRule = "in-use" | "last-project";
 /**
@@ -462,11 +484,18 @@ export interface IntensivesService {
     a: AdminActor,
   ): Promise<Result<readonly IntensiveWorkshop[], AdminFailure>>;
   get(a: AdminActor, id: string): R<IntensiveWorkshop>;
+  /**
+   * Creates a draft with its projects, their images and bills in one write. The workshop
+   * has no price of its own; its stored price and deposit are the first project's.
+   */
   create(
     a: AdminActor,
-    d: IntensiveWorkshopDraft,
+    d: NewIntensiveWorkshopDraft,
   ): Promise<
-    Result<IntensiveWorkshop, AdminFailure | Invalid<IntensiveWorkshopField>>
+    Result<
+      IntensiveWorkshop,
+      AdminFailure | Invalid<IntensiveWorkshopField | NewProjectField>
+    >
   >;
   update(
     a: AdminActor,

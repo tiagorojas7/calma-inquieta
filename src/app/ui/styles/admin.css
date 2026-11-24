@@ -7,7 +7,16 @@
 @theme {
   /* Page and card separation. */
   --color-admin-page: #f4eee6; /* warm page background, close to the brand canvas */
-  --color-admin-line: #dccfbe; /* card border on the warm page */
+  --color-admin-line: #94816d; /* visible card edge on the warm page */
+  /* Semantic foreground/fill pairs: money, completion, neutral, action. */
+  --color-admin-warning-fg: #7c2d00;
+  --color-admin-warning-bg: #ffe3c2;
+  --color-admin-positive-fg: #11502a;
+  --color-admin-positive-bg: #d3f0d9;
+  --color-admin-neutral-fg: #1f1b18;
+  --color-admin-neutral-bg: #f7f5f2;
+  --color-admin-brand-fg: #ffffff;
+  --color-admin-brand-bg: #604639;
   --color-admin-danger: #a32020; /* delete and cancel only: filled red button */
   --color-admin-danger-hover: #7f1818;
   --color-admin-success: #1f6b3a; /* create, add, positive commit: filled green button */
@@ -87,10 +96,52 @@
 }
 .admin-root h3 {
   font-family: var(--font-body);
-  font-size: 1.0625rem;
+  font-size: 1.25rem;
   line-height: 1.3;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+/*
+ * A card title reads the same at every heading level: a nested card (a
+ * reservation inside a workshop) keeps the weight and size of a top one, so
+ * the name always leads the card above its figure.
+ */
+.admin-root [data-card-title] {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/*
+ * Friendly base for owners who are not comfortable with technology: body text
+ * at 18px with a roomy line height, the small step at 16px (the `text-base`
+ * and `text-sm` utilities read these variables, so every screen follows), and
+ * fields at least 48px tall. Contrast and the warm page stay as they are.
+ */
+.admin-root {
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.6;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+.admin-root
+  :is(
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="hidden"],
+      [type="file"]
+    ),
+    select,
+    textarea
+  ) {
+  min-height: 3rem;
+  font-size: 1.125rem;
 }
 
 /* Figures line up in columns: money, counts, dates and times. */

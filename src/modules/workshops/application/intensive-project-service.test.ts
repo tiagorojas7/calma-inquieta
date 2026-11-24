@@ -9,7 +9,7 @@ import { InMemoryTeacherRepository } from "~/testing/fakes/in-memory-teacher-rep
 import type {
   IntensiveProject,
   IntensiveProjectDraft,
-  IntensiveWorkshopDraft,
+  NewIntensiveWorkshopDraft,
 } from "./contracts";
 import { createIntensivesService } from "./intensive-service";
 
@@ -18,8 +18,8 @@ const owner = testAdminActor("owner@example.com");
 const other = testAdminActor("other@example.com");
 
 const draft = (
-  overrides: Partial<IntensiveWorkshopDraft> = {},
-): IntensiveWorkshopDraft => ({
+  overrides: Partial<NewIntensiveWorkshopDraft> = {},
+): NewIntensiveWorkshopDraft => ({
   name: "Cerámica de fin de semana",
   slug: "",
   summary: "Un día de torno",
@@ -29,8 +29,16 @@ const draft = (
   eventDate: "2026-11-07",
   startsAt: "10:00",
   endsAt: "18:00",
-  price: "30000",
-  deposit: "10000",
+  projects: [
+    {
+      name: "Primer proyecto",
+      price: "30000",
+      deposit: "10000",
+      description: "",
+      image: null,
+      materials: [],
+    },
+  ],
   capacity: "8",
   minSeats: "4",
   policyText: "Cancelación hasta 48 horas antes.",
@@ -45,6 +53,7 @@ const projectDraft = (
   name: "Taza de torno",
   price: "45000",
   deposit: "15000",
+  description: "",
   image: null,
   ...overrides,
 });
@@ -94,7 +103,7 @@ const plain = (project: IntensiveProject) => ({
   deposit: project.deposit.toCentavos(),
 });
 
-async function workshop(overrides: Partial<IntensiveWorkshopDraft> = {}) {
+async function workshop(overrides: Partial<NewIntensiveWorkshopDraft> = {}) {
   const ctx = setup();
   const created = valueOf(await ctx.service.create(owner, draft(overrides)));
   return { ...ctx, id: created.id };
@@ -106,8 +115,19 @@ const namesOf = async (
 ) => valueOf(await service.listProjects(owner, id)).map((p) => p.name);
 
 describe("a new intensivo", () => {
-  it("starts with one default project made from its title, price and deposit", async () => {
-    const { service, id } = await workshop();
+  it("starts with the one project the owner typed, with its own description", async () => {
+    const { service, id } = await workshop({
+      projects: [
+        {
+          name: "Taza de torno",
+          price: "45000",
+          deposit: "15000",
+          description: "  Tu primera taza.  ",
+          image: null,
+          materials: [],
+        },
+      ],
+    });
 
     const projects = valueOf(await service.listProjects(owner, id));
 
@@ -116,51 +136,64 @@ describe("a new intensivo", () => {
         id: "id-2",
         intensiveId: id,
         position: 0,
-        name: "Cerámica de fin de semana",
+        name: "Taza de torno",
+        description: "Tu primera taza.",
         image: null,
-        price: 3_000_000,
-        deposit: 1_000_000,
+        price: 4_500_000,
+        deposit: 1_500_000,
         audit: { updatedBy: "owner@example.com", updatedAt: START },
       },
     ]);
   });
 
-  it("cuts a long title to the 80 characters a project name allows", async () => {
-    const { service, id } = await workshop({
-      name: "A".repeat(90),
-      slug: "largo",
-    });
-
-    const [only] = valueOf(await service.listProjects(owner, id));
-
-    expect(only?.name).toBe("A".repeat(80));
-  });
-
   it("stores no project when the intensivo itself is refused", async () => {
     const { repository, service } = setup();
 
-    const result = await service.create(owner, draft({ price: "" }));
+    const result = await service.create(owner, draft({ name: "" }));
 
     expect(result.ok).toBe(false);
+    expect(repository.projects.size).toBe(0);
+  });
+
+  it("stores nothing when the first project is refused", async () => {
+    const { repository, service } = setup();
+
+    const result = await service.create(
+      owner,
+      draft({
+        projects: [
+          {
+            name: "",
+            price: "1",
+            deposit: "1",
+            description: "",
+            image: null,
+            materials: [],
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(repository.items.size).toBe(0);
     expect(repository.projects.size).toBe(0);
   });
 });
 
 describe("existing intensivo flows", () => {
-  it("still creates, edits and publishes with the workshop's own price and deposit", async () => {
+  it("still creates, edits and publishes, keeping the price the first project set", async () => {
     const { service, id } = await workshop();
 
     const edited = valueOf(
-      await service.update(
-        owner,
-        id,
-        draft({ price: "50000", deposit: "20000", capacity: "10" }),
-      ),
+      await service.update(owner, id, {
+        ...draft(),
+        capacity: "10",
+      }),
     );
     const published = valueOf(await service.publish(owner, id));
 
-    expect(edited.price.toCentavos()).toBe(5_000_000);
-    expect(edited.deposit.toCentavos()).toBe(2_000_000);
+    expect(edited.price.toCentavos()).toBe(3_000_000);
+    expect(edited.deposit.toCentavos()).toBe(1_000_000);
     expect(published.status).toBe("published");
     expect(published.capacity).toBe(10);
   });
@@ -183,7 +216,7 @@ describe("listProjects", () => {
     const projects = valueOf(await service.listProjects(owner, id));
 
     expect(projects.map((p) => p.name)).toEqual([
-      "Cerámica de fin de semana",
+      "Primer proyecto",
       "Con foto",
     ]);
     expect(projects[1]?.image).toEqual({
@@ -220,11 +253,43 @@ describe("addProject", () => {
       intensiveId: id,
       position: 1,
       name: "Plato hondo",
+      description: null,
       image: null,
       price: 4_500_000,
       deposit: 1_500_000,
       audit: { updatedBy: "other@example.com", updatedAt: START },
     });
+  });
+
+  it("keeps a trimmed description and reads it back", async () => {
+    const { service, id } = await workshop();
+
+    const added = valueOf(
+      await service.addProject(
+        owner,
+        id,
+        projectDraft({ description: "  Un plato para compartir.  " }),
+      ),
+    );
+
+    expect(added.description).toBe("Un plato para compartir.");
+    const listed = valueOf(await service.listProjects(owner, id));
+    expect(listed[1]?.description).toBe("Un plato para compartir.");
+  });
+
+  it("refuses a description over 600 characters and stores nothing", async () => {
+    const { repository, service, id } = await workshop();
+
+    const result = await service.addProject(
+      owner,
+      id,
+      projectDraft({ description: "d".repeat(601) }),
+    );
+
+    expect(result).toMatchObject({
+      error: { issues: [{ field: "description", code: "too-long" }] },
+    });
+    expect(repository.projects.size).toBe(1);
   });
 
   it("names every invalid field and stores nothing", async () => {
@@ -316,9 +381,35 @@ describe("updateProject", () => {
       audit: { updatedBy: "other@example.com" },
     });
     expect(await namesOf(service, id)).toEqual([
-      "Cerámica de fin de semana",
+      "Primer proyecto",
       "Renombrado",
     ]);
+  });
+
+  it("changes and clears the description", async () => {
+    const { service, id } = await workshop();
+    const second = valueOf(
+      await service.addProject(
+        owner,
+        id,
+        projectDraft({ description: "Antes" }),
+      ),
+    );
+
+    const changed = valueOf(
+      await service.updateProject(
+        owner,
+        id,
+        second.id,
+        projectDraft({ description: "Después" }),
+      ),
+    );
+    const cleared = valueOf(
+      await service.updateProject(owner, id, second.id, projectDraft()),
+    );
+
+    expect(changed.description).toBe("Después");
+    expect(cleared.description).toBeNull();
   });
 
   it("can drop the image again", async () => {
@@ -360,7 +451,7 @@ describe("updateProject", () => {
       },
     });
     expect(await namesOf(service, id)).toEqual([
-      "Cerámica de fin de semana",
+      "Primer proyecto",
       "Taza de torno",
     ]);
   });
@@ -398,17 +489,9 @@ describe("moveProject", () => {
       ok: true,
       value: undefined,
     });
-    expect(await namesOf(service, id)).toEqual([
-      "B",
-      "Cerámica de fin de semana",
-      "C",
-    ]);
+    expect(await namesOf(service, id)).toEqual(["B", "Primer proyecto", "C"]);
     await service.moveProject(owner, id, first.id, "up");
-    expect(await namesOf(service, id)).toEqual([
-      "Cerámica de fin de semana",
-      "B",
-      "C",
-    ]);
+    expect(await namesOf(service, id)).toEqual(["Primer proyecto", "B", "C"]);
   });
 
   it("leaves the order alone at an edge and reports an unknown project", async () => {
@@ -419,11 +502,7 @@ describe("moveProject", () => {
     expect((await service.moveProject(owner, id, first.id, "up")).ok).toBe(
       true,
     );
-    expect(await namesOf(service, id)).toEqual([
-      "Cerámica de fin de semana",
-      "B",
-      "C",
-    ]);
+    expect(await namesOf(service, id)).toEqual(["Primer proyecto", "B", "C"]);
     expect(await service.moveProject(owner, id, "ghost", "down")).toEqual({
       ok: false,
       error: { kind: "not-found" },
@@ -441,7 +520,7 @@ describe("deleteProject", () => {
       value: undefined,
     });
 
-    expect(await namesOf(service, id)).toEqual(["Cerámica de fin de semana"]);
+    expect(await namesOf(service, id)).toEqual(["Primer proyecto"]);
   });
 
   it("refuses while a request still points at the project", async () => {

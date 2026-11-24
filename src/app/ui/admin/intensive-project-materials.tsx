@@ -11,6 +11,8 @@ export interface ProjectMaterialChoice {
   readonly name: string;
   readonly label: string;
   readonly onHand: number | null;
+  /** "Lo tenemos en el estudio": only then do the units on hand count as stock. */
+  readonly keptInStudio?: boolean | undefined;
 }
 
 /**
@@ -37,7 +39,7 @@ const QUANTITY_INPUT =
   "min-h-11 w-24 rounded-sm border border-clay-600 bg-surface px-3 py-2 text-base text-ink-900";
 
 /** Lower case without accents, so "numero" finds "Número". */
-const fold = (text: string): string =>
+export const fold = (text: string): string =>
   text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
 const titleOf = (line: { name: string | null; label: string | null }) =>

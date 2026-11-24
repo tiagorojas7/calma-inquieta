@@ -27,11 +27,14 @@ function text(form: FormData, key: string): string {
 }
 
 /** Field wording that replaces the generic text where it would mislead. */
-const PROJECT_FIELD_MESSAGES = {
+export const PROJECT_FIELD_MESSAGES = {
   image: {
     required: "Describí la imagen en el texto alternativo.",
     "too-long": "El texto alternativo es demasiado largo. Acortalo.",
     "unknown-reference": "La imagen ya no existe. Volvé a subirla.",
+  },
+  description: {
+    "too-long": "La descripción es demasiado larga. Acortala.",
   },
 } as const satisfies FieldMessages<IntensiveProjectField>;
 
@@ -49,6 +52,7 @@ export function parseProjectDraft(form: FormData): IntensiveProjectDraft {
     name: text(form, "name"),
     price: text(form, "price"),
     deposit: text(form, "deposit"),
+    description: text(form, "description"),
     image,
   };
 }
@@ -73,6 +77,7 @@ export function rejectedProject(
     name: draft.name,
     price: draft.price,
     deposit: draft.deposit,
+    description: draft.description,
     image: draft.image
       ? {
           assetId: draft.image.assetId,
@@ -122,6 +127,22 @@ export function materialChoices(
 }
 
 /**
+ * The same choices for the new-workshop picker, each also saying whether the
+ * studio keeps the material: only then do its units count as stock; the rest
+ * read "Se pide", as in the sale and enrollment pickers.
+ */
+export function stockedMaterialChoices(
+  variants: readonly SaleVariantOption[],
+  onHand: ReadonlyMap<string, number> | null,
+): ProjectMaterialChoice[] {
+  const kept = new Map(variants.map((v) => [v.variantId, v.keptInStudio]));
+  return materialChoices(variants, onHand).map((choice) => ({
+    ...choice,
+    keptInStudio: kept.get(choice.variantId) === true,
+  }));
+}
+
+/**
  * The project list the detail screen shows: money formatted, forms prefilled
  * and each project's bill of materials named from the catalog choices. A
  * variant missing from the choices is shown as gone, still removable.
@@ -134,6 +155,7 @@ export function projectCards(
   return projects.map((project) => ({
     id: project.id,
     name: project.name,
+    description: project.description,
     amounts: {
       price: formatPesos(project.price),
       deposit: formatPesos(project.deposit),
@@ -145,6 +167,7 @@ export function projectCards(
       name: project.name,
       price: formatWholePesos(project.price),
       deposit: formatWholePesos(project.deposit),
+      description: project.description ?? "",
       image: project.image
         ? {
             assetId: project.image.assetId,

@@ -14,16 +14,18 @@ import {
   validateMaterialDraft,
   type ValidMaterialDraft,
 } from "../domain/material-core";
-import { validateStockAdjustment } from "../domain/stock-core";
+import { STOCK_DELTA_MAX, validateStockAdjustment } from "../domain/stock-core";
 import type { StockStore } from "./stock-store";
 import type {
   Material,
   MaterialError,
   MaterialField,
   MaterialLookup,
+  MaterialStockRow,
   MaterialSummary,
   MaterialsService,
   MaterialVariant,
+  StartingStockField,
 } from "./contracts";
 import {
   MaterialNameConflictError,
@@ -58,6 +60,18 @@ export interface MaterialServiceDeps {
 export interface MaterialLookupDeps {
   readonly repository: MaterialRepository;
   readonly media: MediaLookup;
+}
+
+/** Blank is fine (no units); otherwise whole units up to one adjustment's limit. */
+function startingStockIssue(
+  text: string,
+  field: StartingStockField,
+): FieldIssue<StartingStockField> | null {
+  if (text === "") return null;
+  if (!/^[0-9]+$/.test(text)) return { field, code: "invalid-format" };
+  return Number(text) > STOCK_DELTA_MAX
+    ? { field, code: "out-of-range" }
+    : null;
 }
 
 const notFound: NotFound = { kind: "not-found" };
@@ -132,6 +146,30 @@ export function createMaterialsService(
     active: material.active,
     available: material.available,
   });
+
+  const stockRow = (
+    material: Material,
+    onHand: ReadonlyMap<string, number>,
+  ): MaterialStockRow => {
+    const variants = material.variants.map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+      price: variant.price ? variant.price.toCentavos() / 100 : null,
+      available: variant.available,
+      onHand: onHand.get(variant.id) ?? 0,
+    }));
+    return {
+      id: material.id,
+      name: material.name,
+      category: material.category,
+      supplierName: material.supplier.name,
+      active: material.active,
+      available: material.available,
+      keptInStudio: material.keptInStudio === true,
+      variants,
+      onHand: variants.reduce((sum, variant) => sum + variant.onHand, 0),
+    };
+  };
 
   async function isNameTaken(name: string, selfId: string): Promise<boolean> {
     const holder = await repository.findActiveByName(name);
@@ -218,6 +256,7 @@ export function createMaterialsService(
       category: valid.category,
       supplier: references.supplier,
       available: valid.available,
+      keptInStudio: valid.keptInStudio ?? current?.keptInStudio ?? false,
       active: current?.active ?? true,
       image: valid.image
         ? {
@@ -234,9 +273,14 @@ export function createMaterialsService(
   async function save(
     mode: "insert" | "update",
     material: Material,
+    preserveKeptInStudio = false,
   ): Promise<Result<Material, MaterialError>> {
     try {
       if (mode === "insert") await repository.insert(material);
+      else if (preserveKeptInStudio)
+        return ok(
+          (await repository.updatePreservingKeptInStudio(material)) ?? material,
+        );
       else await repository.update(material);
       return ok(material);
     } catch (error) {
@@ -276,6 +320,18 @@ export function createMaterialsService(
       );
     },
 
+    async listWithStock(actor, filter) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const listed = await repository.list(filter);
+      const onHand = await deps.stock.onHand(
+        listed.flatMap((material) =>
+          material.variants.map((variant) => variant.id),
+        ),
+      );
+      return ok(listed.map((material) => stockRow(material, onHand)));
+    },
+
     async listSelectable(actor) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -308,6 +364,53 @@ export function createMaterialsService(
       return save("insert", material.value);
     },
 
+    async createWithStock(actor, draft, startingStock) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const texts = (
+        typeof startingStock === "string" ? [startingStock] : startingStock
+      ).map((value) => value.trim());
+      const stockIssues = texts.flatMap((value, index) => {
+        const extraIndex = String(index - 1) as `${number}`;
+        const field: StartingStockField =
+          index === 0 ? "startingStock" : `startingStockExtra:${extraIndex}`;
+        const issue = startingStockIssue(value, field);
+        return issue ? [issue] : [];
+      });
+      if (texts.length > draft.variants.length)
+        stockIssues.push({ field: "startingStock", code: "invalid-format" });
+      if (stockIssues.length > 0) {
+        const valid = validateMaterialDraft(draft);
+        return err({
+          kind: "invalid",
+          issues: [...(valid.ok ? [] : valid.error), ...stockIssues],
+        });
+      }
+      const valid = validateMaterialDraft(draft);
+      if (!valid.ok) return err({ kind: "invalid", issues: valid.error });
+      const material = await buildMaterial(authorized.value, valid.value, null);
+      if (!material.ok) return material;
+      const saved = await save("insert", material.value);
+      if (!saved.ok) return saved;
+      let onHand = 0;
+      for (const [index, variant] of saved.value.variants.entries()) {
+        const units = Number(texts[index] || "0");
+        if (units === 0) continue;
+        const outcome = await deps.stock.adjust({
+          variantId: variant.id,
+          delta: units,
+          reason: "Stock inicial",
+          by: authorized.value.email,
+          at: clock.now(),
+        });
+        // Adding units cannot go below zero: only a store failure lands here.
+        if (outcome.kind !== "adjusted")
+          throw new Error("starting stock was refused for a new variant");
+        onHand += outcome.onHand;
+      }
+      return ok({ material: saved.value, onHand });
+    },
+
     async update(actor, id, draft) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -321,7 +424,11 @@ export function createMaterialsService(
         current,
       );
       if (!material.ok) return material;
-      return save("update", material.value);
+      return save(
+        "update",
+        material.value,
+        valid.value.keptInStudio === undefined,
+      );
     },
 
     async deactivate(actor, id) {
@@ -335,6 +442,15 @@ export function createMaterialsService(
       };
       await repository.update(next);
       return ok(next);
+    },
+
+    async deletePermanent(actor, id) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const outcome = await repository.deleteIfUnused(id);
+      if (outcome === "not-found") return err(notFound);
+      if (outcome === "in-use") return err({ kind: "in-use" });
+      return ok(undefined);
     },
 
     async reactivate(actor, id) {
@@ -356,6 +472,17 @@ export function createMaterialsService(
         throw error;
       }
       return ok(next);
+    },
+
+    async setKeptInStudio(actor, id, kept) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const changed = await repository.setKeptInStudio(
+        id,
+        kept,
+        stamp(authorized.value),
+      );
+      return changed ? ok(changed) : err(notFound);
     },
 
     async setImage(actor, id, image) {
@@ -431,6 +558,7 @@ export function createMaterialsService(
         by: authorized.value.email,
         at: clock.now(),
       });
+      if (outcome.kind === "missing") return err(notFound);
       return outcome.kind === "adjusted"
         ? ok({ onHand: outcome.onHand })
         : err({ kind: "insufficient-stock", onHand: outcome.onHand });

@@ -2,6 +2,12 @@
  * Admin primitive strings (es-AR, voseo). F0a extends this file with the
  * layout and navigation copy; the same copy rule scans both.
  */
+
+/** Whole pesos typed as digits, with thousands dots: "12500" reads "12.500". */
+function groupPesos(value: string): string {
+  return value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 export const adminMicrocopy = {
   status: {
     draft: "Borrador",
@@ -366,23 +372,20 @@ export const adminMicrocopy = {
   },
   reminders: {
     title: "Recordatorios",
-    intro:
-      "Elegí el mensaje y a quiénes va. Cada alumna tiene su enlace de WhatsApp con el texto ya escrito: lo abrís y lo enviás vos. Los emails automáticos (inscripción, pago, clase y cuota) salen solos cuando están activados.",
+    intro: "Prepará mensajes para enviar por WhatsApp.",
     emailStatus: {
-      on: "Emails automáticos: activados",
-      off: "Emails automáticos: desactivados (falta configurar el dominio)",
+      on: "Emails automáticos activos",
+      off: "Emails automáticos no disponibles",
     },
     formLabel: "Preparar mensajes",
     fields: {
       message: "Mensaje",
       when: "Cuándo",
-      whenHint:
-        "Para clase y workshop. Por ejemplo: mañana, el martes 4 o este sábado.",
+      whenHint: "Por ejemplo: mañana o martes 4.",
       activity: "Nombre del workshop",
-      activityHint: "Solo para el recordatorio de workshop.",
+      activityHint: "Para el workshop.",
       text: "Texto del aviso",
-      textHint:
-        "Solo para el aviso libre. Se agrega después del saludo con el nombre.",
+      textHint: "Aparece después del saludo.",
     },
     audience: {
       workshop: "Taller",
@@ -397,8 +400,8 @@ export const adminMicrocopy = {
         "Sin elegir, la cuota pendiente va a quienes tienen la inscripción por confirmar y el resto a quienes no cancelaron.",
     },
     steps: {
-      message: "1. Qué querés avisar",
-      audience: "2. A quiénes (opcional)",
+      message: "Mensaje",
+      audience: "Destinatarias (opcional)",
     },
     submit: "Preparar mensajes",
     preview: "Vista previa",
@@ -1252,7 +1255,7 @@ export const adminMicrocopy = {
     projects: {
       title: "Proyectos",
       description:
-        "Cada proyecto tiene su propio precio, seña e imagen. Todos comparten la fecha y los cupos del workshop.",
+        "Cada proyecto tiene su propio precio, seña, imagen y descripción, y se ve en el sitio. Todos comparten la fecha y los cupos del workshop.",
       empty:
         "Todavía no hay proyectos. Agregá uno para poder publicar el workshop.",
       amounts: (price: string, deposit: string) =>
@@ -1278,6 +1281,7 @@ export const adminMicrocopy = {
         name: "Nombre del proyecto",
         price: "Precio total (en pesos)",
         deposit: "Seña (en pesos)",
+        description: "Descripción (opcional)",
         image: "Imagen del proyecto",
         removeImage: "Quitar la imagen",
       },
@@ -1340,8 +1344,6 @@ export const adminMicrocopy = {
       eventDate: "Fecha",
       startsAt: "Desde",
       endsAt: "Hasta",
-      price: "Precio (en pesos)",
-      deposit: "Seña fija (en pesos)",
       capacity: "Capacidad",
       minSeats: "Cupos mínimos",
       policyText: "Política de cancelación y ausencias",
@@ -1350,9 +1352,45 @@ export const adminMicrocopy = {
       sections: {
         basics: "Datos principales",
         schedule: "Fecha y horario",
-        money: "Profesor y precio",
+        money: "Profesor",
         conditions: "Cupos y condiciones",
+        projects: "Proyectos",
         images: "Imágenes",
+      },
+      newProjects: {
+        hint: "Se reserva eligiendo un proyecto. Cargá todos los que ofrecés.",
+        block: (number: number) => `Proyecto ${String(number)}`,
+        name: "Nombre del proyecto",
+        price: "Precio total (en pesos)",
+        deposit: "Seña (en pesos)",
+        description: "Descripción (opcional)",
+        image: "Imagen del proyecto (opcional)",
+        add: "Agregar otro proyecto",
+        remove: "Quitar proyecto",
+        removeName: (number: number) => `Quitar proyecto ${String(number)}`,
+        materials: {
+          title: "Materiales por participante (opcional)",
+          hint: "Van incluidos en el precio. No se venden aparte.",
+          listLabel: (number: number) =>
+            `Materiales del proyecto ${String(number)}`,
+          empty: "Todavía no elegiste materiales.",
+          missing: "Material no disponible en el catálogo",
+          inStock: (units: number) => `En stock: ${String(units)}`,
+          toOrder: "Se pide",
+          quantityName: (material: string) => `Cantidad de ${material}`,
+          remove: "Quitar",
+          removeName: (material: string) => `Quitar ${material}`,
+          addSummary: "Agregar material",
+          search: "Buscar material",
+          searchHint: "Nombre o medida, por ejemplo: arcilla 5 kg.",
+          typeToSearch: "Escribí para buscar en el catálogo.",
+          noMatches: "No encontramos materiales con ese nombre.",
+          noCatalog: "No hay materiales en el catálogo para agregar.",
+          showing: (shown: number, total: number) =>
+            `Mostrando ${String(shown)} de ${String(total)}. Escribí más para afinar.`,
+          add: "Agregar",
+          addName: (material: string) => `Agregar ${material}`,
+        },
       },
       moreImages: "Agregar más imágenes",
       save: "Guardar",
@@ -1403,7 +1441,7 @@ export const adminMicrocopy = {
     back: "Volver a materiales",
     feedback: {
       saved: "Cambios guardados",
-      deactivated: "Material desactivado",
+      deactivated: "Material archivado",
       reactivated: "Material reactivado",
       stock: "Stock ajustado",
     },
@@ -1425,8 +1463,8 @@ export const adminMicrocopy = {
     image: "Imagen",
     imageUnavailable: "La imagen ya no está disponible.",
     variants: "Variantes",
-    price: (value: string) => `$${value}`,
-    cost: (value: string) => `Costo: $${value}`,
+    price: (value: string) => `$\u00a0${groupPesos(value)}`,
+    cost: (value: string) => `Costo: $\u00a0${groupPesos(value)}`,
     costMissing: "Costo sin cargar",
     stock: {
       onHand: (units: number) => `En stock: ${String(units)}`,
@@ -1446,12 +1484,20 @@ export const adminMicrocopy = {
       at: "Fecha y hora",
     },
     lifecycle: {
-      title: "Zona de riesgo",
-      deactivate: "Desactivar",
+      title: "Estado del material",
+      deactivate: "Archivar",
       reactivate: "Reactivar",
+      delete: "Borrar definitivamente",
+      deleteInUse:
+        "No se puede borrar: tiene ventas, pedidos, ofertas o movimientos de stock. Podés archivarlo.",
       failed: "No se pudo actualizar el estado del material. Probá de nuevo.",
+      confirmDelete: {
+        title: "¿Borrar este material definitivamente?",
+        message:
+          "No se puede deshacer. Solo se borrará si nunca se usó ni tuvo movimientos de stock.",
+      },
       confirmDeactivate: {
-        title: "¿Desactivar este material?",
+        title: "¿Archivar este material?",
         message:
           "Deja de estar disponible para materiales nuevos. Podés reactivarlo cuando quieras.",
       },
@@ -1699,25 +1745,21 @@ export const adminMicrocopy = {
   },
   policies: {
     title: "Políticas",
-    subtitle:
-      "Las condiciones y la política de privacidad de todo el sitio. Cada cambio publica una versión nueva: las anteriores quedan guardadas.",
+    subtitle: "Editá los textos que aceptan al inscribirse.",
     sections: {
       conditions: {
         title: "Condiciones",
-        description:
-          "Lo que ven y aceptan quienes se inscriben. Cada workshop muestra además sus propias condiciones.",
+        description: "Condiciones de inscripción.",
       },
       privacy: {
         title: "Privacidad",
-        description:
-          "Cómo usamos los datos de quienes se inscriben. También se acepta al inscribirse.",
+        description: "Uso de datos personales.",
       },
     },
     form: {
       label: (title: string) => `Texto de ${title}`,
       body: "Texto vigente",
-      bodyHint:
-        "Separá los párrafos con una línea en blanco. Al publicar se guarda como versión nueva.",
+      bodyHint: "Al publicar, se guarda una nueva versión.",
       publish: "Publicar nueva versión",
       current: (version: number) => `Versión vigente: ${String(version)}`,
     },

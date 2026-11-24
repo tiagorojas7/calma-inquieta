@@ -32,17 +32,43 @@ describe("EnrollmentNewForm", () => {
     expect(form).toHaveAttribute("method", "post");
     const select = screen.getByLabelText("Taller, mes y turno");
     expect(within(select).getAllByRole("option")).toHaveLength(3);
-    expect(screen.getByLabelText("Nombre completo")).toBeRequired();
+    expect(screen.getByLabelText("Nombre")).toBeRequired();
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
     expect(
-      screen.getByRole("button", { name: "Crear inscripción" }),
+      screen.getByRole("button", { name: "Inscribir" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
       "href",
       "/admin/inscripciones",
     );
     await expectNoAxeViolations(container);
+  });
+
+  it("uses the width of a desktop screen: her data on one side, the materials and the payment on the other, the actions in a row below", () => {
+    const { container } = render(
+      <EnrollmentNewForm
+        values={values}
+        errors={{}}
+        options={options}
+        cancelHref="/admin/inscripciones"
+      />,
+    );
+
+    const form = container.querySelector("form");
+    expect(form?.className).not.toMatch(/max-w-3xl/);
+    const columns = form?.querySelector("[data-columns]");
+    expect(columns?.className).toMatch(/lg:grid-cols-2/);
+    const [data, rest] = Array.from(columns?.children ?? []);
+    expect(within(data as HTMLElement).getByLabelText("Nombre")).toBeVisible();
+    expect(
+      within(rest as HTMLElement).getByLabelText("Ya pagó"),
+    ).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Inscribir" });
+    expect(columns).not.toContainElement(submit);
+    expect(columns?.compareDocumentPosition(submit)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("starts with the fee of the chosen month and follows the offer until the owner types one", async () => {
@@ -109,7 +135,7 @@ describe("EnrollmentNewForm", () => {
     expect(screen.getByLabelText("Taller, mes y turno")).toHaveValue(
       "tejido|2026-11|t2",
     );
-    expect(screen.getByLabelText("Nombre completo")).toHaveValue("Ana");
+    expect(screen.getByLabelText("Nombre")).toHaveValue("Ana");
     expect(screen.getByLabelText("Email")).toHaveAccessibleDescription(
       "Ingresá un email válido.",
     );
@@ -126,11 +152,82 @@ describe("EnrollmentNewForm", () => {
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "No hay talleres con inscripciones abiertas.",
+      "No hay talleres con el mes abierto.",
     );
-    expect(
-      screen.queryByRole("button", { name: "Crear inscripción" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Inscribir" })).toBeNull();
+  });
+
+  describe('one form: materials behind the options and "Ya pagó"', () => {
+    const one = [
+      {
+        materialId: "m-1",
+        variantId: "v-1",
+        name: "Arcilla blanca",
+        label: "1 kg",
+        unitPrice: 4000,
+        priceLabel: "$ 4.000",
+      },
+    ];
+
+    it('posts "Ya pagó" as the paid field, unchecked by default and remembered after a refusal', () => {
+      const { rerender } = render(
+        <EnrollmentNewForm
+          values={values}
+          errors={{}}
+          options={options}
+          cancelHref="/admin/alumnas"
+        />,
+      );
+      const box = screen.getByRole("checkbox", { name: "Ya pagó" });
+      expect(box).toHaveAttribute("name", "paid");
+      expect(box).not.toBeChecked();
+
+      rerender(
+        <EnrollmentNewForm
+          key="refused"
+          values={values}
+          errors={{}}
+          options={options}
+          paid
+          cancelHref="/admin/alumnas"
+        />,
+      );
+      expect(screen.getByRole("checkbox", { name: "Ya pagó" })).toBeChecked();
+    });
+
+    it("keeps the materials behind the options, closed until she chose some", () => {
+      const { container, rerender } = render(
+        <EnrollmentNewForm
+          values={values}
+          errors={{}}
+          options={options}
+          materials={one}
+          cancelHref="/admin/alumnas"
+        />,
+      );
+      const summary = screen.getByText("Agregar materiales", {
+        selector: "summary",
+      });
+      expect(summary.closest("details")).not.toHaveAttribute("open");
+      expect(container.querySelectorAll("form")).toHaveLength(1);
+
+      rerender(
+        <EnrollmentNewForm
+          key="chosen"
+          values={values}
+          errors={{}}
+          options={options}
+          materials={one}
+          lines={[{ materialId: "m-1", variantId: "v-1", quantity: "1" }]}
+          cancelHref="/admin/alumnas"
+        />,
+      );
+      expect(
+        screen
+          .getByText("Agregar materiales", { selector: "summary" })
+          .closest("details"),
+      ).toHaveAttribute("open");
+    });
   });
 
   describe("materials", () => {

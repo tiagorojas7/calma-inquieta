@@ -9,6 +9,15 @@ import type {
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 
+export class MissingStockVariantError extends Error {}
+
+/** Hold the catalog row until the surrounding stock transaction commits. */
+async function lockVariant(tx: Db, variantId: string): Promise<boolean> {
+  const found = await tx.execute<{ id: string }>(sql`
+    SELECT id FROM material_variant WHERE id = ${variantId} FOR KEY SHARE`);
+  return found.rows.length > 0;
+}
+
 function assertQuantity(quantity: number): void {
   if (!Number.isSafeInteger(quantity) || quantity <= 0)
     throw new RangeError("stock quantity must be a positive whole number");
@@ -52,6 +61,7 @@ export async function putStock(
   stamp: StockStamp,
 ): Promise<number> {
   assertQuantity(quantity);
+  if (!(await lockVariant(tx, variantId))) throw new MissingStockVariantError();
   const [row] = await tx
     .insert(variantStock)
     .values({
@@ -82,6 +92,7 @@ export async function adjustStock(
   tx: Db,
   write: StockAdjustmentWrite,
 ): Promise<StockAdjustmentOutcome> {
+  if (!(await lockVariant(tx, write.variantId))) return { kind: "missing" };
   const stamp = { by: write.by, at: write.at };
   let onHand: number | null;
   if (write.delta > 0) {

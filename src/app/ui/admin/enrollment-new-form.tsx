@@ -2,13 +2,25 @@ import { useState } from "react";
 import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import {
+  ADMIN_PANEL,
+  ADMIN_SHEET,
+  AdminColumns,
+  AdminFieldPair,
+} from "./admin-sections";
+import { adminCopy } from "./copy";
 import {
   EnrollmentNewMaterials,
   type EnrollmentMaterialChoice,
   type EnrollmentMaterialLine,
 } from "./enrollment-new-materials";
-import { FormError, SelectField, TextField } from "./form-fields";
+import {
+  CheckboxField,
+  FormError,
+  SelectField,
+  TextField,
+} from "./form-fields";
+import { MoreOptions } from "./more-options";
 
 type EnrollmentNewFormValueField =
   "offer" | "fullName" | "email" | "phone" | "fee";
@@ -21,32 +33,14 @@ export interface EnrollmentNewOption {
   readonly fee: string;
 }
 
-export const enrollmentNewCopy = {
-  title: "Nueva inscripción",
-  back: "Volver a inscripciones",
-  offer: "Taller, mes y turno",
-  offerPlaceholder: "Elegí una opción",
-  offerHint: "Solo talleres con inscripciones abiertas.",
-  fullName: "Nombre completo",
-  email: "Email",
-  phone: "Teléfono",
-  fee: "Cuota",
-  feeHint:
-    "Viene cargada la cuota del mes. Podés cambiarla por cualquier monto en pesos enteros; 0 para una beca.",
-  submit: "Crear inscripción",
-  cancel: "Cancelar",
-  noOffers: "No hay talleres con inscripciones abiertas.",
-  noOffersHint: "Abrí un mes en un taller para poder inscribir alumnas.",
-  saveFailed: "Revisá los campos marcados e intentá de nuevo.",
-} as const;
-
-const copy = enrollmentNewCopy;
+const copy = adminCopy.alumnas.enroll;
 
 /**
- * Hand-made monthly enrollment. A native `<form method="post">`, never a router
- * `Form` or fetcher: the Worker gate denies `/admin/**.data`, so the submit
- * must be a document request. Materials are optional: the owner may add priced
- * catalog variants, each posted as a `line:<material>:<variant>` quantity.
+ * Hand-made monthly enrollment in one form: workshop, month and turno, the
+ * fee, her data, optional materials behind the options, and "Ya pagó". A
+ * native `<form method="post">`, never a router `Form` or fetcher: the Worker
+ * gate denies `/admin/**.data`, so the submit must be a document request. Each
+ * chosen material is posted as a `line:<material>:<variant>` quantity.
  */
 export function EnrollmentNewForm({
   values,
@@ -55,6 +49,7 @@ export function EnrollmentNewForm({
   options,
   materials = [],
   lines = [],
+  paid = false,
   cancelHref,
 }: {
   values: Readonly<Record<EnrollmentNewFormValueField, string>>;
@@ -65,6 +60,8 @@ export function EnrollmentNewForm({
   materials?: readonly EnrollmentMaterialChoice[];
   /** The lines of a refused submit, shown again. */
   lines?: readonly EnrollmentMaterialLine[];
+  /** "Ya pagó" as it was when a submit was refused. */
+  paid?: boolean;
   cancelHref: string;
 }) {
   const feeOf = (offer: string) =>
@@ -91,68 +88,90 @@ export function EnrollmentNewForm({
     );
   }
   return (
-    <form method="post" noValidate className={ADMIN_SHEET}>
+    <form method="post" noValidate className={ADMIN_PANEL}>
       <FormError message={formError} />
-      <SelectField
-        label={copy.offer}
-        hint={copy.offerHint}
-        name="offer"
-        required
-        options={[{ value: "", label: copy.offerPlaceholder }, ...options]}
-        defaultValue={values.offer}
-        onChange={(event) => {
-          if (!typed) setFee(feeOf(event.target.value));
-        }}
-        error={errors.offer}
-      />
-      <TextField
-        label={copy.fee}
-        hint={copy.feeHint}
-        name="fee"
-        inputMode="numeric"
-        required
-        autoComplete="off"
-        value={fee}
-        onChange={(event) => {
-          setTyped(true);
-          setFee(event.target.value);
-        }}
-        error={errors.fee}
-      />
-      <TextField
-        label={copy.fullName}
-        name="fullName"
-        required
-        autoComplete="off"
-        defaultValue={values.fullName}
-        error={errors.fullName}
-      />
-      <AdminFieldPair>
-        <TextField
-          label={copy.email}
-          name="email"
-          type="email"
-          inputMode="email"
-          required
-          autoComplete="off"
-          defaultValue={values.email}
-          error={errors.email}
-        />
-        <TextField
-          label={copy.phone}
-          name="phone"
-          type="tel"
-          required
-          autoComplete="off"
-          defaultValue={values.phone}
-          error={errors.phone}
-        />
-      </AdminFieldPair>
-      <EnrollmentNewMaterials
-        choices={materials}
-        initialLines={lines}
-        fee={fee}
-        error={errors.materials}
+      <AdminColumns
+        start={
+          <>
+            <SelectField
+              label={copy.offer}
+              name="offer"
+              required
+              options={[
+                { value: "", label: copy.offerPlaceholder },
+                ...options,
+              ]}
+              defaultValue={values.offer}
+              onChange={(event) => {
+                if (!typed) setFee(feeOf(event.target.value));
+              }}
+              error={errors.offer}
+            />
+            <TextField
+              label={copy.fee}
+              hint={copy.feeHint}
+              name="fee"
+              inputMode="numeric"
+              required
+              autoComplete="off"
+              value={fee}
+              onChange={(event) => {
+                setTyped(true);
+                setFee(event.target.value);
+              }}
+              error={errors.fee}
+            />
+            <TextField
+              label={copy.fullName}
+              name="fullName"
+              required
+              autoComplete="off"
+              defaultValue={values.fullName}
+              error={errors.fullName}
+            />
+            <AdminFieldPair>
+              <TextField
+                label={copy.email}
+                name="email"
+                type="email"
+                inputMode="email"
+                required
+                autoComplete="off"
+                defaultValue={values.email}
+                error={errors.email}
+              />
+              <TextField
+                label={copy.phone}
+                name="phone"
+                type="tel"
+                required
+                autoComplete="off"
+                defaultValue={values.phone}
+                error={errors.phone}
+              />
+            </AdminFieldPair>
+          </>
+        }
+        end={
+          <>
+            <MoreOptions
+              label={copy.materials}
+              defaultOpen={lines.length > 0 || errors.materials !== undefined}
+            >
+              <EnrollmentNewMaterials
+                choices={materials}
+                initialLines={lines}
+                fee={fee}
+                error={errors.materials}
+              />
+            </MoreOptions>
+            <CheckboxField
+              label={copy.alreadyPaid}
+              name="paid"
+              defaultChecked={paid}
+            />
+          </>
+        }
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.submit}</Button>

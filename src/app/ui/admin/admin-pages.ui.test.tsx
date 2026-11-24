@@ -177,11 +177,10 @@ describe("AdminLanding", () => {
     expect(
       links.map((link) => [link.textContent, link.getAttribute("href")]),
     ).toEqual([
-      ["Inscripciones", "/admin/inscripciones"],
-      ["Talleres", "/admin/talleres"],
-      ["Workshops", "/admin/intensivos"],
-      ["Materiales", "/admin/inscripciones/materiales"],
-      ["Asistencia", "/admin/asistencia"],
+      ["Alumnas", "/admin/alumnas"],
+      ["Clases", "/admin/clases"],
+      ["Materiales", "/admin/materiales"],
+      ["Ajustes", "/admin/ajustes"],
     ]);
     for (const link of links) {
       expect(link).toHaveClass("min-h-16");

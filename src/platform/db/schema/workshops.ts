@@ -323,6 +323,7 @@ export const intensiveProject = pgTable(
       .references(() => intensiveWorkshop.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     name: text("name").notNull(),
+    description: text("description"),
     mediaAssetId: uuid("media_asset_id").references(() => mediaAsset.id, {
       onDelete: "restrict",
     }),
@@ -342,6 +343,10 @@ export const intensiveProject = pgTable(
     check(
       "intensive_project_name_check",
       sql`btrim(${table.name}) <> '' AND length(${table.name}) <= 80`,
+    ),
+    check(
+      "intensive_project_description_check",
+      sql`${table.description} IS NULL OR (btrim(${table.description}) <> '' AND length(${table.description}) <= 600)`,
     ),
     check(
       "intensive_project_price_check",

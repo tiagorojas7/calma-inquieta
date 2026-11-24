@@ -8,11 +8,16 @@ const props: StudentsListProps = {
     {
       email: "ana@example.com",
       name: "Ana Pérez",
-      phone: "5493515550000",
-      workshops: "Cerámica, Acuarela",
-      orders: 2,
-      lastRequest: "31/10/2026",
       active: true,
+      current: "Cerámica · noviembre 2026",
+      owes: "$ 58.000",
+    },
+    {
+      email: "bea@example.com",
+      name: "Bea Gómez",
+      active: true,
+      current: null,
+      owes: null,
     },
   ],
   filter: { q: "", taller: "", estado: "", mostrar: "activas", page: 1 },
@@ -22,213 +27,150 @@ const props: StudentsListProps = {
 };
 
 describe("StudentsList", () => {
-  it("shows breadcrumbs and a result count", () => {
+  it("opens with one big search and one big primary button to enroll", () => {
     render(<StudentsList {...props} />);
 
-    const crumbs = screen.getByRole("navigation", { name: "Migas de pan" });
-    expect(within(crumbs).getByRole("link", { name: "Panel" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
-    expect(screen.getByText("1 alumna")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Alumnas" }),
+    ).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: "Buscar alumna" });
+    expect(search).toHaveAttribute("name", "q");
+    expect(search).toHaveAccessibleDescription("Nombre, email o teléfono");
+    expect(search.closest("form")).toHaveAttribute("method", "get");
+    expect(
+      screen.getByRole("link", { name: "Inscribir alumna" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/nueva");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("keeps the filters closed until one is active", () => {
+  it("shows one simple card per student: name, where she is, whether she owes, and Ver ficha", () => {
+    render(<StudentsList {...props} />);
+
+    const cards = within(
+      screen.getByRole("list", { name: "Alumnas" }),
+    ).getAllByRole("listitem");
+    expect(cards).toHaveLength(2);
+    const ana = within(cards[0] as HTMLElement);
+    expect(ana.getByText("Ana Pérez")).toBeInTheDocument();
+    expect(ana.getByText("Cerámica · noviembre 2026")).toBeInTheDocument();
+    expect(ana.getByText("Debe $ 58.000")).toBeInTheDocument();
+    expect(
+      ana.getByRole("link", { name: "Ver ficha de Ana Pérez" }),
+    ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");
+    const bea = within(cards[1] as HTMLElement);
+    expect(bea.getByText("Sin inscripción este mes")).toBeInTheDocument();
+    expect(bea.getByText("Al día")).toBeInTheDocument();
+  });
+
+  it("uses the width of a desktop screen: the cards sit in a responsive grid", () => {
+    render(<StudentsList {...props} />);
+
+    const list = screen.getByRole("list", { name: "Alumnas" });
+    expect(list.className).toMatch(/lg:grid-cols-2/);
+    expect(list.closest("section")?.className).not.toMatch(/max-w-3xl/);
+  });
+
+  it("marks an inactive student in words", () => {
+    render(
+      <StudentsList
+        {...props}
+        rows={[
+          {
+            email: "ana@example.com",
+            name: "Ana Pérez",
+            active: false,
+            current: null,
+            owes: null,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Inactiva")).toBeInTheDocument();
+  });
+
+  it("keeps the filters behind Filtrar, closed until one is active", () => {
     const { rerender } = render(<StudentsList {...props} />);
-    const summary = screen.getByText("Buscar y filtrar");
-    expect(summary).toHaveClass("rounded-pill");
-    expect(summary.closest("details")).not.toHaveClass("bg-surface");
+    const summary = screen.getByText("Filtrar", { selector: "summary" });
     expect(summary.closest("details")).not.toHaveAttribute("open");
 
     rerender(
       <StudentsList
+        key="filtered"
         {...props}
-        filter={{
-          q: "ana",
-          taller: "",
-          estado: "",
-          mostrar: "activas",
-          page: 1,
-        }}
+        filter={{ ...props.filter, taller: "w1", mostrar: "todas" }}
       />,
     );
     expect(
-      screen.getByText("Buscar y filtrar").closest("details"),
+      screen.getByText("Filtrar", { selector: "summary" }).closest("details"),
     ).toHaveAttribute("open");
+    expect(screen.getByLabelText("Taller")).toHaveValue("w1");
+    expect(screen.getByLabelText("Mostrar")).toHaveValue("todas");
   });
 
-  it("lists one row per student with a plain link to her page", async () => {
+  it("says so when there is nobody to show", () => {
+    render(<StudentsList {...props} rows={[]} hasNext={false} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "No hay alumnas para mostrar.",
+    );
+  });
+
+  it("pages with plain links that keep the search", () => {
+    render(
+      <StudentsList
+        {...props}
+        filter={{ ...props.filter, q: "ana", page: 2 }}
+      />,
+    );
+
+    const nav = screen.getByRole("navigation", { name: "Alumnas" });
+    expect(
+      within(nav).getByRole("link", { name: "Anteriores" }),
+    ).toHaveAttribute("href", "/admin/alumnas?q=ana&page=1");
+    expect(
+      within(nav).getByRole("link", { name: "Siguientes" }),
+    ).toHaveAttribute("href", "/admin/alumnas?q=ana&page=3");
+  });
+
+  it("has no accessibility violations", async () => {
     const { container } = render(<StudentsList {...props} />);
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Alumnas" }),
-    ).toBeVisible();
-    const row = within(screen.getByRole("list", { name: "Alumnas" })).getByRole(
-      "listitem",
-    );
-    expect(
-      within(row).getByRole("link", { name: "Ana Pérez" }),
-    ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");
-    for (const cell of [
-      "ana@example.com",
-      "5493515550000",
-      "Cerámica, Acuarela",
-      "2",
-      "31/10/2026",
-    ])
-      expect(within(row).getByText(cell)).toBeVisible();
     await expectNoAxeViolations(container);
   });
 
-  it("also lists the students as a table from lg, hidden below it", () => {
+  it("leads the student card with her debt in the warning tone", () => {
     render(<StudentsList {...props} />);
 
-    const list = screen.getByRole("list", { name: "Alumnas" });
-    const table = screen.getByRole("table", { name: "Alumnas" });
-    expect(list.closest(".lg\\:hidden")).not.toBeNull();
-    expect(table.closest(".hidden.lg\\:block")).not.toBeNull();
-    expect(
-      within(table)
-        .getAllByRole("columnheader")
-        .map((header) => header.textContent),
-    ).toEqual([
-      "Alumna",
-      "Email",
-      "Teléfono",
-      "Talleres",
-      "Pedidos",
-      "Última solicitud",
-      "Estado",
-    ]);
-    const row = within(table).getAllByRole("row")[1] as HTMLElement;
-    expect(
-      within(row).getByRole("link", { name: "Ana Pérez" }),
-    ).toHaveAttribute("href", "/admin/alumnas/ana%40example.com");
-    for (const cell of [
-      "ana@example.com",
-      "5493515550000",
-      "Cerámica, Acuarela",
-      "2",
-      "31/10/2026",
-      "Activa",
-    ])
-      expect(within(row).getByText(cell)).toBeInTheDocument();
-  });
-
-  it("offers a GET search form with the activity filters and keeps the values", () => {
-    render(
-      <StudentsList
-        {...props}
-        filter={{
-          q: "ana",
-          taller: "w1",
-          estado: "paid",
-          mostrar: "activas",
-          page: 1,
-        }}
-      />,
-    );
-
-    const form = screen.getByRole("search", { name: "Filtrar alumnas" });
-    expect(form).toHaveAttribute("method", "get");
-    expect(form).toHaveAttribute("action", "/admin/alumnas");
-    expect(within(form).getByLabelText("Buscar")).toHaveValue("ana");
-    expect(within(form).getByLabelText("Taller")).toHaveValue("w1");
-    expect(within(form).getByLabelText("Estado de la inscripción")).toHaveValue(
-      "paid",
+    const studentCard = screen
+      .getByRole("heading", { name: "Ana Pérez" })
+      .closest("li");
+    const summary = studentCard?.querySelector("p.text-2xl");
+    expect(summary).toHaveTextContent("Debe $ 58.000");
+    expect(summary).toHaveClass(
+      "font-bold",
+      "tabular-nums",
+      "text-admin-warning-fg",
     );
   });
+});
 
-  it("links the next and previous pages keeping the filter", () => {
-    render(
-      <StudentsList
-        {...props}
-        filter={{
-          q: "ana",
-          taller: "",
-          estado: "",
-          mostrar: "activas",
-          page: 2,
-        }}
-      />,
+describe("StudentsList desktop width", () => {
+  it("fills the width: the cards use the shared grid and the search sheet has no width cap", () => {
+    const { container } = render(<StudentsList {...props} />);
+
+    expect(screen.getByRole("list", { name: "Alumnas" })).toHaveClass(
+      "grid",
+      "lg:grid-cols-2",
+      "2xl:grid-cols-3",
     );
-
-    const nav = screen.getByRole("navigation", { name: "Paginación" });
+    const search = screen.getByRole("search", { name: "Buscar alumna" });
+    expect(search).not.toHaveClass("max-w-3xl");
+    expect(container.querySelector("[class*='max-w-']")).toBeNull();
+    const columns = search.querySelector("[data-columns]") as HTMLElement;
+    expect(within(columns).getByRole("searchbox")).toBeInTheDocument();
     expect(
-      within(nav).getByRole("link", { name: "Siguiente" }),
-    ).toHaveAttribute("href", "/admin/alumnas?q=ana&page=3");
-    expect(within(nav).getByRole("link", { name: "Anterior" })).toHaveAttribute(
-      "href",
-      "/admin/alumnas?q=ana&page=1",
-    );
-  });
-
-  it("shows each student's state, in the card and in the table", () => {
-    const [ana] = props.rows;
-    if (!ana) throw new Error("fixture");
-    const rows = [
-      ana,
-      { ...ana, email: "bea@example.com", name: "Bea", active: false },
-    ];
-    render(<StudentsList {...props} rows={rows} />);
-
-    const cards = within(screen.getByRole("list", { name: "Alumnas" }));
-    const [anaCard, beaCard] = cards.getAllByRole("listitem") as [
-      HTMLElement,
-      HTMLElement,
-    ];
-    expect(within(anaCard).getByText("Activa")).toBeVisible();
-    expect(within(beaCard).getByText("Inactiva")).toBeVisible();
-    const table = within(screen.getByRole("table", { name: "Alumnas" }));
-    expect(table.getByText("Activa")).toBeInTheDocument();
-    expect(table.getByText("Inactiva")).toBeInTheDocument();
-  });
-
-  it("shows the active students by default with a way to see the inactive ones", () => {
-    render(<StudentsList {...props} />);
-
-    expect(
-      screen.getByRole("link", { name: "Ver alumnas inactivas" }),
-    ).toHaveAttribute("href", "/admin/alumnas?mostrar=inactivas");
-    expect(
-      screen.queryByRole("link", { name: "Ver alumnas activas" }),
-    ).toBeNull();
-    const form = screen.getByRole("search", { name: "Filtrar alumnas" });
-    expect(within(form).getByLabelText("Mostrar")).toHaveValue("activas");
-    expect(
-      within(within(form).getByLabelText("Mostrar"))
-        .getAllByRole("option")
-        .map((option) => option.textContent),
-    ).toEqual(["Activas", "Inactivas", "Todas"]);
-  });
-
-  it("offers the way back while the inactive view is open and keeps it when paging", () => {
-    render(
-      <StudentsList
-        {...props}
-        filter={{ ...props.filter, mostrar: "inactivas", page: 2 }}
-      />,
-    );
-
-    expect(
-      screen.getByRole("link", { name: "Ver alumnas activas" }),
-    ).toHaveAttribute("href", "/admin/alumnas");
-    expect(screen.getByLabelText("Mostrar")).toHaveValue("inactivas");
-    expect(
-      within(screen.getByRole("navigation", { name: "Paginación" })).getByRole(
-        "link",
-        { name: "Siguiente" },
-      ),
-    ).toHaveAttribute("href", "/admin/alumnas?mostrar=inactivas&page=3");
-  });
-
-  it("shows the empty state when nothing matches", () => {
-    render(<StudentsList {...props} rows={[]} hasNext={false} />);
-
-    expect(screen.getByText("No hay alumnas para este filtro")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Ver todas" })).toHaveAttribute(
-      "href",
-      "/admin/alumnas",
-    );
+      within(columns).getByRole("button", { name: "Buscar" }),
+    ).toBeInTheDocument();
   });
 });

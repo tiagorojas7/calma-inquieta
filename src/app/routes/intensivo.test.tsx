@@ -74,6 +74,7 @@ describe("intensivo loader", () => {
       buildOfferProject({
         id: FAKE_SECOND_PROJECT_ID,
         name: "Plato hondo",
+        description: "Un plato hondo para servir.",
         image: {
           src: "/media/plato.webp",
           alt: "Un plato",
@@ -111,6 +112,7 @@ describe("intensivo loader", () => {
           name: "Plato hondo",
           total: expect.stringMatching(/^\$\s40\.000$/) as string,
           deposit: expect.stringMatching(/^\$\s15\.000$/) as string,
+          description: "Un plato hondo para servir.",
           image: {
             src: "/media/plato.webp",
             alt: "Un plato",

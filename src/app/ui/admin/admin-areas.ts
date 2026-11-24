@@ -15,7 +15,8 @@ export type AdminAreaKey =
   | "reminders"
   | "statistics"
   | "catalog"
-  | "policies";
+  | "policies"
+  | "settings";
 
 export interface AdminAreaStyle {
   readonly icon: IconName;
@@ -113,5 +114,12 @@ export const ADMIN_AREAS: Record<AdminAreaKey, AdminAreaStyle> = {
     chip: "bg-area-catalog-bg text-area-catalog-fg",
     band: "bg-area-catalog-bg text-area-catalog-fg",
     ink: "text-area-catalog-fg",
+  },
+  // Ajustes shares the suppliers tint: a color of its own needs tokens in admin.css.
+  settings: {
+    icon: "settings",
+    chip: "bg-area-suppliers-bg text-area-suppliers-fg",
+    band: "bg-area-suppliers-bg text-area-suppliers-fg",
+    ink: "text-area-suppliers-fg",
   },
 };

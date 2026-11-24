@@ -58,8 +58,10 @@ export interface OrderDraft {
   /** Admin email when an owner enrolls a student by hand; absent for the public form. */
   readonly createdBy?: string;
   /**
-   * A free order an admin creates is stored already paid: the paid state, its
-   * $0 payment and the turno seat claim happen in the creation transaction.
+   * An order an admin creates is stored already paid when it is free or when
+   * the owner took the payment: the paid state, its payment (the full total),
+   * the turno seat claim and the stock lines taken all happen in the creation
+   * transaction.
    */
   readonly paidOnCreation?: PaidOnCreation;
 }

@@ -10,7 +10,7 @@ import {
 } from "./form-fields";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
-import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns, AdminFieldPair } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
@@ -161,103 +161,118 @@ export function QuickWorkshopForm({
   return (
     <form method="post" noValidate className={ADMIN_SHEET}>
       <FormError message={formError} />
-      <TextField
-        label={copy.form.name}
-        name="name"
-        defaultValue={values.name}
-        error={errors.name}
-        autoComplete="off"
-      />
-      <TextField
-        label={copy.form.summary}
-        hint={copy.form.summaryHint}
-        name="summary"
-        defaultValue={values.summary}
-        error={errors.summary}
-      />
-      <TextAreaField
-        label={copy.form.description}
-        hint={copy.form.descriptionHint}
-        name="description"
-        rows={5}
-        defaultValue={values.description}
-        error={errors.description}
-      />
-      <AdminFieldPair>
-        <SelectField
-          label={copy.form.teacher}
-          name="teacherId"
-          options={teacherOptions}
-          defaultValue={values.teacherId}
-          error={errors.teacherId}
-        />
-        <TextField
-          label={copy.form.defaultFee}
-          hint={copy.form.defaultFeeHint}
-          name="defaultFee"
-          inputMode="numeric"
-          defaultValue={values.defaultFee}
-          error={errors.defaultFee}
-        />
-      </AdminFieldPair>
-      <details open={thirdParty || Boolean(errors.percentage) || undefined}>
-        <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">
-          {quick.percentageSummary}
-        </summary>
-        <TextField
-          label={copy.form.percentage}
-          hint={copy.form.percentageHint}
-          name="percentage"
-          inputMode="decimal"
-          defaultValue={values.percentage}
-          error={errors.percentage}
-        />
-      </details>
-      <GalleryFields
-        images={values.images}
-        slots={WORKSHOP_PHOTO_SLOTS}
-        title={copy.form.photosTitle}
-        hint={copy.form.photosHint}
-        label={copy.form.photo}
-        moreLabel={copy.form.morePhotos}
-        error={errors.images}
-      />
-      <section className="flex flex-col gap-3" aria-label={quick.sectionTurnos}>
-        <h2 className="font-display text-xl text-ink-900">
-          {quick.sectionTurnos}
-        </h2>
-        <Text tone="muted">{quick.turnosHint}</Text>
-        {turnosError ? (
-          <p role="alert" className="text-sm text-terracotta-700">
-            {turnosError}
-          </p>
-        ) : null}
-        {values.rows.slice(0, VISIBLE_ROWS).map((row, index) => (
-          <TurnoRow
-            key={`row-${String(index)}`}
-            index={index}
-            row={row}
-            error={turnoErrors[index]}
-          />
-        ))}
-        {extra.length > 0 ? (
-          <details open={extraUsed || undefined}>
-            <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-clay-800 underline underline-offset-4">
-              {quick.moreTurnos}
-            </summary>
-            <div className="mt-3 flex flex-col gap-3">
-              {extra.map((row, offset) => (
+      <AdminColumns
+        start={
+          <>
+            <TextField
+              label={copy.form.name}
+              name="name"
+              defaultValue={values.name}
+              error={errors.name}
+              autoComplete="off"
+            />
+            <TextField
+              label={copy.form.summary}
+              hint={copy.form.summaryHint}
+              name="summary"
+              defaultValue={values.summary}
+              error={errors.summary}
+            />
+            <TextAreaField
+              label={copy.form.description}
+              hint={copy.form.descriptionHint}
+              name="description"
+              rows={5}
+              defaultValue={values.description}
+              error={errors.description}
+            />
+            <AdminFieldPair>
+              <SelectField
+                label={copy.form.teacher}
+                name="teacherId"
+                options={teacherOptions}
+                defaultValue={values.teacherId}
+                error={errors.teacherId}
+              />
+              <TextField
+                label={copy.form.defaultFee}
+                hint={copy.form.defaultFeeHint}
+                name="defaultFee"
+                inputMode="numeric"
+                defaultValue={values.defaultFee}
+                error={errors.defaultFee}
+              />
+            </AdminFieldPair>
+            <details
+              open={thirdParty || Boolean(errors.percentage) || undefined}
+            >
+              <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">
+                {quick.percentageSummary}
+              </summary>
+              <TextField
+                label={copy.form.percentage}
+                hint={copy.form.percentageHint}
+                name="percentage"
+                inputMode="decimal"
+                defaultValue={values.percentage}
+                error={errors.percentage}
+              />
+            </details>
+            <GalleryFields
+              images={values.images}
+              slots={WORKSHOP_PHOTO_SLOTS}
+              title={copy.form.photosTitle}
+              hint={copy.form.photosHint}
+              label={copy.form.photo}
+              moreLabel={copy.form.morePhotos}
+              error={errors.images}
+            />
+          </>
+        }
+        end={
+          <>
+            <section
+              className="flex flex-col gap-3"
+              aria-label={quick.sectionTurnos}
+            >
+              <h2 className="font-display text-xl text-ink-900">
+                {quick.sectionTurnos}
+              </h2>
+              <Text tone="muted">{quick.turnosHint}</Text>
+              {turnosError ? (
+                <p role="alert" className="text-sm text-terracotta-700">
+                  {turnosError}
+                </p>
+              ) : null}
+              {values.rows.slice(0, VISIBLE_ROWS).map((row, index) => (
                 <TurnoRow
-                  key={`row-${String(VISIBLE_ROWS + offset)}`}
-                  index={VISIBLE_ROWS + offset}
+                  key={`row-${String(index)}`}
+                  index={index}
                   row={row}
-                  error={turnoErrors[VISIBLE_ROWS + offset]}
+                  error={turnoErrors[index]}
                 />
               ))}
-            </div>
-          </details>
-        ) : null}
-      </section>
+              {extra.length > 0 ? (
+                <details open={extraUsed || undefined}>
+                  <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-clay-800 underline underline-offset-4">
+                    {quick.moreTurnos}
+                  </summary>
+                  <div className="mt-3 flex flex-col gap-3">
+                    {extra.map((row, offset) => (
+                      <TurnoRow
+                        key={`row-${String(VISIBLE_ROWS + offset)}`}
+                        index={VISIBLE_ROWS + offset}
+                        row={row}
+                        error={turnoErrors[VISIBLE_ROWS + offset]}
+                      />
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+            </section>
+          </>
+        }
+      />
       <Text tone="muted">{quick.derivedNote}</Text>
       <div className="flex flex-wrap gap-3">
         <AdminButton

@@ -4,6 +4,8 @@ import type { Money } from "~/modules/_shared";
 export interface IntensiveOfferProject {
   readonly id: string;
   readonly name: string;
+  /** What the project is about, shown on the public pages; absent or none when blank. */
+  readonly description?: string | null;
   readonly image: {
     readonly src: string;
     readonly alt: string;

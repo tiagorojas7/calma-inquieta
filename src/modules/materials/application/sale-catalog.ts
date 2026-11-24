@@ -53,6 +53,7 @@ export function saleVariantsOf(
                 materialName: material.name,
                 variantLabel: variant.label,
                 unitPrice: variant.price,
+                keptInStudio: material.keptInStudio === true,
               },
             ]
           : [],

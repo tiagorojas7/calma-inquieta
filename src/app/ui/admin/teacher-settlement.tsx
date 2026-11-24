@@ -48,7 +48,7 @@ export function TeacherSettlementPanel({
   return (
     <section
       aria-labelledby="teacher-settlement"
-      className="flex max-w-prose flex-col gap-3"
+      className="flex flex-col gap-3"
     >
       <Heading level={2} size="h3" id="teacher-settlement">
         {copy.title}

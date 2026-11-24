@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminColumns } from "./admin-sections";
 import { FormError, SelectField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { PrivateEventStatusBadge } from "./private-event-status-badge";
@@ -67,58 +68,69 @@ export function PrivateEventDetail({
         <AdminFeedback tone="success" title={copy.feedback[feedback]} />
       ) : null}
 
-      <dl className="grid gap-4 md:grid-cols-2">
-        <Fact label={copy.fields.name}>{request.name}</Fact>
-        <Fact label={copy.fields.phone}>
-          {request.phone}
-          {request.whatsappHref ? (
-            <>
-              {" "}
-              <a
-                href={request.whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={linkClasses}
-              >
-                {copy.whatsapp}
-              </a>
-            </>
-          ) : null}
-        </Fact>
-        <Fact label={copy.fields.email}>{request.email ?? copy.noEmail}</Fact>
-        <Fact label={copy.fields.received}>{request.receivedAt}</Fact>
-        <Fact label={copy.fields.date}>{request.desiredDate}</Fact>
-        <Fact label={copy.fields.place}>{request.place}</Fact>
-        <Fact label={copy.fields.participants}>
-          {String(request.participants)}
-        </Fact>
-        <Fact label={copy.fields.notes}>{request.notes ?? copy.noNotes}</Fact>
-        {request.statusChanged ? (
-          <Fact label={copy.fields.statusChanged}>{request.statusChanged}</Fact>
-        ) : null}
-      </dl>
-
-      <form
-        method="post"
-        aria-label={copy.statusForm.label}
-        className="flex max-w-prose flex-col gap-3"
-      >
-        <FormError message={formError} />
-        <SelectField
-          label={copy.statusForm.field}
-          name="status"
-          defaultValue={request.status}
-          options={request.statusOptions}
-        />
-        <div>
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+      <AdminColumns
+        start={
+          <dl className="grid gap-4 md:grid-cols-2">
+            <Fact label={copy.fields.name}>{request.name}</Fact>
+            <Fact label={copy.fields.phone}>
+              {request.phone}
+              {request.whatsappHref ? (
+                <>
+                  {" "}
+                  <a
+                    href={request.whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkClasses}
+                  >
+                    {copy.whatsapp}
+                  </a>
+                </>
+              ) : null}
+            </Fact>
+            <Fact label={copy.fields.email}>
+              {request.email ?? copy.noEmail}
+            </Fact>
+            <Fact label={copy.fields.received}>{request.receivedAt}</Fact>
+            <Fact label={copy.fields.date}>{request.desiredDate}</Fact>
+            <Fact label={copy.fields.place}>{request.place}</Fact>
+            <Fact label={copy.fields.participants}>
+              {String(request.participants)}
+            </Fact>
+            <Fact label={copy.fields.notes}>
+              {request.notes ?? copy.noNotes}
+            </Fact>
+            {request.statusChanged ? (
+              <Fact label={copy.fields.statusChanged}>
+                {request.statusChanged}
+              </Fact>
+            ) : null}
+          </dl>
+        }
+        end={
+          <form
+            method="post"
+            aria-label={copy.statusForm.label}
+            className="flex flex-col gap-3"
           >
-            {copy.statusForm.save}
-          </button>
-        </div>
-      </form>
+            <FormError message={formError} />
+            <SelectField
+              label={copy.statusForm.field}
+              name="status"
+              defaultValue={request.status}
+              options={request.statusOptions}
+            />
+            <div>
+              <button
+                type="submit"
+                className="inline-flex min-h-11 items-center rounded-md bg-clay-600 px-6 py-3 font-sans text-white hover:bg-clay-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+              >
+                {copy.statusForm.save}
+              </button>
+            </div>
+          </form>
+        }
+      />
     </section>
   );
 }

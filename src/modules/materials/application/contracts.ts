@@ -81,6 +81,8 @@ export interface Material {
   readonly supplier: Supplier;
   readonly available: boolean;
   readonly active: boolean;
+  /** "Lo tenemos en el estudio": the studio keeps units of it. Absent reads as no. */
+  readonly keptInStudio?: boolean;
   readonly image: ImageUse | null;
   readonly variants: readonly MaterialVariant[];
   readonly audit: Audit;
@@ -95,6 +97,33 @@ export interface MaterialSummary {
   readonly active: boolean;
   readonly available: boolean;
 }
+/** One variant of a stock overview row: its price in whole pesos and its units. */
+export interface MaterialStockVariant {
+  readonly id: string;
+  readonly label: string;
+  /** Whole pesos; null means "consultar precio". */
+  readonly price: number | null;
+  readonly available: boolean;
+  /** Units the studio holds; no stock row reads 0. */
+  readonly onHand: number;
+}
+/** A material with the units on hand of each variant, for the Materiales screen. */
+export interface MaterialStockRow {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly supplierName: string;
+  readonly active: boolean;
+  readonly available: boolean;
+  /** "Lo tenemos en el estudio". */
+  readonly keptInStudio: boolean;
+  readonly variants: readonly MaterialStockVariant[];
+  /** The units of every variant together. */
+  readonly onHand: number;
+}
+/** The starting units of a new material, as typed. */
+export type StartingStockField =
+  "startingStock" | `startingStockExtra:${number}`;
 /** A manual stock subtraction larger than the units on hand. */
 export interface InsufficientStock {
   readonly kind: "insufficient-stock";
@@ -195,6 +224,8 @@ export interface SaleVariantOption {
   readonly materialName: string;
   readonly variantLabel: string;
   readonly unitPrice: import("~/modules/_shared").Money;
+  /** "Lo tenemos en el estudio": when not, the sale says it is ordered. */
+  readonly keptInStudio: boolean;
 }
 /** A material with the sale facts a hand-made enrollment snapshots. */
 export interface SaleCatalogMaterial {
@@ -250,10 +281,23 @@ export interface MaterialsService {
     a: AdminActor,
     id: string,
   ): Promise<Result<Material, AdminFailure | NotFound>>;
+  /** Irreversible removal, refused when stock history or another record refers to it. */
+  deletePermanent(
+    a: AdminActor,
+    id: string,
+  ): Promise<
+    Result<void, AdminFailure | NotFound | { readonly kind: "in-use" }>
+  >;
   reactivate(
     a: AdminActor,
     id: string,
   ): Promise<Result<Material, AdminFailure | NotFound | Invalid<"name">>>;
+  /** Marks or unmarks "Lo tenemos en el estudio" and changes nothing else. */
+  setKeptInStudio(
+    a: AdminActor,
+    id: string,
+    kept: boolean,
+  ): Promise<Result<Material, AdminFailure | NotFound>>;
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;
@@ -279,6 +323,29 @@ export interface MaterialsService {
       | NotFound
       | Invalid<StockAdjustmentField>
       | InsufficientStock
+    >
+  >;
+  /** Materials with the units on hand of each variant, read with one stock query. */
+  listWithStock(
+    a: AdminActor,
+    f: { readonly state: "active" | "inactive" | "all" },
+  ): Promise<Result<readonly MaterialStockRow[], AdminFailure>>;
+  /**
+   * Creates the material like `create` and records initial units for each
+   * variant. A string is the legacy first-variant form; an array follows the
+   * variant order. Blank or 0 records nothing. Bad units are refused before
+   * anything is created.
+   */
+  createWithStock(
+    a: AdminActor,
+    d: MaterialDraft,
+    startingStock: string | readonly string[],
+  ): Promise<
+    Result<
+      { readonly material: Material; readonly onHand: number },
+      | AdminFailure
+      | Invalid<MaterialField | StartingStockField>
+      | { readonly kind: "variant-in-use" }
     >
   >;
   setImage(

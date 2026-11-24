@@ -1,6 +1,7 @@
 import { data, redirect, useLoaderData } from "react-router";
 import { isUuid } from "~/app/admin/enrollment-ids";
-import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
+import { feedbackCode } from "~/app/admin/feedback-code";
+import { stayOnPage } from "~/app/admin/return-to";
 import { failureResponse } from "~/app/admin/failure-response";
 import { makeUpsView } from "~/app/attendance/admin-view";
 import { servicesContext } from "~/app/context";
@@ -41,11 +42,14 @@ export async function action({ request, context }: Route.ActionArgs) {
       : await attendance.markMakeUpMissed(actor, id);
   if (!closed.ok) {
     if (closed.error.kind === "make-up-closed")
-      return redirect(withFeedback(PATH, "closed"));
+      return redirect(stayOnPage(form, { fallback: PATH, code: "closed" }));
     throw failureResponse(closed.error);
   }
   return redirect(
-    withFeedback(PATH, intent === "complete" ? "completed" : "missed"),
+    stayOnPage(form, {
+      fallback: PATH,
+      code: intent === "complete" ? "completed" : "missed",
+    }),
   );
 }
 

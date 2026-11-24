@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { attendanceFixture } from "~/testing/admin/attendance-kit";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ATT_TURNOS, attendanceFixture } from "~/testing/admin/attendance-kit";
 import {
   adminContext,
   getRequest,
@@ -7,8 +7,12 @@ import {
 } from "~/testing/admin/route-kit";
 import { loader } from "./attendance";
 
-const load = (path: string, admin = true) => {
-  const { service } = attendanceFixture();
+const load = (
+  path: string,
+  admin = true,
+  options: Parameters<typeof attendanceFixture>[0] = {},
+) => {
+  const { service } = attendanceFixture(options);
   return loader({
     request: getRequest(path),
     params: {},
@@ -38,6 +42,36 @@ describe("admin attendance index route", () => {
     expect(none.filter).toEqual({ mes: "2026-10", taller: "" });
     const byWorkshop = await load("/admin/asistencia?taller=w1");
     expect(byWorkshop.rows).toHaveLength(2);
+  });
+
+  describe("with two months of turnos", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+    const september = ATT_TURNOS.map((turno) => ({
+      ...turno,
+      period: "2026-09",
+      periodId: "0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a09",
+    }));
+    const both = { turnos: [...ATT_TURNOS, ...september] };
+
+    it("opens on the current month, not the latest one with turnos", async () => {
+      vi.useFakeTimers({
+        toFake: ["Date"],
+        now: new Date("2026-09-10T15:00:00Z"),
+      });
+      const result = await load("/admin/asistencia", true, both);
+      expect(result.filter.mes).toBe("2026-09");
+    });
+
+    it("opens on the latest month when the current one has none", async () => {
+      vi.useFakeTimers({
+        toFake: ["Date"],
+        now: new Date("2026-12-10T15:00:00Z"),
+      });
+      const result = await load("/admin/asistencia", true, both);
+      expect(result.filter.mes).toBe("2026-10");
+    });
   });
 
   it("refuses a request without an admin actor", async () => {

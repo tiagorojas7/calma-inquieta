@@ -135,8 +135,8 @@ describe("admin notifications route", () => {
   });
 });
 
-describe("the bell leaves the home tasks and the private-event inbox as they were", () => {
-  it("shows the same home counters and the same inbox before and after every request is read", async () => {
+describe("reading a request leaves the home to-do list and the private-event inbox as they were", () => {
+  it("keeps the same cards to do and the same inbox before and after every request is read, and only clears it from what is new", async () => {
     const fixture = await seeded();
     fixture.orders.pending = { total: 4, older: 1 };
     fixture.intensiveRequests.pending = 2;
@@ -163,10 +163,21 @@ describe("the bell leaves the home tasks and the private-event inbox as they wer
     await events.markSeen(actor, "0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01");
     const after = { home: await home(), inbox: await inbox() };
 
-    expect(after).toEqual(before);
-    expect(before.home.summary.tasks.map((task) => task.text)).toContain(
-      "1 consulta de evento privado sin responder",
+    expect(after.home.screen.todo).toEqual(before.home.screen.todo);
+    expect(after.home.screen.figures).toEqual(before.home.screen.figures);
+    expect(after.inbox).toEqual(before.inbox);
+    // Reading is shared state: the request leaves "Lo nuevo" for both owners.
+    expect(before.home.screen.novelties.map((item) => item.href)).toContain(
+      "/admin/eventos/0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01",
     );
+    expect(after.home.screen.novelties.map((item) => item.href)).not.toContain(
+      "/admin/eventos/0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01",
+    );
+    expect(
+      before.home.screen.todo.cards
+        .filter((card) => card.kind === "event")
+        .map((card) => card.href),
+    ).toEqual(["/admin/eventos/0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01"]);
     expect(before.inbox.rows).toHaveLength(1);
     expect(fixture.privateEvents.seenMarks.size).toBe(1);
   });

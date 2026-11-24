@@ -131,6 +131,22 @@ describe("intensive request loader", () => {
     expect(result.projects[0]).not.toHaveProperty("image");
   });
 
+  it("hands each project its description when it has one", async () => {
+    const { services } = setup(
+      buildIntensiveOffer({
+        projects: [
+          buildOfferProject({ description: "Una taza en el torno." }),
+          buildOfferProject({ id: FAKE_SECOND_PROJECT_ID, name: "Plato" }),
+        ],
+      }),
+    );
+
+    const result = await open(services);
+
+    expect(result.projects[0]?.description).toBe("Una taza en el torno.");
+    expect(result.projects[1]).not.toHaveProperty("description");
+  });
+
   it("answers the same bare 404 for an unknown or hidden intensivo", async () => {
     for (const offer of [null, buildIntensiveOffer({ status: "draft" })]) {
       const { services } = setup(offer);

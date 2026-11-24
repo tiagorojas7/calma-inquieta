@@ -157,6 +157,13 @@ export interface RequestEnrollmentOptions {
    * order ignores it and stays pending. The public form never passes it.
    */
   readonly paidAtIfFree?: Date;
+  /**
+   * With `createdBy`: the owner took the payment, so the order is stored
+   * already paid in full on this date whatever its total, with its seat claimed
+   * and its stock lines taken in the same creation. The public form never
+   * passes it.
+   */
+  readonly paidAt?: Date;
 }
 
 export interface PublicEnrollmentUseCases {
@@ -382,6 +389,14 @@ export function createPublicEnrollmentService(
       });
       if (!priced.ok) return priced;
 
+      // Only an owner's order is ever stored paid: in full when she took the
+      // payment, or at $0 when there is nothing to collect.
+      const paidOn =
+        options.createdBy === undefined
+          ? undefined
+          : (options.paidAt ??
+            (priced.value.total.isZero() ? options.paidAtIfFree : undefined));
+
       const foundConfirmed = await unavailableOnReject(
         deps.seats.confirmedSeats(period.id, turno.id),
       );
@@ -414,17 +429,15 @@ export function createPublicEnrollmentService(
           ...(options.createdBy === undefined
             ? {}
             : { createdBy: options.createdBy }),
-          ...(options.createdBy !== undefined &&
-          options.paidAtIfFree !== undefined &&
-          priced.value.total.isZero()
-            ? {
+          ...(paidOn === undefined || options.createdBy === undefined
+            ? {}
+            : {
                 paidOnCreation: {
-                  paidAt: options.paidAtIfFree,
+                  paidAt: paidOn,
                   confirmedBy: options.createdBy,
                   capacity: turno.capacity,
                 },
-              }
-            : {}),
+              }),
         }),
       );
       if (!created.ok) return created;

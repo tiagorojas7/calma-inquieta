@@ -104,6 +104,24 @@ describe("admin attendance sheet route", () => {
     ]);
   });
 
+  it("comes back to the same page when the form says where it was", async () => {
+    const { save } = setup();
+
+    const response = (await save({
+      intent: "save",
+      returnTo: path(),
+      "status:ana@example.com": "present",
+    })) as Response;
+
+    expect(response.headers.get("Location")).toBe(`${path()}?ok=saved`);
+    const foreign = (await save({
+      intent: "save",
+      returnTo: "https://evil.example/",
+      "status:ana@example.com": "present",
+    })) as Response;
+    expect(foreign.headers.get("Location")).toBe(`${path()}?ok=saved`);
+  });
+
   it("records the mark of a student whose fee is pending", async () => {
     const { save, repository } = setup();
 
@@ -127,9 +145,7 @@ describe("admin attendance sheet route", () => {
     })) as { data: { error: string }; init: { status: number } };
 
     expect(result.init.status).toBe(422);
-    expect(result.data.error).toBe(
-      "No pudimos guardar la asistencia. Revisá los datos e intentá de nuevo.",
-    );
+    expect(result.data.error).toBe("No se pudo guardar. Probá de nuevo.");
     expect(repository.marks).toEqual([]);
   });
 
@@ -210,14 +226,25 @@ describe("admin attendance sheet make-up classes", () => {
     expect(repository.makeUps.size).toBe(0);
   });
 
+  it("books the make-up and comes back to the same student's row", async () => {
+    const { save } = await withAbsence();
+
+    const response = (await save(
+      makeUp({ returnTo: path(), anchor: "alumna-1" }),
+    )) as Response;
+
+    expect(response.headers.get("Location")).toBe(
+      `${path()}?ok=makeup-scheduled#alumna-1`,
+    );
+  });
+
   it("answers 422 for a make-up date outside the month of the turno", async () => {
     const { save, repository } = await withAbsence();
     const result = (await save(makeUp({ makeUpDate: "2026-11-04" }))) as {
       data: { makeUp: { errors: Record<string, string> } };
     };
     expect(result.data.makeUp.errors).toEqual({
-      makeUpDate:
-        "Elegí una fecha dentro del mes del turno, en su día de la semana.",
+      makeUpDate: "Elegí una fecha del mes, en el día del turno.",
     });
     expect(repository.makeUps.size).toBe(0);
   });
@@ -234,7 +261,7 @@ describe("admin attendance sheet make-up classes", () => {
     const after = await load(DATE, `${path()}?ok=makeup-full`);
     expect(after.feedback).toBe("makeup-full");
     expect(after.makeUpFullWarning).toBe(
-      "La recuperación quedó programada, pero ese turno ya no tiene lugares libres ese día.",
+      "Quedó agendada, pero ese turno ya está completo ese día.",
     );
   });
 
@@ -249,7 +276,7 @@ describe("admin attendance sheet make-up classes", () => {
 
     expect(result.init.status).toBe(422);
     expect(result.data.error).toBe(
-      "Una alumna con una recuperación programada no puede pasar a presente. Resolvé primero la recuperación.",
+      "Tiene una recuperación agendada. Resolvela primero.",
     );
     expect(repository.marks.map((m) => m.status)).toEqual(["absent"]);
   });
@@ -290,8 +317,7 @@ describe("admin attendance sheet make-up classes", () => {
 
     expect(result.init.status).toBe(422);
     expect(result.data.makeUp.errors).toEqual({
-      makeUpDate:
-        "Elegí una fecha dentro del mes del turno, en su día de la semana.",
+      makeUpDate: "Elegí una fecha del mes, en el día del turno.",
     });
     expect(result.data.makeUp.values).toEqual({
       makeUpTurno: `${ATT_PERIOD}:${WED}`,
@@ -316,8 +342,7 @@ describe("admin attendance sheet make-up classes", () => {
       data: { makeUp: { errors: Record<string, string> } };
     };
     expect(result.data.makeUp.errors).toEqual({
-      student:
-        "Solo se puede programar la recuperación de una alumna marcada como ausente.",
+      student: "Solo se agenda a quien faltó.",
     });
   });
 
@@ -335,7 +360,7 @@ describe("admin attendance sheet make-up classes", () => {
     };
 
     expect(result.data.makeUp.formError).toBe(
-      "La recuperación de esta ausencia ya se usó. Una ausencia tiene una sola recuperación.",
+      "Esta ausencia ya usó su recuperación.",
     );
     expect(repository.makeUps.size).toBe(1);
   });
@@ -347,7 +372,7 @@ describe("admin attendance sheet make-up classes", () => {
       data: { makeUp: { formError: string } };
     };
     expect(result.data.makeUp.formError).toBe(
-      "Esta ausencia ya tiene una recuperación programada.",
+      "Ya tiene una recuperación agendada.",
     );
   });
 });

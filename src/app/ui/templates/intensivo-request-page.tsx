@@ -16,6 +16,8 @@ export interface RequestProjectOption {
   total: string;
   /** Already formatted deposit. */
   deposit: string;
+  /** What the project is about; shown inside its choice when present. */
+  description?: string;
   image?: { src: string; alt: string; width: number; height: number };
 }
 
@@ -145,6 +147,11 @@ export function IntensivoRequestPage({
                 <span className="font-semibold text-ink-900">
                   {project.name}
                 </span>
+                {project.description ? (
+                  <span className="text-sm text-ink-700">
+                    {project.description}
+                  </span>
+                ) : null}
                 <span className="text-sm text-ink-700">
                   {`${copy.projectTotal}: ${project.total}`}
                 </span>

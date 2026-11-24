@@ -52,6 +52,7 @@ const saleVariants = [
     materialName: "Arcilla",
     variantLabel: "1 kg",
     unitPrice: pesos(4000),
+    keptInStudio: true,
   },
 ];
 const onHand: StockStore["onHand"] = (ids) =>
@@ -124,6 +125,7 @@ describe("admin material sale loader", () => {
           unitPrice: 4000,
           priceLabel: "$ 4.000",
           onHand: 3,
+          keptInStudio: true,
         },
       ],
     });

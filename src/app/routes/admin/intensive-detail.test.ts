@@ -65,8 +65,6 @@ const fields = {
   eventDate: "2026-10-11",
   startsAt: "11:00",
   endsAt: "14:00",
-  price: "35000",
-  deposit: "12000",
   capacity: "15",
   minSeats: "5",
   policyText: "Otra política.",
@@ -154,6 +152,7 @@ const project = {
   intensiveId: "i1",
   position: 0,
   name: "Taza de torno",
+  description: "Una taza al torno.",
   image: {
     assetId: "img-1",
     alt: "Una taza",
@@ -171,6 +170,7 @@ const plainProject = {
   intensiveId: "i1",
   position: 1,
   name: "Plato hondo",
+  description: null,
   image: null,
   price: money(30000),
   deposit: money(10000),
@@ -181,6 +181,7 @@ const projectFields = {
   name: "Taza nueva",
   price: "45000",
   deposit: "15000",
+  description: "Una taza al torno.",
   imageAssetId: "img-1",
   imageSrc: "/imagenes/taza.webp",
   imageAlt: "Una taza",
@@ -228,8 +229,6 @@ describe("admin intensive detail", () => {
         eventDate: "2026-10-10",
         startsAt: "10:00",
         endsAt: "13:00",
-        price: "30000",
-        deposit: "10000",
         capacity: "12",
         minSeats: "4",
         policyText: "Traé delantal.",
@@ -304,8 +303,6 @@ describe("admin intensive detail", () => {
         eventDate: "2026-10-11",
         startsAt: "11:00",
         endsAt: "14:00",
-        price: "35000",
-        deposit: "12000",
         capacity: "15",
         minSeats: "5",
         policyText: "Otra política.",
@@ -346,8 +343,6 @@ describe("admin intensive detail", () => {
           eventDate: "2026-10-11",
           startsAt: "11:00",
           endsAt: "14:00",
-          price: "35000",
-          deposit: "12000",
           capacity: "15",
           minSeats: "5",
           policyText: "Otra política.",
@@ -533,6 +528,29 @@ describe("admin intensive detail", () => {
       ).resolves.toBe(status);
   });
 
+  it("never forwards a posted price or deposit: the workshop keeps what it has", async () => {
+    const update = vi.fn(() =>
+      Promise.resolve({ ok: true as const, value: intensive }),
+    );
+
+    await action({
+      request: postRequest("/admin/intensivos/i1", {
+        intent: "save",
+        ...fields,
+        price: "99999",
+        deposit: "88888",
+      }),
+      params: { id: "i1" },
+      context: context({ update: update as never }),
+    } as never);
+
+    const draft = (
+      update.mock.calls[0] as unknown as [unknown, string, object]
+    )[2];
+    expect(draft).not.toHaveProperty("price");
+    expect(draft).not.toHaveProperty("deposit");
+  });
+
   it("names every unmet intensive publish rule in a form-level 422", async () => {
     const update: IntensivesService["update"] = () =>
       Promise.resolve({
@@ -582,12 +600,14 @@ describe("admin intensive detail", () => {
       {
         id: "p1",
         name: "Taza de torno",
+        description: "Una taza al torno.",
         amounts: { price: "$ 45.000", deposit: "$ 15.000" },
         image: { src: "/imagenes/taza.webp", alt: "Una taza" },
         values: {
           name: "Taza de torno",
           price: "45000",
           deposit: "15000",
+          description: "Una taza al torno.",
           image: {
             assetId: "img-1",
             src: "/imagenes/taza.webp",
@@ -599,12 +619,14 @@ describe("admin intensive detail", () => {
       {
         id: "p2",
         name: "Plato hondo",
+        description: null,
         amounts: { price: "$ 30.000", deposit: "$ 10.000" },
         image: null,
         values: {
           name: "Plato hondo",
           price: "30000",
           deposit: "10000",
+          description: "",
           image: null,
         },
         materials: [],
@@ -643,6 +665,7 @@ describe("admin intensive detail", () => {
         name: "Taza nueva",
         price: "45000",
         deposit: "15000",
+        description: "Una taza al torno.",
         image: { assetId: "img-1", alt: "Una taza" },
       },
     );
@@ -680,7 +703,12 @@ describe("admin intensive detail", () => {
       data: {
         projects: {
           target: "new",
-          values: { name: "", price: "45000", deposit: "15000" },
+          values: {
+            name: "",
+            price: "45000",
+            deposit: "15000",
+            description: "Una taza al torno.",
+          },
           errors: { name: "Completá este campo." },
         },
       },
@@ -820,6 +848,7 @@ const catalog = [
     materialName: "Arcilla blanca",
     variantLabel: "5 kg",
     unitPrice: money(9000),
+    keptInStudio: false,
   },
   {
     materialId: "m2",
@@ -827,6 +856,7 @@ const catalog = [
     materialName: "Esmalte",
     variantLabel: "Celeste",
     unitPrice: money(4000),
+    keptInStudio: false,
   },
 ];
 const okMaterials = (variants = catalog) =>

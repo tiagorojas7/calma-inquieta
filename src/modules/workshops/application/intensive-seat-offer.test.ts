@@ -50,6 +50,7 @@ function project(
     intensiveId: "intensive-1",
     position: 0,
     name: "Taza de torno",
+    description: null,
     image: null,
     price: money(40000),
     deposit: money(15000),
@@ -114,6 +115,7 @@ describe("createIntensiveSeatOfferLookup", () => {
         {
           id: "project-1",
           name: "Taza de torno",
+          description: null,
           image: null,
           price: money(40000),
           deposit: money(15000),
@@ -153,6 +155,7 @@ describe("createIntensiveSeatOfferLookup", () => {
         id: "project-1",
         position: 0,
         name: "Taza",
+        description: "Una taza al torno.",
         image: { assetId: ASSET.id, alt: "Una taza" },
       }),
       project({
@@ -168,6 +171,7 @@ describe("createIntensiveSeatOfferLookup", () => {
       {
         id: "project-1",
         name: "Taza",
+        description: "Una taza al torno.",
         image: {
           src: "/media/taza.webp",
           alt: "Una taza",
@@ -180,6 +184,7 @@ describe("createIntensiveSeatOfferLookup", () => {
       {
         id: "project-2",
         name: "Plato",
+        description: null,
         image: null,
         price: money(30000),
         deposit: money(10000),

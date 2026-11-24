@@ -35,6 +35,19 @@ function renderForm(props: Partial<Parameters<typeof MaterialForm>[0]> = {}) {
 }
 
 describe("MaterialForm", () => {
+  it('shows the yes or no "Lo tenemos en el estudio", visible and posted as keptInStudio', async () => {
+    const { unmount } = renderForm();
+    const box = await screen.findByLabelText("Lo tenemos en el estudio");
+    expect(box).toBeVisible();
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAttribute("name", "keptInStudio");
+    unmount();
+    renderForm({ values: { ...empty, keptInStudio: true } });
+    expect(
+      await screen.findByLabelText("Lo tenemos en el estudio"),
+    ).toBeChecked();
+  });
+
   it("swaps the price field for an empty one when Consultar precio is checked", async () => {
     const { container } = renderForm();
     fireEvent.click(await screen.findByLabelText("Consultar precio"));

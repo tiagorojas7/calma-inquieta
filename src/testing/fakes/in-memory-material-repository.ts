@@ -88,6 +88,15 @@ export class InMemoryMaterialRepository implements MaterialRepository {
     }
   }
 
+  deleteIfUnused(id: string): Promise<"deleted" | "not-found" | "in-use"> {
+    const current = this.materials.get(id);
+    if (!current) return Promise.resolve("not-found");
+    if (current.variants.some((variant) => variant.used))
+      return Promise.resolve("in-use");
+    this.materials.delete(id);
+    return Promise.resolve("deleted");
+  }
+
   update(material: Material): Promise<boolean> {
     if (!this.materials.has(material.id)) return Promise.resolve(false);
     try {
@@ -98,6 +107,32 @@ export class InMemoryMaterialRepository implements MaterialRepository {
         error instanceof Error ? error : new Error("material update failed"),
       );
     }
+  }
+
+  updatePreservingKeptInStudio(material: Material): Promise<Material | null> {
+    const current = this.materials.get(material.id);
+    if (!current) return Promise.resolve(null);
+    const next = { ...material, keptInStudio: current.keptInStudio === true };
+    try {
+      this.write(next);
+      return Promise.resolve(cloneMaterial(next));
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error ? error : new Error("material update failed"),
+      );
+    }
+  }
+
+  setKeptInStudio(
+    id: string,
+    kept: boolean,
+    audit: Material["audit"],
+  ): Promise<Material | null> {
+    const current = this.materials.get(id);
+    if (!current) return Promise.resolve(null);
+    const changed = { ...current, keptInStudio: kept, audit };
+    this.materials.set(id, cloneMaterial(changed));
+    return Promise.resolve(cloneMaterial(changed));
   }
 
   findById(id: string): Promise<Material | null> {

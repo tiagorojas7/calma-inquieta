@@ -13,7 +13,7 @@ export function runDatabaseProbeContract(
 
       await expect(probe.probe()).resolves.toEqual({
         reachable: true,
-        latestMigration: "0018_durable_student_identity",
+        latestMigration: "0019_project_description",
       });
     });
 

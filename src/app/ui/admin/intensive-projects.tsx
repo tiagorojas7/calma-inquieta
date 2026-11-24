@@ -1,8 +1,13 @@
 import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
-import { AdminSection } from "./admin-sections";
+import { ADMIN_CARD_GRID, AdminSection } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { CheckboxField, FormError, TextField } from "./form-fields";
+import {
+  CheckboxField,
+  FormError,
+  TextAreaField,
+  TextField,
+} from "./form-fields";
 import { ImageField } from "./image-field";
 import { uploadIntensiveImage } from "./intensive-form";
 import {
@@ -14,7 +19,8 @@ import { adminMicrocopy } from "./microcopy";
 
 const copy = adminMicrocopy.intensives.projects;
 
-export type ProjectField = "name" | "price" | "deposit" | "image";
+export type ProjectField =
+  "name" | "price" | "deposit" | "description" | "image";
 type ProjectErrors = Readonly<Partial<Record<ProjectField, string>>>;
 
 /** What a project form shows: the text typed and the chosen image, if any. */
@@ -22,6 +28,7 @@ export interface ProjectFormValues {
   readonly name: string;
   readonly price: string;
   readonly deposit: string;
+  readonly description: string;
   readonly image: {
     readonly assetId: string;
     readonly src?: string;
@@ -32,6 +39,7 @@ export interface ProjectFormValues {
 export interface IntensiveProjectCard {
   readonly id: string;
   readonly name: string;
+  readonly description: string | null;
   /** Already formatted for reading, e.g. "$ 30.000". */
   readonly amounts: { readonly price: string; readonly deposit: string };
   readonly image: { readonly src: string; readonly alt: string } | null;
@@ -59,6 +67,7 @@ const EMPTY_VALUES: ProjectFormValues = {
   name: "",
   price: "",
   deposit: "",
+  description: "",
   image: null,
 };
 
@@ -115,6 +124,13 @@ function ProjectForm({
           error={errors.deposit}
         />
       </div>
+      <TextAreaField
+        label={copy.form.description}
+        name="description"
+        rows={3}
+        defaultValue={values.description}
+        error={errors.description}
+      />
       <ImageField
         name="image"
         label={copy.form.image}
@@ -125,7 +141,11 @@ function ProjectForm({
             : undefined
         }
       />
-      {errors.image && <p role="alert">{errors.image}</p>}
+      {errors.image && (
+        <p role="alert" className="text-sm text-terracotta-700">
+          {errors.image}
+        </p>
+      )}
       {image && (
         <CheckboxField label={copy.form.removeImage} name="removeImage" />
       )}
@@ -193,7 +213,10 @@ export function IntensiveProjects({
       {projects.length === 0 ? (
         <Text tone="muted">{copy.empty}</Text>
       ) : (
-        <ul aria-label={copy.title} className="flex flex-col gap-4">
+        <ul
+          aria-label={copy.title}
+          className={`${ADMIN_CARD_GRID} lg:items-start`}
+        >
           {projects.map((project, index) => {
             const refused = rejected?.target === project.id ? rejected : null;
             return (
@@ -218,6 +241,11 @@ export function IntensiveProjects({
                         project.amounts.deposit,
                       )}
                     </p>
+                    {project.description && (
+                      <p className="text-sm text-ink-700">
+                        {project.description}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

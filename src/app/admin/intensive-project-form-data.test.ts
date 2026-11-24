@@ -14,6 +14,7 @@ import {
   parseQuantity,
   parseVariantId,
   projectCards,
+  stockedMaterialChoices,
   rejectedProject,
 } from "./intensive-project-form-data";
 
@@ -28,6 +29,7 @@ const project = (id: string, name: string): IntensiveProject => ({
   intensiveId: "i1",
   position: 0,
   name,
+  description: null,
   image: null,
   price: pesos(30000),
   deposit: pesos(10000),
@@ -48,6 +50,7 @@ describe("parseProjectDraft", () => {
           name: "Taza",
           price: "30000",
           deposit: "10000",
+          description: "Una taza al torno.",
           imageAssetId: "a1",
           imageSrc: "/i.webp",
           imageAlt: "Una taza",
@@ -57,6 +60,7 @@ describe("parseProjectDraft", () => {
       name: "Taza",
       price: "30000",
       deposit: "10000",
+      description: "Una taza al torno.",
       image: { assetId: "a1", alt: "Una taza" },
     });
   });
@@ -92,6 +96,7 @@ describe("parseProjectDraft", () => {
       name: "",
       price: "",
       deposit: "",
+      description: "",
       image: null,
     });
   });
@@ -117,6 +122,7 @@ describe("rejectedProject", () => {
       name: "",
       price: "1000",
       deposit: "2000",
+      description: "Mi texto",
       imageAssetId: "a1",
       imageSrc: "/i.webp",
       imageAlt: "",
@@ -125,6 +131,7 @@ describe("rejectedProject", () => {
     const rejected = rejectedProject("p2", parseProjectDraft(data), data, [
       { field: "name", code: "required" },
       { field: "deposit", code: "exceeds-price" },
+      { field: "description", code: "too-long" },
       { field: "image", code: "required" },
     ]);
 
@@ -134,11 +141,13 @@ describe("rejectedProject", () => {
         name: "",
         price: "1000",
         deposit: "2000",
+        description: "Mi texto",
         image: { assetId: "a1", src: "/i.webp", alt: "" },
       },
       errors: {
         name: "Completá este campo.",
         deposit: "No puede superar el precio.",
+        description: "La descripción es demasiado larga. Acortala.",
         image: "Describí la imagen en el texto alternativo.",
       },
       formError: "Revisá los campos marcados e intentá de nuevo.",
@@ -168,6 +177,7 @@ const variant = (
   materialName,
   variantLabel,
   unitPrice: Money.zero(),
+  keptInStudio: false,
 });
 
 describe("bill of materials form data", () => {
@@ -197,6 +207,33 @@ describe("bill of materials form data", () => {
     expect(
       materialChoices(variants, null).map((choice) => choice.onHand),
     ).toEqual([null, null]);
+  });
+
+  it("tells the new-workshop picker which materials the studio keeps, leaving the others as they are", () => {
+    const variants = [
+      { ...variant("v1", "Arcilla blanca", "5 kg"), keptInStudio: true },
+      variant("v2", "Esmalte", "Celeste"),
+    ];
+
+    expect(stockedMaterialChoices(variants, new Map([["v1", 7]]))).toEqual([
+      {
+        variantId: "v1",
+        name: "Arcilla blanca",
+        label: "5 kg",
+        onHand: 7,
+        keptInStudio: true,
+      },
+      {
+        variantId: "v2",
+        name: "Esmalte",
+        label: "Celeste",
+        onHand: 0,
+        keptInStudio: false,
+      },
+    ]);
+    expect(
+      materialChoices(variants, new Map([["v1", 7]]))[0],
+    ).not.toHaveProperty("keptInStudio");
   });
 
   it("puts each project's lines on its card, named from the catalog and flagged when the variant is gone", () => {
@@ -242,9 +279,25 @@ describe("bill of materials form data", () => {
         deposit: formatPesos(pesos(10000)),
       },
       image: null,
-      values: { name: "Taza", price: "30000", deposit: "10000", image: null },
+      values: {
+        name: "Taza",
+        price: "30000",
+        deposit: "10000",
+        description: "",
+        image: null,
+      },
+      description: null,
       materials: [],
     });
+  });
+
+  it("carries the description on the card and prefills the form with it", () => {
+    const [card] = projectCards([
+      { ...project("p1", "Taza"), description: "Una taza al torno." },
+    ]);
+
+    expect(card?.description).toBe("Una taza al torno.");
+    expect(card?.values.description).toBe("Una taza al torno.");
   });
 
   it("words a refused line in the owner's terms, one message per cause", () => {

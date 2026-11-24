@@ -58,6 +58,35 @@ describe("students service", () => {
     ]);
   });
 
+  it("lists each student with her material sales in her orders, though the registry listing never reads them", async () => {
+    const { service, orders } = setup();
+    orders.orders.push(
+      studentOrder(1, { studentEmail: "ana@example.com", status: "paid" }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        kind: "material_sale",
+        workshopName: "Venta",
+      }),
+      studentOrder(3, { studentEmail: "bea@example.com", status: "paid" }),
+    );
+
+    const listed = await service.list(testAdminActor());
+
+    expect(listed.ok).toBe(true);
+    const items = listed.ok ? listed.value.items : [];
+    const kinds = (email: string) =>
+      items
+        .find((student) => student.email === email)
+        ?.orders.map((order) => order.kind ?? "enrollment")
+        .sort();
+    expect(kinds("ana@example.com")).toEqual(["enrollment", "material_sale"]);
+    expect(kinds("bea@example.com")).toEqual(["enrollment"]);
+    // A sale is still never a workshop or an activity.
+    expect(
+      items.find((student) => student.email === "ana@example.com")?.activities,
+    ).toHaveLength(1);
+  });
+
   it("returns the detail by email, merged across workshops, with its note", async () => {
     const { service, orders, notes } = setup();
     orders.orders.push(

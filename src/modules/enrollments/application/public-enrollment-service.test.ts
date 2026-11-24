@@ -205,6 +205,68 @@ describe("requestEnrollment happy path", () => {
     expect(await seats.confirmedSeats("p-1", "t-1")).toBe(0);
   });
 
+  describe("paid on creation (the owner took the payment)", () => {
+    const paidNow = {
+      createdBy: "owner@example.com",
+      fee: pesos(40000),
+      paidAt: new Date("2026-10-20T03:00:00.000Z"),
+    };
+
+    it("stores a priced manual order already paid in full and claims its seat", async () => {
+      const { service, orders, seats } = setup();
+      const result = await service.requestEnrollment(request(), paidNow);
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      expect(result.value.status).toBe("paid");
+      const stored = await orders.findByPublicId(result.value.publicId);
+      expect(stored).toMatchObject({
+        status: "paid",
+        paidAt: paidNow.paidAt,
+        confirmedBy: "owner@example.com",
+      });
+      expect(stored?.paidAmount?.equals(pesos(40000))).toBe(true);
+      expect(await seats.confirmedSeats("p-1", "t-1")).toBe(1);
+    });
+
+    it("stores nothing and claims no seat when the turno is full", async () => {
+      const { service, orders, seats } = setup();
+      seats.setConfirmed("p-1", "t-1", 8);
+      await expect(
+        service.requestEnrollment(request(), paidNow),
+      ).resolves.toEqual({ ok: false, error: { kind: "turno-full" } });
+      expect(orders.size()).toBe(0);
+      expect(await seats.confirmedSeats("p-1", "t-1")).toBe(8);
+    });
+
+    it("pays a zero fee with materials in full, not the zero fee only", async () => {
+      const { service, orders } = setup({
+        materials: new InMemoryOfferedMaterials(),
+        adminMaterials: new InMemoryOfferedMaterials({
+          "p-1": [materialFixture()],
+        }),
+      });
+      const result = await service.requestEnrollment(
+        request({ lines: [line("v-2", 3)] }),
+        { ...paidNow, fee: pesos(0) },
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      expect(result.value.status).toBe("paid");
+      const stored = await orders.findByPublicId(result.value.publicId);
+      expect(stored?.paidAmount?.equals(pesos(12000))).toBe(true);
+    });
+
+    it("never pays a public enrollment, whatever the options say", async () => {
+      const { service, orders } = setup();
+      const result = await service.requestEnrollment(request(), {
+        paidAt: paidNow.paidAt,
+      });
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      expect(result.value.status).toBe("pending_confirmation");
+      expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+        "pending_confirmation",
+      );
+    });
+  });
+
   it("never settles a public enrollment: it stays pending and claims no seat", async () => {
     const { service, orders, seats } = setup();
     const result = await service.requestEnrollment(request());

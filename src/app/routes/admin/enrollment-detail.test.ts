@@ -1185,6 +1185,77 @@ describe("admin enrollment detail loader: material sales", () => {
     });
   });
 
+  it("shows what each sale holds inside the record, read from the sale itself", async () => {
+    const saleId = "aaaaaaaa-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
+    const record: AdminEnrollmentDetail = {
+      ...detail,
+      kind: "enrollment",
+      sales: [
+        {
+          id: saleId,
+          number: "CI-2026-0010",
+          status: "paid",
+          total: pesos(4_000),
+          requestedAt: new Date("2026-11-21T15:00:00Z"),
+        },
+      ],
+    };
+    const sold: AdminEnrollmentDetail = {
+      ...sale,
+      id: saleId,
+      lines: [
+        {
+          materialId: "m9",
+          variantId: "v9",
+          materialName: "Esmalte",
+          variantLabel: "Rojo",
+          unitPrice: pesos(2_000),
+          quantity: 2,
+          supplierId: "s1",
+          supplierName: "Proveedor",
+        },
+      ],
+    };
+
+    const result = await load({
+      detail: (_actor: unknown, id: string) =>
+        Promise.resolve(ok(id === saleId ? sold : record)),
+    });
+
+    expect(result.sales).toMatchObject([
+      {
+        number: "CI-2026-0010",
+        lines: [{ label: "Esmalte Rojo", quantity: 2 }],
+      },
+    ]);
+  });
+
+  it("still lists a sale whose own page cannot be read, without its materials", async () => {
+    const saleId = "aaaaaaaa-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
+    const record: AdminEnrollmentDetail = {
+      ...detail,
+      kind: "enrollment",
+      sales: [
+        {
+          id: saleId,
+          number: "CI-2026-0010",
+          status: "paid",
+          total: pesos(4_000),
+          requestedAt: new Date("2026-11-21T15:00:00Z"),
+        },
+      ],
+    };
+
+    const result = await load({
+      detail: (_actor: unknown, id: string) =>
+        Promise.resolve(
+          id === saleId ? err({ kind: "unavailable" as const }) : ok(record),
+        ),
+    });
+
+    expect(result.sales).toMatchObject([{ number: "CI-2026-0010", lines: [] }]);
+  });
+
   it("offers no new sale under a cancelled record, but still lists the ones it has", async () => {
     const result = await load({
       detail: () =>

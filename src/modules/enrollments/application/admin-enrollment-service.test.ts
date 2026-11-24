@@ -213,6 +213,57 @@ describe("admin enrollment service", () => {
     expect(seats.snapshot()).toEqual(before);
   });
 
+  it("asks for the order to be stored paid in full on the Córdoba day when the owner took the payment", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    await service.createPending(admin, pendingInput, {
+      fee: pesos(40000),
+      paid: true,
+    });
+    await service.createPending(admin, pendingInput, { paid: true });
+    await service.createPending(admin, pendingInput, {
+      fee: pesos(0),
+      paid: true,
+    });
+
+    // `paid` is the owner's word; the creation only gets the date and the fee.
+    const paidAt = new Date("2026-10-31T03:00:00.000Z");
+    expect(pendingCalls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { fee: pesos(40000), paidAt },
+      },
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { paidAt },
+      },
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { fee: pesos(0), paidAt },
+      },
+    ]);
+  });
+
+  it("keeps a pending request as it was when the payment was not taken", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    await service.createPending(admin, pendingInput, {
+      fee: pesos(40000),
+      paid: false,
+    });
+
+    expect(pendingCalls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { fee: pesos(40000) },
+      },
+    ]);
+  });
+
   it("returns the turno-full refusal of a free enrollment untouched", async () => {
     const { service } = await fixture({
       createPending: () => () =>

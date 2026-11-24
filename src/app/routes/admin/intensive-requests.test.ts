@@ -48,9 +48,9 @@ async function seeded(capacity = 2) {
   return { repository, services: { intensiveRequests: service }, ids };
 }
 
-const load = (id: string, services: object, admin = true) =>
+const load = (id: string, services: object, admin = true, query = "") =>
   loader({
-    request: getRequest(`/admin/intensivos/${id}/reservas`),
+    request: getRequest(`/admin/intensivos/${id}/reservas${query}`),
     params: { id },
     context: adminContext(services, { admin }),
   } as never);
@@ -109,6 +109,27 @@ describe("admin intensive requests loader", () => {
     ]);
   });
 
+  it("reads the filter, the search and the person just acted on from the address", async () => {
+    const { services, ids } = await seeded();
+
+    const plain = await load(FAKE_INTENSIVE_ID, services);
+    const asked = await load(
+      FAKE_INTENSIVE_ID,
+      services,
+      true,
+      `?estado=por-confirmar&buscar=Ana&ver=${ids[0] ?? ""}`,
+    );
+    const unknown = await load(FAKE_INTENSIVE_ID, services, true, "?estado=x");
+
+    expect(plain.browse).toEqual({ filter: "todas", search: "", focus: null });
+    expect(asked.browse).toEqual({
+      filter: "por-confirmar",
+      search: "Ana",
+      focus: ids[0],
+    });
+    expect(unknown.browse.filter).toBe("todas");
+  });
+
   it("answers 404 for a non-UUID or unknown intensivo, 403 for a non-admin and 503 when unavailable", async () => {
     const { services } = await seeded();
 
@@ -146,6 +167,25 @@ describe("admin intensive requests action", () => {
       paymentNote: "transferencia",
       confirmedBy: "a@x.test",
     });
+  });
+
+  it("comes back to the same person on the page the form was on", async () => {
+    const { services, ids } = await seeded();
+    const id = ids[0] ?? "";
+
+    const response = (await post(
+      {
+        ...CONFIRM,
+        requestId: id,
+        returnTo: PATH,
+        anchor: `reserva-${id}`,
+      },
+      services,
+    )) as Response;
+
+    expect(response.headers.get("Location")).toBe(
+      `${PATH}?ok=confirmed#reserva-${id}`,
+    );
   });
 
   it("rejects a different amount next to the field and keeps the values", async () => {

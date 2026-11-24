@@ -1,6 +1,7 @@
 import { Heading, Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminColumns } from "./admin-sections";
 import { FormError, SelectField, TextAreaField } from "./form-fields";
 import { materialCatalogCopy } from "./material-catalog-copy";
 
@@ -68,7 +69,7 @@ export function MaterialImport({
     plan.errors.length === 0 &&
     plan.newMaterials + plan.newVariants + plan.priceChanges > 0;
   return (
-    <section className="flex max-w-3xl flex-col gap-6">
+    <section className="flex flex-col gap-6">
       <AdminPageHeader
         title={copy.title}
         description={copy.intro}
@@ -87,46 +88,59 @@ export function MaterialImport({
       >
         <input type="hidden" name="intent" value="preview" />
         <FormError message={formError} />
-        <SelectField
-          label={copy.supplier}
-          name="supplierId"
-          defaultValue={values.supplierId}
-          error={supplierError}
-          options={[
-            { value: "", label: copy.supplierPlaceholder },
-            ...suppliers.map((supplier) => ({
-              value: supplier.id,
-              label: supplier.name,
-            })),
-          ]}
+        <AdminColumns
+          start={
+            <>
+              <SelectField
+                label={copy.supplier}
+                name="supplierId"
+                defaultValue={values.supplierId}
+                error={supplierError}
+                options={[
+                  { value: "", label: copy.supplierPlaceholder },
+                  ...suppliers.map((supplier) => ({
+                    value: supplier.id,
+                    label: supplier.name,
+                  })),
+                ]}
+              />
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="catalog-file"
+                  className="font-semibold text-ink-900"
+                >
+                  {copy.file}
+                </label>
+                <input
+                  id="catalog-file"
+                  type="file"
+                  name="file"
+                  accept=".csv,text/csv,text/plain"
+                  aria-describedby="catalog-file-hint"
+                  className="min-h-11 text-base text-ink-900"
+                />
+                <p id="catalog-file-hint" className="text-sm text-ink-600">
+                  {copy.fileHint}
+                </p>
+              </div>
+            </>
+          }
+          end={
+            <>
+              <TextAreaField
+                label={copy.text}
+                hint={copy.textHint}
+                name="csv"
+                rows={6}
+                defaultValue={values.csv}
+                error={csvError}
+              />
+              <div>
+                <Button type="submit">{copy.preview}</Button>
+              </div>
+            </>
+          }
         />
-        <div className="flex flex-col gap-1">
-          <label htmlFor="catalog-file" className="font-semibold text-ink-900">
-            {copy.file}
-          </label>
-          <input
-            id="catalog-file"
-            type="file"
-            name="file"
-            accept=".csv,text/csv,text/plain"
-            aria-describedby="catalog-file-hint"
-            className="min-h-11 text-base text-ink-900"
-          />
-          <p id="catalog-file-hint" className="text-sm text-ink-600">
-            {copy.fileHint}
-          </p>
-        </div>
-        <TextAreaField
-          label={copy.text}
-          hint={copy.textHint}
-          name="csv"
-          rows={6}
-          defaultValue={values.csv}
-          error={csvError}
-        />
-        <div>
-          <Button type="submit">{copy.preview}</Button>
-        </div>
       </form>
       {plan ? (
         <section

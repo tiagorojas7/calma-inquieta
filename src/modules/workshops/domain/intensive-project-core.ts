@@ -8,7 +8,11 @@ import {
   type Result,
 } from "~/modules/_shared";
 
-export const INTENSIVE_PROJECT_LIMITS = { name: 80, alt: 200 } as const;
+export const INTENSIVE_PROJECT_LIMITS = {
+  name: 80,
+  alt: 200,
+  description: 600,
+} as const;
 
 const ZERO = Money.zero();
 
@@ -17,15 +21,19 @@ export interface ProjectFieldsDraft {
   readonly name: string;
   readonly price: string;
   readonly deposit: string;
+  /** Optional; blank means none. */
+  readonly description: string;
 }
 
-export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
+export type IntensiveProjectField =
+  "name" | "price" | "deposit" | "description" | "image";
 
-/** The validated fields of a project: a name and whole-peso money. */
+/** The validated fields of a project: a name, whole-peso money and an optional description. */
 export interface IntensiveProjectCore {
   readonly name: string;
   readonly price: Money;
   readonly deposit: Money;
+  readonly description: string | null;
 }
 
 type MoneyField = "price" | "deposit";
@@ -60,6 +68,10 @@ export function validateIntensiveProject(
   else if (name.length > INTENSIVE_PROJECT_LIMITS.name)
     issues.push({ field: "name", code: "too-long" });
 
+  const description = draft.description.trim();
+  if (description.length > INTENSIVE_PROJECT_LIMITS.description)
+    issues.push({ field: "description", code: "too-long" });
+
   const price = positivePesos("price", draft.price, issues);
   const deposit = positivePesos("deposit", draft.deposit, issues);
   if (price && deposit && deposit.compare(price) > 0)
@@ -67,10 +79,5 @@ export function validateIntensiveProject(
 
   if (issues.length > 0 || !price || !deposit)
     return err({ kind: "invalid", issues });
-  return ok({ name, price, deposit });
-}
-
-/** The name of the project a new workshop starts with: the workshop's own, cut to fit. */
-export function defaultProjectName(intensiveName: string): string {
-  return intensiveName.trim().slice(0, INTENSIVE_PROJECT_LIMITS.name).trimEnd();
+  return ok({ name, price, deposit, description: description || null });
 }

@@ -53,44 +53,11 @@ const LIVE_STATUSES: readonly StoredIntensive["status"][] = [
 ];
 
 /**
- * Admin use cases for the selectable projects of an intensivo. Every call
- * checks the actor before any port call. A project belongs to one intensivo,
- * so each call names both ids and an id that belongs elsewhere is not found.
+ * Validates a project draft: the fields through the domain and the image
+ * through the media lookup. Shared with the creation of a workshop, so a
+ * project typed in the new-workshop form obeys exactly the editor's rules.
  */
-export function createIntensiveProjectUseCases(
-  deps: IntensiveProjectDeps,
-): ProjectUseCases {
-  const { repository, media, clock, newId } = deps;
-  const stamp = (actor: AdminActor) => ({
-    updatedBy: actor.email,
-    updatedAt: clock.now(),
-  });
-
-  async function readModels(
-    stored: readonly StoredIntensiveProject[],
-  ): Promise<readonly IntensiveProject[]> {
-    const assetIds = [
-      ...new Set(stored.flatMap((s) => (s.image ? [s.image.assetId] : []))),
-    ];
-    const assets = await media.findAssets(assetIds);
-    return stored.map((s) => ({
-      id: s.id,
-      intensiveId: s.intensiveId,
-      position: s.position,
-      name: s.name,
-      image: s.image
-        ? {
-            assetId: s.image.assetId,
-            alt: s.image.alt,
-            asset: assets.get(s.image.assetId) ?? null,
-          }
-        : null,
-      price: s.price,
-      deposit: s.deposit,
-      audit: s.audit,
-    }));
-  }
-
+export function createProjectDraftResolver(media: MediaLookup) {
   async function resolveImage(
     image: ImageUseDraft | null,
   ): Promise<
@@ -120,6 +87,50 @@ export function createIntensiveProjectUseCases(
     ];
     if (!core.ok || !image.ok) return err({ kind: "invalid" as const, issues });
     return ok({ ...core.value, image: image.value });
+  }
+
+  return resolveDraft;
+}
+
+/**
+ * Admin use cases for the selectable projects of an intensivo. Every call
+ * checks the actor before any port call. A project belongs to one intensivo,
+ * so each call names both ids and an id that belongs elsewhere is not found.
+ */
+export function createIntensiveProjectUseCases(
+  deps: IntensiveProjectDeps,
+): ProjectUseCases {
+  const { repository, media, clock, newId } = deps;
+  const resolveDraft = createProjectDraftResolver(media);
+  const stamp = (actor: AdminActor) => ({
+    updatedBy: actor.email,
+    updatedAt: clock.now(),
+  });
+
+  async function readModels(
+    stored: readonly StoredIntensiveProject[],
+  ): Promise<readonly IntensiveProject[]> {
+    const assetIds = [
+      ...new Set(stored.flatMap((s) => (s.image ? [s.image.assetId] : []))),
+    ];
+    const assets = await media.findAssets(assetIds);
+    return stored.map((s) => ({
+      id: s.id,
+      intensiveId: s.intensiveId,
+      position: s.position,
+      name: s.name,
+      description: s.description,
+      image: s.image
+        ? {
+            assetId: s.image.assetId,
+            alt: s.image.alt,
+            asset: assets.get(s.image.assetId) ?? null,
+          }
+        : null,
+      price: s.price,
+      deposit: s.deposit,
+      audit: s.audit,
+    }));
   }
 
   async function withIntensivo(
@@ -155,6 +166,7 @@ export function createIntensiveProjectUseCases(
         id: newId(),
         intensiveId: id,
         name: fields.value.name,
+        description: fields.value.description,
         image: fields.value.image,
         price: fields.value.price,
         deposit: fields.value.deposit,
@@ -176,6 +188,7 @@ export function createIntensiveProjectUseCases(
       const next: StoredIntensiveProject = {
         ...current,
         name: fields.value.name,
+        description: fields.value.description,
         image: fields.value.image,
         price: fields.value.price,
         deposit: fields.value.deposit,

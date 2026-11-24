@@ -1,240 +1,54 @@
-import { data, redirect, useActionData, useLoaderData } from "react-router";
-import { servicesContext } from "~/app/context";
-import { enrollmentRefusalMessage } from "~/app/admin/enrollment-action-data";
-import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
-import { isUuid } from "~/app/admin/enrollment-ids";
-import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
-import { whatsappHref } from "~/app/admin/whatsapp-href";
-import { monthLabel } from "~/app/enrollment/order-labels";
-import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { redirect, useActionData } from "react-router";
 import {
-  EnrollmentConsolidation,
-  type DeliveryCardView,
-  type MaterialsSection,
-} from "~/app/ui/admin/enrollment-consolidation";
-import {
-  formatPesos,
-  fulfillmentOf,
-  type DeliveryOrder,
-} from "~/modules/enrollments";
+  consolidationAction,
+  DELIVER_ANCHOR,
+  MATERIALS_PATH,
+  ORDER_ANCHOR,
+  periodOf,
+} from "./enrollment-consolidation-view";
+import { adminCopy } from "~/app/ui/admin/copy";
+import { FormError } from "~/app/ui/admin/form-fields";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-consolidation";
 
-const CORDOBA_OFFSET_MS = 10_800_000;
-const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
-const MAX_ORDERS = 200;
-const BASE_PATH = "/admin/inscripciones/materiales";
-const FEEDBACK = ["requested", "received", "workshop-requested"] as const;
+const copy = adminCopy.materiales;
 
-export function meta() {
-  return [{ title: "Materiales | Panel | Calma Inquieta" }];
-}
-
-function periodOf(value: string | null): string {
-  return value !== null && PERIOD_KEY.test(value)
-    ? value
-    : new Date(Date.now() - CORDOBA_OFFSET_MS).toISOString().slice(0, 7);
-}
-
-function sectionOf(value: string | null): MaterialsSection {
-  return value === "entregar" ? "entregar" : "pedir";
-}
-
-function cardOf(order: DeliveryOrder): DeliveryCardView {
-  return {
-    id: order.id,
-    studentName: order.studentName,
-    // A sale has no turno of its own: it names the workshop of its record.
-    detail:
-      order.kind === "material_sale"
-        ? `${adminMicrocopy.enrollments.detail.sale.listLabel} · ${order.workshopName}`
-        : `${order.workshopName} · ${order.turnoLabel}`,
-    lines: order.lines.map((line) => ({
-      label: `${line.materialName} ${line.variantLabel}`,
-      quantity: line.quantity,
-    })),
-    whatsappHref: whatsappHref(order.phoneDigits),
-    ...(order.status === "paid" ? { fromStock: true } : {}),
-  };
-}
-
-/** Handed over from here: asked from the supplier, or paid with every line in stock. */
-const toHandOver = (order: DeliveryOrder): boolean =>
-  order.status === "materials_requested" ||
-  (order.status === "paid" && fulfillmentOf(order.lines).stockOnly);
-
-export async function loader({ request, context }: Route.LoaderArgs) {
-  const actor = requireAdmin(request, context);
+/**
+ * The old Materiales page now lives in Materiales. It keeps its address: a
+ * visit goes to the new screen with the same month and notice, and a post
+ * (forms elsewhere may still send one here) is handled as before.
+ */
+export function loader({ request, context }: Route.LoaderArgs) {
+  requireAdmin(request, context);
   const params = new URL(request.url).searchParams;
-  const period = periodOf(params.get("mes"));
-  const count = Number(params.get("n"));
-  const code = feedbackCode(request, FEEDBACK);
-  const services = context.get(servicesContext);
-  const [found, delivered] = await Promise.all([
-    services.consolidation.consolidate(actor, period),
-    services.consolidation.deliveries(actor, period),
-  ]);
-  for (const outcome of [found, delivered])
-    if (!outcome.ok)
-      throw outcome.error.kind === "invalid"
-        ? data(null, { status: 400 })
-        : enrollmentFailureResponse(outcome.error);
-  if (!found.ok || !delivered.ok) throw data(null, { status: 503 });
-  const consolidation = found.value;
-  const toDeliver = delivered.value.filter(toHandOver).map(cardOf);
-  const requestable = new Set(
-    consolidation.suppliers.flatMap(
-      (supplier) => supplier.pendingRequestOrderIds,
-    ),
-  );
-  // A workshop with lines to buy counts once, like an order to request.
-  const workshops = new Set(
-    consolidation.suppliers.flatMap((supplier) =>
-      supplier.materials.flatMap((item) =>
-        item.originId === undefined ? [] : [item.originId],
-      ),
-    ),
-  );
-  return {
-    period: consolidation.period,
-    periodLabel: monthLabel(consolidation.period),
-    section: sectionOf(params.get("seccion")),
-    counts: {
-      pedir: requestable.size + workshops.size,
-      entregar: toDeliver.length,
-    },
-    grandTotal: formatPesos(consolidation.grandTotal),
-    pendingOrders: consolidation.pendingOrders,
-    notice:
-      code !== null &&
-      Number.isInteger(count) &&
-      count > 0 &&
-      count <= MAX_ORDERS
-        ? { kind: code, count }
-        : null,
-    suppliers: consolidation.suppliers.map((supplier) => ({
-      supplierId: supplier.supplierId,
-      supplierName: supplier.supplierName,
-      materials: supplier.materials.map((item) => ({
-        label: `${item.materialName} ${item.variantLabel}`,
-        quantity: item.quantity,
-        total: formatPesos(item.total),
-        ...(item.origin === undefined || item.originId === undefined
-          ? {}
-          : { origin: item.origin, originId: item.originId }),
-      })),
-      total: formatPesos(supplier.total),
-      summary: supplier.summary,
-      orderIds: supplier.pendingRequestOrderIds,
-    })),
-    toDeliver,
-    delivered: delivered.value
-      .filter((order) => order.status === "materials_received")
-      .map(cardOf),
-  };
-}
-
-const INTENTS = {
-  "mark-requested": { code: "requested", method: "markMaterialsRequestedBulk" },
-  "mark-received": { code: "received", method: "markMaterialsReceivedBulk" },
-} as const;
-
-/** "Ya lo pedí" on a workshop row: its lines from that supplier leave the list. */
-async function markWorkshopRequested(
-  actor: ReturnType<typeof requireAdmin>,
-  form: FormData,
-  context: Route.ActionArgs["context"],
-  view: { period: string; section: MaterialsSection },
-) {
-  const workshopId = form.get("workshopId");
-  const supplierId = form.get("supplierId");
-  if (
-    typeof workshopId !== "string" ||
-    typeof supplierId !== "string" ||
-    !isUuid(workshopId) ||
-    !isUuid(supplierId)
-  )
-    throw data(null, { status: 400 });
-  const marked = await context
-    .get(servicesContext)
-    .consolidation.markWorkshopOrdered(actor, workshopId, supplierId);
-  if (!marked.ok) throw enrollmentFailureResponse(marked.error);
-  const back = `${BASE_PATH}?mes=${view.period}&seccion=${view.section}`;
-  // Pressed again (or by the other owner meanwhile): nothing moved, no notice.
+  const target = new URLSearchParams();
+  const month = params.get("mes");
+  if (month !== null) target.set("mes", periodOf(month));
+  for (const key of ["ok", "n"]) {
+    const value = params.get(key);
+    if (value !== null) target.set(key, value);
+  }
+  const query = target.toString();
+  const anchor =
+    params.get("seccion") === "entregar" ? DELIVER_ANCHOR : ORDER_ANCHOR;
   return redirect(
-    marked.value.count === 0
-      ? back
-      : `${withFeedback(back, "workshop-requested")}&n=${String(marked.value.count)}`,
+    `${MATERIALS_PATH}${query === "" ? "" : `?${query}`}#${anchor}`,
   );
 }
 
-export async function action({ request, context }: Route.ActionArgs) {
-  const actor = requireAdmin(request, context);
-  const form = await request.formData().catch(() => null);
-  if (form === null) throw data(null, { status: 400 });
-  const intent = form.get("intent");
-  const period = periodOf(
-    typeof form.get("mes") === "string" ? (form.get("mes") as string) : null,
-  );
-  const section = sectionOf(
-    typeof form.get("seccion") === "string"
-      ? (form.get("seccion") as string)
-      : null,
-  );
-  if (intent === "mark-workshop-requested")
-    return markWorkshopRequested(actor, form, context, { period, section });
-  if (intent !== "mark-requested" && intent !== "mark-received")
-    throw data(null, { status: 400 });
-  const { code, method } = INTENTS[intent];
-  const orderIds = [
-    ...new Set(
-      form
-        .getAll("orderId")
-        .filter((id): id is string => typeof id === "string" && isUuid(id)),
-    ),
-  ].slice(0, MAX_ORDERS);
-  if (orderIds.length === 0)
-    return data({ formError: "No hay pedidos para marcar." }, { status: 422 });
-
-  const outcomes = await context
-    .get(servicesContext)
-    .enrollments[method](actor, orderIds);
-  const failures = outcomes.flatMap((outcome) =>
-    outcome.result.ok ? [] : [outcome.result.error],
-  );
-  const done = outcomes.length - failures.length;
-  if (failures.length === 0)
-    return redirect(
-      `${withFeedback(`${BASE_PATH}?mes=${period}&seccion=${section}`, code)}&n=${String(done)}`,
-    );
-
-  const denied = failures.find((failure) => failure.kind === "denied");
-  if (denied) throw enrollmentFailureResponse(denied);
-  const reasons = [
-    ...new Set(
-      failures.map(
-        (failure) =>
-          enrollmentRefusalMessage(failure) ??
-          "No pudimos completar la acción. Probá de nuevo.",
-      ),
-    ),
-  ];
-  return data(
-    {
-      formError: `Se marcaron ${String(done)} de ${String(outcomes.length)} pedidos. ${reasons.join(" ")}`,
-    },
-    { status: 409 },
-  );
-}
+export const action = consolidationAction;
 
 export default function AdminEnrollmentConsolidation() {
-  const loaded = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   return (
-    <EnrollmentConsolidation
-      {...loaded}
-      notice={loaded.notice ?? undefined}
-      formError={result?.formError}
-    />
+    <div className="flex flex-col gap-4">
+      <FormError message={result?.formError ?? copy.redirect.failed} />
+      <a
+        href={MATERIALS_PATH}
+        className="inline-flex min-h-12 items-center text-lg font-semibold text-clay-800 underline underline-offset-4"
+      >
+        {copy.redirect.back}
+      </a>
+    </div>
   );
 }

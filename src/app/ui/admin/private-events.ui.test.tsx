@@ -93,6 +93,19 @@ describe("PrivateEventDetail", () => {
     statusOptions,
   };
 
+  it("sets the facts beside the status form on a desktop", () => {
+    const { container } = render(<PrivateEventDetail request={request} />);
+
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    const [start, end] = Array.from(columns?.children ?? []);
+    expect(start).toContainElement(screen.getByText("5493515550101"));
+    expect(end).toContainElement(
+      screen.getByRole("form", { name: "Estado de la consulta" }),
+    );
+    expect(container.querySelector(".max-w-prose")).toBeNull();
+  });
+
   it("shows the contact data and a native status form", async () => {
     const { container } = render(<PrivateEventDetail request={request} />);
 

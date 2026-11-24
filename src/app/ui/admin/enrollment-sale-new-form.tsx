@@ -1,7 +1,7 @@
 import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns } from "./admin-sections";
 import {
   EnrollmentNewMaterials,
   type EnrollmentMaterialChoice,
@@ -57,19 +57,29 @@ export function EnrollmentSaleNewForm({
       className={ADMIN_SHEET}
     >
       <FormError message={formError} />
-      <Text>
-        {copy.context(
-          order.studentName,
-          order.workshopName,
-          order.month,
-          order.number,
-        )}
-      </Text>
-      <EnrollmentNewMaterials
-        choices={materials}
-        initialLines={lines}
-        hint={copy.hint}
-        error={errors.materials}
+      <AdminColumns
+        start={
+          <>
+            <Text>
+              {copy.context(
+                order.studentName,
+                order.workshopName,
+                order.month,
+                order.number,
+              )}
+            </Text>
+          </>
+        }
+        end={
+          <>
+            <EnrollmentNewMaterials
+              choices={materials}
+              initialLines={lines}
+              hint={copy.hint}
+              error={errors.materials}
+            />
+          </>
+        }
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.submit}</Button>

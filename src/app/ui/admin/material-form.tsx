@@ -13,7 +13,7 @@ import { DEFAULT_SWATCH } from "./material-swatch";
 import { materialCatalogCopy } from "./material-catalog-copy";
 import { adminCopy } from "./copy";
 import { adminMicrocopy } from "./microcopy";
-import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns, AdminFieldPair } from "./admin-sections";
 
 export interface MaterialFormVariant {
   readonly id?: string | undefined;
@@ -139,217 +139,245 @@ export function MaterialForm({
     <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
-        <legend className="px-2 font-semibold text-ink-900">
-          {copy.sectionBasics}
-        </legend>
-        <TextField
-          label={copy.name}
-          name="name"
-          defaultValue={values.name}
-          error={errors.name}
-          autoComplete="off"
-        />
-        <TextAreaField
-          label={copy.description}
-          name="description"
-          defaultValue={values.description}
-          error={errors.description}
-        />
-        <AdminFieldPair>
-          <TextField
-            label={copy.category}
-            name="category"
-            defaultValue={values.category}
-            error={errors.category}
-          />
-          <SelectField
-            label={copy.supplier}
-            name="supplierId"
-            options={supplierOptions}
-            defaultValue={values.supplierId}
-            error={errors.supplierId}
-          />
-        </AdminFieldPair>
-        <CheckboxField
-          label={adminCopy.materiales.form.keptInStudio}
-          name="keptInStudio"
-          defaultChecked={values.keptInStudio === true}
-        />
-        <CheckboxField
-          label={copy.available}
-          name="available"
-          defaultChecked={values.available}
-        />
-      </fieldset>
-      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
-        <legend className="px-2 font-semibold text-ink-900">
-          {copy.sectionImage}
-        </legend>
-        <ImageField
-          name="image"
-          label={copy.image}
-          upload={upload}
-          current={currentImage}
-        />
-        {values.image && !currentImage && (
+      <AdminColumns
+        start={
           <>
-            <input
-              type="hidden"
-              name="imageAssetId"
-              value={values.image.assetId}
-            />
-            <input type="hidden" name="imageAlt" value={values.image.alt} />
+            <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+              <legend className="px-2 font-semibold text-ink-900">
+                {copy.sectionBasics}
+              </legend>
+              <TextField
+                label={copy.name}
+                name="name"
+                defaultValue={values.name}
+                error={errors.name}
+                autoComplete="off"
+              />
+              <TextAreaField
+                label={copy.description}
+                name="description"
+                defaultValue={values.description}
+                error={errors.description}
+              />
+              <AdminFieldPair>
+                <TextField
+                  label={copy.category}
+                  name="category"
+                  defaultValue={values.category}
+                  error={errors.category}
+                />
+                <SelectField
+                  label={copy.supplier}
+                  name="supplierId"
+                  options={supplierOptions}
+                  defaultValue={values.supplierId}
+                  error={errors.supplierId}
+                />
+              </AdminFieldPair>
+              <CheckboxField
+                label={adminCopy.materiales.form.keptInStudio}
+                name="keptInStudio"
+                defaultChecked={values.keptInStudio === true}
+              />
+              <CheckboxField
+                label={copy.available}
+                name="available"
+                defaultChecked={values.available}
+              />
+            </fieldset>
+            <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+              <legend className="px-2 font-semibold text-ink-900">
+                {copy.sectionImage}
+              </legend>
+              <ImageField
+                name="image"
+                label={copy.image}
+                upload={upload}
+                current={currentImage}
+              />
+              {values.image && !currentImage && (
+                <>
+                  <input
+                    type="hidden"
+                    name="imageAssetId"
+                    value={values.image.assetId}
+                  />
+                  <input
+                    type="hidden"
+                    name="imageAlt"
+                    value={values.image.alt}
+                  />
+                </>
+              )}
+              {errors.image && <p role="alert">{errors.image}</p>}
+            </fieldset>
           </>
-        )}
-        {errors.image && <p role="alert">{errors.image}</p>}
-      </fieldset>
-      <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
-        <legend className="px-2 font-semibold text-ink-900">
-          {copy.variants}
-        </legend>
-        <p className="text-sm text-ink-700">{copy.variantsHint}</p>
-        {errors.variants?.form && <p role="alert">{errors.variants.form}</p>}
-        {variants.map((variant, index) => {
-          const rowErrors = errors.variants?.rows?.[index];
-          return (
-            <div
-              key={variant.key}
-              className="grid gap-4 rounded-sm border border-clay-600 p-3"
-            >
-              <input type="hidden" name="variantId" value={variant.id ?? ""} />
-              <TextField
-                label={copy.variant}
-                name="variantLabel"
-                value={variant.label}
-                error={rowErrors?.label}
-                onChange={(event) => {
-                  updateVariant(index, "label", event.target.value);
-                }}
-              />
-              {variant.priceOnRequest ? (
-                <input type="hidden" name="variantPrice" value="" />
-              ) : (
-                <TextField
-                  label={copy.price}
-                  hint={copy.priceHint}
-                  name="variantPrice"
-                  inputMode="numeric"
-                  value={variant.price}
-                  error={rowErrors?.price}
-                  onChange={(event) => {
-                    updateVariant(index, "price", event.target.value);
-                  }}
-                />
+        }
+        end={
+          <>
+            <fieldset className="flex flex-col gap-4 rounded-md border border-sand-300 p-4">
+              <legend className="px-2 font-semibold text-ink-900">
+                {copy.variants}
+              </legend>
+              <p className="text-sm text-ink-700">{copy.variantsHint}</p>
+              {errors.variants?.form && (
+                <p role="alert">{errors.variants.form}</p>
               )}
-              <TextField
-                label={copy.cost}
-                hint={copy.costHint}
-                name="variantCost"
-                inputMode="numeric"
-                value={variant.cost ?? ""}
-                error={rowErrors?.cost}
-                onChange={(event) => {
-                  updateVariant(index, "cost", event.target.value);
-                }}
-              />
-              <CheckboxField
-                label={materialCatalogCopy.priceOnRequest}
-                hint={materialCatalogCopy.priceOnRequestHint}
-                name="variantPriceOnRequest"
-                value={String(index)}
-                checked={variant.priceOnRequest === true}
-                onChange={(event) => {
-                  updateVariant(index, "priceOnRequest", event.target.checked);
-                }}
-              />
-              <CheckboxField
-                label={copy.useSwatch}
-                checked={variant.swatch !== ""}
-                error={variant.swatch === "" ? rowErrors?.swatch : undefined}
-                onChange={(event) => {
-                  updateVariant(
-                    index,
-                    "swatch",
-                    event.target.checked ? DEFAULT_SWATCH : "",
-                  );
-                }}
-              />
-              {variant.swatch === "" ? (
-                <input type="hidden" name="variantSwatch" value="" />
-              ) : (
-                <TextField
-                  label={copy.color}
-                  type="color"
-                  name="variantSwatch"
-                  value={variant.swatch}
-                  error={rowErrors?.swatch}
-                  onChange={(event) => {
-                    updateVariant(index, "swatch", event.target.value);
-                  }}
-                />
-              )}
-              <CheckboxField
-                label={copy.variantAvailable}
-                name="variantAvailable"
-                value={String(index)}
-                checked={variant.available}
-                onChange={(event) => {
-                  updateVariant(index, "available", event.target.checked);
-                }}
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={index === 0}
-                  onClick={() => {
-                    moveVariant(index, -1);
-                  }}
-                >
-                  {copy.moveVariantUp}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={index === variants.length - 1}
-                  onClick={() => {
-                    moveVariant(index, 1);
-                  }}
-                >
-                  {copy.moveVariantDown}
-                </Button>
-                {variants.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => {
-                      setVariants((current) =>
-                        current.filter((_, rowIndex) => rowIndex !== index),
-                      );
-                    }}
+              {variants.map((variant, index) => {
+                const rowErrors = errors.variants?.rows?.[index];
+                return (
+                  <div
+                    key={variant.key}
+                    className="grid gap-4 rounded-sm border border-clay-600 p-3"
                   >
-                    {copy.removeVariant}
-                  </Button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        <Button
-          type="button"
-          variant="success"
-          onClick={() => {
-            setVariants((current) => [
-              ...current,
-              { ...defaultVariant, key: nextVariantKey },
-            ]);
-            setNextVariantKey((current) => current + 1);
-          }}
-        >
-          {copy.addVariant}
-        </Button>
-      </fieldset>
+                    <input
+                      type="hidden"
+                      name="variantId"
+                      value={variant.id ?? ""}
+                    />
+                    <TextField
+                      label={copy.variant}
+                      name="variantLabel"
+                      value={variant.label}
+                      error={rowErrors?.label}
+                      onChange={(event) => {
+                        updateVariant(index, "label", event.target.value);
+                      }}
+                    />
+                    {variant.priceOnRequest ? (
+                      <input type="hidden" name="variantPrice" value="" />
+                    ) : (
+                      <TextField
+                        label={copy.price}
+                        hint={copy.priceHint}
+                        name="variantPrice"
+                        inputMode="numeric"
+                        value={variant.price}
+                        error={rowErrors?.price}
+                        onChange={(event) => {
+                          updateVariant(index, "price", event.target.value);
+                        }}
+                      />
+                    )}
+                    <TextField
+                      label={copy.cost}
+                      hint={copy.costHint}
+                      name="variantCost"
+                      inputMode="numeric"
+                      value={variant.cost ?? ""}
+                      error={rowErrors?.cost}
+                      onChange={(event) => {
+                        updateVariant(index, "cost", event.target.value);
+                      }}
+                    />
+                    <CheckboxField
+                      label={materialCatalogCopy.priceOnRequest}
+                      hint={materialCatalogCopy.priceOnRequestHint}
+                      name="variantPriceOnRequest"
+                      value={String(index)}
+                      checked={variant.priceOnRequest === true}
+                      onChange={(event) => {
+                        updateVariant(
+                          index,
+                          "priceOnRequest",
+                          event.target.checked,
+                        );
+                      }}
+                    />
+                    <CheckboxField
+                      label={copy.useSwatch}
+                      checked={variant.swatch !== ""}
+                      error={
+                        variant.swatch === "" ? rowErrors?.swatch : undefined
+                      }
+                      onChange={(event) => {
+                        updateVariant(
+                          index,
+                          "swatch",
+                          event.target.checked ? DEFAULT_SWATCH : "",
+                        );
+                      }}
+                    />
+                    {variant.swatch === "" ? (
+                      <input type="hidden" name="variantSwatch" value="" />
+                    ) : (
+                      <TextField
+                        label={copy.color}
+                        type="color"
+                        name="variantSwatch"
+                        value={variant.swatch}
+                        error={rowErrors?.swatch}
+                        onChange={(event) => {
+                          updateVariant(index, "swatch", event.target.value);
+                        }}
+                      />
+                    )}
+                    <CheckboxField
+                      label={copy.variantAvailable}
+                      name="variantAvailable"
+                      value={String(index)}
+                      checked={variant.available}
+                      onChange={(event) => {
+                        updateVariant(index, "available", event.target.checked);
+                      }}
+                    />
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={index === 0}
+                        onClick={() => {
+                          moveVariant(index, -1);
+                        }}
+                      >
+                        {copy.moveVariantUp}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={index === variants.length - 1}
+                        onClick={() => {
+                          moveVariant(index, 1);
+                        }}
+                      >
+                        {copy.moveVariantDown}
+                      </Button>
+                      {variants.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="danger"
+                          onClick={() => {
+                            setVariants((current) =>
+                              current.filter(
+                                (_, rowIndex) => rowIndex !== index,
+                              ),
+                            );
+                          }}
+                        >
+                          {copy.removeVariant}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="success"
+                onClick={() => {
+                  setVariants((current) => [
+                    ...current,
+                    { ...defaultVariant, key: nextVariantKey },
+                  ]);
+                  setNextVariantKey((current) => current + 1);
+                }}
+              >
+                {copy.addVariant}
+              </Button>
+            </fieldset>
+          </>
+        }
+      />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{submitLabel}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

@@ -3,7 +3,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
 import { ConfirmedSubmit } from "./confirmed-submit";
-import { ADMIN_SHEET, AdminCardList } from "./admin-sections";
+import { ADMIN_SHEET, AdminCardList, AdminColumns } from "./admin-sections";
 import { FormError, SelectField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 
@@ -194,35 +194,43 @@ export function TurnosScreen({
             <input type="hidden" name="turnoId" value={form.turnoId} />
           )}
           <FormError message={form.formError} />
-          <SelectField
-            label={f.weekday}
-            name="weekday"
-            options={form.weekdays}
-            defaultValue={form.values.weekday}
-            error={form.errors.weekday ?? form.errors.label}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <TextField
-              label={f.startsAt}
-              name="startsAt"
-              type="time"
-              defaultValue={form.values.startsAt}
-              error={form.errors.timeRange}
-            />
-            <TextField
-              label={f.endsAt}
-              name="endsAt"
-              type="time"
-              defaultValue={form.values.endsAt}
-            />
-          </div>
-          <TextField
-            label={f.defaultCapacity}
-            hint={f.defaultCapacityHint}
-            name="defaultCapacity"
-            inputMode="numeric"
-            defaultValue={form.values.defaultCapacity}
-            error={form.errors.defaultCapacity}
+          <AdminColumns
+            start={
+              <>
+                <SelectField
+                  label={f.weekday}
+                  name="weekday"
+                  options={form.weekdays}
+                  defaultValue={form.values.weekday}
+                  error={form.errors.weekday ?? form.errors.label}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <TextField
+                    label={f.startsAt}
+                    name="startsAt"
+                    type="time"
+                    defaultValue={form.values.startsAt}
+                    error={form.errors.timeRange}
+                  />
+                  <TextField
+                    label={f.endsAt}
+                    name="endsAt"
+                    type="time"
+                    defaultValue={form.values.endsAt}
+                  />
+                </div>
+              </>
+            }
+            end={
+              <TextField
+                label={f.defaultCapacity}
+                hint={f.defaultCapacityHint}
+                name="defaultCapacity"
+                inputMode="numeric"
+                defaultValue={form.values.defaultCapacity}
+                error={form.errors.defaultCapacity}
+              />
+            }
           />
           <div className="flex flex-wrap gap-3">
             <Button type="submit">{f.save}</Button>

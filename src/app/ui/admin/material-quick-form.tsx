@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { adminCopy } from "./copy";
-import { ADMIN_SHEET } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns } from "./admin-sections";
 import {
   CheckboxField,
   FormError,
@@ -134,191 +134,213 @@ export function MaterialQuickForm({
   return (
     <form method="post" noValidate className={ADMIN_SHEET}>
       <FormError message={formError} />
-      <TextField
-        label={copy.name}
-        name="name"
-        defaultValue={values.name}
-        error={errors.name}
-        autoComplete="off"
-      />
-      <input type="hidden" name="variantLabel" value="Única" />
-      <TextField
-        label={copy.price}
-        name="variantPrice"
-        inputMode="numeric"
-        defaultValue={values.price}
-        error={errors.price}
-      />
-      <CheckboxField
-        label={copy.keptInStudio}
-        name="keptInStudio"
-        checked={kept}
-        onChange={(event) => {
-          setKept(event.target.checked);
-        }}
-      />
-      {kept ? (
-        <TextField
-          label={copy.stock}
-          name="startingStock"
-          inputMode="numeric"
-          defaultValue={values.stock}
-          error={errors.stock}
-        />
-      ) : null}
-      <MoreOptions defaultOpen={hasHiddenError(errors)}>
-        <SelectField
-          label={copy.supplier}
-          name="supplierId"
-          options={[
-            { value: "", label: copy.supplierPlaceholder },
-            ...suppliers.map((supplier) => ({
-              value: supplier.id,
-              label: supplier.name,
-            })),
-          ]}
-          defaultValue={values.supplierId || onlySupplier?.id || ""}
-          error={errors.supplierId}
-        />
-        <TextField
-          label={copy.category}
-          name="category"
-          defaultValue={values.category}
-          error={errors.category}
-        />
-        <TextAreaField
-          label={copy.description}
-          name="description"
-          defaultValue={values.description}
-          error={errors.description}
-          rows={2}
-        />
-        <TextField
-          label={copy.cost}
-          name="variantCost"
-          inputMode="numeric"
-          defaultValue={values.cost}
-          error={errors.cost}
-        />
-        <input type="hidden" name="variantSwatch" value="" />
-        <input type="hidden" name="variantAvailable" value="0" />
-        <CheckboxField
-          label={copy.priceOnRequest}
-          name="variantPriceOnRequest"
-          value="0"
-          defaultChecked={values.priceOnRequest}
-        />
-        <CheckboxField
-          label={copy.available}
-          name="available"
-          defaultChecked={values.available}
-        />
-        <ImageField
-          name="image"
-          label={copy.photo}
-          upload={upload}
-          current={currentImage}
-        />
-        {values.image && !currentImage ? (
+      <AdminColumns
+        start={
           <>
-            <input
-              type="hidden"
-              name="imageAssetId"
-              value={values.image.assetId}
+            <TextField
+              label={copy.name}
+              name="name"
+              defaultValue={values.name}
+              error={errors.name}
+              autoComplete="off"
             />
-            <input type="hidden" name="imageAlt" value={values.image.alt} />
-          </>
-        ) : null}
-        {errors.image ? <p role="alert">{errors.image}</p> : null}
-        {extras.length > 0 ? (
-          <p className="font-semibold text-ink-900">{copy.variantsTitle}</p>
-        ) : null}
-        {extras.map((extra, index) => {
-          const row = errors.extras?.[index];
-          return (
-            <div
-              key={extra.key}
-              className="flex flex-col gap-3 rounded-md border border-admin-line p-4"
-            >
+            <input type="hidden" name="variantLabel" value="Única" />
+            <TextField
+              label={copy.price}
+              name="variantPrice"
+              inputMode="numeric"
+              defaultValue={values.price}
+              error={errors.price}
+            />
+            <CheckboxField
+              label={copy.keptInStudio}
+              name="keptInStudio"
+              checked={kept}
+              onChange={(event) => {
+                setKept(event.target.checked);
+              }}
+            />
+            {kept ? (
               <TextField
-                label={copy.variantName}
-                name="variantLabel"
-                value={extra.label}
-                error={row?.label}
-                onChange={(event) => {
-                  change(index, "label", event.target.value);
-                }}
-              />
-              <TextField
-                label={copy.variantPrice}
-                name="variantPrice"
+                label={copy.stock}
+                name="startingStock"
                 inputMode="numeric"
-                value={extra.price}
-                error={row?.price}
-                onChange={(event) => {
-                  change(index, "price", event.target.value);
-                }}
+                defaultValue={values.stock}
+                error={errors.stock}
+              />
+            ) : null}
+          </>
+        }
+        end={
+          <>
+            <MoreOptions defaultOpen={hasHiddenError(errors)}>
+              <SelectField
+                label={copy.supplier}
+                name="supplierId"
+                options={[
+                  { value: "", label: copy.supplierPlaceholder },
+                  ...suppliers.map((supplier) => ({
+                    value: supplier.id,
+                    label: supplier.name,
+                  })),
+                ]}
+                defaultValue={values.supplierId || onlySupplier?.id || ""}
+                error={errors.supplierId}
               />
               <TextField
-                label={copy.variantCost}
+                label={copy.category}
+                name="category"
+                defaultValue={values.category}
+                error={errors.category}
+              />
+              <TextAreaField
+                label={copy.description}
+                name="description"
+                defaultValue={values.description}
+                error={errors.description}
+                rows={2}
+              />
+              <TextField
+                label={copy.cost}
                 name="variantCost"
                 inputMode="numeric"
-                value={extra.cost}
-                error={row?.cost}
-                onChange={(event) => {
-                  change(index, "cost", event.target.value);
-                }}
+                defaultValue={values.cost}
+                error={errors.cost}
               />
-              {kept ? (
-                <TextField
-                  label="Unidades de la variante"
-                  name="startingStock"
-                  inputMode="numeric"
-                  value={extra.stock ?? ""}
-                  error={row?.stock}
-                  onChange={(event) => {
-                    change(index, "stock", event.target.value);
-                  }}
-                />
-              ) : null}
               <input type="hidden" name="variantSwatch" value="" />
-              <input
-                type="hidden"
-                name="variantAvailable"
-                value={String(index + 1)}
+              <input type="hidden" name="variantAvailable" value="0" />
+              <CheckboxField
+                label={copy.priceOnRequest}
+                name="variantPriceOnRequest"
+                value="0"
+                defaultChecked={values.priceOnRequest}
               />
+              <CheckboxField
+                label={copy.available}
+                name="available"
+                defaultChecked={values.available}
+              />
+              <ImageField
+                name="image"
+                label={copy.photo}
+                upload={upload}
+                current={currentImage}
+              />
+              {values.image && !currentImage ? (
+                <>
+                  <input
+                    type="hidden"
+                    name="imageAssetId"
+                    value={values.image.assetId}
+                  />
+                  <input
+                    type="hidden"
+                    name="imageAlt"
+                    value={values.image.alt}
+                  />
+                </>
+              ) : null}
+              {errors.image ? <p role="alert">{errors.image}</p> : null}
+              {extras.length > 0 ? (
+                <p className="font-semibold text-ink-900">
+                  {copy.variantsTitle}
+                </p>
+              ) : null}
+              {extras.map((extra, index) => {
+                const row = errors.extras?.[index];
+                return (
+                  <div
+                    key={extra.key}
+                    className="flex flex-col gap-3 rounded-md border border-admin-line p-4"
+                  >
+                    <TextField
+                      label={copy.variantName}
+                      name="variantLabel"
+                      value={extra.label}
+                      error={row?.label}
+                      onChange={(event) => {
+                        change(index, "label", event.target.value);
+                      }}
+                    />
+                    <TextField
+                      label={copy.variantPrice}
+                      name="variantPrice"
+                      inputMode="numeric"
+                      value={extra.price}
+                      error={row?.price}
+                      onChange={(event) => {
+                        change(index, "price", event.target.value);
+                      }}
+                    />
+                    <TextField
+                      label={copy.variantCost}
+                      name="variantCost"
+                      inputMode="numeric"
+                      value={extra.cost}
+                      error={row?.cost}
+                      onChange={(event) => {
+                        change(index, "cost", event.target.value);
+                      }}
+                    />
+                    {kept ? (
+                      <TextField
+                        label="Unidades de la variante"
+                        name="startingStock"
+                        inputMode="numeric"
+                        value={extra.stock ?? ""}
+                        error={row?.stock}
+                        onChange={(event) => {
+                          change(index, "stock", event.target.value);
+                        }}
+                      />
+                    ) : null}
+                    <input type="hidden" name="variantSwatch" value="" />
+                    <input
+                      type="hidden"
+                      name="variantAvailable"
+                      value={String(index + 1)}
+                    />
+                    <div>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => {
+                          setExtras((current) =>
+                            current.filter((_, rowIndex) => rowIndex !== index),
+                          );
+                        }}
+                      >
+                        {copy.removeVariant}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
               <div>
                 <Button
                   type="button"
-                  variant="danger"
+                  variant="outline"
                   onClick={() => {
-                    setExtras((current) =>
-                      current.filter((_, rowIndex) => rowIndex !== index),
-                    );
+                    setExtras((current) => [
+                      ...current,
+                      {
+                        key: nextKey,
+                        label: "",
+                        price: "",
+                        cost: "",
+                        stock: "",
+                      },
+                    ]);
+                    setNextKey((current) => current + 1);
                   }}
                 >
-                  {copy.removeVariant}
+                  {copy.addVariant}
                 </Button>
               </div>
-            </div>
-          );
-        })}
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setExtras((current) => [
-                ...current,
-                { key: nextKey, label: "", price: "", cost: "", stock: "" },
-              ]);
-              setNextKey((current) => current + 1);
-            }}
-          >
-            {copy.addVariant}
-          </Button>
-        </div>
-      </MoreOptions>
+            </MoreOptions>
+          </>
+        }
+      />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{copy.save}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

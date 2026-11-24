@@ -82,6 +82,31 @@ describe("panel surfaces", () => {
     expect(unpaired.map(({ name }) => name)).toEqual([]);
   });
 
+  it("splits every long form into two balanced columns on a desktop", () => {
+    const forms = [
+      "enrollment-new-form.tsx",
+      "enrollment-sale-new-form.tsx",
+      "intensive-form.tsx",
+      "material-form.tsx",
+      "material-quick-form.tsx",
+      "supplier-form.tsx",
+      "teacher-form.tsx",
+      "turnos-screen.tsx",
+      "workshop-form.tsx",
+      "workshop-period-form.tsx",
+      "workshop-quick-form.tsx",
+    ];
+    const single = screens.filter(
+      ({ name, source }) =>
+        forms.includes(name) && !source.includes("<AdminColumns"),
+    );
+
+    expect(single.map(({ name }) => name)).toEqual([]);
+    expect(screens.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(forms),
+    );
+  });
+
   it("sets the facts of a detail screen on panels", () => {
     const material = screens.find(({ name }) => name === "material-detail.tsx");
     const period = readFileSync(

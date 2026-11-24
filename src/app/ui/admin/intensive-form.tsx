@@ -15,7 +15,7 @@ import {
 } from "./intensive-new-projects";
 import type { ProjectMaterialChoice } from "./intensive-project-materials";
 import { adminMicrocopy } from "./microcopy";
-import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns, AdminFieldPair } from "./admin-sections";
 
 const copy = adminMicrocopy.intensives;
 /** Image slots shown before the owner asks for more. */
@@ -151,10 +151,102 @@ export function IntensiveForm({
       />
     );
   };
-  return (
-    <form method="post" noValidate className={ADMIN_SHEET}>
-      {mode === "edit" && <input type="hidden" name="intent" value="save" />}
-      <FormError message={formError} />
+  const imagesSection = (
+    <section
+      className="flex flex-col gap-3"
+      aria-label={copy.form.sections.images}
+    >
+      <h2 className="font-display text-xl text-ink-900">
+        {copy.form.sections.images}
+      </h2>
+      {Array.from({ length: VISIBLE_IMAGES }, (_, index) => (
+        <div key={index}>{imageField(index)}</div>
+      ))}
+      <details
+        open={
+          values.images.length > VISIBLE_IMAGES || errors.images !== undefined
+        }
+      >
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-clay-800 underline underline-offset-4">
+          {copy.form.moreImages}
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          {Array.from(
+            { length: IMAGE_SLOTS - VISIBLE_IMAGES },
+            (_, i) => i + VISIBLE_IMAGES,
+          ).map((index) => (
+            <div key={index}>{imageField(index)}</div>
+          ))}
+        </div>
+      </details>
+      {errors.images && (
+        <p role="alert" className="text-sm text-terracotta-700">
+          {errors.images}
+        </p>
+      )}
+    </section>
+  );
+  const advancedSection = (
+    <details open={advancedOpen || undefined}>
+      <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">
+        {copy.quick.advanced}
+      </summary>
+      <div className="mt-3 flex flex-col gap-4">
+        {mode === "new" && (
+          <>
+            <Text tone="muted">{copy.quick.advancedHint}</Text>
+            <Text tone="muted">{copy.quick.derivedNote}</Text>
+          </>
+        )}
+        {mode === "edit" && (
+          <>
+            <TextField
+              label={copy.form.slug}
+              name="slug"
+              defaultValue={values.slug}
+              error={errors.slug}
+            />
+            <TextField
+              label={copy.form.summary}
+              name="summary"
+              defaultValue={values.summary}
+              error={errors.summary}
+            />
+          </>
+        )}
+        <TextField
+          label={copy.form.percentage}
+          hint={copy.quick.percentageHint}
+          name="percentage"
+          inputMode="decimal"
+          defaultValue={values.percentage}
+          error={errors.percentage}
+        />
+        <TextField
+          label={copy.form.minSeats}
+          hint={copy.quick.minSeatsHint}
+          name="minSeats"
+          inputMode="numeric"
+          defaultValue={values.minSeats}
+          error={errors.minSeats}
+        />
+        <TextAreaField
+          label={copy.form.policyText}
+          hint={copy.quick.policyHint}
+          name="policyText"
+          defaultValue={values.policyText}
+          error={errors.policyText}
+        />
+        <CheckboxField
+          label={copy.form.materialsIncluded}
+          name="materialsIncluded"
+          defaultChecked={values.materialsIncluded}
+        />
+      </div>
+    </details>
+  );
+  const mainFields = (
+    <>
       <TextField
         label={copy.form.name}
         name="name"
@@ -208,104 +300,36 @@ export function IntensiveForm({
           error={errors.capacity}
         />
       </div>
-      {mode === "new" && (
-        <NewProjectBlocks
-          initial={projects}
-          errors={errors}
-          choices={materialChoices}
-          upload={uploadIntensiveImage}
-        />
-      )}
-      <section
-        className="flex flex-col gap-3"
-        aria-label={copy.form.sections.images}
-      >
-        <h2 className="font-display text-xl text-ink-900">
-          {copy.form.sections.images}
-        </h2>
-        {Array.from({ length: VISIBLE_IMAGES }, (_, index) => (
-          <div key={index}>{imageField(index)}</div>
-        ))}
-        <details
-          open={
-            values.images.length > VISIBLE_IMAGES || errors.images !== undefined
-          }
-        >
-          <summary className="inline-flex min-h-11 cursor-pointer items-center text-clay-800 underline underline-offset-4">
-            {copy.form.moreImages}
-          </summary>
-          <div className="mt-3 flex flex-col gap-4">
-            {Array.from(
-              { length: IMAGE_SLOTS - VISIBLE_IMAGES },
-              (_, i) => i + VISIBLE_IMAGES,
-            ).map((index) => (
-              <div key={index}>{imageField(index)}</div>
-            ))}
-          </div>
-        </details>
-        {errors.images && (
-          <p role="alert" className="text-sm text-terracotta-700">
-            {errors.images}
-          </p>
-        )}
-      </section>
-      <details open={advancedOpen || undefined}>
-        <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">
-          {copy.quick.advanced}
-        </summary>
-        <div className="mt-3 flex flex-col gap-4">
-          {mode === "new" && (
+    </>
+  );
+  return (
+    <form method="post" noValidate className={ADMIN_SHEET}>
+      {mode === "edit" && <input type="hidden" name="intent" value="save" />}
+      <FormError message={formError} />
+      <AdminColumns
+        start={
+          <>
+            {mainFields}
+            {mode === "new" && imagesSection}
+            {mode === "new" && advancedSection}
+          </>
+        }
+        end={
+          mode === "new" ? (
+            <NewProjectBlocks
+              initial={projects}
+              errors={errors}
+              choices={materialChoices}
+              upload={uploadIntensiveImage}
+            />
+          ) : (
             <>
-              <Text tone="muted">{copy.quick.advancedHint}</Text>
-              <Text tone="muted">{copy.quick.derivedNote}</Text>
+              {imagesSection}
+              {advancedSection}
             </>
-          )}
-          {mode === "edit" && (
-            <>
-              <TextField
-                label={copy.form.slug}
-                name="slug"
-                defaultValue={values.slug}
-                error={errors.slug}
-              />
-              <TextField
-                label={copy.form.summary}
-                name="summary"
-                defaultValue={values.summary}
-                error={errors.summary}
-              />
-            </>
-          )}
-          <TextField
-            label={copy.form.percentage}
-            hint={copy.quick.percentageHint}
-            name="percentage"
-            inputMode="decimal"
-            defaultValue={values.percentage}
-            error={errors.percentage}
-          />
-          <TextField
-            label={copy.form.minSeats}
-            hint={copy.quick.minSeatsHint}
-            name="minSeats"
-            inputMode="numeric"
-            defaultValue={values.minSeats}
-            error={errors.minSeats}
-          />
-          <TextAreaField
-            label={copy.form.policyText}
-            hint={copy.quick.policyHint}
-            name="policyText"
-            defaultValue={values.policyText}
-            error={errors.policyText}
-          />
-          <CheckboxField
-            label={copy.form.materialsIncluded}
-            name="materialsIncluded"
-            defaultChecked={values.materialsIncluded}
-          />
-        </div>
-      </details>
+          )
+        }
+      />
       <div className="flex flex-wrap gap-3">
         {mode === "new" ? (
           <>

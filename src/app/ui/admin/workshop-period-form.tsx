@@ -1,7 +1,7 @@
 import { AdminButton as Button } from "./admin-button";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
-import { ADMIN_SHEET } from "./admin-sections";
+import { ADMIN_SHEET, AdminColumns } from "./admin-sections";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 type Values = {
@@ -29,46 +29,56 @@ export function WorkshopPeriodForm({
     <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <TextField
-        label={copy.fee}
-        name="fee"
-        inputMode="numeric"
-        defaultValue={values.fee}
-        error={errors.fee}
-      />
-      <TextField
-        label={copy.projectTitle}
-        name="projectTitle"
-        defaultValue={values.projectTitle}
-        error={errors.projectTitle}
-      />
-      <TextAreaField
-        label={copy.projectDescription}
-        name="projectDescription"
-        defaultValue={values.projectDescription}
-        error={errors.projectDescription}
-      />
-      <fieldset className="flex flex-col gap-4">
-        <legend className="font-semibold text-ink-900">
-          {copy.capacities}
-        </legend>
-        {values.capacities.map((turno) => (
-          <TextField
-            key={turno.turnoId}
-            label={turno.label}
-            name={`capacity-${turno.turnoId}`}
-            inputMode="numeric"
-            defaultValue={turno.capacity}
-            error={errors.capacities}
-          />
-        ))}
-      </fieldset>
-      <TextField
-        label={copy.snapshotPercentage}
-        name="snapshotPercentage"
-        inputMode="decimal"
-        defaultValue={values.snapshotPercentage}
-        error={errors.snapshotPercentage}
+      <AdminColumns
+        start={
+          <>
+            <TextField
+              label={copy.fee}
+              name="fee"
+              inputMode="numeric"
+              defaultValue={values.fee}
+              error={errors.fee}
+            />
+            <TextField
+              label={copy.projectTitle}
+              name="projectTitle"
+              defaultValue={values.projectTitle}
+              error={errors.projectTitle}
+            />
+            <TextAreaField
+              label={copy.projectDescription}
+              name="projectDescription"
+              defaultValue={values.projectDescription}
+              error={errors.projectDescription}
+            />
+          </>
+        }
+        end={
+          <>
+            <fieldset className="flex flex-col gap-4">
+              <legend className="font-semibold text-ink-900">
+                {copy.capacities}
+              </legend>
+              {values.capacities.map((turno) => (
+                <TextField
+                  key={turno.turnoId}
+                  label={turno.label}
+                  name={`capacity-${turno.turnoId}`}
+                  inputMode="numeric"
+                  defaultValue={turno.capacity}
+                  error={errors.capacities}
+                />
+              ))}
+            </fieldset>
+            <TextField
+              label={copy.snapshotPercentage}
+              name="snapshotPercentage"
+              inputMode="decimal"
+              defaultValue={values.snapshotPercentage}
+              error={errors.snapshotPercentage}
+            />
+          </>
+        }
       />
       <Button type="submit">{copy.save}</Button>
     </form>

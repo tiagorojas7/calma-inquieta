@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -350,5 +350,35 @@ describe("taller photos", () => {
     const { inputs, hidden } = photos(container);
     expect(inputs).toHaveLength(4);
     expect(hidden).toHaveLength(2);
+  });
+});
+
+describe("workshop form on a wide screen", () => {
+  it("keeps the main data in one column, the description and the options in the other, and the actions below", () => {
+    const { container } = stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    const [start, end] = Array.from(columns?.children ?? []) as [
+      HTMLElement,
+      HTMLElement,
+    ];
+    expect(within(start).getByLabelText("Nombre")).toBeVisible();
+    expect(
+      within(start).getByLabelText("Arancel mensual (en pesos)"),
+    ).toBeVisible();
+    expect(within(end).queryByLabelText("Nombre")).toBeNull();
+    expect(within(end).getByText("Más opciones")).toBeVisible();
+    expect(columns).not.toContainElement(
+      screen.getByRole("button", { name: "Guardar" }),
+    );
   });
 });

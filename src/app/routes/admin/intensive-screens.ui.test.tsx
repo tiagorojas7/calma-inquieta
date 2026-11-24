@@ -487,3 +487,81 @@ describe("intensive detail lifecycle controls", () => {
     expect(screen.getByText("Completá este campo.")).toBeVisible();
   });
 });
+
+describe("intensive form on a wide screen", () => {
+  const draft = {
+    name: "",
+    slug: "",
+    summary: "",
+    description: "",
+    teacherId: "",
+    percentage: "",
+    eventDate: "",
+    startsAt: "",
+    endsAt: "",
+    capacity: "",
+    minSeats: "",
+    policyText: "",
+    materialsIncluded: false,
+    images: [],
+  };
+  const teachers = [{ id: "t1", name: "Ana", modality: "own" as const }];
+
+  it("a new intensive puts the main data and the images on one side and the projects on the other, with the actions below", () => {
+    const { container } = render(
+      <IntensiveForm
+        values={draft}
+        errors={{}}
+        teachers={teachers}
+        cancelHref="/admin/intensivos"
+        mode="new"
+      />,
+    );
+
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    const [start, end] = Array.from(columns?.children ?? []) as [
+      HTMLElement,
+      HTMLElement,
+    ];
+    expect(within(start).getByLabelText("Nombre")).toBeVisible();
+    expect(
+      within(start).getByRole("heading", { name: "Imágenes" }),
+    ).toBeVisible();
+    expect(within(start).getByText("Opciones avanzadas")).toBeVisible();
+    expect(
+      within(end).getByRole("group", { name: "Proyecto 1" }),
+    ).toBeVisible();
+    expect(within(end).queryByLabelText("Nombre")).toBeNull();
+    const publish = screen.getByRole("button", { name: "Publicar" });
+    expect(columns).not.toContainElement(publish);
+    expect(columns?.compareDocumentPosition(publish)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("an edited intensive keeps the main data on one side and the images and options on the other", () => {
+    const { container } = render(
+      <IntensiveForm
+        values={draft}
+        errors={{}}
+        teachers={teachers}
+        cancelHref="/admin/intensivos"
+      />,
+    );
+
+    const columns = container.querySelector("[data-columns]");
+    const [start, end] = Array.from(columns?.children ?? []) as [
+      HTMLElement,
+      HTMLElement,
+    ];
+    expect(within(start).getByLabelText("Nombre")).toBeVisible();
+    expect(
+      within(end).getByRole("heading", { name: "Imágenes" }),
+    ).toBeVisible();
+    expect(within(end).getByText("Opciones avanzadas")).toBeVisible();
+    expect(columns).not.toContainElement(
+      screen.getByRole("button", { name: "Guardar" }),
+    );
+  });
+});

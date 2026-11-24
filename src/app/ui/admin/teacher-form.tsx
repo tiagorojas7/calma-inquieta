@@ -1,7 +1,12 @@
 import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET, AdminDangerZone, AdminFieldPair } from "./admin-sections";
+import {
+  ADMIN_SHEET,
+  AdminColumns,
+  AdminDangerZone,
+  AdminFieldPair,
+} from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import {
   FormError,
@@ -44,44 +49,54 @@ export function TeacherForm({
     <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <TextField
-        label={copy.form.name}
-        name="name"
-        defaultValue={values.name}
-        error={errors.name}
-        autoComplete="off"
-      />
-      <TextAreaField
-        label={copy.form.bioLine}
-        hint={copy.form.bioLineHint}
-        name="bioLine"
-        rows={2}
-        defaultValue={values.bioLine}
-        error={errors.bioLine}
-      />
-      <AdminFieldPair>
-        <TextField
-          label={copy.form.phone}
-          name="phone"
-          type="tel"
-          defaultValue={values.phone}
-          error={errors.phone}
-        />
-        <TextField
-          label={copy.form.email}
-          name="email"
-          type="email"
-          defaultValue={values.email}
-          error={errors.email}
-        />
-      </AdminFieldPair>
-      <SelectField
-        label={copy.form.modality}
-        name="modality"
-        options={MODALITY_OPTIONS}
-        hint={copy.modalityHint}
-        defaultValue={values.modality}
-        error={errors.modality}
+      <AdminColumns
+        start={
+          <>
+            <TextField
+              label={copy.form.name}
+              name="name"
+              defaultValue={values.name}
+              error={errors.name}
+              autoComplete="off"
+            />
+            <TextAreaField
+              label={copy.form.bioLine}
+              hint={copy.form.bioLineHint}
+              name="bioLine"
+              rows={2}
+              defaultValue={values.bioLine}
+              error={errors.bioLine}
+            />
+          </>
+        }
+        end={
+          <>
+            <AdminFieldPair>
+              <TextField
+                label={copy.form.phone}
+                name="phone"
+                type="tel"
+                defaultValue={values.phone}
+                error={errors.phone}
+              />
+              <TextField
+                label={copy.form.email}
+                name="email"
+                type="email"
+                defaultValue={values.email}
+                error={errors.email}
+              />
+            </AdminFieldPair>
+            <SelectField
+              label={copy.form.modality}
+              name="modality"
+              options={MODALITY_OPTIONS}
+              hint={copy.modalityHint}
+              defaultValue={values.modality}
+              error={errors.modality}
+            />
+          </>
+        }
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{submitLabel}</Button>

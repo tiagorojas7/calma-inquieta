@@ -1,7 +1,12 @@
 import { AdminButton as Button } from "./admin-button";
 import { Text } from "../atoms/heading";
 import { AdminButtonLink } from "./admin-button-link";
-import { ADMIN_SHEET, AdminDangerZone, AdminFieldPair } from "./admin-sections";
+import {
+  ADMIN_SHEET,
+  AdminColumns,
+  AdminDangerZone,
+  AdminFieldPair,
+} from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -34,39 +39,47 @@ export function SupplierForm({
     <form method="post" noValidate className={ADMIN_SHEET}>
       <input type="hidden" name="intent" value="save" />
       <FormError message={formError} />
-      <TextField
-        label={copy.form.name}
-        name="name"
-        defaultValue={values.name}
-        error={errors.name}
-        autoComplete="off"
+      <AdminColumns
+        start={
+          <>
+            <TextField
+              label={copy.form.name}
+              name="name"
+              defaultValue={values.name}
+              error={errors.name}
+              autoComplete="off"
+            />
+            <AdminFieldPair>
+              <TextField
+                label={copy.form.phone}
+                name="phone"
+                type="tel"
+                defaultValue={values.phone}
+                error={errors.phone}
+              />
+              <TextField
+                label={copy.form.email}
+                name="email"
+                type="email"
+                defaultValue={values.email}
+                error={errors.email}
+              />
+            </AdminFieldPair>
+          </>
+        }
+        end={
+          <MoreOptions defaultOpen={Boolean(errors.notes)}>
+            <TextAreaField
+              label={copy.form.notes}
+              hint={copy.form.notesHint}
+              name="notes"
+              rows={4}
+              defaultValue={values.notes}
+              error={errors.notes}
+            />
+          </MoreOptions>
+        }
       />
-      <AdminFieldPair>
-        <TextField
-          label={copy.form.phone}
-          name="phone"
-          type="tel"
-          defaultValue={values.phone}
-          error={errors.phone}
-        />
-        <TextField
-          label={copy.form.email}
-          name="email"
-          type="email"
-          defaultValue={values.email}
-          error={errors.email}
-        />
-      </AdminFieldPair>
-      <MoreOptions defaultOpen={Boolean(errors.notes)}>
-        <TextAreaField
-          label={copy.form.notes}
-          hint={copy.form.notesHint}
-          name="notes"
-          rows={4}
-          defaultValue={values.notes}
-          error={errors.notes}
-        />
-      </MoreOptions>
       <div className="flex flex-wrap gap-3">
         <Button type="submit">{submitLabel}</Button>
         <AdminButtonLink href={cancelHref} variant="outline">

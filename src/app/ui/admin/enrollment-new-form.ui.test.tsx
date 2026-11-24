@@ -45,7 +45,7 @@ describe("EnrollmentNewForm", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("uses the width of a desktop screen: her data on one side, the materials and the payment on the other", () => {
+  it("uses the width of a desktop screen: her data on one side, the materials and the payment on the other, the actions in a row below", () => {
     const { container } = render(
       <EnrollmentNewForm
         values={values}
@@ -62,11 +62,13 @@ describe("EnrollmentNewForm", () => {
     const [data, rest] = Array.from(columns?.children ?? []);
     expect(within(data as HTMLElement).getByLabelText("Nombre")).toBeVisible();
     expect(
-      within(rest as HTMLElement).getByRole("button", { name: "Inscribir" }),
-    ).toBeVisible();
-    expect(
       within(rest as HTMLElement).getByLabelText("Ya pagó"),
     ).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Inscribir" });
+    expect(columns).not.toContainElement(submit);
+    expect(columns?.compareDocumentPosition(submit)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("starts with the fee of the chosen month and follows the offer until the owner types one", async () => {

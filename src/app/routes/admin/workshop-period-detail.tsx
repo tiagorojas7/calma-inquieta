@@ -26,7 +26,7 @@ import {
 } from "~/modules/workshops";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/workshop-period-detail";
-import { ADMIN_PANEL } from "~/app/ui/admin/admin-sections";
+import { ADMIN_PANEL, AdminColumns } from "~/app/ui/admin/admin-sections";
 
 const copy = adminMicrocopy.workshops.periods.detail;
 const statuses = adminMicrocopy.workshops.periods.statuses;
@@ -181,7 +181,7 @@ export default function AdminWorkshopPeriodDetail() {
   const stateError =
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   return (
-    <section className="flex max-w-3xl flex-col gap-6">
+    <section className="flex flex-col gap-6">
       <AdminPageHeader
         title={copy.title(screen.period)}
         breadcrumbs={[
@@ -220,129 +220,147 @@ export default function AdminWorkshopPeriodDetail() {
           formError={formRejected?.formError}
         />
       )}
-      {screen.status !== "closed" && (
-        <section aria-labelledby="period-actions-title" className={ADMIN_PANEL}>
-          <Heading level={2} id="period-actions-title">
-            {copy.actions}
-          </Heading>
-          <FormError message={stateError} />
-          <div className="flex flex-wrap gap-3">
-            {screen.status === "draft" && (
-              <form method="post">
-                <input type="hidden" name="intent" value="publish" />
-                <Button type="submit" variant="success">
-                  {copy.publish}
-                </Button>
-              </form>
+      <AdminColumns
+        start={
+          <>
+            {screen.status !== "closed" && (
+              <section
+                aria-labelledby="period-actions-title"
+                className={ADMIN_PANEL}
+              >
+                <Heading level={2} id="period-actions-title">
+                  {copy.actions}
+                </Heading>
+                <FormError message={stateError} />
+                <div className="flex flex-wrap gap-3">
+                  {screen.status === "draft" && (
+                    <form method="post">
+                      <input type="hidden" name="intent" value="publish" />
+                      <Button type="submit" variant="success">
+                        {copy.publish}
+                      </Button>
+                    </form>
+                  )}
+                  {screen.status === "open" && (
+                    <ConfirmedSubmit
+                      intent="close"
+                      label={copy.close}
+                      title={copy.confirm.close.title}
+                      message={copy.confirm.close.message}
+                    />
+                  )}
+                  {screen.status === "draft" && (
+                    <ConfirmedSubmit
+                      intent="delete"
+                      label={copy.delete}
+                      title={copy.confirm.delete.title}
+                      message={copy.confirm.delete.message}
+                      tone="destructive"
+                    />
+                  )}
+                </div>
+              </section>
             )}
-            {screen.status === "open" && (
-              <ConfirmedSubmit
-                intent="close"
-                label={copy.close}
-                title={copy.confirm.close.title}
-                message={copy.confirm.close.message}
-              />
-            )}
-            {screen.status === "draft" && (
-              <ConfirmedSubmit
-                intent="delete"
-                label={copy.delete}
-                title={copy.confirm.delete.title}
-                message={copy.confirm.delete.message}
-                tone="destructive"
-              />
-            )}
-          </div>
-        </section>
-      )}
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="font-semibold">{copy.status}</dt>
-          <dd>{statuses[screen.status]}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold">{copy.fee}</dt>
-          <dd>{screen.values.fee}</dd>
-        </div>
-      </dl>
-      <section aria-labelledby="period-project-title" className={ADMIN_PANEL}>
-        <Heading level={2} id="period-project-title">
-          {copy.project}
-        </Heading>
-        <dl className="grid gap-3">
-          <div>
-            <dt className="font-semibold">{copy.projectTitle}</dt>
-            <dd>{screen.values.projectTitle}</dd>
-          </div>
-          <div>
-            <dt className="font-semibold">{copy.projectDescription}</dt>
-            <dd>{screen.values.projectDescription}</dd>
-          </div>
-        </dl>
-      </section>
-      <section
-        aria-labelledby="period-capacities-title"
-        className={ADMIN_PANEL}
-      >
-        <Heading level={2} id="period-capacities-title">
-          {copy.capacities}
-        </Heading>
-        <ul className="flex flex-col gap-1">
-          {screen.values.capacities.map((capacity) => (
-            <li key={capacity.turnoId}>
-              {copy.capacity(capacity.label, capacity.capacity)}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section
-        aria-labelledby="period-history-title"
-        className={`${ADMIN_PANEL} sm:grid sm:grid-cols-2 sm:gap-6`}
-      >
-        <div>
-          <Heading level={2} id="period-history-title">
-            {copy.history}
-          </Heading>
-          <dl className="mt-3 flex flex-col gap-1">
-            <div>
-              <dt className="inline font-semibold">{copy.teacher}: </dt>
-              <dd className="inline">{screen.snapshot.teacherName}</dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">{copy.modality}: </dt>
-              <dd className="inline">
-                {copy.modalities[screen.snapshot.modality]}
-              </dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">{copy.percentage}: </dt>
-              <dd className="inline">
-                {screen.snapshot.percentage || copy.notApplicable}
-              </dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">{copy.updatedBy}: </dt>
-              <dd className="inline">{screen.audit.updatedBy}</dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">{copy.updatedAt}: </dt>
-              <dd className="inline">{screen.audit.updatedAt}</dd>
-            </div>
-          </dl>
-        </div>
-        <div className="flex flex-col gap-4">
-          <section aria-labelledby="period-images-title">
-            <Heading level={2} id="period-images-title">
-              {copy.images}
-            </Heading>
-            <ul className="mt-3 flex flex-col gap-1">
-              {screen.images.map((image) => (
-                <li key={image.alt}>{image.alt}</li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      </section>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="font-semibold">{copy.status}</dt>
+                <dd>{statuses[screen.status]}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">{copy.fee}</dt>
+                <dd>{screen.values.fee}</dd>
+              </div>
+            </dl>
+            <section
+              aria-labelledby="period-project-title"
+              className={ADMIN_PANEL}
+            >
+              <Heading level={2} id="period-project-title">
+                {copy.project}
+              </Heading>
+              <dl className="grid gap-3">
+                <div>
+                  <dt className="font-semibold">{copy.projectTitle}</dt>
+                  <dd>{screen.values.projectTitle}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">{copy.projectDescription}</dt>
+                  <dd>{screen.values.projectDescription}</dd>
+                </div>
+              </dl>
+            </section>
+          </>
+        }
+        end={
+          <>
+            <section
+              aria-labelledby="period-capacities-title"
+              className={ADMIN_PANEL}
+            >
+              <Heading level={2} id="period-capacities-title">
+                {copy.capacities}
+              </Heading>
+              <ul className="flex flex-col gap-1">
+                {screen.values.capacities.map((capacity) => (
+                  <li key={capacity.turnoId}>
+                    {copy.capacity(capacity.label, capacity.capacity)}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section
+              aria-labelledby="period-history-title"
+              className={`${ADMIN_PANEL} sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-1 lg:gap-4 2xl:grid-cols-2 2xl:gap-6`}
+            >
+              <div>
+                <Heading level={2} id="period-history-title">
+                  {copy.history}
+                </Heading>
+                <dl className="mt-3 flex flex-col gap-1">
+                  <div>
+                    <dt className="inline font-semibold">{copy.teacher}: </dt>
+                    <dd className="inline">{screen.snapshot.teacherName}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-semibold">{copy.modality}: </dt>
+                    <dd className="inline">
+                      {copy.modalities[screen.snapshot.modality]}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-semibold">
+                      {copy.percentage}:{" "}
+                    </dt>
+                    <dd className="inline">
+                      {screen.snapshot.percentage || copy.notApplicable}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-semibold">{copy.updatedBy}: </dt>
+                    <dd className="inline">{screen.audit.updatedBy}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-semibold">{copy.updatedAt}: </dt>
+                    <dd className="inline">{screen.audit.updatedAt}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="flex flex-col gap-4">
+                <section aria-labelledby="period-images-title">
+                  <Heading level={2} id="period-images-title">
+                    {copy.images}
+                  </Heading>
+                  <ul className="mt-3 flex flex-col gap-1">
+                    {screen.images.map((image) => (
+                      <li key={image.alt}>{image.alt}</li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            </section>
+          </>
+        }
+      />
     </section>
   );
 }

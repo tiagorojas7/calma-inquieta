@@ -1,6 +1,6 @@
 import { Text } from "../atoms/heading";
 import { AdminButton as Button } from "./admin-button";
-import { AdminSection } from "./admin-sections";
+import { ADMIN_CARD_GRID, AdminSection } from "./admin-sections";
 import { ConfirmedSubmit } from "./confirmed-submit";
 import {
   CheckboxField,
@@ -213,7 +213,10 @@ export function IntensiveProjects({
       {projects.length === 0 ? (
         <Text tone="muted">{copy.empty}</Text>
       ) : (
-        <ul aria-label={copy.title} className="flex flex-col gap-4">
+        <ul
+          aria-label={copy.title}
+          className={`${ADMIN_CARD_GRID} lg:items-start`}
+        >
           {projects.map((project, index) => {
             const refused = rejected?.target === project.id ? rejected : null;
             return (

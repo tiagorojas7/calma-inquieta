@@ -79,6 +79,14 @@ describe("IntensiveStatePanel", () => {
 });
 
 describe("IntensiveOtherActions", () => {
+  it("fills the width of the column it is placed in", () => {
+    const { container } = render(
+      <IntensiveOtherActions status="published" schedule={schedule} />,
+    );
+
+    expect(container.querySelector("details")).not.toHaveClass("max-w-prose");
+  });
+
   it.each([
     ["draft", ["Archivar", "Eliminar borrador"]],
     ["published", ["Pausar", "Cancelar workshop", "Archivar"]],

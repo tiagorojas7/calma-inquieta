@@ -57,6 +57,13 @@ function hidden(form: HTMLElement | null, name: string) {
 }
 
 describe("IntensiveProjects", () => {
+  it("flows the projects into a card grid on a desktop", () => {
+    render(<IntensiveProjects projects={[taza, plato]} />);
+
+    const list = screen.getByRole("list", { name: "Proyectos" });
+    expect(list).toHaveClass("grid", "lg:grid-cols-2", "2xl:grid-cols-3");
+  });
+
   it("lists the projects in order with name, price, deposit and image", () => {
     render(<IntensiveProjects projects={[taza, plato]} />);
 

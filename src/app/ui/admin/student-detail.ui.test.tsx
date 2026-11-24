@@ -104,6 +104,21 @@ const props: StudentDetailProps = {
 const card = (name: string) => screen.getByRole("article", { name });
 
 describe("StudentDetail", () => {
+  it("fills a desktop: the summary in two columns and the records in a card grid", () => {
+    const { container } = render(<StudentDetail {...props} />);
+
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    expect(columns).toContainElement(
+      screen.getByRole("group", { name: "Lo que debe" }),
+    );
+    expect(columns).toContainElement(screen.getByText("ana@example.com"));
+    const records = card("Acuarela").parentElement;
+    expect(records).toHaveClass("grid", "lg:grid-cols-2");
+    expect(card("Cerámica").parentElement).toBe(records);
+    expect(container.querySelector(".max-w-3xl, .max-w-4xl")).toBeNull();
+  });
+
   it("shows her data, one primary way to enroll her again, and no table", () => {
     render(<StudentDetail {...props} />);
 
@@ -217,7 +232,7 @@ describe("StudentDetail", () => {
     render(<StudentDetail {...props} />);
 
     const grid = card("Acuarela").parentElement;
-    expect(grid?.className).toMatch(/xl:grid-cols-2/);
+    expect(grid?.className).toMatch(/lg:grid-cols-2/);
     expect(grid?.closest("section.max-w-3xl")).toBeNull();
   });
 
@@ -230,7 +245,14 @@ describe("StudentDetail", () => {
     );
 
     const grid = card("Acuarela").parentElement;
-    expect(grid?.className).not.toMatch(/xl:grid-cols-2/);
+    expect(grid?.className).not.toMatch(/grid-cols-2/);
+  });
+
+  it("sets the sales of a record side by side on a desktop", () => {
+    render(<StudentDetail {...props} />);
+
+    const sales = screen.getByRole("list", { name: /^Venta de materiales · / });
+    expect(sales).toHaveClass("grid", "lg:grid-cols-2");
   });
 
   it("says what was just saved at the top", () => {

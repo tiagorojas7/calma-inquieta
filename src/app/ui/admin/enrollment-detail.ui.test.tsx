@@ -94,6 +94,43 @@ const paidOrder: EnrollmentDetailProps["order"] = {
 };
 
 describe("EnrollmentDetail", () => {
+  it("fills a desktop: the summary beside the sales and the correction, no width cap", () => {
+    const { container } = render(<EnrollmentDetail {...base} />);
+
+    expect(container.querySelector(".max-w-3xl")).toBeNull();
+    const columns = container.querySelector("[data-columns]");
+    expect(columns).not.toBeNull();
+    const [start, end] = Array.from(columns?.children ?? []);
+    expect(start).toContainElement(
+      screen.getByRole("region", { name: "Resumen" }),
+    );
+    expect(end).toContainElement(
+      screen.getByRole("heading", { level: 2, name: "Ventas de materiales" }),
+    );
+    expect(end).toContainElement(
+      screen.getByText("Corregir inscripción").closest("details"),
+    );
+    expect(columns).not.toContainElement(
+      screen.getByText("Historial").closest("details"),
+    );
+  });
+
+  it("pairs a sale's summary with its details when it has no side sections", () => {
+    const { container } = render(
+      <EnrollmentDetail
+        {...base}
+        order={{ ...base.order, kind: "material_sale", correction: null }}
+      />,
+    );
+
+    const [, end] = Array.from(
+      container.querySelector("[data-columns]")?.children ?? [],
+    );
+    expect(end).toContainElement(
+      screen.getByText("Historial").closest("details"),
+    );
+  });
+
   it("shows the summary, the contact data and the collapsed history", async () => {
     const { container } = render(<EnrollmentDetail {...base} />);
 

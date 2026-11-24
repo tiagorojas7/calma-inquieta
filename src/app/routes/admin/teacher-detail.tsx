@@ -16,6 +16,7 @@ import {
 import { formatPercentage } from "~/app/admin/workshop-form-data";
 import { toTeacherSettlement } from "~/app/admin/insights-view";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
+import { AdminColumns } from "~/app/ui/admin/admin-sections";
 import { TeacherSettlementPanel } from "~/app/ui/admin/teacher-settlement";
 import { isPeriod } from "~/modules/insights";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
@@ -175,6 +176,19 @@ export default function AdminTeacherDetail() {
       ? rejected.percentageError
       : undefined;
   const saved = teacher.feedback ? copy.feedback[teacher.feedback] : null;
+  const settlementPanel = teacher.settlement ? (
+    <TeacherSettlementPanel
+      teacherId={teacher.id}
+      settlement={teacher.settlement}
+    />
+  ) : null;
+  const workshopsPanel = teacher.workshops ? (
+    <TeacherWorkshopsPanel
+      workshops={teacher.workshops}
+      percentageApplies={teacher.values.modality === "third_party"}
+      error={percentageError}
+    />
+  ) : null;
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -190,18 +204,10 @@ export default function AdminTeacherDetail() {
       {teacher.active ? null : (
         <TeacherStatePanel assignedTo={teacher.assignedTo} error={stateError} />
       )}
-      {teacher.settlement && (
-        <TeacherSettlementPanel
-          teacherId={teacher.id}
-          settlement={teacher.settlement}
-        />
-      )}
-      {teacher.workshops && (
-        <TeacherWorkshopsPanel
-          workshops={teacher.workshops}
-          percentageApplies={teacher.values.modality === "third_party"}
-          error={percentageError}
-        />
+      {settlementPanel && workshopsPanel ? (
+        <AdminColumns start={settlementPanel} end={workshopsPanel} />
+      ) : (
+        (settlementPanel ?? workshopsPanel)
       )}
       <TeacherForm
         key={teacher.id}

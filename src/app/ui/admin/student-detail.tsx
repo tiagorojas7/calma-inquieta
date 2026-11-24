@@ -3,6 +3,7 @@ import { Heading } from "../atoms/heading";
 import { AdminButton as Button, adminButtonClasses } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
 import { AdminPageHeader } from "./admin-page";
+import { ADMIN_CARD_GRID, AdminColumns } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
 import { adminCopy } from "./copy";
 import {
@@ -388,7 +389,7 @@ function RecordBlock({
       {record.sales.length > 0 ? (
         <ul
           aria-label={`${copy.sale} · ${record.workshop}`}
-          className="flex flex-col gap-3"
+          className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start"
         >
           {record.sales.map((sale) => (
             <SaleBlock
@@ -448,57 +449,67 @@ export function StudentDetail({
       />
       <SavedBanner message={saved} />
 
-      <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card">
-        <div
-          role="group"
-          aria-label={copy.debtLabel}
-          className="flex flex-col gap-2"
-        >
-          <p
-            data-summary-tone={student.owes === null ? "paid" : "owed"}
-            className={`text-3xl font-bold tabular-nums ${student.owes === null ? "text-admin-positive-fg" : "text-admin-warning-fg"}`}
-          >
-            {student.owes === null ? copy.upToDate : copy.owes(student.owes)}
-          </p>
-          {student.seatDebts.map((debt) => (
-            <p
-              key={debt.label}
-              className="flex flex-wrap gap-x-2 text-lg text-ink-700"
+      <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6">
+        <AdminColumns
+          start={
+            <div
+              role="group"
+              aria-label={copy.debtLabel}
+              className="flex flex-col gap-2"
             >
-              <span>{debt.label}</span>
-              <span className="font-semibold text-ink-900">{debt.amount}</span>
-            </p>
-          ))}
-        </div>
-        <div className="flex min-w-0 flex-col gap-3 border-t border-admin-line pt-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {student.phoneLink === null ? (
-              <p className="text-lg text-ink-900">{student.phoneShown}</p>
-            ) : (
-              <a
-                href={student.phoneLink}
-                className="inline-flex min-h-12 items-center text-lg font-semibold text-ink-900 underline underline-offset-4"
+              <p
+                data-summary-tone={student.owes === null ? "paid" : "owed"}
+                className={`text-3xl font-bold tabular-nums ${student.owes === null ? "text-admin-positive-fg" : "text-admin-warning-fg"}`}
               >
-                {student.phoneShown}
-              </a>
-            )}
-            {student.whatsappLink === null ? null : (
-              <a
-                href={student.whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-variant="secondary"
-                className={adminButtonClasses.secondary}
-              >
-                {copy.whatsapp}
-              </a>
-            )}
-          </div>
-          <p className="text-lg text-ink-700">{student.email}</p>
-          <p className="font-semibold text-ink-900">
-            {student.active ? copy.active : copy.inactive}
-          </p>
-        </div>
+                {student.owes === null
+                  ? copy.upToDate
+                  : copy.owes(student.owes)}
+              </p>
+              {student.seatDebts.map((debt) => (
+                <p
+                  key={debt.label}
+                  className="flex flex-wrap gap-x-2 text-lg text-ink-700"
+                >
+                  <span>{debt.label}</span>
+                  <span className="font-semibold text-ink-900">
+                    {debt.amount}
+                  </span>
+                </p>
+              ))}
+            </div>
+          }
+          end={
+            <div className="flex min-w-0 flex-col gap-3 border-t border-admin-line pt-4 lg:border-t-0 lg:pt-0">
+              <div className="flex flex-wrap items-center gap-3">
+                {student.phoneLink === null ? (
+                  <p className="text-lg text-ink-900">{student.phoneShown}</p>
+                ) : (
+                  <a
+                    href={student.phoneLink}
+                    className="inline-flex min-h-12 items-center text-lg font-semibold text-ink-900 underline underline-offset-4"
+                  >
+                    {student.phoneShown}
+                  </a>
+                )}
+                {student.whatsappLink === null ? null : (
+                  <a
+                    href={student.whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-variant="secondary"
+                    className={adminButtonClasses.secondary}
+                  >
+                    {copy.whatsapp}
+                  </a>
+                )}
+              </div>
+              <p className="text-lg text-ink-700">{student.email}</p>
+              <p className="font-semibold text-ink-900">
+                {student.active ? copy.active : copy.inactive}
+              </p>
+            </div>
+          }
+        />
         <MoreOptions label={copy.edit}>
           <form method="post" className="flex flex-col gap-3">
             <input
@@ -527,7 +538,7 @@ export function StudentDetail({
           <div
             className={
               student.records.length > 1
-                ? "grid gap-4 xl:grid-cols-2 xl:items-start"
+                ? `${ADMIN_CARD_GRID} lg:items-start`
                 : "grid gap-4"
             }
           >

@@ -336,7 +336,11 @@ function ProjectBlock({
             : undefined
         }
       />
-      {errors[name("Image")] && <p role="alert">{errors[name("Image")]}</p>}
+      {errors[name("Image")] && (
+        <p role="alert" className="text-sm text-terracotta-700">
+          {errors[name("Image")]}
+        </p>
+      )}
       <BlockMaterials
         block={index}
         initial={values.materials}

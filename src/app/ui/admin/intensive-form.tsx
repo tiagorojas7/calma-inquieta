@@ -243,7 +243,11 @@ export function IntensiveForm({
             ))}
           </div>
         </details>
-        {errors.images && <p role="alert">{errors.images}</p>}
+        {errors.images && (
+          <p role="alert" className="text-sm text-terracotta-700">
+            {errors.images}
+          </p>
+        )}
       </section>
       <details open={advancedOpen || undefined}>
         <summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink-900">

@@ -141,7 +141,11 @@ function ProjectForm({
             : undefined
         }
       />
-      {errors.image && <p role="alert">{errors.image}</p>}
+      {errors.image && (
+        <p role="alert" className="text-sm text-terracotta-700">
+          {errors.image}
+        </p>
+      )}
       {image && (
         <CheckboxField label={copy.form.removeImage} name="removeImage" />
       )}

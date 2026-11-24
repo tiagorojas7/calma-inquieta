@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
-import { AdminSection, AdminSectionHeading } from "./admin-sections";
+import {
+  AdminColumns,
+  AdminSection,
+  AdminSectionHeading,
+} from "./admin-sections";
 
 describe("AdminSectionHeading", () => {
   it("is a level-2 heading by default, with its actions beside it", async () => {
@@ -37,5 +41,33 @@ describe("AdminSectionHeading", () => {
       </AdminSection>,
     );
     expect(screen.getByRole("region", { name: "Clases" })).toBeVisible();
+  });
+});
+
+describe("AdminColumns", () => {
+  it("keeps both columns in reading order and stacks them below a desktop", () => {
+    render(
+      <AdminColumns
+        start={
+          <label>
+            Nombre <input />
+          </label>
+        }
+        end={
+          <label>
+            Imagen <input />
+          </label>
+        }
+      />,
+    );
+    const name = screen.getByLabelText("Nombre");
+    const image = screen.getByLabelText("Imagen");
+    expect(
+      name.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const grid = name.closest("[data-columns]");
+    expect(grid?.className).toContain("lg:grid-cols-2");
+    expect(grid?.className).not.toMatch(/(^| )grid-cols-2/);
+    expect(image.closest("[data-columns]")).toBe(grid);
   });
 });

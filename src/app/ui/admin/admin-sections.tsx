@@ -3,9 +3,40 @@ import { Heading } from "../atoms/heading";
 import { Icon } from "../atoms/icon";
 import { AdminEmptyState } from "./empty-state";
 
-/** A form or panel on its own raised sheet, wider than a text column. */
+/**
+ * A form or panel on its own raised sheet, as wide as the content. A long form
+ * splits its field groups with `AdminColumns` so a desktop fills both halves.
+ */
 export const ADMIN_SHEET =
-  "flex w-full max-w-3xl flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+  "flex w-full flex-col gap-4 rounded-md bg-surface p-5 shadow-card lg:p-6";
+
+/** The cards of a list: one column on a phone, two on a desktop, three wide. */
+export const ADMIN_CARD_GRID =
+  "grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3";
+
+/**
+ * Two balanced columns on a desktop, one after the other below it. The start
+ * column comes first in reading and tab order. Forms put their main fields in
+ * `start` and the secondary groups (images, materials, options) in `end`;
+ * detail screens split their sections the same way.
+ */
+export function AdminColumns({
+  start,
+  end,
+}: {
+  start: ReactNode;
+  end: ReactNode;
+}) {
+  return (
+    <div
+      data-columns
+      className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-6"
+    >
+      <div className="flex min-w-0 flex-col gap-4">{start}</div>
+      <div className="flex min-w-0 flex-col gap-4">{end}</div>
+    </div>
+  );
+}
 
 /** The surface of a section whose heading and content the screen writes itself. */
 export const ADMIN_PANEL =
@@ -84,7 +115,7 @@ export function AdminCardList<Row>({
 }) {
   if (rows.length === 0) return <AdminEmptyState {...empty} />;
   return (
-    <ul aria-label={label} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <ul aria-label={label} className={ADMIN_CARD_GRID}>
       {rows.map((row) => {
         const destination = href?.(row);
         return (

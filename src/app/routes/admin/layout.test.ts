@@ -2,13 +2,21 @@ import { RouterContextProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { servicesContext } from "~/app/context";
 import { adminAccessFor, deniedAccess } from "~/testing/fakes/admin-actor";
+import { createUnavailableInsightsService } from "~/modules/insights";
 import { createTestServices } from "~/testing/fakes/app-services";
 import type { AppServices } from "~/composition/request-services";
 import { loader, middleware } from "./layout";
 
-function argsFor(adminAccess: AppServices["adminAccess"], path = "/admin") {
+function argsFor(
+  adminAccess: AppServices["adminAccess"],
+  path = "/admin",
+  overrides: Partial<AppServices> = {},
+) {
   const context = new RouterContextProvider();
-  context.set(servicesContext, createTestServices({ adminAccess }));
+  context.set(
+    servicesContext,
+    createTestServices({ adminAccess, ...overrides }),
+  );
   return {
     request: new Request(`https://panel.example.test${path}`),
     params: {},
@@ -60,11 +68,51 @@ describe("admin layout middleware", () => {
   });
 });
 
+const insightsWithCount = (
+  unseenCount: AppServices["insights"]["unseenCount"],
+) => ({
+  insights: { ...createUnavailableInsightsService(), unseenCount },
+});
+
 describe("admin layout loader", () => {
-  it("returns the signed-in email for the top bar", () => {
-    expect(
+  it("returns the signed-in email and the unopened-request count for the top bar", async () => {
+    const seen: unknown[] = [];
+    const overrides = insightsWithCount((actor) => {
+      seen.push(actor);
+      return Promise.resolve({ ok: true, value: 3 });
+    });
+
+    await expect(
+      loader(
+        argsFor(
+          adminAccessFor("agus@example.com"),
+          "/admin",
+          overrides,
+        ) as never,
+      ),
+    ).resolves.toEqual({ email: "agus@example.com", unseen: 3 });
+    expect(seen).toEqual([
+      expect.objectContaining({ email: "agus@example.com" }),
+    ]);
+  });
+
+  it("hides the badge (null count) when the count is unavailable, never failing the page", async () => {
+    await expect(
       loader(argsFor(adminAccessFor("agus@example.com")) as never),
-    ).toEqual({ email: "agus@example.com" });
+    ).resolves.toEqual({ email: "agus@example.com", unseen: null });
+
+    const rejecting = insightsWithCount(() =>
+      Promise.reject(new Error("db down")),
+    );
+    await expect(
+      loader(
+        argsFor(
+          adminAccessFor("agus@example.com"),
+          "/admin",
+          rejecting,
+        ) as never,
+      ),
+    ).resolves.toEqual({ email: "agus@example.com", unseen: null });
   });
 
   it("refuses without an admin actor", () => {

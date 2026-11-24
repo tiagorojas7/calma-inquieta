@@ -23,6 +23,12 @@ export type StudentDetail = StudentProfile & {
   readonly note: StudentNote | null;
 };
 
+/** The activity state a student was left in. */
+export interface StudentActivityState {
+  readonly email: string;
+  readonly active: boolean;
+}
+
 /** The admin contract of the students registry. */
 export interface StudentsService {
   list(
@@ -38,4 +44,13 @@ export interface StudentsService {
     email: string,
     text: string,
   ): Promise<Result<StudentNote, AdminFailure | NotFound | Invalid<NoteField>>>;
+  /**
+   * Deactivates or reactivates a student. History, attendance and note stay
+   * untouched; a new enrollment reactivates the profile by itself.
+   */
+  setActive(
+    actor: AdminActor,
+    email: string,
+    active: boolean,
+  ): Promise<Result<StudentActivityState, AdminFailure | NotFound>>;
 }

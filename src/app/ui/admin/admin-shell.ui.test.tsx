@@ -19,6 +19,7 @@ const MORE = [
   ["Eventos privados", "/admin/eventos"],
   ["Recordatorios", "/admin/recordatorios"],
   ["Estadísticas", "/admin/estadisticas"],
+  ["Políticas", "/admin/politicas"],
   ["Catálogo de materiales", "/admin/materiales"],
 ];
 
@@ -172,7 +173,7 @@ describe("AdminShell wayfinding", () => {
     );
     const sidebar = screen.getByRole("navigation", { name: "Secciones" });
     const links = within(sidebar).getAllByRole("link");
-    expect(links).toHaveLength(13);
+    expect(links).toHaveLength(14);
     for (const link of links) {
       const icon = link.querySelector("svg");
       expect(icon).not.toBeNull();
@@ -196,5 +197,71 @@ describe("AdminShell wayfinding", () => {
       </AdminShell>,
     );
     expect(screen.getByRole("link", { name: "Salir" })).toHaveClass("min-h-11");
+  });
+});
+
+describe("AdminShell notification bell", () => {
+  const shell = (unseen?: number | null) =>
+    render(
+      <AdminShell
+        email="agus@example.com"
+        pathname="/admin"
+        {...(unseen === undefined ? {} : { unseen })}
+      >
+        <h1>Panel</h1>
+      </AdminShell>,
+    );
+
+  it("links the bell to the novelties from the action group, with the count in its name and a visible badge", () => {
+    const { container } = shell(3);
+
+    const bell = screen.getByRole("link", { name: "Novedades: 3 sin leer" });
+    expect(bell).toHaveAttribute("href", "/admin/novedades");
+    expect(screen.getByTestId("admin-actions")).toContainElement(bell);
+    expect(bell).toHaveClass("min-h-11", "min-w-11");
+    expect(screen.getByTestId("admin-bell-badge")).toHaveTextContent("3");
+    expect(bell.outerHTML).not.toMatch(/gradient/);
+    expect(container.innerHTML).not.toMatch(/gradient/);
+  });
+
+  it("reads one unread in the singular and caps the badge text at 99+ without hiding the real count", () => {
+    shell(1);
+    expect(
+      screen.getByRole("link", { name: "Novedades: 1 sin leer" }),
+    ).toBeVisible();
+    shell(140);
+    expect(
+      screen.getByRole("link", { name: "Novedades: 140 sin leer" }),
+    ).toBeVisible();
+    expect(screen.getByText("99+")).toBeVisible();
+  });
+
+  it.each([
+    ["zero", 0],
+    ["unknown", null],
+    ["omitted", undefined],
+  ] as const)(
+    "shows the bell with no badge when the count is %s",
+    (_name, value) => {
+      shell(value);
+
+      expect(screen.getByRole("link", { name: "Novedades" })).toHaveAttribute(
+        "href",
+        "/admin/novedades",
+      );
+      expect(screen.queryByTestId("admin-bell-badge")).toBeNull();
+    },
+  );
+
+  it("keeps the same navigation entries and Salir next to the bell", async () => {
+    shell(2);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+
+    expect(screen.getByRole("link", { name: "Salir" })).toBeVisible();
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Menú de secciones" }),
+      ).queryByRole("link", { name: /Novedades/ }),
+    ).toBeNull();
   });
 });

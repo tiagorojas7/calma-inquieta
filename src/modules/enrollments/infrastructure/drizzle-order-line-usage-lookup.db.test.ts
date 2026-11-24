@@ -1,6 +1,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createDbSessionFactory } from "~/platform/db/session";
-import { enrollmentOrder, orderLine } from "~/platform/db/schema/enrollments";
+import {
+  enrollmentOrder,
+  orderLine,
+  student,
+} from "~/platform/db/schema/enrollments";
 import {
   createTestDatabase,
   type TestDatabase,
@@ -22,8 +26,18 @@ describe("createDrizzleOrderLineUsageLookup", () => {
     });
     const session = await openSession();
     try {
+      const studentId = "00000000-0000-4000-8000-000000000500";
+      await session.db.insert(student).values({
+        id: studentId,
+        fullName: "Student",
+        email: "student@example.com",
+        phoneDigits: "3515555555",
+        createdAt: new Date("2026-10-20T12:00:00.000Z"),
+        updatedAt: new Date("2026-10-20T12:00:00.000Z"),
+      });
       await session.db.insert(enrollmentOrder).values({
         id: "00000000-0000-4000-8000-000000000501",
+        studentId,
         publicId: "historical-order",
         number: "CI-2026-0001",
         status: "pending_confirmation",

@@ -1,19 +1,29 @@
 import type { FieldIssue } from "~/modules/_shared";
-import type { StudentDraft, StudentField } from "~/modules/enrollments";
+import { acceptanceFrom } from "~/app/enrollment/policy-acceptance";
+import type {
+  PolicyAcceptance,
+  StudentDraft,
+  StudentField,
+} from "~/modules/enrollments";
 import { studentIssueMessage } from "./copy";
 
 export interface RequestFormValues {
   readonly fullName: string;
   readonly email: string;
   readonly phone: string;
+  /** The chosen project; empty until the visitor picks one. */
+  readonly projectId: string;
 }
 
-export type RequestFieldErrors = Partial<Record<StudentField, string>>;
+export type RequestFieldErrors = Partial<
+  Record<StudentField | "project", string>
+>;
 
 export const EMPTY_REQUEST_VALUES: RequestFormValues = {
   fullName: "",
   email: "",
   phone: "",
+  projectId: "",
 };
 
 function text(form: FormData, name: string): string {
@@ -25,24 +35,30 @@ function text(form: FormData, name: string): string {
 export function parseRequestForm(form: FormData): {
   values: RequestFormValues;
   student: StudentDraft;
+  /** The document versions the form showed; absent when it posted none. */
+  acceptance: PolicyAcceptance | undefined;
 } {
   const values: RequestFormValues = {
     fullName: text(form, "fullName"),
     email: text(form, "email"),
     phone: text(form, "phone"),
+    projectId: text(form, "project"),
   };
   return {
     values,
     student: {
-      ...values,
+      fullName: values.fullName,
+      email: values.email,
+      phone: values.phone,
       policyAccepted: form.get("policy") === "on",
       honeypot: text(form, "honeypot"),
     },
+    acceptance: acceptanceFrom(form),
   };
 }
 
 export function requestFieldErrors(
-  issues: readonly FieldIssue<StudentField>[],
+  issues: readonly FieldIssue<StudentField | "project">[],
 ): RequestFieldErrors {
   const errors: RequestFieldErrors = {};
   for (const issue of issues) {

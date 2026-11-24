@@ -305,7 +305,8 @@ export type PublishRuleName =
   | "price"
   | "deposit"
   | "capacity"
-  | "min-seats";
+  | "min-seats"
+  | "projects";
 
 export interface PublishFacts {
   readonly name: string;
@@ -315,6 +316,8 @@ export interface PublishFacts {
   readonly deposit: Money;
   readonly capacity: number;
   readonly minSeats: number;
+  /** How many selectable projects the intensivo has; at least one is needed. */
+  readonly projectCount: number;
   readonly assignment: {
     readonly active: boolean;
     readonly modality: AssignmentModality;
@@ -382,5 +385,6 @@ function collectUnmetRules(
     facts.minSeats > facts.capacity
   )
     unmet.push("min-seats");
+  if (facts.projectCount < 1) unmet.push("projects");
   return unmet;
 }

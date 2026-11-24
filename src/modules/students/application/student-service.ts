@@ -1,5 +1,6 @@
 import { err, ok, type Clock } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
+import type { StudentActivityStore } from "~/modules/enrollments";
 import {
   STUDENT_PAGE_SIZE,
   deriveStudents,
@@ -28,29 +29,40 @@ export type StudentUseCases = {
 export interface StudentServiceDeps {
   readonly orders: StudentOrderSource;
   readonly notes: StudentNoteRepository;
+  /** The enrollments module's view of each profile's active flag. */
+  readonly activity: StudentActivityStore;
   readonly clock: Clock;
 }
 
 /**
  * The students registry. A student is never stored: the registry groups the
  * enrollment orders by normalized email, so one person who joins several
- * workshops keeps a single record. Only the owner's note is persisted.
+ * workshops keeps a single record. The owner's note and the active flag of her
+ * profile (read through the enrollments module) are what is persisted.
  */
 export function createStudentsService(
   deps: StudentServiceDeps,
 ): StudentUseCases {
-  const { orders, notes, clock } = deps;
+  const { orders, notes, activity, clock } = deps;
   const notFound = err({ kind: "not-found" as const });
 
   async function profileOf(email: string) {
-    return deriveStudents(await orders.byEmail(email))[0] ?? null;
+    return (
+      deriveStudents(
+        await orders.byEmail(email),
+        await activity.inactiveEmails(),
+      )[0] ?? null
+    );
   }
 
   return {
     async list(actor, query = {}) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
-      const matched = filterStudents(deriveStudents(await orders.all()), query);
+      const matched = filterStudents(
+        deriveStudents(await orders.all(), await activity.inactiveEmails()),
+        query,
+      );
       const page = query.page !== undefined && query.page >= 1 ? query.page : 1;
       const start = (page - 1) * STUDENT_PAGE_SIZE;
       return ok({
@@ -86,6 +98,17 @@ export function createStudentsService(
       await notes.save(note);
       return ok(note);
     },
+
+    async setActive(actor, email, active) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const key = normalizeStudentEmail(email);
+      if (!(await profileOf(key))) return notFound;
+      const stored = await activity.setActive(key, active, clock.now());
+      // No profile row means she already counts as active: nothing to turn off.
+      if (!stored && !active) return notFound;
+      return ok({ email: key, active });
+    },
   };
 }
 
@@ -97,5 +120,5 @@ export function createUnavailableStudentsService(): StudentUseCases {
       authorized.ok ? err({ kind: "unavailable" as const }) : authorized,
     );
   };
-  return { list: fail, detail: fail, saveNote: fail };
+  return { list: fail, detail: fail, saveNote: fail, setActive: fail };
 }

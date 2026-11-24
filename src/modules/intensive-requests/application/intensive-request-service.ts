@@ -14,6 +14,8 @@ import {
   generatePublicId,
   isPublicId,
   validateStudentInput,
+  type PolicyAcceptance,
+  type PolicyVersionCheck,
   type RandomBytes,
   type StudentDraft,
   type StudentField,
@@ -21,17 +23,24 @@ import {
 import { toWhatsAppDigits } from "~/modules/site-content";
 import {
   acceptsRequests,
+  balanceDue,
   cordobaDateOf,
+  parseRefund,
+  validateBalance,
   validateCancelReason,
   validateDeposit,
   type DepositField,
   type IntensiveRequestStatus,
+  type InvalidRequestRefund,
+  type RefundDraft,
 } from "../domain/intensive-request-core";
 import type {
   IntensiveOffer,
   IntensiveOfferLookup,
+  IntensiveOfferProject,
 } from "./intensive-offer-lookup";
 import type {
+  BalanceAlreadyPaid,
   DuplicateRequest,
   IllegalTransition,
   IntensiveFull,
@@ -44,6 +53,9 @@ const REFERENCE_LENGTH = 8;
 
 type MaybeActor = AdminActor | null | undefined;
 
+/** A project the visitor can choose: name, cover, total price and deposit. */
+export type SeatProject = IntensiveOfferProject;
+
 /** The public offer behind the "Reservar mi lugar" form. */
 export interface SeatOffer {
   readonly slug: string;
@@ -51,7 +63,8 @@ export interface SeatOffer {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
-  readonly deposit: Money;
+  /** In admin order; one is chosen with the request. */
+  readonly projects: readonly SeatProject[];
   readonly minSeats: number;
   readonly policyText: string;
   readonly seatsLeft: number;
@@ -62,7 +75,7 @@ export type SeatsFull = { readonly kind: "seats-full" };
 export type OfferError = NotFound | RequestsClosed | SeatsFull | Unavailable;
 
 export type RequestSeatError =
-  Invalid<StudentField> | OfferError | DuplicateRequest;
+  Invalid<StudentField | "project"> | OfferError | DuplicateRequest;
 
 /** Allowlisted projection of a request: no email, phone or internal id. */
 export interface PublicRequestView {
@@ -75,6 +88,10 @@ export interface PublicRequestView {
   readonly eventDate: string;
   readonly startsAt: string;
   readonly endsAt: string;
+  /** The chosen project's current name; null for a request made before projects. */
+  readonly projectName: string | null;
+  /** Total price and deposit as they were when the request was made. */
+  readonly price: Money;
   readonly deposit: Money;
 }
 
@@ -93,17 +110,36 @@ export interface ConfirmDepositInput {
   readonly note: string;
 }
 
+/** The deposit already covered the whole price: there is nothing to collect. */
+export type NoBalanceDue = { readonly kind: "no-balance-due" };
+
+export interface RecordBalanceInput {
+  readonly intensiveId: string;
+  readonly requestId: string;
+  readonly amount: string;
+  readonly paidOn: string;
+  readonly note: string;
+}
+
 export interface CancelRequestInput {
   readonly intensiveId: string;
   readonly requestId: string;
   readonly reason: string;
+  /** What a confirmed request gives back; a pending one records none. */
+  readonly refund?: RefundDraft;
 }
 
 type AdminFailure = Denied | NotFound | Unavailable;
 export type ConfirmDepositError =
   AdminFailure | Invalid<DepositField> | IllegalTransition | IntensiveFull;
+export type RecordBalanceError =
+  | AdminFailure
+  | Invalid<DepositField>
+  | IllegalTransition
+  | BalanceAlreadyPaid
+  | NoBalanceDue;
 export type CancelRequestError =
-  AdminFailure | Invalid<"reason"> | IllegalTransition;
+  AdminFailure | Invalid<"reason"> | InvalidRequestRefund | IllegalTransition;
 
 export interface IntensiveRequestUseCases {
   /** Public: whether the intensivo takes requests and what it asks for. */
@@ -114,8 +150,20 @@ export interface IntensiveRequestUseCases {
    */
   requestSeat(input: {
     readonly slug: string;
+    /** The chosen project: required, and one of the intensivo's. */
+    readonly projectId: string;
     readonly student: StudentDraft;
+    /**
+     * The versions of the conditions and privacy documents the form showed.
+     * Without them the request is unavailable, so nothing is stored without a
+     * record of what was accepted.
+     */
+    readonly acceptance?: PolicyAcceptance;
   }): Promise<Result<{ readonly publicId: string }, RequestSeatError>>;
+  /** Public: the projects of a visible workshop, whether or not it takes requests. */
+  listProjects(
+    slug: string,
+  ): Promise<Result<readonly SeatProject[], NotFound | Unavailable>>;
   getRequestByPublicId(
     publicId: string,
   ): Promise<Result<PublicRequestView, NotFound | Unavailable>>;
@@ -123,10 +171,24 @@ export interface IntensiveRequestUseCases {
     actor: MaybeActor,
     intensiveId: string,
   ): Promise<Result<AdminIntensiveOverview, AdminFailure>>;
+  /**
+   * Marks the requests of an intensivo read for both owners when one opens
+   * their list, and returns how many it just marked. Idempotent: an earlier
+   * mark stays, and nothing else about the requests changes.
+   */
+  markSeen(
+    actor: MaybeActor,
+    intensiveId: string,
+  ): Promise<Result<{ readonly marked: number }, AdminFailure>>;
   confirm(
     actor: MaybeActor,
     input: ConfirmDepositInput,
   ): Promise<Result<StoredIntensiveRequest, ConfirmDepositError>>;
+  /** Records the one full balance payment of a confirmed request. */
+  recordBalance(
+    actor: MaybeActor,
+    input: RecordBalanceInput,
+  ): Promise<Result<StoredIntensiveRequest, RecordBalanceError>>;
   cancel(
     actor: MaybeActor,
     input: CancelRequestInput,
@@ -138,6 +200,8 @@ export interface IntensiveRequestServiceDeps {
   readonly offers: IntensiveOfferLookup;
   readonly clock: Clock;
   readonly random: RandomBytes;
+  /** Tells whether a posted conditions or privacy version was ever published. */
+  readonly policies: PolicyVersionCheck;
   readonly newId?: () => string;
 }
 
@@ -147,6 +211,13 @@ const phoneDigits = (display: string): string | null => {
 };
 
 const unavailable: Unavailable = { kind: "unavailable" };
+
+const invalidProject = (
+  code: "required" | "invalid-format",
+): Invalid<"project"> => ({
+  kind: "invalid",
+  issues: [{ field: "project", code }],
+});
 
 /** Maps only a rejected dependency promise; programming errors escape. */
 async function unavailableOnReject<T>(
@@ -201,14 +272,26 @@ export function createIntensiveRequestService(
         eventDate: offer.eventDate,
         startsAt: offer.startsAt,
         endsAt: offer.endsAt,
-        deposit: offer.deposit,
+        projects: offer.projects,
         minSeats: offer.minSeats,
         policyText: offer.policyText,
         seatsLeft,
       });
     },
 
-    async requestSeat({ slug, student }) {
+    async listProjects(slug) {
+      const found = await unavailableOnReject(offers.findBySlug(slug));
+      if (!found.ok) return found;
+      const offer = found.value;
+      // Paused is still public; anything else is not.
+      return offer !== null &&
+        offer.upcoming &&
+        (offer.status === "published" || offer.status === "paused")
+        ? ok(offer.projects)
+        : err({ kind: "not-found" });
+    },
+
+    async requestSeat({ slug, projectId, student, acceptance }) {
       const valid = validateStudentInput(student, phoneDigits);
       if (!valid.ok) {
         if (valid.error.kind === "honeypot")
@@ -217,8 +300,28 @@ export function createIntensiveRequestService(
           });
         return err(valid.error);
       }
+      if (acceptance === undefined) return err(unavailable);
+      const known = await unavailableOnReject(
+        Promise.all([
+          deps.policies.isPublished("conditions", acceptance.conditionsVersion),
+          deps.policies.isPublished("privacy", acceptance.privacyVersion),
+        ]),
+      );
+      if (!known.ok) return known;
+      if (!known.value.every(Boolean))
+        return err({
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        });
       const open = await openOffer(slug);
       if (!open.ok) return open;
+      const project = open.value.offer.projects.find(
+        (candidate) => candidate.id === projectId,
+      );
+      if (project === undefined)
+        return err(
+          invalidProject(projectId === "" ? "required" : "invalid-format"),
+        );
       const now = clock.now();
       const publicId = generatePublicId(random.bytes(PUBLIC_ID_BYTES));
       const inserted = await unavailableOnReject(
@@ -231,6 +334,7 @@ export function createIntensiveRequestService(
           email: valid.value.email,
           phoneDigits: valid.value.phoneDigits,
           policyAcceptedAt: now,
+          acceptance,
           createdAt: now,
           paidAmount: null,
           paidOn: null,
@@ -240,10 +344,20 @@ export function createIntensiveRequestService(
           cancelReason: null,
           cancelledBy: null,
           cancelledAt: null,
+          projectId: project.id,
+          price: project.price,
+          deposit: project.deposit,
+          balance: null,
+          refund: null,
         }),
       );
       if (!inserted.ok) return inserted;
-      return inserted.value.ok ? ok({ publicId }) : inserted.value;
+      if (inserted.value.ok) return ok({ publicId });
+      const refusal = inserted.value.error;
+      // The project was deleted after the check above.
+      return refusal.kind === "unknown-project"
+        ? err(invalidProject("invalid-format"))
+        : err(refusal);
     },
 
     async getRequestByPublicId(publicId) {
@@ -268,7 +382,13 @@ export function createIntensiveRequestService(
         eventDate: offer.value.eventDate,
         startsAt: offer.value.startsAt,
         endsAt: offer.value.endsAt,
-        deposit: offer.value.deposit,
+        projectName:
+          offer.value.projects.find(
+            (project) => project.id === request.projectId,
+          )?.name ?? null,
+        // A request made before projects has no snapshot: the workshop terms.
+        price: request.price ?? offer.value.price,
+        deposit: request.deposit ?? offer.value.deposit,
       });
     },
 
@@ -289,6 +409,18 @@ export function createIntensiveRequestService(
       return ok({ intensivo: found.value, confirmedSeats, requests });
     },
 
+    async markSeen(actor, intensiveId) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const marked = await unavailableOnReject(
+        repository.markSeenForIntensive(intensiveId, {
+          by: authorized.value.email,
+          at: clock.now(),
+        }),
+      );
+      return marked.ok ? ok({ marked: marked.value }) : marked;
+    },
+
     async confirm(actor, input) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -298,20 +430,19 @@ export function createIntensiveRequestService(
       if (!found.ok) return found;
       const intensivo = found.value;
       if (intensivo === null) return err({ kind: "not-found" });
-      const now = clock.now();
-      const deposit = validateDeposit(
-        input,
-        intensivo.deposit,
-        cordobaDateOf(now),
-      );
-      if (!deposit.ok) return deposit;
       const owned = await ownedRequest(input.intensiveId, input.requestId);
       if (!owned.ok) return owned;
+      // The deposit the person was quoted; a request made before projects
+      // existed has no snapshot and keeps the workshop's terms.
+      const due = owned.value.deposit ?? intensivo.deposit;
+      const now = clock.now();
+      const deposit = validateDeposit(input, due, cordobaDateOf(now));
+      if (!deposit.ok) return deposit;
       const confirmed = await unavailableOnReject(
         repository.confirm({
           id: input.requestId,
           capacity: intensivo.capacity,
-          amount: intensivo.deposit,
+          amount: due,
           paidOn: deposit.value.paidOn,
           note: deposit.value.note,
           by: authorized.value.email,
@@ -321,19 +452,68 @@ export function createIntensiveRequestService(
       return confirmed.ok ? confirmed.value : confirmed;
     },
 
+    async recordBalance(actor, input) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const found = await unavailableOnReject(
+        offers.findById(input.intensiveId),
+      );
+      if (!found.ok) return found;
+      const intensivo = found.value;
+      if (intensivo === null) return err({ kind: "not-found" });
+      const owned = await ownedRequest(input.intensiveId, input.requestId);
+      if (!owned.ok) return owned;
+      const request = owned.value;
+      if (request.status !== "confirmed")
+        return err({ kind: "illegal-transition", from: request.status });
+      if (request.balance !== null)
+        return err({ kind: "balance-already-paid" });
+      const due = balanceDue(
+        request.price ?? intensivo.price,
+        request.deposit ?? intensivo.deposit,
+      );
+      if (due.isZero() || due.isNegative())
+        return err({ kind: "no-balance-due" });
+      const now = clock.now();
+      const payment = validateBalance(
+        input,
+        due,
+        cordobaDateOf(now),
+        request.paidOn,
+      );
+      if (!payment.ok) return payment;
+      const recorded = await unavailableOnReject(
+        repository.recordBalance({
+          id: input.requestId,
+          amount: due,
+          paidOn: payment.value.paidOn,
+          note: payment.value.note,
+          by: authorized.value.email,
+          at: now,
+        }),
+      );
+      return recorded.ok ? recorded.value : recorded;
+    },
+
     async cancel(actor, input) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       const reason = validateCancelReason(input.reason);
       if (!reason.ok) return reason;
+      const refund =
+        input.refund === undefined ? undefined : parseRefund(input.refund);
+      if (refund !== undefined && !refund.ok) return refund;
       const owned = await ownedRequest(input.intensiveId, input.requestId);
       if (!owned.ok) return owned;
+      const now = clock.now();
       const cancelled = await unavailableOnReject(
         repository.cancel({
           id: input.requestId,
           reason: reason.value,
           by: authorized.value.email,
-          at: clock.now(),
+          at: now,
+          today: cordobaDateOf(now),
+          ...(refund === undefined ? {} : { refund: refund.value }),
         }),
       );
       return cancelled.ok ? cancelled.value : cancelled;
@@ -362,10 +542,13 @@ export function createUnavailableIntensiveRequestService(): IntensiveRequestUseC
   };
   return {
     getOffer: fail,
+    listProjects: fail,
     requestSeat: fail,
     getRequestByPublicId: fail,
     overview: failAdmin,
+    markSeen: failAdmin,
     confirm: failAdmin,
+    recordBalance: failAdmin,
     cancel: failAdmin,
   };
 }

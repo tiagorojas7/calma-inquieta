@@ -116,9 +116,10 @@ describe("intensive publish messages", () => {
         "deposit",
         "capacity",
         "min-seats",
+        "projects",
       ]),
     ).toBe(
-      "No se puede guardar este workshop porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos.",
+      "No se puede guardar este workshop porque falta: un nombre, un enlace válido, un profesor asignado, el porcentaje acordado, un horario válido, una fecha futura, un precio, una seña válida, una capacidad válida, cupos mínimos válidos, al menos un proyecto.",
     );
   });
 });
@@ -208,7 +209,7 @@ describe("turno messages", () => {
         TURNO_FIELD_MESSAGES,
       ),
     ).toEqual({
-      label: "Ya hay un turno con ese nombre en este taller.",
+      label: "Ya hay un turno ese día y en ese horario en este taller.",
       weekday: "Elegí un día de la semana.",
       timeRange:
         "Ingresá los horarios con el formato HH:MM, por ejemplo 10:00.",

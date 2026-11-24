@@ -17,7 +17,7 @@ function form(fields: Record<string, string>) {
 }
 
 describe("parseTurnoDraft", () => {
-  it("reads label, weekday, time range and capacity as trimmed text", () => {
+  it("reads weekday, time range and capacity as trimmed text and never the label", () => {
     expect(
       parseTurnoDraft(
         form({
@@ -29,7 +29,7 @@ describe("parseTurnoDraft", () => {
         }),
       ),
     ).toEqual({
-      label: "Mañana",
+      label: "",
       weekday: "2",
       startsAt: "10:00",
       endsAt: "12:00",
@@ -41,7 +41,7 @@ describe("parseTurnoDraft", () => {
     const data = form({ label: "Tarde" });
     data.set("endsAt", new File(["x"], "x.txt"));
     expect(parseTurnoDraft(data)).toEqual({
-      label: "Tarde",
+      label: "",
       weekday: "",
       startsAt: "",
       endsAt: "",

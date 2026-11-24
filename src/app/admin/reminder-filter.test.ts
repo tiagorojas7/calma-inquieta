@@ -30,6 +30,7 @@ describe("parseReminderRequest", () => {
     });
     expect(values).toEqual({
       mensaje: "intensive",
+      alumna: "",
       cuando: "este sábado",
       actividad: "Acuarela",
       texto: "hi",
@@ -51,5 +52,14 @@ describe("parseReminderRequest", () => {
   it("keeps long free text for the service to refuse", () => {
     const { request } = parse(`mensaje=notice&texto=${"x".repeat(900)}`);
     expect(request?.inputs.text).toHaveLength(900);
+  });
+
+  it("keeps a trimmed student-name search outside the provider filter", () => {
+    const { request, values } = parse(
+      "mensaje=fee&alumna=%20Ana%20P%C3%A9rez%20&turno=Martes",
+    );
+
+    expect(values.alumna).toBe("Ana Pérez");
+    expect(request?.filter).toEqual({ turnoLabel: "Martes" });
   });
 });

@@ -2,6 +2,7 @@ import { ok, type Clock, type Money } from "~/modules/_shared";
 import { formatPesos, monthLabel } from "~/modules/enrollments";
 import {
   classTomorrowEmail,
+  enrollmentConfirmedEmail,
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
@@ -45,6 +46,10 @@ export interface ReservationNotice {
   readonly intensivoName: string;
   /** `YYYY-MM-DD`, a Córdoba calendar date. */
   readonly eventDate: string;
+  /** The project the student chose; null for a request made before projects. */
+  readonly projectName: string | null;
+  /** Total price and deposit as they were when the request was made. */
+  readonly price: Money;
   readonly deposit: Money;
 }
 
@@ -92,6 +97,8 @@ export interface ReminderRunSummary {
  */
 export interface NotificationService {
   enrollmentReceived(order: OrderNotice): Promise<void>;
+  /** A free enrollment is confirmed at creation; the email never mentions payment. */
+  enrollmentConfirmed(order: OrderNotice): Promise<void>;
   paymentConfirmed(order: OrderNotice): Promise<void>;
   privateEventReceived(inquiry: EventInquiryInput): Promise<void>;
   intensiveRequestReceived(notice: ReservationNotice): Promise<void>;
@@ -181,6 +188,8 @@ export function createNotificationService(
     studentName: notice.studentName,
     intensivoName: notice.intensivoName,
     dateLabel: eventDateLabel(notice.eventDate),
+    projectName: notice.projectName,
+    price: formatPesos(notice.price),
     deposit: formatPesos(notice.deposit),
     reservationUrl: `${deps.siteUrl.replace(/\/+$/, "")}/reserva/${notice.publicId}`,
   });
@@ -191,6 +200,14 @@ export function createNotificationService(
       await deliver(
         order.studentEmail,
         enrollmentReceivedEmail(orderInput(order)),
+      );
+    },
+
+    async enrollmentConfirmed(order) {
+      if (!deps.enabled) return;
+      await deliver(
+        order.studentEmail,
+        enrollmentConfirmedEmail(orderInput(order)),
       );
     },
 

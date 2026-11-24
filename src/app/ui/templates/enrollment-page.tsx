@@ -3,11 +3,8 @@ import { Icon } from "../atoms/icons";
 import { Heading } from "../atoms/heading";
 import { Text } from "../atoms/text";
 import { ErrorSummary } from "../molecules/error-summary";
-import {
-  PublicCheckboxField,
-  PublicSelectField,
-  PublicTextField,
-} from "../molecules/public-fields";
+import { PolicyAcceptanceField } from "../molecules/policy-acceptance-field";
+import { PublicSelectField, PublicTextField } from "../molecules/public-fields";
 import { StepIndicator } from "../molecules/step-indicator";
 
 export type EnrollmentPageProps =
@@ -21,7 +18,8 @@ export type EnrollmentPageProps =
         /** The month in words, shown to the student. */
         periodLabel: string;
         fee: string;
-        materialsRequired: boolean;
+        /** The full workshop content, empty when none was written. */
+        content?: string;
         turnos: readonly { id: string; label: string }[];
       };
       values: {
@@ -34,10 +32,16 @@ export type EnrollmentPageProps =
         Record<"fullName" | "email" | "phone" | "policy", string>
       >;
       formError?: string;
+      /**
+       * The versions of the conditions and privacy documents the page shows,
+       * posted back with the form; null when they could not be read.
+       */
+      policies?: {
+        conditionsVersion: number;
+        privacyVersion: number;
+      } | null;
       /** Where the back link leads (the workshop being enrolled in). */
       backHref?: string;
-      needsMaterials?: true;
-      onContinueToMaterials?: () => void;
     };
 
 /** Public enrollment form with plain structural props and no application dependencies. */
@@ -51,18 +55,8 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
     );
   }
 
-  const {
-    offer,
-    values,
-    errors,
-    formError,
-    backHref,
-    needsMaterials,
-    onContinueToMaterials,
-  } = props;
-  const steps = offer.materialsRequired
-    ? ["Tus datos", "Materiales", "Pedido"]
-    : ["Tus datos", "Pedido"];
+  const { offer, values, errors, formError, backHref, policies = null } = props;
+  const steps = ["Tus datos", "Pedido"];
   const summary = (
     [
       ["fullName", errors.fullName],
@@ -86,103 +80,96 @@ export function EnrollmentPage(props: EnrollmentPageProps) {
           {offer.periodLabel}
         </p>
         <Text className="font-semibold tabular-nums">Cuota: {offer.fee}</Text>
-        {offer.materialsRequired ? (
-          <Text tone="accent">Materiales requeridos</Text>
-        ) : null}
       </header>
-      {needsMaterials ? (
-        <section className="flex flex-col gap-3">
-          <Text tone="accent">Elegí los materiales para continuar.</Text>
-          <Button onClick={onContinueToMaterials} type="button">
-            Elegir materiales
-          </Button>
+      {offer.content ? (
+        <section
+          aria-labelledby="enrollment-content"
+          className="flex flex-col gap-2"
+        >
+          <Heading level={2} id="enrollment-content">
+            Sobre el taller
+          </Heading>
+          <Text className="whitespace-pre-line">{offer.content}</Text>
         </section>
-      ) : (
-        <>
-          {formError ? (
-            <p role="alert" className="font-semibold text-terracotta-700">
-              {formError}
-            </p>
-          ) : null}
-          <ErrorSummary title="Revisá estos datos" errors={summary} />
-          <form
-            className="flex flex-col gap-5 rounded-md bg-surface p-5 shadow-raised sm:p-8"
-            method="post"
-          >
-            <input name="period" type="hidden" value={offer.period} />
-            <label className="sr-only" htmlFor="honeypot">
-              No completes este campo
-            </label>
-            <input
-              autoComplete="off"
-              className="sr-only"
-              id="honeypot"
-              name="honeypot"
-              tabIndex={-1}
-              type="text"
-            />
-            <PublicTextField
-              id="fullName"
-              label="Nombre completo"
-              icon="user"
-              name="fullName"
-              autoComplete="name"
-              defaultValue={values.fullName}
-              error={errors.fullName}
-              required
-            />
-            <PublicTextField
-              id="email"
-              label="Email"
-              icon="mail"
-              name="email"
-              type="email"
-              autoComplete="email"
-              defaultValue={values.email}
-              error={errors.email}
-              required
-            />
-            <PublicTextField
-              id="phone"
-              label="Teléfono argentino"
-              icon="phone"
-              hint="Con código de área, por ejemplo 351 555 0101."
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              defaultValue={values.phone}
-              error={errors.phone}
-              required
-            />
-            <PublicSelectField
-              id="turnoId"
-              label="Turno"
-              icon="clock"
-              name="turnoId"
-              defaultValue={values.turnoId}
-              options={[
-                { value: "", label: "Elegí un turno" },
-                ...offer.turnos.map((turno) => ({
-                  value: turno.id,
-                  label: turno.label,
-                })),
-              ]}
-              required
-            />
-            <PublicCheckboxField
-              id="policy"
-              label="Acepto la política de privacidad."
-              name="policy"
-              error={errors.policy}
-              required
-            />
-            <Button type="submit" className="w-full sm:w-auto sm:self-start">
-              Continuar
-            </Button>
-          </form>
-        </>
-      )}
+      ) : null}
+      <>
+        {formError ? (
+          <p role="alert" className="font-semibold text-terracotta-700">
+            {formError}
+          </p>
+        ) : null}
+        <ErrorSummary title="Revisá estos datos" errors={summary} />
+        <form
+          className="flex flex-col gap-5 rounded-md bg-surface p-5 shadow-raised sm:p-8"
+          method="post"
+        >
+          <input name="period" type="hidden" value={offer.period} />
+          <label className="sr-only" htmlFor="honeypot">
+            No completes este campo
+          </label>
+          <input
+            autoComplete="off"
+            className="sr-only"
+            id="honeypot"
+            name="honeypot"
+            tabIndex={-1}
+            type="text"
+          />
+          <PublicTextField
+            id="fullName"
+            label="Nombre completo"
+            icon="user"
+            name="fullName"
+            autoComplete="name"
+            defaultValue={values.fullName}
+            error={errors.fullName}
+            required
+          />
+          <PublicTextField
+            id="email"
+            label="Email"
+            icon="mail"
+            name="email"
+            type="email"
+            autoComplete="email"
+            defaultValue={values.email}
+            error={errors.email}
+            required
+          />
+          <PublicTextField
+            id="phone"
+            label="Teléfono argentino"
+            icon="phone"
+            hint="Con código de área, por ejemplo 351 555 0101."
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            defaultValue={values.phone}
+            error={errors.phone}
+            required
+          />
+          <PublicSelectField
+            id="turnoId"
+            label="Turno"
+            icon="clock"
+            name="turnoId"
+            defaultValue={values.turnoId}
+            options={[
+              { value: "", label: "Elegí un turno" },
+              ...offer.turnos.map((turno) => ({
+                value: turno.id,
+                label: turno.label,
+              })),
+            ]}
+            required
+          />
+          <PolicyAcceptanceField versions={policies} error={errors.policy} />
+          <Button type="submit" className="w-full sm:w-auto sm:self-start">
+            Continuar
+          </Button>
+        </form>
+      </>
     </main>
   );
 }

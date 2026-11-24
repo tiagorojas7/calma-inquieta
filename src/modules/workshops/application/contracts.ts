@@ -119,6 +119,13 @@ export interface MonthlyWorkshopSummary {
   readonly activeTurnos: number;
   readonly acceptsNewRequests: boolean;
 }
+/** A live monthly workshop as its teacher's detail lists it. */
+export interface TeacherWorkshop {
+  readonly id: string;
+  readonly name: string;
+  readonly status: WorkshopStatus;
+  readonly percentage: Percentage | null;
+}
 export interface MonthlyWorkshopDraft {
   readonly name: string;
   readonly slug: string;
@@ -229,6 +236,20 @@ export interface MonthlyWorkshopsService {
       AdminFailure
     >
   >;
+  /** The teacher's draft, published and paused workshops, by name. */
+  listForTeacher(
+    a: AdminActor,
+    teacherId: string,
+  ): Promise<Result<readonly TeacherWorkshop[], AdminFailure>>;
+  /**
+   * Changes only the workshop's agreed percentage. Opened months keep the
+   * percentage frozen in their snapshot.
+   */
+  setPercentage(
+    a: AdminActor,
+    id: string,
+    percentage: string,
+  ): R<MonthlyWorkshop, Invalid<"percentage" | "teacherId">>;
   techniqueSuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;
@@ -248,12 +269,6 @@ export interface PeriodTurno {
   readonly turnoActive: boolean;
   readonly capacity: number;
 }
-export interface EnabledMaterial {
-  readonly id: string;
-  readonly name: string;
-  readonly active: boolean;
-  readonly available: boolean;
-}
 export interface PeriodSummary {
   readonly id: string;
   readonly period: PeriodKey;
@@ -262,10 +277,6 @@ export interface PeriodSummary {
   readonly totalCapacity: number;
   /** Turnos of this month that are still active; zero means nobody can enroll. */
   readonly activeTurnos: number;
-}
-/** Actorless B9 offer membership read; order follows the persisted period offers. */
-export interface WorkshopOfferedMaterialIdsLookup {
-  listOfferedMaterialIds(periodId: string): Promise<readonly string[]>;
 }
 export interface WorkshopEnrollmentOffer {
   readonly workshop: {
@@ -276,7 +287,6 @@ export interface WorkshopEnrollmentOffer {
     readonly id: string;
     readonly period: PeriodKey;
     readonly fee: Money;
-    readonly materialsRequired: boolean;
   };
   readonly turnos: readonly {
     readonly id: string;
@@ -302,7 +312,6 @@ export interface WorkshopPeriod {
   readonly workshopId: string;
   readonly period: PeriodKey;
   readonly fee: Money;
-  readonly materialsRequired: boolean;
   readonly status: PeriodStatus;
   readonly project: {
     readonly title: string;
@@ -310,7 +319,6 @@ export interface WorkshopPeriod {
     readonly images: readonly ImageUse[];
   };
   readonly turnos: readonly PeriodTurno[];
-  readonly materials: readonly EnabledMaterial[];
   readonly snapshot: PeriodSnapshot;
   readonly openedBy: string;
   readonly openedAt: Date;
@@ -318,7 +326,6 @@ export interface WorkshopPeriod {
 }
 export interface WorkshopPeriodDraft {
   readonly fee: string;
-  readonly materialsRequired: boolean;
   readonly projectTitle: string;
   readonly projectDescription: string;
   readonly projectImages: readonly ImageUseDraft[];
@@ -327,7 +334,6 @@ export interface WorkshopPeriodDraft {
     readonly capacity: string;
   }[];
   readonly snapshotPercentage: string;
-  readonly materialIds: readonly string[];
 }
 export type PeriodField =
   | "period"
@@ -336,8 +342,7 @@ export type PeriodField =
   | "projectDescription"
   | "projectImages"
   | "capacities"
-  | "snapshotPercentage"
-  | "materialIds";
+  | "snapshotPercentage";
 export type OpenMonthRule =
   "workshop-status" | "teacher" | "percentage" | "active-turno";
 export interface IntensiveWorkshop {
@@ -403,7 +408,51 @@ export type IntensivePublishRule =
   | "price"
   | "deposit"
   | "capacity"
-  | "min-seats";
+  | "min-seats"
+  | "projects";
+/**
+ * A selectable project of a dated workshop. Every project shares the
+ * workshop's schedule and capacity; the price and deposit are its own.
+ */
+export interface IntensiveProject {
+  readonly id: string;
+  readonly intensiveId: string;
+  /** Display order, ascending; gaps are possible after a delete. */
+  readonly position: number;
+  readonly name: string;
+  readonly image: ImageUse | null;
+  readonly price: Money;
+  readonly deposit: Money;
+  readonly audit: Audit;
+}
+export interface IntensiveProjectDraft {
+  readonly name: string;
+  readonly price: string;
+  readonly deposit: string;
+  readonly image: ImageUseDraft | null;
+}
+export type IntensiveProjectField = "name" | "price" | "deposit" | "image";
+/** Why a project cannot be deleted: a request chose it, or it is the last of a live workshop. */
+export type IntensiveProjectRule = "in-use" | "last-project";
+/**
+ * One line of a project's bill of materials: units of a catalog variant each
+ * participant uses. The price already covers them; nothing is sold again.
+ */
+export interface IntensiveProjectMaterial {
+  readonly projectId: string;
+  readonly variantId: string;
+  readonly quantity: number;
+  /** Order the lines were added in, per project. */
+  readonly position: number;
+}
+/** A line as the owner submits it; the quantity stays as typed. */
+export interface IntensiveProjectMaterialDraft {
+  readonly variantId: string;
+  readonly quantity: string;
+}
+export type IntensiveProjectMaterialField = "variantId" | "quantity";
+/** Why a line cannot be added: the project already lists that variant. */
+export type IntensiveProjectMaterialRule = "duplicate-variant";
 export interface IntensivesService {
   list(
     a: AdminActor,
@@ -456,6 +505,61 @@ export interface IntensivesService {
     id: string,
     d: Pick<IntensiveWorkshopDraft, "eventDate" | "startsAt" | "endsAt">,
   ): R<IntensiveWorkshop, Invalid<"eventDate" | "timeRange">>;
+  /** The projects of a workshop in display order. */
+  listProjects(a: AdminActor, id: string): R<readonly IntensiveProject[]>;
+  /** Appends a project after the last one. */
+  addProject(
+    a: AdminActor,
+    id: string,
+    d: IntensiveProjectDraft,
+  ): R<IntensiveProject, Invalid<IntensiveProjectField>>;
+  updateProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    d: IntensiveProjectDraft,
+  ): R<IntensiveProject, Invalid<IntensiveProjectField>>;
+  /** Swaps with the neighbour; moving past either end changes nothing. */
+  moveProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    direction: "up" | "down",
+  ): R<void>;
+  deleteProject(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+  ): R<void, RulesUnmet<IntensiveProjectRule>>;
+  /** The bill of materials of every project of a workshop, by project order. */
+  listProjectMaterials(
+    a: AdminActor,
+    id: string,
+  ): R<readonly IntensiveProjectMaterial[]>;
+  /** Adds a catalog variant with a quantity; a variant already listed is refused. */
+  addProjectMaterial(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    d: IntensiveProjectMaterialDraft,
+  ): R<
+    IntensiveProjectMaterial,
+    | Invalid<IntensiveProjectMaterialField>
+    | RulesUnmet<IntensiveProjectMaterialRule>
+  >;
+  setProjectMaterialQuantity(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    variantId: string,
+    quantity: string,
+  ): R<void, Invalid<"quantity">>;
+  removeProjectMaterial(
+    a: AdminActor,
+    id: string,
+    projectId: string,
+    variantId: string,
+  ): R<void>;
 }
 
 /** Confirmed enrollment seats per period turno; infrastructure failures reject. */

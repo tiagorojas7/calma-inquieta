@@ -15,6 +15,7 @@ const order = (overrides: Partial<ReminderOrder> = {}): ReminderOrder => ({
   workshopName: "Bordado",
   period: "2026-10",
   turnoLabel: "Martes 16:00 a 18:00",
+  weekday: 2,
   studentName: "Ana Pérez",
   studentEmail: "ana@example.com",
   studentPhoneDigits: "5493511234567",

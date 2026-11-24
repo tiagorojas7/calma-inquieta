@@ -218,6 +218,63 @@ describe("material core", () => {
     });
   });
 
+  it("parses the optional supplier cost: blank is none, whole pesos otherwise", () => {
+    const costs = (
+      ...texts: readonly (string | undefined)[]
+    ): readonly (number | null)[] =>
+      valueOf(
+        validateMaterialDraft(
+          draft({
+            variants: texts.map((cost, index) => ({
+              label: `V${String(index)}`,
+              price: "1000",
+              available: true,
+              swatch: "",
+              ...(cost === undefined ? {} : { cost }),
+            })),
+          }),
+        ),
+      ).variants.map((variant) => variant.cost?.toCentavos() ?? null);
+
+    expect(costs(undefined, "", "  ", "800", "$ 1.250")).toEqual([
+      null,
+      null,
+      null,
+      80_000,
+      125_000,
+    ]);
+  });
+
+  it("rejects a zero or malformed supplier cost on its own row", () => {
+    const result = validateMaterialDraft(
+      draft({
+        variants: [
+          {
+            label: "A",
+            price: "1000",
+            available: true,
+            swatch: "",
+            cost: "0",
+          },
+          {
+            label: "B",
+            price: "1000",
+            available: true,
+            swatch: "",
+            cost: "doce",
+          },
+        ],
+      }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      error: [
+        { field: "variants.0.cost", code: "out-of-range" },
+        { field: "variants.1.cost", code: "invalid-format" },
+      ],
+    });
+  });
+
   it("builds deterministic NFC Spanish case keys", () => {
     expect(materialNameKey("  ÑANDÚ ")).toBe("ñandú");
     expect(variantLabelKey(" A\u0301MBAR ")).toBe("ámbar");

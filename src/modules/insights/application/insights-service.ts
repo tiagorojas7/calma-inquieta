@@ -1,6 +1,7 @@
 import { err, ok, type Clock } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
 import type { IntensiveRequestInsightsReader } from "~/modules/intensive-requests";
+import type { PrivateEventNoveltyReader } from "~/modules/private-events";
 import type { TeacherLookup } from "~/modules/teachers";
 import {
   ORDER_STATUSES,
@@ -34,9 +35,12 @@ import type {
   IncomeTotals,
   InsightsService,
   MaterialsToOrder,
+  NotificationsView,
+  NoveltyItem,
   OccupancyRow,
   OccupancyTotals,
   PanelView,
+  PendingPaymentItem,
   SettlementsView,
   StatisticsView,
   SupplierMaterials,
@@ -61,6 +65,8 @@ export interface InsightsServiceDeps {
   readonly workshops: WorkshopInsightsReader;
   readonly intensives: IntensiveInsightsReader;
   readonly intensiveRequests: IntensiveRequestInsightsReader;
+  /** Unopened private-event requests, for the bell. */
+  readonly privateEvents: PrivateEventNoveltyReader;
   readonly teachers: TeacherLookup;
   readonly clock: Clock;
 }
@@ -191,10 +197,92 @@ function settlementRows(
 export function createInsightsService(
   deps: InsightsServiceDeps,
 ): InsightsUseCases {
-  const { orders, workshops, intensives, intensiveRequests, teachers, clock } =
-    deps;
+  const {
+    orders,
+    workshops,
+    intensives,
+    intensiveRequests,
+    privateEvents,
+    teachers,
+    clock,
+  } = deps;
 
   const currentPeriod = () => cordobaDateOf(clock.now()).slice(0, 7);
+
+  /** The unopened requests and every payment still owed; a failed read rejects. */
+  async function notificationsOf(): Promise<NotificationsView> {
+    const [unseenOrders, unseenSeats, events, orderPayments, seatPayments] =
+      await Promise.all([
+        orders.unseenOrders(),
+        intensiveRequests.unseenRequests(),
+        privateEvents.unseen(),
+        orders.pendingPayments(),
+        intensiveRequests.pendingPayments(),
+      ]);
+    const novelties: NoveltyItem[] = [
+      ...unseenOrders.map((row): NoveltyItem => ({
+        kind: "enrollment",
+        id: row.id,
+        intensiveId: null,
+        name: row.studentName,
+        workshopName: row.workshopName,
+        period: row.period,
+        eventDate: null,
+        requestedAt: row.requestedAt,
+      })),
+      ...unseenSeats.map((row): NoveltyItem => ({
+        kind: "workshop-request",
+        id: row.id,
+        intensiveId: row.intensiveId,
+        name: row.fullName,
+        workshopName: row.workshopName,
+        period: null,
+        eventDate: null,
+        requestedAt: row.createdAt,
+      })),
+      ...events.map((row): NoveltyItem => ({
+        kind: "private-event",
+        id: row.id,
+        intensiveId: null,
+        name: row.fullName,
+        workshopName: null,
+        period: null,
+        eventDate: row.desiredDate,
+        requestedAt: row.createdAt,
+      })),
+    ].sort(
+      (a, b) =>
+        b.requestedAt.getTime() - a.requestedAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    const pendingPayments: PendingPaymentItem[] = [
+      ...orderPayments.map((row): PendingPaymentItem => ({
+        kind: row.kind === "material_sale" ? "material-sale" : "enrollment",
+        id: row.id,
+        intensiveId: null,
+        name: row.studentName,
+        workshopName: row.workshopName,
+        period: row.period,
+        amount: pesos(row.totalCentavos),
+        requestedAt: row.requestedAt,
+      })),
+      ...seatPayments.map((row): PendingPaymentItem => ({
+        kind: row.kind === "deposit" ? "workshop-deposit" : "workshop-balance",
+        id: row.id,
+        intensiveId: row.intensiveId,
+        name: row.fullName,
+        workshopName: row.workshopName,
+        period: null,
+        amount: pesos(row.amountCentavos),
+        requestedAt: row.createdAt,
+      })),
+    ].sort(
+      (a, b) =>
+        a.requestedAt.getTime() - b.requestedAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    return { unseen: novelties.length, novelties, pendingPayments };
+  }
 
   async function occupancyOf(period: string) {
     const capacity = await workshops.capacity(period);
@@ -278,6 +366,12 @@ export function createInsightsService(
           (sum, row) => sum + row.materialsCentavos,
           0,
         );
+        // Each sale's own supplier cost; the price where none was loaded.
+        const materialsCostCentavos = income.reduce(
+          (sum, row) =>
+            sum + (row.materialsCostCentavos ?? row.materialsCentavos),
+          0,
+        );
         const own = snapshots.filter((row) => row.workshopId === workshopId);
         const teacher = own[0];
         // Each period rounds on its own: its share is what gets settled.
@@ -304,9 +398,8 @@ export function createInsightsService(
           teacherName: teacher?.teacherName ?? null,
           teacherModality: teacher?.modality ?? null,
           teacherPay: pesos(pay),
-          // No supplier cost is stored: the price paid by students is the cost.
-          materialsCost: pesos(materialsCentavos),
-          profit: pesos(collected - pay - materialsCentavos),
+          materialsCost: pesos(materialsCostCentavos),
+          profit: pesos(collected - pay - materialsCostCentavos),
         };
       },
     );
@@ -314,13 +407,18 @@ export function createInsightsService(
       const registration = paid.find(
         (item) => item.intensiveId === row.intensiveId,
       );
-      const collected = registration?.paidCentavos ?? 0;
+      // Collected shows every payment received, deposits included; the
+      // teacher, the materials and the profit count only fully paid
+      // reservations, on what they actually received.
+      const collected = registration?.collectedCentavos ?? 0;
+      const settled = registration?.settledCentavos ?? 0;
+      const materialsCost = registration?.materialsCostCentavos ?? 0;
       const teacher =
         row.teacherId === null ? undefined : known.get(row.teacherId);
       const pay =
         row.percentageBp === null
           ? 0
-          : settlementCentavos(collected, row.percentageBp);
+          : settlementCentavos(settled, row.percentageBp);
       return {
         kind: "intensivo",
         id: row.intensiveId,
@@ -332,8 +430,8 @@ export function createInsightsService(
         teacherName: teacher?.name ?? null,
         teacherModality: teacher?.modality ?? null,
         teacherPay: pesos(pay),
-        materialsCost: pesos(0),
-        profit: pesos(collected - pay),
+        materialsCost: pesos(materialsCost),
+        profit: pesos(settled - pay - materialsCost),
       };
     });
     const byActivityName = (a: ActivityRow, b: ActivityRow) =>
@@ -388,8 +486,16 @@ export function createInsightsService(
 
     const perSupplier = new Map<
       string,
-      { name: string; orders: number; units: number; amount: number }
+      {
+        name: string;
+        orders: number;
+        units: number;
+        amount: number;
+        cost: number;
+      }
     >();
+    let uncostedLines = 0;
+    let confirmedLines = 0;
     for (const row of materials) {
       if (!CONFIRMED.includes(row.status)) continue;
       const entry = perSupplier.get(row.supplierId) ?? {
@@ -397,11 +503,15 @@ export function createInsightsService(
         orders: 0,
         units: 0,
         amount: 0,
+        cost: 0,
       };
       entry.orders += row.orders;
       entry.units += row.units;
       entry.amount += row.amountCentavos;
+      entry.cost += row.costCentavos;
       perSupplier.set(row.supplierId, entry);
+      confirmedLines += 1;
+      uncostedLines += row.uncostedLines;
     }
     const suppliers = [...perSupplier.entries()]
       .map(([supplierId, entry]): SupplierMaterials => ({
@@ -410,7 +520,7 @@ export function createInsightsService(
         orders: entry.orders,
         units: entry.units,
         charged: pesos(entry.amount),
-        cost: pesos(entry.amount),
+        cost: pesos(entry.cost),
       }))
       .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "es"));
 
@@ -436,7 +546,8 @@ export function createInsightsService(
       },
       teachers: teacherRows,
       suppliers,
-      materialsAtCost: true,
+      // Once every sold line carries its own cost, the price no longer stands in for it.
+      materialsAtCost: confirmedLines === 0 || uncostedLines > 0,
     };
   }
 
@@ -588,6 +699,31 @@ export function createInsightsService(
       return ok(await earningsOf(period));
     },
 
+    async notifications(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      try {
+        return ok(await notificationsOf());
+      } catch {
+        return err({ kind: "unavailable" as const });
+      }
+    },
+
+    async unseenCount(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      try {
+        const [enrollments, seats, events] = await Promise.all([
+          orders.unseenOrders(),
+          intensiveRequests.unseenRequests(),
+          privateEvents.unseen(),
+        ]);
+        return ok(enrollments.length + seats.length + events.length);
+      } catch {
+        return err({ kind: "unavailable" as const });
+      }
+    },
+
     async settlements(actor, query) {
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
@@ -629,5 +765,7 @@ export function createUnavailableInsightsService(): InsightsUseCases {
     statistics: fail,
     earnings: fail,
     settlements: fail,
+    notifications: fail,
+    unseenCount: fail,
   };
 }

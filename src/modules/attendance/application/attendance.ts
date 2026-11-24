@@ -67,6 +67,31 @@ export interface MakeUpInput {
 
 export type MakeUpPlanField = MakeUpField | "student";
 
+/** A make-up that was saved; `targetFull` warns that its turno had no free seat. */
+export interface ScheduledMakeUp extends StoredMakeUp {
+  readonly targetFull: boolean;
+}
+
+/** The make-up is already done or missed, so it cannot be changed. */
+export interface MakeUpClosed {
+  readonly kind: "make-up-closed";
+}
+
+/**
+ * The absence's make-up was already used (done or missed): an absence permits
+ * one make-up, and missing it grants no replacement.
+ */
+export interface MakeUpUsed {
+  readonly kind: "make-up-used";
+}
+
+/** Some absences already have a make-up, so they cannot become presences. */
+export interface MakeUpBooked {
+  readonly kind: "make-up-booked";
+  /** Normalized emails of the students concerned. */
+  readonly emails: readonly string[];
+}
+
 /** The admin contract of attendance and make-up classes. */
 export interface AttendanceService {
   listTurnos(
@@ -83,7 +108,10 @@ export interface AttendanceService {
     turnoId: string,
     date: string,
   ): Promise<Result<SessionSheet, AdminFailure | NotFound>>;
-  /** Replaces the whole session: students left out end up unmarked. */
+  /**
+   * Saves the submitted marks; students left out keep whatever mark they had.
+   * An absence that already has a make-up cannot be changed to present.
+   */
   recordSession(
     actor: AdminActor,
     periodId: string,
@@ -93,7 +121,7 @@ export interface AttendanceService {
   ): Promise<
     Result<
       { readonly recorded: number },
-      AdminFailure | NotFound | Invalid<"marks">
+      AdminFailure | NotFound | Invalid<"marks"> | MakeUpBooked
     >
   >;
   scheduleMakeUp(
@@ -101,18 +129,31 @@ export interface AttendanceService {
     input: MakeUpInput,
   ): Promise<
     Result<
-      StoredMakeUp,
-      AdminFailure | NotFound | Invalid<MakeUpPlanField> | MakeUpExists
+      ScheduledMakeUp,
+      | AdminFailure
+      | NotFound
+      | Invalid<MakeUpPlanField>
+      | MakeUpExists
+      | MakeUpUsed
     >
   >;
   listMakeUps(
     actor: AdminActor,
     status: MakeUpStatus | "all",
   ): Promise<Result<readonly MakeUpEntry[], AdminFailure>>;
+  /** Done again is returned unchanged; a missed make-up cannot become done. */
   completeMakeUp(
     actor: AdminActor,
     id: string,
-  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound>>;
+  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound | MakeUpClosed>>;
+  /**
+   * The student did not come to the make-up. Missed again is returned
+   * unchanged; a done make-up cannot become missed.
+   */
+  markMakeUpMissed(
+    actor: AdminActor,
+    id: string,
+  ): Promise<Result<StoredMakeUp, AdminFailure | NotFound | MakeUpClosed>>;
   studentSummary(
     actor: AdminActor,
     email: string,

@@ -1,6 +1,7 @@
 import { Money } from "~/modules/_shared";
 import type { OrderDraft } from "~/modules/enrollments/application/enrollment-repository";
 import type { EnrollmentOffer } from "~/modules/enrollments/application/offer-lookup";
+import type { PolicyVersionCheck } from "~/modules/enrollments/application/policy-acceptance";
 import type { OfferedMaterial } from "~/modules/enrollments/application/offered-materials";
 import type { StudentDraft } from "~/modules/enrollments/domain/student-input";
 
@@ -38,7 +39,6 @@ export const offerFixture = (
       period: periodKey,
       status: "open",
       fee: pesos(58000),
-      materialsRequired: false,
     },
     turnos: [
       {
@@ -113,4 +113,18 @@ export const orderDraft = (
   policyVersion: "2026-10",
   lines: [],
   ...overrides,
+});
+
+/**
+ * The check of accepted policy versions, answering from a fixed list of the
+ * versions that were published (version 1 of each by default).
+ */
+export const policyCheck = (
+  published: {
+    readonly conditions: readonly number[];
+    readonly privacy: readonly number[];
+  } = { conditions: [1], privacy: [1] },
+): PolicyVersionCheck => ({
+  isPublished: (kind, version) =>
+    Promise.resolve(published[kind].includes(version)),
 });

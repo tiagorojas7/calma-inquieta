@@ -14,6 +14,10 @@ export interface ConsolidationSupplierView {
     label: string;
     quantity: number;
     total: string;
+    /** The workshop the units are for; absent on monthly lines. */
+    origin?: string | undefined;
+    /** The id of that workshop, which its "Ya lo pedí" marks. */
+    originId?: string | undefined;
   }[];
   readonly total: string;
   readonly summary: string;
@@ -28,6 +32,8 @@ export interface DeliveryCardView {
   readonly detail: string;
   readonly lines: readonly { label: string; quantity: number }[];
   readonly whatsappHref?: string | undefined;
+  /** Paid order whose lines all come from the studio's stock: nothing was requested from a supplier. */
+  readonly fromStock?: boolean | undefined;
 }
 
 export type MaterialsSection = "pedir" | "entregar";
@@ -45,7 +51,10 @@ export interface EnrollmentConsolidationProps {
   /** Orders already marked received. */
   readonly delivered: readonly DeliveryCardView[];
   readonly notice?:
-    | { readonly kind: "requested" | "received"; readonly count: number }
+    | {
+        readonly kind: "requested" | "received" | "workshop-requested";
+        readonly count: number;
+      }
     | undefined;
   readonly formError?: string | undefined;
 }
@@ -128,6 +137,51 @@ function OrderSummary({
   );
 }
 
+/** The workshops a supplier owes lines to, each once, in list order. */
+function workshopsOf(
+  supplier: ConsolidationSupplierView,
+): { id: string; name: string }[] {
+  const found = new Map<string, string>();
+  for (const item of supplier.materials)
+    if (item.originId !== undefined && item.origin !== undefined)
+      found.set(item.originId, found.get(item.originId) ?? item.origin);
+  return [...found].map(([id, name]) => ({ id, name }));
+}
+
+/** "Ya lo pedí" for one workshop: its lines of this supplier leave the list. */
+function WorkshopOrderedForm({
+  workshop,
+  supplierId,
+  period,
+}: {
+  workshop: { id: string; name: string };
+  supplierId: string;
+  period: string;
+}) {
+  return (
+    <form
+      method="post"
+      aria-label={copy.workshopOrigin(workshop.name)}
+      className="flex flex-col items-start gap-3"
+    >
+      <input type="hidden" name="intent" value="mark-workshop-requested" />
+      <input type="hidden" name="mes" value={period} />
+      <input type="hidden" name="seccion" value="pedir" />
+      <input type="hidden" name="workshopId" value={workshop.id} />
+      <input type="hidden" name="supplierId" value={supplierId} />
+      <p className="text-ink-700">
+        <span className="font-semibold text-ink-900">
+          {copy.workshopOrigin(workshop.name)}
+        </span>
+        <span className="block">{copy.workshopConsequence}</span>
+      </p>
+      <Button type="submit" variant="success">
+        {copy.markRequested}
+      </Button>
+    </form>
+  );
+}
+
 function SupplierSection({
   supplier,
   period,
@@ -135,6 +189,7 @@ function SupplierSection({
   supplier: ConsolidationSupplierView;
   period: string;
 }) {
+  const workshops = workshopsOf(supplier);
   return (
     <section aria-label={supplier.supplierName} className={ADMIN_PANEL}>
       <div
@@ -160,11 +215,16 @@ function SupplierSection({
           >
             {supplier.materials.map((item) => (
               <li
-                key={item.label}
+                key={`${item.label}|${item.origin ?? ""}`}
                 className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 last:pb-0"
               >
                 <span className="min-w-0 flex-1 basis-full font-semibold text-ink-900 sm:basis-0">
                   {item.label}
+                  {item.origin === undefined ? null : (
+                    <span className="block text-sm font-normal text-ink-700">
+                      {copy.workshopOrigin(item.origin)}
+                    </span>
+                  )}
                 </span>
                 <span className="whitespace-nowrap text-ink-700">
                   {copy.quantity(item.quantity)}
@@ -189,22 +249,32 @@ function SupplierSection({
             />
             <CopySummary summary={supplier.summary} />
           </OrderStep>
-          {supplier.orderIds.length > 0 ? (
+          {supplier.orderIds.length > 0 || workshops.length > 0 ? (
             <OrderStep number={2} title={copy.steps.done}>
-              <form method="post" className="flex flex-col items-start gap-3">
-                <input type="hidden" name="intent" value="mark-requested" />
-                <input type="hidden" name="mes" value={period} />
-                <input type="hidden" name="seccion" value="pedir" />
-                {supplier.orderIds.map((id) => (
-                  <input key={id} type="hidden" name="orderId" value={id} />
-                ))}
-                <p className="text-ink-700">
-                  {copy.consequence(supplier.orderIds.length)}
-                </p>
-                <Button type="submit" variant="success">
-                  {copy.markRequested}
-                </Button>
-              </form>
+              {supplier.orderIds.length > 0 ? (
+                <form method="post" className="flex flex-col items-start gap-3">
+                  <input type="hidden" name="intent" value="mark-requested" />
+                  <input type="hidden" name="mes" value={period} />
+                  <input type="hidden" name="seccion" value="pedir" />
+                  {supplier.orderIds.map((id) => (
+                    <input key={id} type="hidden" name="orderId" value={id} />
+                  ))}
+                  <p className="text-ink-700">
+                    {copy.consequence(supplier.orderIds.length)}
+                  </p>
+                  <Button type="submit" variant="success">
+                    {copy.markRequested}
+                  </Button>
+                </form>
+              ) : null}
+              {workshops.map((workshop) => (
+                <WorkshopOrderedForm
+                  key={workshop.id}
+                  workshop={workshop}
+                  supplierId={supplier.supplierId}
+                  period={period}
+                />
+              ))}
             </OrderStep>
           ) : null}
         </ol>
@@ -271,6 +341,7 @@ function DeliveryCard({
   period: string;
   status: "materials_requested" | "materials_received";
 }) {
+  const fromStock = card.fromStock === true && status !== "materials_received";
   return (
     <li className="flex flex-col gap-2 rounded-md bg-surface p-4 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -278,11 +349,13 @@ function DeliveryCard({
           {card.studentName}
         </Heading>
         <StatusChip
-          status={status}
+          status={fromStock ? "paid" : status}
           label={
             status === "materials_received"
               ? deliver.receivedStatus
-              : deliver.requestedStatus
+              : fromStock
+                ? deliver.stockStatus
+                : deliver.requestedStatus
           }
         />
       </div>

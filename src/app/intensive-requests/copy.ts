@@ -1,6 +1,7 @@
 import type { IssueCode } from "~/modules/_shared";
+import { POLICY_CHANGED_MESSAGE } from "~/app/enrollment/policy-acceptance";
 
-type StudentFieldName = "fullName" | "email" | "phone" | "policy";
+type StudentFieldName = "fullName" | "email" | "phone" | "policy" | "project";
 
 /** Public es-AR (voseo) copy of the workshop seat request pages. */
 export const intensiveRequestCopy = {
@@ -10,12 +11,13 @@ export const intensiveRequestCopy = {
     label: "Reservar mi lugar",
     intro:
       "Completá tus datos y dejamos tu solicitud registrada. Después coordinamos la seña por WhatsApp y tu lugar queda confirmado cuando la registramos.",
-    deposit: "Seña para confirmar tu lugar",
+    project: "Elegí tu proyecto",
+    projectTotal: "Total",
+    projectDeposit: "Seña para confirmar tu lugar",
     fullName: "Nombre y apellido",
     email: "Correo electrónico",
     phone: "WhatsApp o teléfono",
     phoneHint: "Con característica, por ejemplo 351 555 0101.",
-    policy: "Leí las condiciones y acepto la política de privacidad.",
     submit: "Enviar solicitud",
     back: "Volver al workshop",
     errorsTitle: "Revisá estos datos",
@@ -41,6 +43,8 @@ export const intensiveRequestCopy = {
       intensivo: "Workshop",
       date: "Fecha",
       time: "Horario",
+      project: "Proyecto",
+      price: "Total",
       deposit: "Seña",
     },
     stepsTitle: "Cómo seguir",
@@ -65,6 +69,7 @@ const MESSAGES: Record<StudentFieldName, string> = {
   email: "Ingresá un correo electrónico válido.",
   phone: "Ingresá un teléfono argentino válido.",
   policy: "Tenés que aceptar las condiciones y la política de privacidad.",
+  project: "Elegí un proyecto de la lista.",
 };
 
 const TOO_LONG: Partial<Record<StudentFieldName, string>> = {
@@ -77,6 +82,8 @@ export function studentIssueMessage(
   field: StudentFieldName,
   code: IssueCode,
 ): string {
+  if (field === "policy" && code === "unknown-reference")
+    return POLICY_CHANGED_MESSAGE;
   if (code === "too-long") return TOO_LONG[field] ?? MESSAGES[field];
   return MESSAGES[field];
 }

@@ -51,6 +51,7 @@ const consolidation: SupplierConsolidation = {
 type Consolidate = SupplierConsolidationUseCases["consolidate"];
 type Deliveries = SupplierConsolidationUseCases["deliveries"];
 type Bulk = AdminEnrollmentUseCases["markMaterialsRequestedBulk"];
+type MarkWorkshop = SupplierConsolidationUseCases["markWorkshopOrdered"];
 
 const deliveryOrder = (overrides: Partial<DeliveryOrder>): DeliveryOrder => ({
   id: "0b8f5c1e-4d3a-4f6b-9a7e-1c2d3e4f5a6b",
@@ -84,6 +85,7 @@ function services(overrides: {
   deliveries?: Deliveries;
   bulk?: Bulk;
   received?: Bulk;
+  markWorkshop?: MarkWorkshop;
 }) {
   return {
     consolidation: withOverrides(
@@ -93,6 +95,9 @@ function services(overrides: {
           ? { consolidate: overrides.consolidate }
           : {}),
         deliveries: overrides.deliveries ?? (() => Promise.resolve(ok([]))),
+        ...(overrides.markWorkshop
+          ? { markWorkshopOrdered: overrides.markWorkshop }
+          : {}),
       },
     ),
     enrollments: withOverrides(createUnavailableAdminEnrollmentService(), {
@@ -174,6 +179,103 @@ describe("admin supplier consolidation loader", () => {
     });
   });
 
+  it("names the workshop on its lines, keeps monthly lines as they were and counts the workshop in Para pedir", async () => {
+    const withWorkshop: SupplierConsolidation = {
+      ...consolidation,
+      suppliers: [
+        {
+          supplierId: "s1",
+          supplierName: "Papelería Sur",
+          materials: [
+            ...(consolidation.suppliers[0]?.materials ?? []),
+            {
+              materialName: "Arcilla",
+              variantLabel: "Grande",
+              quantity: 2,
+              total: pesos(600),
+              origin: "Torno intensivo",
+              originId: "w1",
+            },
+          ],
+          total: pesos(3_600),
+          summary: "Pedido a Papelería Sur",
+          pendingRequestOrderIds: [],
+        },
+      ],
+      grandTotal: pesos(3_600),
+    };
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(withWorkshop)),
+    );
+
+    expect(result).toMatchObject({
+      counts: { pedir: 1, entregar: 0 },
+      suppliers: [
+        {
+          materials: [
+            { label: "Arcilla Grande", quantity: 3, total: "$ 3.000" },
+            {
+              label: "Arcilla Grande",
+              quantity: 2,
+              total: "$ 600",
+              origin: "Torno intensivo",
+              originId: "w1",
+            },
+          ],
+          orderIds: [],
+        },
+      ],
+    });
+    const monthly = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+    );
+    if (!("suppliers" in monthly)) throw new Error("expected data");
+    expect(monthly.suppliers[0]?.materials).toStrictEqual([
+      { label: "Arcilla Grande", quantity: 3, total: "$ 3.000" },
+    ]);
+    expect(monthly.counts.pedir).toBe(2);
+  });
+
+  it("tells each workshop row apart by id and counts two workshops with the same name twice", async () => {
+    const materials = ["w1", "w2"].map((originId) => ({
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 1,
+      total: pesos(300),
+      origin: "Torno intensivo",
+      originId,
+    }));
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(
+        ok({
+          ...consolidation,
+          suppliers: [
+            {
+              supplierId: "s1",
+              supplierName: "Papelería Sur",
+              materials,
+              total: pesos(600),
+              summary: "Pedido a Papelería Sur",
+              pendingRequestOrderIds: [],
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(result).toMatchObject({
+      counts: { pedir: 2, entregar: 0 },
+      suppliers: [
+        {
+          materials: [
+            { origin: "Torno intensivo", originId: "w1" },
+            { origin: "Torno intensivo", originId: "w2" },
+          ],
+        },
+      ],
+    });
+  });
+
   it("defaults to the current Córdoba month when none is given", async () => {
     const consolidate = vi
       .fn<Consolidate>()
@@ -201,6 +303,10 @@ describe("admin supplier consolidation loader", () => {
     expect(await noticeOf("&ok=received&n=3")).toEqual({
       kind: "received",
       count: 3,
+    });
+    expect(await noticeOf("&ok=workshop-requested&n=2")).toEqual({
+      kind: "workshop-requested",
+      count: 2,
     });
     expect(await noticeOf("&ok=hacked&n=3")).toBeNull();
     expect(await noticeOf("&ok=received&n=-1")).toBeNull();
@@ -284,6 +390,78 @@ describe("admin supplier consolidation loader", () => {
       "Cata Díaz",
     ]);
     expect(result.counts).toEqual({ pedir: 2, entregar: 2 });
+  });
+
+  it("hands over a material sale from the same list, named as a sale of its workshop", async () => {
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(
+      ok([
+        deliveryOrder({
+          id: "4f2d9052-8b7e-4dae-9eb2-5a6b7c8d9eaf",
+          kind: "material_sale",
+          status: "materials_requested",
+          studentName: "Ana Pérez",
+        }),
+      ]),
+    );
+
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar",
+      true,
+      deliveries,
+    );
+
+    expect(result.toDeliver).toMatchObject([
+      { studentName: "Ana Pérez", detail: "Venta de materiales · Cerámica" },
+    ]);
+  });
+
+  it("hands over a paid order whose lines all come from stock, marked as such, and leaves paid supplier orders out", async () => {
+    const stockLine = (source: "stock" | "supplier") => ({
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      supplierName: "Papelería Sur",
+      unitPrice: pesos(1_000),
+      source,
+    });
+    const deliveries = vi.fn<Deliveries>().mockResolvedValue(
+      ok([
+        deliveryOrder({
+          id: "4f2d9052-8b7e-4daf-9eb2-5a6b7c8d9eaf",
+          status: "paid",
+          studentName: "Eva Stock",
+          lines: [stockLine("stock")],
+        }),
+        deliveryOrder({
+          id: "5a3e0163-9c8f-4eb0-8fc3-6b7c8d9eafb0",
+          status: "paid",
+          studentName: "Fina Mixta",
+          lines: [stockLine("stock"), stockLine("supplier")],
+        }),
+        deliveryOrder({
+          id: "6b4f1274-ad90-4fc1-9ad4-7c8d9eafb0c1",
+          status: "materials_requested",
+          studentName: "Gina Pedida",
+          lines: [stockLine("stock"), stockLine("supplier")],
+        }),
+      ]),
+    );
+
+    const result = await load(
+      vi.fn<Consolidate>().mockResolvedValue(ok(consolidation)),
+      "/admin/inscripciones/materiales?mes=2026-11&seccion=entregar",
+      true,
+      deliveries,
+    );
+
+    expect(
+      result.toDeliver.map((card) => [card.studentName, card.fromStock]),
+    ).toEqual([
+      ["Eva Stock", true],
+      ["Gina Pedida", undefined],
+    ]);
+    expect(result.counts.entregar).toBe(2);
   });
 
   it.each([
@@ -533,6 +711,111 @@ describe("admin supplier consolidation action", () => {
         ),
       ).toBe(403);
       expect(received).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("mark-workshop-requested", () => {
+    const workshop = "2d0a7e3b-6f5c-4b8d-9c9a-3e4f5a6b7c8d";
+    const supplier = "3e1b8f4c-7a6d-4c9e-8dab-4f5a6b7c8d9e";
+    const fields: [string, string][] = [
+      ["intent", "mark-workshop-requested"],
+      ["mes", "2026-11"],
+      ["seccion", "pedir"],
+      ["workshopId", workshop],
+      ["supplierId", supplier],
+    ];
+
+    function submitWorkshop(
+      markWorkshop: MarkWorkshop,
+      body: [string, string][] = fields,
+      options: { admin?: boolean; headers?: Record<string, string> } = {},
+    ) {
+      const request = postRequest(
+        "/admin/inscripciones/materiales",
+        {},
+        options.headers ?? { Origin: ORIGIN },
+      );
+      return action({
+        request: new Request(request.url, {
+          method: "POST",
+          headers: request.headers,
+          body: new URLSearchParams(body),
+        }),
+        params: {},
+        context: adminContext(
+          services({ markWorkshop, bulk: vi.fn<Bulk>() }),
+          options.admin === undefined ? {} : { admin: options.admin },
+        ),
+      } as never);
+    }
+
+    it("marks that workshop's lines of that supplier and goes back to Para pedir with how many moved", async () => {
+      const mark = vi.fn<MarkWorkshop>().mockResolvedValue(ok({ count: 3 }));
+
+      const result = await submitWorkshop(mark);
+
+      expect(mark).toHaveBeenCalledExactlyOnceWith(
+        expect.anything(),
+        workshop,
+        supplier,
+      );
+      expect((result as Response).headers.get("Location")).toBe(
+        "/admin/inscripciones/materiales?mes=2026-11&seccion=pedir&ok=workshop-requested&n=3",
+      );
+    });
+
+    it("goes back without a notice when nothing was left to mark", async () => {
+      const result = await submitWorkshop(
+        vi.fn<MarkWorkshop>().mockResolvedValue(ok({ count: 0 })),
+      );
+
+      expect((result as Response).headers.get("Location")).toBe(
+        "/admin/inscripciones/materiales?mes=2026-11&seccion=pedir",
+      );
+    });
+
+    it("does not touch any order and answers 400 to an id that is not a uuid", async () => {
+      const mark = vi.fn<MarkWorkshop>();
+
+      for (const bad of ["workshopId", "supplierId"])
+        expect(
+          await thrownStatus(() =>
+            submitWorkshop(
+              mark,
+              fields.map(([key, value]): [string, string] =>
+                key === bad ? [key, "not-a-uuid"] : [key, value],
+              ),
+            ),
+          ),
+        ).toBe(400);
+      expect(mark).not.toHaveBeenCalled();
+    });
+
+    it("refuses a cross-origin post and a non-admin without marking anything", async () => {
+      const mark = vi.fn<MarkWorkshop>();
+
+      expect(
+        await thrownStatus(() =>
+          submitWorkshop(mark, fields, {
+            headers: { Origin: "https://evil.test" },
+          }),
+        ),
+      ).toBe(403);
+      expect(
+        await thrownStatus(() =>
+          submitWorkshop(mark, fields, { admin: false }),
+        ),
+      ).toBe(403);
+      expect(mark).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["denied", 403],
+      ["unavailable", 503],
+    ] as const)("fails closed on %s", async (kind, status) => {
+      const mark = vi.fn<MarkWorkshop>().mockResolvedValue(err({ kind }));
+
+      expect(await thrownStatus(() => submitWorkshop(mark))).toBe(status);
     });
   });
 

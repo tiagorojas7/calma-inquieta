@@ -18,7 +18,6 @@ import { seedTeacher, seedWorkshop } from "~/testing/admin/workshop-seed";
 import {
   FLOW_MONTH,
   FLOW_NEXT_MONTH,
-  buildMaterial,
   workshopFlowFixture,
 } from "~/testing/admin/workshop-flow-kit";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
@@ -118,9 +117,7 @@ describe("admin workshops list loader", () => {
 
 describe("admin workshops list: Abrir <mes>", () => {
   async function published(periods = true) {
-    const fixture = workshopFlowFixture([
-      buildMaterial({ id: "m1", name: "Arcilla" }),
-    ]);
+    const fixture = workshopFlowFixture();
     const teacherId = await seedTeacher(fixture, {
       name: "Ana",
       modality: "own",

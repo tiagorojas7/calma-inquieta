@@ -12,6 +12,7 @@ import type { NotificationService } from "~/modules/notifications";
 import type { PrivateEventUseCases } from "~/modules/private-events";
 import {
   withEnrollmentEmails,
+  withManualEnrollmentEmails,
   withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
@@ -23,6 +24,9 @@ if (!total.ok) throw new Error("bad money");
 function notifier() {
   return {
     enrollmentReceived: vi.fn<(order: unknown) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+    enrollmentConfirmed: vi.fn<(order: unknown) => Promise<void>>(() =>
       Promise.resolve(),
     ),
     paymentConfirmed: vi.fn<(order: unknown) => Promise<void>>(() =>
@@ -145,6 +149,98 @@ describe("withEnrollmentEmails", () => {
   });
 });
 
+describe("withManualEnrollmentEmails", () => {
+  const actor = { email: "owner@example.test" };
+  function setup(
+    result: Awaited<ReturnType<AdminEnrollmentUseCases["createPending"]>>,
+  ) {
+    const createPending = vi.fn(() => Promise.resolve(result));
+    const list = vi.fn();
+    const inner = { createPending, list } as unknown as AdminEnrollmentUseCases;
+    const n = notifier();
+    const d = deferred();
+    return {
+      service: withManualEnrollmentEmails(inner, n, d.defer),
+      n,
+      d,
+      list,
+    };
+  }
+
+  it("sends only the received email for a pending manual order and returns the result untouched", async () => {
+    const { service, n, d } = setup(ok(view));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(view),
+    );
+    await d.settle();
+    expect(n.enrollmentReceived).toHaveBeenCalledWith(expectedNotice);
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("emails the total of fee plus materials for a pending manual order with catalog materials", async () => {
+    const fee = Money.fromCentavos(4_000_000);
+    const materials = Money.fromCentavos(800_000);
+    const sum = Money.fromCentavos(4_800_000);
+    if (!fee.ok || !materials.ok || !sum.ok) throw new Error("bad money");
+    const withMaterials = {
+      ...view,
+      fee: fee.value,
+      materialsTotal: materials.value,
+      total: sum.value,
+    };
+    const { service, n, d } = setup(ok(withMaterials));
+    await service.createPending(actor, request);
+    await d.settle();
+    expect(n.enrollmentReceived).toHaveBeenCalledWith({
+      ...expectedNotice,
+      total: sum.value,
+    });
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("sends only the confirmed-place email for a free manual order", async () => {
+    const free = {
+      ...view,
+      status: "paid" as const,
+      fee: Money.zero(),
+      total: Money.zero(),
+    };
+    const { service, n, d } = setup(ok(free));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(free),
+    );
+    await d.settle();
+    expect(n.enrollmentConfirmed).toHaveBeenCalledWith({
+      ...expectedNotice,
+      total: Money.zero(),
+    });
+    expect(n.enrollmentReceived).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing for a refused manual order", async () => {
+    const { service, n, d } = setup(err({ kind: "turno-full" }));
+    await service.createPending(actor, request);
+    expect(d.pending).toHaveLength(0);
+    expect(n.enrollmentReceived).not.toHaveBeenCalled();
+    expect(n.enrollmentConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("never fails the flow when the notifier rejects", async () => {
+    const { service, n, d } = setup(ok(view));
+    n.enrollmentReceived.mockRejectedValueOnce(new Error("boom"));
+    await expect(service.createPending(actor, request)).resolves.toEqual(
+      ok(view),
+    );
+    await expect(d.settle()).resolves.toBeDefined();
+  });
+
+  it("passes the other use cases through", () => {
+    const { service, list } = setup(ok(view));
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- identity check only
+    expect(service.list).toBe(list);
+  });
+});
+
 describe("withPaymentEmails", () => {
   const actor = { email: "owner@example.test" };
   const detail = {
@@ -211,6 +307,22 @@ describe("withPaymentEmails", () => {
     }
   });
 
+  it("sends no enrollment payment email for a material sale, which has no email of its own", async () => {
+    const { service, n, d, readDetail } = setup(ok({ kind: "confirmed" }));
+    readDetail.mockResolvedValueOnce({
+      ok: true as const,
+      value: { ...detail, kind: "material_sale" } as unknown as typeof detail,
+    });
+
+    await expect(service.confirmPayment(actor, input)).resolves.toEqual(
+      ok({ kind: "confirmed" }),
+    );
+    await d.settle();
+
+    expect(readDetail).toHaveBeenCalledWith(actor, "o1");
+    expect(n.paymentConfirmed).not.toHaveBeenCalled();
+  });
+
   it("never fails the flow when the detail read rejects", async () => {
     const { service, readDetail, d, n } = setup(ok({ kind: "confirmed" }));
     readDetail.mockRejectedValueOnce(new Error("db down"));
@@ -275,6 +387,8 @@ describe("withIntensiveRequestEmails", () => {
   const actor = { kind: "admin-actor" as const, email: "owner@example.test" };
   const deposit = Money.fromCentavos(2_000_000);
   if (!deposit.ok) throw new Error("bad money");
+  const price = Money.fromCentavos(6_000_000);
+  if (!price.ok) throw new Error("bad money");
   const summary: PublicRequestView = {
     publicId: "res123",
     reference: "res123ab",
@@ -284,6 +398,8 @@ describe("withIntensiveRequestEmails", () => {
     eventDate: "2026-12-05",
     startsAt: "10:00",
     endsAt: "14:00",
+    projectName: "Bordado de aro",
+    price: price.value,
     deposit: deposit.value,
   };
   const expectedReservation = {
@@ -292,10 +408,13 @@ describe("withIntensiveRequestEmails", () => {
     publicId: "res123",
     intensivoName: "Bordado libre",
     eventDate: "2026-12-05",
+    projectName: "Bordado de aro",
+    price: price.value,
     deposit: deposit.value,
   };
   const seat = {
     slug: "bordado-libre",
+    projectId: "p1",
     student: {
       fullName: "Ana Pérez",
       email: " ana@example.com ",

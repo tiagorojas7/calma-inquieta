@@ -22,6 +22,10 @@ import type {
   StoredPrivateEvent,
 } from "./private-event-repository";
 
+/** The shared read state of a request: first opened by an owner, or already read. */
+export type PrivateEventSeen =
+  { readonly kind: "seen" } | { readonly kind: "already-seen" };
+
 type MaybeActor = AdminActor | null | undefined;
 
 export type PrivateEvent = StoredPrivateEvent;
@@ -47,6 +51,14 @@ export interface PrivateEventUseCases {
     id: string,
     status: PrivateEventStatus,
   ): Promise<Result<PrivateEvent, Denied | NotFound>>;
+  /**
+   * Marks a request read for both owners when one opens it. Idempotent: the
+   * first opener's mark stays and nothing else about the request changes.
+   */
+  markSeen(
+    actor: MaybeActor,
+    id: string,
+  ): Promise<Result<PrivateEventSeen, Denied | NotFound>>;
 }
 
 export interface PrivateEventServiceDeps {
@@ -111,6 +123,16 @@ export function createPrivateEventService(
         at: clock.now(),
       });
       return updated ? ok(updated) : err({ kind: "not-found" });
+    },
+
+    async markSeen(actor, id) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const marked = await repository.markSeen(id, {
+        by: authorized.value.email,
+        at: clock.now(),
+      });
+      return marked ? ok({ kind: marked }) : err({ kind: "not-found" });
     },
   };
 }

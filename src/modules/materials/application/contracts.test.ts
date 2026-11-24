@@ -75,6 +75,7 @@ describe("materials contract signatures", () => {
     const materialKeys = [
       "list",
       "listSelectable",
+      "listSaleVariants",
       "get",
       "create",
       "update",
@@ -86,12 +87,14 @@ describe("materials contract signatures", () => {
       "importCatalog",
       "previewPriceRaise",
       "raisePrices",
+      "stockOf",
+      "adjustStock",
     ] as const satisfies readonly (keyof MaterialsService)[];
     expect(supplierKeys).toHaveLength(6);
     expectTypeOf<keyof SuppliersService>().toEqualTypeOf<
       (typeof supplierKeys)[number]
     >();
-    expect(materialKeys).toHaveLength(13);
+    expect(materialKeys).toHaveLength(16);
     expectTypeOf<keyof MaterialsService>().toEqualTypeOf<
       (typeof materialKeys)[number]
     >();

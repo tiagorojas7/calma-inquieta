@@ -20,6 +20,7 @@ import {
   generatePublicId,
   isPublicId,
   availableSeats,
+  lineSourceFor,
   type OrderStatus,
   type TurnoFull,
 } from "../domain/order-core";
@@ -46,9 +47,9 @@ import type {
 } from "./offer-lookup";
 import type {
   OfferedMaterial,
-  OfferedMaterialImage,
   OfferedMaterialsLookup,
 } from "./offered-materials";
+import type { PolicyAcceptance, PolicyVersionCheck } from "./policy-acceptance";
 import type { RandomBytes } from "./random-bytes";
 import type { SeatLedger } from "./seat-ledger";
 
@@ -61,6 +62,13 @@ export interface RequestEnrollmentInput {
   readonly turnoId: string;
   readonly student: StudentDraft;
   readonly lines: readonly CartLine[];
+  /**
+   * The versions of the conditions and privacy documents the form showed. A
+   * public request needs them (without them it is unavailable, so nothing is
+   * stored without a record of what was accepted); an owner enrolling a
+   * student by hand (`createdBy`) passes none and stores none.
+   */
+  readonly acceptance?: PolicyAcceptance;
 }
 
 /** Allowlisted projection of an order: no email, phone or internal id. */
@@ -91,25 +99,7 @@ export interface PublicOffer {
   readonly workshopName: string;
   readonly period: string;
   readonly fee: Money;
-  readonly materialsRequired: boolean;
   readonly turnos: readonly Omit<OfferedTurno, "capacity">[];
-  /**
-   * Active materials with available variants only; no supplier data. A
-   * variant without a price is listed as `onRequest` and is never orderable.
-   */
-  readonly materials: readonly {
-    readonly materialId: string;
-    readonly name: string;
-    readonly category: string;
-    readonly image: OfferedMaterialImage | null;
-    readonly variants: readonly {
-      readonly variantId: string;
-      readonly label: string;
-      readonly unitPrice: Money | null;
-      readonly onRequest: boolean;
-      readonly swatch: string | null;
-    }[];
-  }[];
 }
 
 export type DependencyUnavailable = { readonly kind: "unavailable" };
@@ -135,13 +125,38 @@ export type PublicOrderLookupError = NotFound | DependencyUnavailable;
 
 export interface PublicEnrollmentServiceDeps {
   readonly offers: EnrollmentOfferLookup;
+  /** Materials a public request may order; monthly periods offer none. */
   readonly materials: OfferedMaterialsLookup;
+  /**
+   * The catalog an owner picks from when enrolling a student by hand. Only a
+   * request carrying `createdBy` resolves its lines here; a public request
+   * never does. Without it, an admin request uses `materials` like a public one.
+   */
+  readonly adminMaterials?: OfferedMaterialsLookup;
   readonly seats: SeatLedger;
   readonly orders: OrderRepository;
   readonly clock: Clock;
   readonly random: RandomBytes;
   /** Version of the policy text the visitor accepts. */
   readonly policyVersion: string;
+  /** Tells whether a posted conditions or privacy version was ever published. */
+  readonly policies: PolicyVersionCheck;
+}
+
+export interface RequestEnrollmentOptions {
+  /** Admin email when an owner enrolls the student by hand. */
+  readonly createdBy?: string;
+  /**
+   * Fee an owner sets for one student (a scholarship may be $0) instead of the
+   * period fee. Only the admin path passes it; the public form has no such input.
+   */
+  readonly fee?: Money;
+  /**
+   * With `createdBy`: a manual order whose total is $0 is stored already paid
+   * on this date, with its seat claimed in the same transaction. A priced
+   * order ignores it and stays pending. The public form never passes it.
+   */
+  readonly paidAtIfFree?: Date;
 }
 
 export interface PublicEnrollmentUseCases {
@@ -154,6 +169,7 @@ export interface PublicEnrollmentUseCases {
    */
   requestEnrollment(
     input: RequestEnrollmentInput,
+    options?: RequestEnrollmentOptions,
   ): Promise<Result<PublicOrderView, RequestEnrollmentError>>;
   getOrderByPublicId(
     publicId: string,
@@ -226,12 +242,13 @@ function toView(order: StoredOrder): PublicOrderView {
   };
 }
 
-type LineRefusal = Extract<
+export type LineRefusal = Extract<
   RequestEnrollmentError,
   { kind: "material-not-offered" | "material-unavailable" }
 >;
 
-function resolveLines(
+/** The catalog lines of a cart as order lines: priced, costed and sourced from stock or the supplier. */
+export function resolveLines(
   cart: readonly CartLine[],
   offered: readonly OfferedMaterial[],
 ): Result<readonly OrderLineDraft[], LineRefusal> {
@@ -258,21 +275,11 @@ function resolveLines(
       quantity: line.quantity,
       supplierId: material.supplierId,
       supplierName: material.supplierName,
+      source: lineSourceFor(variant.onHand ?? 0, line.quantity),
+      unitCost: variant.unitCost ?? null,
     });
   }
   return ok(lines);
-}
-
-/**
- * Whether the student can order anything at all. When every offered measure
- * is "consultar precio" the required-materials rule cannot be met, so it must
- * not block the enrollment.
- */
-function hasOrderableVariant(offered: readonly OfferedMaterial[]): boolean {
-  return offered.some(
-    (m) =>
-      m.active && m.variants.some((v) => v.available && v.unitPrice !== null),
-  );
 }
 
 export function createPublicEnrollmentService(
@@ -280,6 +287,28 @@ export function createPublicEnrollmentService(
 ): PublicEnrollmentUseCases {
   const newPublicId = (): string =>
     generatePublicId(deps.random.bytes(PUBLIC_ID_BYTES));
+
+  /** A public request must carry two published versions; anything else stores nothing. */
+  async function acceptedVersions(
+    posted: PolicyAcceptance | undefined,
+  ): Promise<
+    Result<PolicyAcceptance, DependencyUnavailable | Invalid<StudentField>>
+  > {
+    if (posted === undefined) return err(unavailable);
+    const known = await unavailableOnReject(
+      Promise.all([
+        deps.policies.isPublished("conditions", posted.conditionsVersion),
+        deps.policies.isPublished("privacy", posted.privacyVersion),
+      ]),
+    );
+    if (!known.ok) return known;
+    return known.value.every(Boolean)
+      ? ok(posted)
+      : err({
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        });
+  }
 
   return {
     async getOffer(query) {
@@ -290,17 +319,10 @@ export function createPublicEnrollmentService(
       const gate = gateOffer(foundOffer.value, deps.clock.now());
       if (!gate.ok) return gate;
       const { workshop, period, turnos } = gate.value;
-      const foundMaterials = await unavailableOnReject(
-        deps.materials.listForPeriod(period.id),
-      );
-      if (!foundMaterials.ok) return foundMaterials;
-      const materials = foundMaterials.value;
       return ok({
         workshopName: workshop.name,
         period: period.period,
         fee: period.fee,
-        materialsRequired:
-          period.materialsRequired && hasOrderableVariant(materials),
         turnos: turnos.map((t) => ({
           id: t.id,
           label: t.label,
@@ -308,41 +330,23 @@ export function createPublicEnrollmentService(
           startsAt: t.startsAt,
           endsAt: t.endsAt,
         })),
-        materials: materials
-          .filter((m) => m.active)
-          .map((m) => ({
-            materialId: m.materialId,
-            name: m.name,
-            category: m.category ?? "",
-            image:
-              m.image === undefined || m.image === null
-                ? null
-                : {
-                    src: m.image.src,
-                    alt: m.image.alt,
-                    width: m.image.width,
-                    height: m.image.height,
-                  },
-            variants: m.variants
-              .filter((v) => v.available)
-              .map((v) => ({
-                variantId: v.variantId,
-                label: v.label,
-                unitPrice: v.unitPrice,
-                onRequest: v.unitPrice === null,
-                swatch: v.swatch ?? null,
-              })),
-          })),
       });
     },
 
-    async requestEnrollment(input) {
+    async requestEnrollment(input, options = {}) {
       const student = validateStudentInput(input.student, phoneDigits);
       if (!student.ok) {
         if (student.error.kind === "honeypot") {
           return ok(decoyView(newPublicId()));
         }
         return err(student.error);
+      }
+
+      let acceptance: PolicyAcceptance | undefined;
+      if (options.createdBy === undefined) {
+        const accepted = await acceptedVersions(input.acceptance);
+        if (!accepted.ok) return accepted;
+        acceptance = accepted.value;
       }
 
       const now = deps.clock.now();
@@ -359,18 +363,22 @@ export function createPublicEnrollmentService(
 
       const cart = buildCart(input.lines);
       if (!cart.ok) return cart;
+      const catalog =
+        options.createdBy === undefined
+          ? deps.materials
+          : (deps.adminMaterials ?? deps.materials);
       const foundMaterials = await unavailableOnReject(
-        deps.materials.listForPeriod(period.id),
+        catalog.listForPeriod(period.id),
       );
       if (!foundMaterials.ok) return foundMaterials;
       const lines = resolveLines(cart.value, foundMaterials.value);
       if (!lines.ok) return lines;
 
+      const fee = options.fee ?? period.fee;
       const priced = priceCart({
-        fee: period.fee,
-        materialsRequired:
-          period.materialsRequired && hasOrderableVariant(foundMaterials.value),
+        fee,
         lines: lines.value,
+        allowZeroFee: options.fee !== undefined,
       });
       if (!priced.ok) return priced;
 
@@ -397,11 +405,26 @@ export function createPublicEnrollmentService(
           startsAt: turno.startsAt,
           endsAt: turno.endsAt,
           student: student.value,
-          fee: period.fee,
+          fee,
           materialsTotal: priced.value.materialsTotal,
           total: priced.value.total,
           policyVersion: deps.policyVersion,
+          ...(acceptance === undefined ? {} : { acceptance }),
           lines: lines.value,
+          ...(options.createdBy === undefined
+            ? {}
+            : { createdBy: options.createdBy }),
+          ...(options.createdBy !== undefined &&
+          options.paidAtIfFree !== undefined &&
+          priced.value.total.isZero()
+            ? {
+                paidOnCreation: {
+                  paidAt: options.paidAtIfFree,
+                  confirmedBy: options.createdBy,
+                  capacity: turno.capacity,
+                },
+              }
+            : {}),
         }),
       );
       if (!created.ok) return created;

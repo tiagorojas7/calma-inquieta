@@ -21,6 +21,13 @@ describe("intensive publish failure code", () => {
     ]);
   });
 
+  it("knows the project rule, listed after the others", () => {
+    expect(intensiveMissing(at("?falta=projects,price"))).toEqual([
+      "price",
+      "projects",
+    ]);
+  });
+
   it("is null when there was no failure and empty for an unknown reason", () => {
     expect(intensiveMissing(at(""))).toBeNull();
     expect(intensiveMissing(at("?falta="))).toEqual([]);

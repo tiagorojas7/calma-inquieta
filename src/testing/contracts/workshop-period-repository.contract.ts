@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
-import type { EnabledMaterial } from "~/modules/workshops";
 import type {
   StoredWorkshopPeriod,
   WorkshopPeriodRepository,
@@ -8,6 +7,11 @@ import type {
 
 const money = (() => {
   const parsed = Money.fromCentavos(100);
+  if (!parsed.ok) throw new Error("fixture money");
+  return parsed.value;
+})();
+const otherMoney = (() => {
+  const parsed = Money.fromCentavos(250);
   if (!parsed.ok) throw new Error("fixture money");
   return parsed.value;
 })();
@@ -25,7 +29,6 @@ const period = (
   workshopId: IDS.workshop,
   period: "2026-10",
   fee: money,
-  materialsRequired: false,
   status: "draft",
   project: { title: "", description: "", images: [] },
   turnos: [
@@ -39,7 +42,6 @@ const period = (
       capacity: 8,
     },
   ],
-  materials: [],
   snapshot: {
     teacher: { id: IDS.teacher, name: "Teacher", active: true },
     modality: "own",
@@ -87,12 +89,11 @@ export function runWorkshopPeriodRepositoryContract(
         ok: false,
         error: { kind: "period-exists", periodId: IDS.period },
       });
-      expect(
-        await repository.update(period({ materialsRequired: true })),
-      ).toEqual({ ok: true, value: undefined });
-      expect((await repository.findById(IDS.period))?.materialsRequired).toBe(
-        true,
-      );
+      expect(await repository.update(period({ fee: otherMoney }))).toEqual({
+        ok: true,
+        value: undefined,
+      });
+      expect((await repository.findById(IDS.period))?.fee).toEqual(otherMoney);
       expect(await repository.deleteDraft(IDS.period)).toBe("deleted");
     });
 
@@ -224,68 +225,15 @@ export function runWorkshopPeriodRepositoryContract(
       expect(await repository.deleteDraft(open)).toBe("not-draft");
     });
 
-    it("round-trips ordered materials and isolates returned values", async () => {
+    it("round-trips a period that carries no material data", async () => {
       const repository = await create();
-      const materials: EnabledMaterial[] = [
-        {
-          id: "00000000-0000-4000-8000-000000000501",
-          name: "Material 1",
-          active: true,
-          available: true,
-        },
-        {
-          id: "00000000-0000-4000-8000-000000000502",
-          name: "Material 2",
-          active: true,
-          available: true,
-        },
-      ];
-      await repository.insert(period({ materials }));
+      await repository.insert(period());
 
       const read = await repository.findById(IDS.period);
       if (!read) throw new Error("contract fixture missing");
-      expect(read.materials).toEqual(materials);
-      (read.materials[0] as { name: string }).name = "Changed";
-      expect((await repository.findById(IDS.period))?.materials).toEqual(
-        materials,
-      );
-    });
-
-    it("replaces and clears the whole ordered material list", async () => {
-      const repository = await create();
-      await repository.insert(
-        period({
-          materials: [
-            {
-              id: "00000000-0000-4000-8000-000000000501",
-              name: "Material 1",
-              active: true,
-              available: true,
-            },
-          ],
-        }),
-      );
-      const replacement: EnabledMaterial[] = [
-        {
-          id: "00000000-0000-4000-8000-000000000503",
-          name: "Material 3",
-          active: true,
-          available: true,
-        },
-        {
-          id: "00000000-0000-4000-8000-000000000504",
-          name: "Material 4",
-          active: true,
-          available: true,
-        },
-      ];
-      await repository.update(period({ materials: replacement }));
-      expect((await repository.findById(IDS.period))?.materials).toEqual(
-        replacement,
-      );
-
-      await repository.update(period({ materials: [] }));
-      expect((await repository.findById(IDS.period))?.materials).toEqual([]);
+      expect(read).toEqual(period());
+      expect(Object.keys(read)).not.toContain("materials");
+      expect(Object.keys(read)).not.toContain("materialsRequired");
     });
   });
 }

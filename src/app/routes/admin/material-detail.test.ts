@@ -16,6 +16,8 @@ const SUPPLIER_ID = "22222222-2222-4222-8222-222222222222";
 const ACTIVE_SUPPLIER_ID = "33333333-3333-4333-8333-333333333333";
 const money = Money.fromCentavos(250000);
 if (!money.ok) throw new Error("invalid fixture money");
+const cost = Money.fromCentavos(80000);
+if (!cost.ok) throw new Error("invalid fixture cost");
 
 const material = {
   id: ID,
@@ -46,6 +48,7 @@ const material = {
       id: "v1",
       label: "Chico",
       price: money.value,
+      cost: cost.value,
       available: true,
       used: false,
       position: 0,
@@ -55,6 +58,7 @@ const material = {
       id: "v2",
       label: "Grande",
       price: money.value,
+      cost: null,
       available: false,
       used: true,
       position: 1,
@@ -74,6 +78,8 @@ function context(
     deactivate?: MaterialsService["deactivate"];
     reactivate?: MaterialsService["reactivate"];
     update?: MaterialsService["update"];
+    stockOf?: MaterialsService["stockOf"];
+    adjustStock?: MaterialsService["adjustStock"];
     list?: SuppliersService["list"];
   } = {},
 ) {
@@ -84,6 +90,8 @@ function context(
         ...(options.deactivate ? { deactivate: options.deactivate } : {}),
         ...(options.reactivate ? { reactivate: options.reactivate } : {}),
         ...(options.update ? { update: options.update } : {}),
+        ...(options.stockOf ? { stockOf: options.stockOf } : {}),
+        ...(options.adjustStock ? { adjustStock: options.adjustStock } : {}),
       }),
       suppliers: withOverrides(createUnavailableService<SuppliersService>(), {
         ...(options.list ? { list: options.list } : {}),
@@ -237,7 +245,13 @@ describe("admin material detail loader", () => {
         ],
       }),
     );
-    const result = await load({ get, list });
+    const stockOf = vi.fn(() =>
+      Promise.resolve({
+        ok: true as const,
+        value: new Map([["v1", 3]]),
+      }),
+    );
+    const result = await load({ get, list, stockOf });
     expect(result).toMatchObject({
       id: ID,
       name: "Pincel plano",
@@ -249,8 +263,22 @@ describe("admin material detail loader", () => {
         { id: SUPPLIER_ID, name: "Casa archivada (archivado)" },
       ],
       variants: [
-        { id: "v1", label: "Chico", available: true, used: false },
-        { id: "v2", label: "Grande", available: false, used: true },
+        {
+          id: "v1",
+          label: "Chico",
+          cost: "800",
+          onHand: 3,
+          available: true,
+          used: false,
+        },
+        {
+          id: "v2",
+          label: "Grande",
+          cost: "",
+          onHand: 0,
+          available: false,
+          used: true,
+        },
       ],
       audit: { updatedBy: "admin@example.com" },
     });
@@ -262,6 +290,10 @@ describe("admin material detail loader", () => {
     expect(list).toHaveBeenCalledWith(
       expect.objectContaining({ email: "a@x.test" }),
       { active: true },
+    );
+    expect(stockOf).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      ID,
     );
   });
 
@@ -384,6 +416,32 @@ describe("admin material detail action", () => {
     );
   });
 
+  it("passes the supplier cost of each row to the update", async () => {
+    const update = vi.fn<MaterialsService["update"]>();
+    update.mockResolvedValue({ ok: true as const, value: material } as never);
+
+    await save(
+      [
+        ["intent", "save"],
+        ["name", "Pincel"],
+        ["description", "Para óleo."],
+        ["category", "Pinceles"],
+        ["supplierId", SUPPLIER_ID],
+        ["variantId", "v1"],
+        ["variantLabel", "Chico"],
+        ["variantPrice", "2500"],
+        ["variantCost", "800"],
+        ["variantSwatch", ""],
+        ["variantAvailable", "0"],
+      ],
+      { update },
+    );
+
+    expect(update.mock.calls[0]?.[2]).toMatchObject({
+      variants: [{ id: "v1", price: "2500", cost: "800" }],
+    });
+  });
+
   it("keeps a new first variant unidentifed while retaining the reordered existing variant id", async () => {
     const update = vi.fn<MaterialsService["update"]>();
     update.mockResolvedValue({ ok: true as const, value: material } as never);
@@ -500,5 +558,123 @@ describe("admin material detail action", () => {
         ),
       ).resolves.toBe(status);
     }
+  });
+});
+
+describe("admin material detail stock adjustment", () => {
+  const stockFields: [string, string][] = [
+    ["intent", "adjust-stock"],
+    ["variantId", "v1"],
+    ["delta", "+5"],
+    ["reason", "Compra al proveedor"],
+  ];
+
+  it("adjusts the variant with the actor and redirects back with feedback", async () => {
+    const adjustStock = vi.fn<MaterialsService["adjustStock"]>();
+    adjustStock.mockResolvedValue({ ok: true, value: { onHand: 8 } });
+
+    const response = await save(stockFields, { adjustStock });
+
+    expect(adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@x.test" }),
+      ID,
+      "v1",
+      { delta: "+5", reason: "Compra al proveedor" },
+    );
+    expect((response as Response).headers.get("Location")).toBe(
+      `/admin/materiales/${ID}?ok=stock`,
+    );
+  });
+
+  it("refuses a subtraction below zero with a 422 field error and the submitted text", async () => {
+    const adjustStock = vi.fn<MaterialsService["adjustStock"]>();
+    adjustStock.mockResolvedValue({
+      ok: false,
+      error: { kind: "insufficient-stock", onHand: 2 },
+    });
+
+    const response = await save(
+      [
+        ["intent", "adjust-stock"],
+        ["variantId", "v1"],
+        ["delta", "-9"],
+        ["reason", "Rotura"],
+      ],
+      { adjustStock },
+    );
+
+    expect(response).toMatchObject({
+      data: {
+        stock: {
+          variantId: "v1",
+          delta: "-9",
+          reason: "Rotura",
+          errors: {
+            delta: "No podés restar más de lo que hay: en stock hay 2.",
+          },
+        },
+      },
+      init: { status: 422 },
+    });
+  });
+
+  it("maps validation issues to the delta and reason fields", async () => {
+    const adjustStock = vi.fn<MaterialsService["adjustStock"]>();
+    adjustStock.mockResolvedValue({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [
+          { field: "delta", code: "invalid-format" },
+          { field: "reason", code: "required" },
+        ],
+      },
+    });
+
+    const response = await save(
+      [
+        ["intent", "adjust-stock"],
+        ["variantId", "v1"],
+        ["delta", "x"],
+        ["reason", ""],
+      ],
+      { adjustStock },
+    );
+
+    expect(response).toMatchObject({
+      data: {
+        stock: {
+          errors: {
+            delta: "Ingresá un número entero, por ejemplo 5 o -1.",
+            reason: "Completá este campo.",
+          },
+        },
+      },
+      init: { status: 422 },
+    });
+  });
+
+  it("maps a missing material or variant and an unavailable service", async () => {
+    for (const [kind, status] of [
+      ["not-found", 404],
+      ["unavailable", 503],
+    ] as const) {
+      await expect(
+        thrownStatus(() =>
+          save(stockFields, {
+            adjustStock: () =>
+              Promise.resolve({ ok: false as const, error: { kind } }),
+          }),
+        ),
+      ).resolves.toBe(status);
+    }
+  });
+
+  it("requires the actor before reading the body", async () => {
+    const adjustStock = vi.fn();
+    await expect(
+      thrownStatus(() => save(stockFields, { admin: false, adjustStock })),
+    ).resolves.toBe(403);
+    expect(adjustStock).not.toHaveBeenCalled();
   });
 });

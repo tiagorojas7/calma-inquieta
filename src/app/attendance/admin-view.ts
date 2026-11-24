@@ -6,16 +6,24 @@ import {
   monthLabel,
 } from "~/app/enrollment/order-labels";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
+import { attendanceRulesCopy } from "./copy";
 import {
   sessionDates,
   weekdayOf,
   type MakeUpEntry,
+  type MakeUpStatus,
   type ScheduledTurno,
   type SessionSheet,
   type TurnoSessions,
 } from "~/modules/attendance";
 
 const copy = adminMicrocopy.attendance;
+
+const makeUpLabels: Record<MakeUpStatus, string> = {
+  pending: copy.makeUp.pending,
+  done: copy.makeUp.done,
+  missed: attendanceRulesCopy.makeUpMissed.label,
+};
 
 export interface AttendanceFilter {
   readonly mes: string;
@@ -104,6 +112,8 @@ export function sheetView({ turno, date, rows }: SessionSheet) {
     heading: sessionDateLabel(date),
     subtitle: `${turno.workshopName}, ${turno.turnoLabel} · ${monthLabel(turno.period)}`,
     backHref: sessionsPath(turno.periodId, turno.turnoId),
+    pendingNote: attendanceRulesCopy.pendingNote,
+    makeUpFullWarning: attendanceRulesCopy.makeUpFullWarning,
     rows: rows.map((row) => ({
       email: row.email,
       name: row.name,
@@ -113,19 +123,30 @@ export function sheetView({ turno, date, rows }: SessionSheet) {
       makeUp: row.makeUp
         ? {
             status: row.makeUp.status,
-            label: copy.makeUp[row.makeUp.status],
+            label: makeUpLabels[row.makeUp.status],
           }
         : null,
     })),
   };
 }
 
-/** Every turno as a `periodId:turnoId` choice for a make-up class. */
-export function turnoOptions(turnos: readonly ScheduledTurno[]) {
-  return turnos.map((turno) => ({
-    value: `${turno.periodId}:${turno.turnoId}`,
-    label: `${turno.workshopName}, ${turno.turnoLabel} (${monthLabel(turno.period)})`,
-  }));
+/**
+ * The turnos a make-up class can go to, as `periodId:turnoId` choices: other
+ * turnos of the absent student's own workshop, never the turno itself.
+ */
+export function turnoOptions(
+  turnos: readonly ScheduledTurno[],
+  own: Pick<ScheduledTurno, "workshopId" | "turnoId">,
+) {
+  return turnos
+    .filter(
+      (turno) =>
+        turno.workshopId === own.workshopId && turno.turnoId !== own.turnoId,
+    )
+    .map((turno) => ({
+      value: `${turno.periodId}:${turno.turnoId}`,
+      label: `${turno.workshopName}, ${turno.turnoLabel} (${monthLabel(turno.period)})`,
+    }));
 }
 
 export function parseTurnoRef(
@@ -158,17 +179,34 @@ function makeUpRow(entry: MakeUpEntry) {
     email: entry.email,
     absence: `${entry.workshopName}, ${entry.turnoLabel} · ${sessionDateLabel(entry.date)}`,
     makeUp: `${entry.makeUpWorkshopName}, ${entry.makeUpTurnoLabel} · ${sessionDateLabel(entry.makeUpDate)}`,
-    doneNote:
-      entry.status === "done" && entry.doneAt && entry.doneBy
-        ? copy.makeUps.doneBy(entry.doneBy, dateTimeLabel(entry.doneAt))
-        : null,
+    doneNote: closingNote(entry),
   };
 }
 
-/** Make-up classes split into the ones still to take and the ones taken. */
+/** Who closed the make-up and when; `null` while it is pending. */
+function closingNote(entry: MakeUpEntry): string | null {
+  if (!entry.doneAt || !entry.doneBy) return null;
+  const at = dateTimeLabel(entry.doneAt);
+  if (entry.status === "done") return copy.makeUps.doneBy(entry.doneBy, at);
+  if (entry.status === "missed")
+    return attendanceRulesCopy.makeUpMissed.note(entry.doneBy, at);
+  return null;
+}
+
+/** Make-up classes split into the ones still to take, taken and missed. */
 export function makeUpsView(entries: readonly MakeUpEntry[]) {
+  const ofStatus = (status: MakeUpStatus) =>
+    entries.filter((e) => e.status === status).map(makeUpRow);
   return {
-    pending: entries.filter((e) => e.status === "pending").map(makeUpRow),
-    done: entries.filter((e) => e.status === "done").map(makeUpRow),
+    pending: ofStatus("pending"),
+    done: ofStatus("done"),
+    missed: ofStatus("missed"),
+    missedText: {
+      title: attendanceRulesCopy.makeUpMissed.title,
+      action: attendanceRulesCopy.makeUpMissed.action,
+      actionPrefix: attendanceRulesCopy.makeUpMissed.actionPrefix,
+      marked: attendanceRulesCopy.makeUpMissed.marked,
+      closed: attendanceRulesCopy.makeUpMissed.closed,
+    },
   };
 }

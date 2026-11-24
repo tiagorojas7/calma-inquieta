@@ -117,6 +117,7 @@ const INTENSIVE_RULE_MESSAGES = {
   deposit: "una seña válida",
   capacity: "una capacidad válida",
   "min-seats": "cupos mínimos válidos",
+  projects: "al menos un proyecto",
 } as const satisfies Record<IntensivePublishRule, string>;
 
 /** Names all eligibility failures returned while a live intensivo is edited. */
@@ -169,7 +170,9 @@ export function transitionRefusedMessage(
 
 /** Turno fields whose generic text would mislead. */
 export const TURNO_FIELD_MESSAGES = {
-  label: { duplicate: "Ya hay un turno con ese nombre en este taller." },
+  label: {
+    duplicate: "Ya hay un turno ese día y en ese horario en este taller.",
+  },
   weekday: {
     "invalid-format": "Elegí un día de la semana.",
     "out-of-range": "Elegí un día de la semana.",
@@ -196,3 +199,8 @@ export function turnoRulesMessage(
 ): string {
   return rules.map((rule) => TURNO_RULE_MESSAGES[rule]).join(" ");
 }
+
+/** The document text: a duplicate is the same as the current version, not a name. */
+export const POLICY_FIELD_MESSAGES = {
+  body: { duplicate: adminMicrocopy.policies.errors.duplicate },
+} as const satisfies FieldMessages<"body">;

@@ -4,6 +4,7 @@ import {
   parseTeacherFilter,
   parseTeacherFilterKey,
   parseTeacherIntent,
+  parseTeacherPercentage,
 } from "./teacher-form-data";
 
 function formOf(entries: Record<string, string | File>) {
@@ -58,6 +59,21 @@ describe("parseTeacherIntent", () => {
     expect(parseTeacherIntent(formOf({ intent: "reactivate" }))).toBe(
       "reactivate",
     );
+  });
+
+  it("accepts the percentage of one of her workshops", () => {
+    expect(parseTeacherIntent(formOf({ intent: "percentage" }))).toBe(
+      "percentage",
+    );
+    expect(
+      parseTeacherPercentage(
+        formOf({ workshopId: " w1 ", percentage: " 70 " }),
+      ),
+    ).toEqual({ workshopId: "w1", percentage: "70" });
+    expect(parseTeacherPercentage(formOf({}))).toEqual({
+      workshopId: "",
+      percentage: "",
+    });
   });
 
   it("returns null for a missing or unknown intent", () => {

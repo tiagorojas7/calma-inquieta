@@ -32,7 +32,6 @@ import {
   createPeriodTurnoUsageLookup,
   createWorkshopPeriodsService,
   createWorkshopEnrollmentOfferLookup,
-  createWorkshopOfferedMaterialIdsLookup,
   createIntensiveSeatOfferLookup,
   createPublicIntensivosReader,
   createPublicTalleresReader,
@@ -44,9 +43,10 @@ import {
   type PublicCatalogService,
 } from "~/modules/workshops";
 import {
-  createOfferedMaterialSnapshotsLookup,
   createMaterialsService,
+  createSaleCatalogReader,
   createSuppliersService,
+  type StockStore,
   type SuppliersService,
   type MaterialsService,
 } from "~/modules/materials";
@@ -80,11 +80,15 @@ import { createDrizzleEnrollmentInsightsReader } from "~/modules/enrollments/inf
 import { createDrizzleWorkshopInsightsReader } from "~/modules/workshops/infrastructure/drizzle-insights-reader";
 import { createDrizzleIntensiveInsightsReader } from "~/modules/workshops/infrastructure/drizzle-intensive-insights-reader";
 import { createDrizzleIntensiveRequestInsightsReader } from "~/modules/intensive-requests/infrastructure/drizzle-intensive-request-insights-reader";
+import { createDrizzleWorkshopSupplierLinesReader } from "~/modules/intensive-requests/infrastructure/drizzle-workshop-supplier-lines-reader";
 import {
   createInsightsService,
   type InsightsUseCases,
 } from "~/modules/insights";
 import { createDrizzleOrderHistoryReader } from "~/modules/enrollments/infrastructure/drizzle-order-history-reader";
+import { createDrizzleStudentActivityStore } from "~/modules/enrollments/infrastructure/drizzle-student-activity-store";
+import { createPoliciesService, type PolicyUseCases } from "~/modules/policies";
+import { createDrizzlePolicyRepository } from "~/modules/policies/infrastructure/drizzle-policy-repository";
 import {
   createPrivateEventService,
   type PrivateEventUseCases,
@@ -101,13 +105,17 @@ import { createDrizzleMonthlyWorkshopRepository } from "~/modules/workshops/infr
 import { createDrizzleTurnoRepository } from "~/modules/workshops/infrastructure/drizzle-turno-repository";
 import { createDrizzleWorkshopPeriodRepository } from "~/modules/workshops/infrastructure/drizzle-workshop-period-repository";
 import { createDrizzleMaterialRepository } from "~/modules/materials/infrastructure/drizzle-material-repository";
+import { createDrizzleStockStore } from "~/modules/materials/infrastructure/drizzle-stock-store";
 import { createDrizzleAdminEnrollmentStore } from "~/modules/enrollments/infrastructure/drizzle-admin-enrollment-store";
 import { createDrizzleOrderRepository } from "~/modules/enrollments/infrastructure/drizzle-order-repository";
 import { createDrizzleOrderLineUsageLookup } from "~/modules/enrollments/infrastructure/drizzle-order-line-usage-lookup";
 import { createDrizzleSeatLedger } from "~/modules/enrollments/infrastructure/drizzle-seat-ledger";
 import { createConfirmedSeatsAdapter } from "./confirmed-seats-adapter";
+import { createOrderStockAdapter } from "./order-stock-adapter";
+import { createRequestStockAdapter } from "./request-stock-adapter";
+import { createPolicyVersionAdapter } from "./policy-version-adapter";
+import { createSaleCatalogAdapter } from "./sale-catalog-adapter";
 import { createEnrollmentOfferAdapter } from "./enrollment-offer-adapter";
-import { createOfferedMaterialsAdapter } from "./offered-materials-adapter";
 import { createDrizzlePublicIntensivoRecords } from "~/modules/workshops/infrastructure/drizzle-public-intensivo-records";
 import { createDrizzlePublicTallerRecords } from "~/modules/workshops/infrastructure/drizzle-public-taller-records";
 import {
@@ -119,6 +127,7 @@ import { createDrizzleOrderAudienceReader } from "~/modules/enrollments/infrastr
 import { createResendSender } from "~/platform/resend-email";
 import {
   withEnrollmentEmails,
+  withManualEnrollmentEmails,
   withIntensiveRequestEmails,
   withPaymentEmails,
   withPrivateEventEmails,
@@ -147,6 +156,8 @@ export interface AppServices {
   readonly intensives: IntensivesService;
   readonly suppliers: SuppliersService;
   readonly materials: MaterialsService;
+  /** Units on hand per variant, for the hand-made enrollment's material search. */
+  readonly variantStock: Pick<StockStore, "onHand">;
   readonly enrollments: AdminEnrollmentUseCases;
   readonly consolidation: SupplierConsolidationUseCases;
   readonly publicEnrollments: PublicEnrollmentUseCases;
@@ -160,6 +171,8 @@ export interface AppServices {
   /** True only when both the Resend key and the sender address are configured. */
   readonly emailEnabled: boolean;
   readonly intensiveRequests: IntensiveRequestUseCases;
+  /** The site-wide conditions and privacy documents, with their version history. */
+  readonly policies: PolicyUseCases;
 }
 
 export interface RuntimeConfig {
@@ -239,6 +252,10 @@ export function createRequestServices(
     openSession,
     createDrizzleOrderLineUsageLookup(openSession),
   );
+  // Variant stock. The same store is the port the paid-order flows join in
+  // their own transaction (take on confirm, put on cancel); bind it there.
+  const stockStore = createDrizzleStockStore(openSession);
+  const orderStock = createOrderStockAdapter(stockStore);
   const turnoRepository = createDrizzleTurnoRepository(openSession);
   const intensiveRepository = createDrizzleIntensiveRepository(openSession);
   const seats = config.databaseUrl
@@ -250,52 +267,93 @@ export function createRequestServices(
         workshops: workshopRepository,
         turnos: turnoRepository,
         teachers,
-        materials: materialRepository,
         confirmedSeats: createConfirmedSeatsAdapter(seats),
         clock: systemClock,
       })
     : createUnavailableService<WorkshopPeriodsService>();
-  const adminEnrollmentStore = createDrizzleAdminEnrollmentStore(openSession, {
-    async find(periodId, turnoId) {
-      const period = await periodRepository.findById(periodId);
-      if (!period) return null;
-      const turno = period.turnos.find((item) => item.turnoId === turnoId);
-      return turno ? { status: period.status, capacity: turno.capacity } : null;
+  const adminEnrollmentStore = createDrizzleAdminEnrollmentStore(
+    openSession,
+    {
+      async find(periodId, turnoId) {
+        const period = await periodRepository.findById(periodId);
+        if (!period) return null;
+        const turno = period.turnos.find((item) => item.turnoId === turnoId);
+        return turno
+          ? { status: period.status, capacity: turno.capacity }
+          : null;
+      },
     },
+    orderStock,
+  );
+  const enrollmentOffers = createEnrollmentOfferAdapter(
+    createWorkshopEnrollmentOfferLookup({
+      workshops: workshopRepository,
+      periods: periodRepository,
+      clock: systemClock,
+    }),
+  );
+  // The catalog an owner picks from, for a hand-made enrollment and for a material sale.
+  const saleCatalog = createSaleCatalogAdapter(
+    createSaleCatalogReader({
+      materials: materialRepository,
+      stock: stockStore,
+    }),
+  );
+  // One service reads the documents for the public pages and answers both
+  // forms' check of the versions a person accepted.
+  const policies = createPoliciesService({
+    repository: createDrizzlePolicyRepository(openSession),
+    clock: systemClock,
   });
-  const enrollmentServices = seats
+  const policyVersions = createPolicyVersionAdapter(policies);
+  const publicEnrollments = seats
+    ? createPublicEnrollmentService({
+        offers: enrollmentOffers,
+        // Monthly periods offer no materials, so a public request refuses any line.
+        materials: { listForPeriod: () => Promise.resolve([]) },
+        // Only an owner enrolling a student by hand may add catalog materials.
+        adminMaterials: saleCatalog,
+        orders: createDrizzleOrderRepository(openSession, orderStock),
+        seats,
+        clock: systemClock,
+        random: {
+          bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+        },
+        policyVersion: "2026-10",
+        policies: policyVersions,
+      })
+    : null;
+  const enrollmentServices = publicEnrollments
     ? {
-        publicEnrollments: createPublicEnrollmentService({
-          offers: createEnrollmentOfferAdapter(
-            createWorkshopEnrollmentOfferLookup({
-              workshops: workshopRepository,
-              periods: periodRepository,
-              clock: systemClock,
-            }),
-          ),
-          materials: createOfferedMaterialsAdapter(
-            createWorkshopOfferedMaterialIdsLookup({
-              periods: periodRepository,
-            }),
-            createOfferedMaterialSnapshotsLookup({
-              materials: materialRepository,
-              media,
-            }),
-          ),
-          orders: createDrizzleOrderRepository(openSession),
-          seats,
-          clock: systemClock,
-          random: {
-            bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-          },
-          policyVersion: "2026-10",
-        }),
+        publicEnrollments,
         enrollments: createAdminEnrollmentService({
           store: adminEnrollmentStore,
           clock: systemClock,
+          // A correction picks its new workshop, month and turno here too.
+          offers: enrollmentOffers,
+          // A later material purchase under a monthly record, from the same catalog.
+          sales: {
+            store: adminEnrollmentStore,
+            catalog: saleCatalog,
+            random: {
+              bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+            },
+          },
+          // Unwrapped on purpose: the manual-order emails are sent by
+          // `withManualEnrollmentEmails`, by case (pending or free).
+          createPending: (input, actorEmail, options) =>
+            publicEnrollments.requestEnrollment(input, {
+              createdBy: actorEmail,
+              ...(options?.fee === undefined ? {} : { fee: options.fee }),
+              ...(options?.paidAtIfFree === undefined
+                ? {}
+                : { paidAtIfFree: options.paidAtIfFree }),
+            }),
         }),
         consolidation: createSupplierConsolidationService({
           store: adminEnrollmentStore,
+          // Workshop lines the stock could not cover join the monthly list.
+          workshopLines: createDrizzleWorkshopSupplierLinesReader(openSession),
         }),
       }
     : {
@@ -303,6 +361,9 @@ export function createRequestServices(
         enrollments: createUnavailableAdminEnrollmentService(),
         consolidation: createUnavailableSupplierConsolidationService(),
       };
+  // One adapter serves the private-event use cases and the bell's novelty read.
+  const privateEventRepository =
+    createDrizzlePrivateEventRepository(openSession);
   const defer = (pending: Promise<unknown>) => {
     if (runtime.defer) runtime.defer(pending);
     else void pending;
@@ -374,15 +435,17 @@ export function createRequestServices(
       suppliers: createDrizzleSupplierRepository(openSession),
       media,
       clock: systemClock,
+      stock: stockStore,
     }),
+    variantStock: stockStore,
     ...enrollmentServices,
     publicEnrollments: withEnrollmentEmails(
       enrollmentServices.publicEnrollments,
       notifications,
       defer,
     ),
-    enrollments: withPaymentEmails(
-      enrollmentServices.enrollments,
+    enrollments: withManualEnrollmentEmails(
+      withPaymentEmails(enrollmentServices.enrollments, notifications, defer),
       notifications,
       defer,
     ),
@@ -391,6 +454,7 @@ export function createRequestServices(
     students: createStudentsService({
       orders: createDrizzleOrderHistoryReader(openSession),
       notes: createDrizzleStudentNoteRepository(openSession),
+      activity: createDrizzleStudentActivityStore(openSession),
       clock: systemClock,
     }),
     attendance: createAttendanceService({
@@ -405,22 +469,29 @@ export function createRequestServices(
     intensiveRequests: config.databaseUrl
       ? withIntensiveRequestEmails(
           createIntensiveRequestService({
-            repository: createDrizzleIntensiveRequestRepository(openSession),
+            repository: createDrizzleIntensiveRequestRepository(
+              openSession,
+              createRequestStockAdapter(stockStore),
+            ),
             offers: createIntensiveSeatOfferLookup({
               repository: intensiveRepository,
+              media,
               clock: systemClock,
             }),
             clock: systemClock,
             random: {
               bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
             },
+            policies: policyVersions,
           }),
           notifications,
           defer,
         )
       : createUnavailableIntensiveRequestService(),
+    policies,
     reminders: createRemindersService({
       orders: createDrizzleOrderHistoryReader(openSession),
+      clock: systemClock,
     }),
     insights: createInsightsService({
       orders: createDrizzleEnrollmentInsightsReader(openSession),
@@ -428,12 +499,13 @@ export function createRequestServices(
       intensives: createDrizzleIntensiveInsightsReader(openSession),
       intensiveRequests:
         createDrizzleIntensiveRequestInsightsReader(openSession),
+      privateEvents: privateEventRepository,
       teachers,
       clock: systemClock,
     }),
     privateEvents: withPrivateEventEmails(
       createPrivateEventService({
-        repository: createDrizzlePrivateEventRepository(openSession),
+        repository: privateEventRepository,
         clock: systemClock,
       }),
       notifications,

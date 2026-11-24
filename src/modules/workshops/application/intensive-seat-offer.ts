@@ -1,6 +1,21 @@
 import type { Clock, Money } from "~/modules/_shared";
+import type { MediaAsset, MediaLookup } from "~/modules/media";
 import { startsInFuture } from "../domain/intensive-core";
-import type { IntensiveRepository } from "./intensive-repository";
+import type {
+  IntensiveRepository,
+  StoredIntensiveProject,
+} from "./intensive-repository";
+import type { PublicImage } from "./public-catalog";
+import { projectImages } from "./public-projection";
+
+/** A selectable project: its terms and its cover, resolved for the public. */
+export interface IntensiveSeatOfferProject {
+  readonly id: string;
+  readonly name: string;
+  readonly image: PublicImage | null;
+  readonly price: Money;
+  readonly deposit: Money;
+}
 
 /**
  * An intensivo as the seat-request flow sees it, whatever its status: the
@@ -21,6 +36,8 @@ export interface IntensiveSeatOffer {
   readonly capacity: number;
   readonly minSeats: number;
   readonly policyText: string;
+  /** In admin order; they share the schedule and the capacity. */
+  readonly projects: readonly IntensiveSeatOfferProject[];
 }
 
 export interface IntensiveSeatOfferLookup {
@@ -29,7 +46,11 @@ export interface IntensiveSeatOfferLookup {
 }
 
 export interface IntensiveSeatOfferLookupDeps {
-  readonly repository: Pick<IntensiveRepository, "findBySlug" | "findById">;
+  readonly repository: Pick<
+    IntensiveRepository,
+    "findBySlug" | "findById" | "listProjects"
+  >;
+  readonly media: MediaLookup;
   readonly clock: Clock;
 }
 
@@ -41,9 +62,34 @@ export interface IntensiveSeatOfferLookupDeps {
 export function createIntensiveSeatOfferLookup(
   deps: IntensiveSeatOfferLookupDeps,
 ): IntensiveSeatOfferLookup {
-  const project = (
+  async function projectsOf(
+    intensiveId: string,
+  ): Promise<readonly IntensiveSeatOfferProject[]> {
+    const stored = await deps.repository.listProjects(intensiveId);
+    const refs = stored.flatMap((project) =>
+      project.image === null ? [] : [project.image],
+    );
+    const assets: ReadonlyMap<string, MediaAsset> =
+      refs.length === 0
+        ? new Map()
+        : await deps.media.findAssets([
+            ...new Set(refs.map((ref) => ref.assetId)),
+          ]);
+    return stored.map((project: StoredIntensiveProject) => ({
+      id: project.id,
+      name: project.name,
+      image:
+        project.image === null
+          ? null
+          : (projectImages([project.image], assets)[0] ?? null),
+      price: project.price,
+      deposit: project.deposit,
+    }));
+  }
+
+  const project = async (
     stored: Awaited<ReturnType<IntensiveRepository["findById"]>>,
-  ): IntensiveSeatOffer | null =>
+  ): Promise<IntensiveSeatOffer | null> =>
     stored === null
       ? null
       : {
@@ -67,6 +113,7 @@ export function createIntensiveSeatOfferLookup(
           capacity: stored.capacity,
           minSeats: stored.minSeats,
           policyText: stored.policyText,
+          projects: await projectsOf(stored.id),
         };
   return {
     findBySlug: async (slug) => project(await deps.repository.findBySlug(slug)),

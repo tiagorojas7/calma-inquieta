@@ -14,6 +14,8 @@ export interface ScheduledTurno {
   readonly weekday: number;
   readonly startsAt: string;
   readonly endsAt: string;
+  /** Seats of the turno in that period. */
+  readonly capacity: number;
 }
 
 /** Consumer-defined port; `workshops` supplies the periods and their turnos. */
@@ -69,6 +71,7 @@ export interface StoredMakeUp {
   readonly status: MakeUpStatus;
   readonly createdBy: string;
   readonly createdAt: Date;
+  /** Who closed the make-up as done or missed, and when; `null` while pending. */
   readonly doneBy: string | null;
   readonly doneAt: Date | null;
 }
@@ -79,11 +82,11 @@ export interface MakeUpExists {
 
 /** The attendance marks and make-up classes the owner records. */
 export interface AttendanceRepository {
-  /** Replaces every mark of one session with `marks`, atomically. */
-  replaceSession(
-    session: SessionKey,
-    marks: readonly StoredMark[],
-  ): Promise<void>;
+  /**
+   * Inserts each mark or updates the stored one of the same student and
+   * session. Marks that are not listed are never touched or deleted.
+   */
+  upsertMarks(marks: readonly StoredMark[]): Promise<void>;
   /** Ordered by date, then email. */
   marksForTurno(
     periodId: string,
@@ -95,16 +98,31 @@ export interface AttendanceRepository {
   /** Ordered by make-up date, then id. */
   listMakeUps(status: MakeUpStatus | "all"): Promise<readonly StoredMakeUp[]>;
   makeUpsByStudent(email: string): Promise<readonly StoredMakeUp[]>;
+  /** Make-ups booked into one turno on one date, taken or not. */
+  countMakeUpsInto(
+    periodId: string,
+    turnoId: string,
+    date: string,
+  ): Promise<number>;
   /** Make-ups of the absent sessions of one turno. */
   makeUpsForTurno(
     periodId: string,
     turnoId: string,
   ): Promise<readonly StoredMakeUp[]>;
   /**
-   * Marks a pending make-up done. A done one is returned unchanged; `null`
-   * when the id is unknown.
+   * Marks a pending make-up done. A done or missed one is returned unchanged;
+   * `null` when the id is unknown.
    */
   completeMakeUp(
+    id: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null>;
+  /**
+   * Marks a pending make-up as missed: the student did not come. `by` and `at`
+   * are stored in the same closing fields `done` uses. A done or missed one is
+   * returned unchanged; `null` when the id is unknown.
+   */
+  markMakeUpMissed(
     id: string,
     change: { readonly by: string; readonly at: Date },
   ): Promise<StoredMakeUp | null>;

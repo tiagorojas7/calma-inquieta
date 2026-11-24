@@ -85,6 +85,7 @@ describe("workshop schedule lookup", () => {
       weekday: 1,
       startsAt: "18:00",
       endsAt: "20:00",
+      capacity: 10,
     });
   });
 });

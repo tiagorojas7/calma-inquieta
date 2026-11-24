@@ -544,6 +544,45 @@ export function createMonthlyWorkshopsService(
         admin.ok ? ok({ monthly: [], intensives: [] }) : admin,
       );
     },
+    async listForTeacher(actor, teacherId) {
+      const admin = requireAdminActor(actor);
+      if (!admin.ok) return admin;
+      const rows = await repository.list(live);
+      return ok(
+        rows
+          .filter((row) => row.teacherId === teacherId)
+          .map((row) => ({
+            id: row.id,
+            name: row.name,
+            status: row.status,
+            percentage: row.percentage,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, "es")),
+      );
+    },
+    async setPercentage(actor, id, text) {
+      const loaded = await load(actor, id);
+      if (!loaded.ok) return loaded;
+      const current = loaded.value.value;
+      const teacher = current.teacherId
+        ? (await teachers.findByIds([current.teacherId])).get(current.teacherId)
+        : undefined;
+      if (!teacher)
+        return err({
+          kind: "invalid",
+          issues: [{ field: "teacherId", code: "required" }],
+        });
+      const value = assignmentPercentage(teacher.modality, submission(text));
+      if (!value.ok) return err({ kind: "invalid", issues: [value.error] });
+      const next: StoredMonthlyWorkshop = {
+        ...current,
+        percentage: value.value === null ? null : { basisPoints: value.value },
+        audit: stamp(loaded.value.actor),
+      };
+      // The slug is unchanged, so only a vanished row can refuse the write.
+      const saved = await repository.update(next);
+      return saved.ok ? ok(await model(next)) : err(notFound);
+    },
     techniqueSuggestions: (actor) => {
       const admin = requireAdminActor(actor);
       return Promise.resolve(admin.ok ? ok([]) : admin);

@@ -8,8 +8,9 @@ import {
 
 export type TurnoCoreField =
   "label" | "weekday" | "timeRange" | "defaultCapacity";
+/** The typed label is ignored: the stored label is generated from the schedule. */
 export type TurnoCoreDraft = {
-  readonly label: string;
+  readonly label?: string;
   readonly weekday: string;
   readonly startsAt: string;
   readonly endsAt: string;
@@ -18,7 +19,6 @@ export type TurnoCoreDraft = {
 type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export const TURNO_LIMITS = {
-  label: 40,
   capacity: { min: 1, max: 500 },
 } as const;
 export interface TurnoCore {
@@ -29,6 +29,24 @@ export interface TurnoCore {
   readonly endsAt: string;
   readonly defaultCapacity: number;
 }
+const WEEKDAY_NAMES = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+] as const;
+
+/** The one way a turno reads everywhere, for example "Martes 18:00 a 20:00". */
+export function turnoDisplayName(
+  weekday: Weekday,
+  startsAt: string,
+  endsAt: string,
+): string {
+  return `${WEEKDAY_NAMES[weekday - 1] ?? ""} ${startsAt} a ${endsAt}`;
+}
 export function turnoLabelKey(label: string): string {
   return label.normalize("NFC").toLocaleLowerCase("es");
 }
@@ -36,11 +54,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 export function validateTurnoCore(
   draft: TurnoCoreDraft,
 ): Result<TurnoCore, Invalid<TurnoCoreField>> {
-  const label = draft.label.trim().normalize("NFC");
   const issues: FieldIssue<TurnoCoreField>[] = [];
-  if (!label) issues.push({ field: "label", code: "required" });
-  else if (label.length > TURNO_LIMITS.label)
-    issues.push({ field: "label", code: "too-long" });
   const weekday = Number(draft.weekday);
   if (!/^\d+$/.test(draft.weekday.trim()) || weekday < 1 || weekday > 7)
     issues.push({
@@ -61,16 +75,20 @@ export function validateTurnoCore(
     capacity > TURNO_LIMITS.capacity.max
   )
     issues.push({ field: "defaultCapacity", code: "out-of-range" });
-  return issues.length
-    ? err({ kind: "invalid", issues })
-    : ok({
-        label,
-        labelKey: turnoLabelKey(label),
-        weekday: weekday as Weekday,
-        startsAt: draft.startsAt,
-        endsAt: draft.endsAt,
-        defaultCapacity: capacity,
-      });
+  if (issues.length) return err({ kind: "invalid", issues });
+  const label = turnoDisplayName(
+    weekday as Weekday,
+    draft.startsAt,
+    draft.endsAt,
+  );
+  return ok({
+    label,
+    labelKey: turnoLabelKey(label),
+    weekday: weekday as Weekday,
+    startsAt: draft.startsAt,
+    endsAt: draft.endsAt,
+    defaultCapacity: capacity,
+  });
 }
 export function compareTurnos(
   a: {

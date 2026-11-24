@@ -9,9 +9,17 @@ import type {
 import type { ImageUse } from "~/modules/media";
 import type { CatalogFileError, CatalogRowCode } from "../domain/catalog-csv";
 import type { MaterialDraft, MaterialField } from "../domain/material-core";
+import type {
+  StockAdjustmentDraft,
+  StockAdjustmentField,
+} from "../domain/stock-core";
 import type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export type { MaterialDraft, MaterialField } from "../domain/material-core";
+export type {
+  StockAdjustmentDraft,
+  StockAdjustmentField,
+} from "../domain/stock-core";
 export type { SupplierDraft, SupplierField } from "../domain/supplier-core";
 
 export const DEFAULT_VARIANT_LABEL = "Única";
@@ -58,6 +66,8 @@ export interface MaterialVariant {
   readonly label: string;
   /** Null means "consultar precio". */
   readonly price: import("~/modules/_shared").Money | null;
+  /** Current supplier cost; null until the owner loads it. */
+  readonly cost: import("~/modules/_shared").Money | null;
   readonly available: boolean;
   readonly used: boolean;
   readonly position: number;
@@ -84,6 +94,11 @@ export interface MaterialSummary {
   readonly variantCount: number;
   readonly active: boolean;
   readonly available: boolean;
+}
+/** A manual stock subtraction larger than the units on hand. */
+export interface InsufficientStock {
+  readonly kind: "insufficient-stock";
+  readonly onHand: number;
 }
 export type MaterialError =
   Invalid<MaterialField> | { readonly kind: "variant-in-use" };
@@ -173,6 +188,34 @@ export interface OfferedMaterialSnapshotsLookup {
     materialIds: readonly string[],
   ): Promise<ReadonlyMap<string, OfferedMaterialSnapshot>>;
 }
+/** One orderable catalog variant an owner may add to a hand-made enrollment. */
+export interface SaleVariantOption {
+  readonly materialId: string;
+  readonly variantId: string;
+  readonly materialName: string;
+  readonly variantLabel: string;
+  readonly unitPrice: import("~/modules/_shared").Money;
+}
+/** A material with the sale facts a hand-made enrollment snapshots. */
+export interface SaleCatalogMaterial {
+  readonly materialId: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly available: boolean;
+  readonly supplierId: string;
+  readonly supplierName: string;
+  readonly variants: readonly {
+    readonly variantId: string;
+    readonly label: string;
+    /** Null means "consultar precio": never orderable. */
+    readonly unitPrice: import("~/modules/_shared").Money | null;
+    readonly available: boolean;
+  }[];
+}
+/** Actorless read of the whole sale catalog, archived and unavailable included. */
+export interface SaleCatalogReader {
+  listSaleCatalog(): Promise<readonly SaleCatalogMaterial[]>;
+}
 export interface MaterialsService {
   list(
     a: AdminActor,
@@ -186,6 +229,10 @@ export interface MaterialsService {
   listSelectable(
     a: AdminActor,
   ): Promise<Result<readonly MaterialSummary[], AdminFailure>>;
+  /** Active, available variants with a price, for hand-made enrollments. */
+  listSaleVariants(
+    a: AdminActor,
+  ): Promise<Result<readonly SaleVariantOption[], AdminFailure>>;
   get(
     a: AdminActor,
     id: string,
@@ -210,6 +257,30 @@ export interface MaterialsService {
   categorySuggestions(
     a: AdminActor,
   ): Promise<Result<readonly string[], AdminFailure>>;
+  /** On-hand units per variant id of the material; no stock row reads 0. */
+  stockOf(
+    a: AdminActor,
+    materialId: string,
+  ): Promise<Result<ReadonlyMap<string, number>, AdminFailure | NotFound>>;
+  /**
+   * Adds (positive delta) or removes (negative) whole units of one variant
+   * with a required reason, auditing who and when. A removal that would leave
+   * fewer than 0 units is refused as `insufficient-stock` and changes nothing.
+   */
+  adjustStock(
+    a: AdminActor,
+    materialId: string,
+    variantId: string,
+    d: StockAdjustmentDraft,
+  ): Promise<
+    Result<
+      { readonly onHand: number },
+      | AdminFailure
+      | NotFound
+      | Invalid<StockAdjustmentField>
+      | InsufficientStock
+    >
+  >;
   setImage(
     a: AdminActor,
     id: string,

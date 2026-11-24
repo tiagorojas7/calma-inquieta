@@ -7,6 +7,7 @@ import type {
 import {
   createSupplierConsolidationService,
   createUnavailableSupplierConsolidationService,
+  type WorkshopSupplierLine,
 } from "./supplier-consolidation";
 
 const pesos = (amount: number) => {
@@ -191,6 +192,236 @@ describe("supplier consolidation", () => {
     await expect(service.consolidate(admin, "2026-11")).resolves.toEqual({
       ok: false,
       error: { kind: "unavailable" },
+    });
+  });
+
+  describe("workshop supplier lines", () => {
+    const workshopLine = (
+      overrides: Partial<WorkshopSupplierLine> = {},
+    ): WorkshopSupplierLine => ({
+      workshopId: "w1",
+      workshopName: "Torno intensivo",
+      supplierId: "s1",
+      supplierName: "Papelería Sur",
+      materialName: "Arcilla",
+      variantLabel: "Grande",
+      quantity: 2,
+      unitCostCentavos: 300_000,
+      ...overrides,
+    });
+
+    function withWorkshops(
+      workshopLines: readonly WorkshopSupplierLine[],
+      lines: readonly ConsolidationLine[] = example,
+    ) {
+      const read = vi.fn(() => Promise.resolve(workshopLines));
+      const markOrdered = vi.fn(() => Promise.resolve(2));
+      return {
+        read,
+        markOrdered,
+        service: createSupplierConsolidationService({
+          store: {
+            consolidationLines: () =>
+              Promise.resolve({ lines, pendingOrders: 0 }),
+            deliveryOrders: vi.fn(),
+          },
+          workshopLines: { lines: read, markOrdered },
+        }),
+      };
+    }
+
+    it("lists them under their supplier with the workshop as origin, apart from the monthly lines", async () => {
+      const { service, read } = withWorkshops([workshopLine()]);
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(read).toHaveBeenCalledWith("2026-11");
+      const south = result.value.suppliers.find((s) => s.supplierId === "s1");
+      expect(south?.materials).toEqual([
+        {
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 3,
+          total: pesos(3_000),
+        },
+        {
+          materialName: "Arcilla",
+          variantLabel: "Grande",
+          quantity: 2,
+          total: pesos(6_000),
+          origin: "Torno intensivo",
+          originId: "w1",
+        },
+      ]);
+      expect(south?.total.toCentavos()).toBe(900_000);
+      expect(result.value.grandTotal.toCentavos()).toBe(1_150_000);
+    });
+
+    it("asks the supplier for one quantity per material, whatever the origin", async () => {
+      const { service } = withWorkshops([workshopLine()]);
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(result.value.suppliers[1]?.summary).toBe(
+        [
+          "Pedido a Papelería Sur",
+          "Mes: noviembre 2026",
+          "- Arcilla Grande x5",
+        ].join("\n"),
+      );
+    });
+
+    it("shows a supplier that only has workshop lines, with nothing to mark as requested", async () => {
+      const { service } = withWorkshops(
+        [
+          workshopLine({
+            supplierId: "s9",
+            supplierName: "Barro Oeste",
+            materialName: "Engobe",
+            variantLabel: "1 L",
+            unitCostCentavos: null,
+          }),
+        ],
+        [],
+      );
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(result.value.suppliers).toHaveLength(1);
+      expect(result.value.suppliers[0]).toMatchObject({
+        supplierName: "Barro Oeste",
+        pendingRequestOrderIds: [],
+        materials: [
+          {
+            materialName: "Engobe",
+            quantity: 2,
+            origin: "Torno intensivo",
+            originId: "w1",
+          },
+        ],
+      });
+      expect(result.value.suppliers[0]?.total.toCentavos()).toBe(0);
+    });
+
+    it("keeps the same material of two workshops on two rows", async () => {
+      const { service } = withWorkshops(
+        [
+          workshopLine(),
+          workshopLine({ workshopId: "w2", workshopName: "Pintura intensiva" }),
+        ],
+        [],
+      );
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(
+        result.value.suppliers[0]?.materials.map((item) => item.origin),
+      ).toEqual(["Pintura intensiva", "Torno intensivo"]);
+    });
+
+    it("keeps two workshops with the same name on two rows, told apart by id", async () => {
+      const { service } = withWorkshops(
+        [workshopLine(), workshopLine({ workshopId: "w2" })],
+        [],
+      );
+
+      const result = await service.consolidate(admin, "2026-11");
+
+      if (!result.ok) throw new Error("expected a consolidation");
+      expect(
+        result.value.suppliers[0]?.materials.map((item) => item.originId),
+      ).toEqual(["w1", "w2"]);
+    });
+
+    describe("marking a workshop's lines as ordered", () => {
+      it("asks the reader to mark that workshop and supplier, and reports how many lines moved", async () => {
+        const { service, markOrdered } = withWorkshops([workshopLine()]);
+
+        await expect(
+          service.markWorkshopOrdered(admin, "w1", "s1"),
+        ).resolves.toEqual({ ok: true, value: { count: 2 } });
+        expect(markOrdered).toHaveBeenCalledWith("w1", "s1");
+      });
+
+      it("denies a non-admin before touching anything", async () => {
+        const { service, markOrdered } = withWorkshops([workshopLine()]);
+
+        await expect(
+          service.markWorkshopOrdered(null, "w1", "s1"),
+        ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+        expect(markOrdered).not.toHaveBeenCalled();
+      });
+
+      it("fails closed when the write rejects, and without a workshop reader", async () => {
+        const failing = createSupplierConsolidationService({
+          store: { consolidationLines: vi.fn(), deliveryOrders: vi.fn() },
+          workshopLines: {
+            lines: vi.fn(),
+            markOrdered: () => Promise.reject(new Error("db down")),
+          },
+        });
+        await expect(
+          failing.markWorkshopOrdered(admin, "w1", "s1"),
+        ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+        await expect(
+          serviceWith([]).service.markWorkshopOrdered(admin, "w1", "s1"),
+        ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+        await expect(
+          createUnavailableSupplierConsolidationService().markWorkshopOrdered(
+            admin,
+            "w1",
+            "s1",
+          ),
+        ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+        await expect(
+          createUnavailableSupplierConsolidationService().markWorkshopOrdered(
+            null,
+            "w1",
+            "s1",
+          ),
+        ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+      });
+    });
+
+    it("leaves the monthly consolidation exactly as it was", async () => {
+      const without = serviceWith(example, 2).service;
+      const { service } = withWorkshops([]);
+
+      const a = await without.consolidate(admin, "2026-11");
+      const b = await service.consolidate(admin, "2026-11");
+
+      if (!a.ok || !b.ok) throw new Error("expected consolidations");
+      expect(b.value.pendingOrders).toBe(0);
+      expect({ ...b.value, pendingOrders: 2 }).toEqual(a.value);
+    });
+
+    it("rejects a malformed month before reading and fails closed when the read rejects", async () => {
+      const { service, read } = withWorkshops([workshopLine()]);
+      await expect(service.consolidate(admin, "noviembre")).resolves.toEqual({
+        ok: false,
+        error: { kind: "invalid" },
+      });
+      expect(read).not.toHaveBeenCalled();
+
+      const failing = createSupplierConsolidationService({
+        store: {
+          consolidationLines: () =>
+            Promise.resolve({ lines: example, pendingOrders: 0 }),
+          deliveryOrders: vi.fn(),
+        },
+        workshopLines: {
+          lines: () => Promise.reject(new Error("read failed")),
+          markOrdered: vi.fn(),
+        },
+      });
+      await expect(failing.consolidate(admin, "2026-11")).resolves.toEqual({
+        ok: false,
+        error: { kind: "unavailable" },
+      });
     });
   });
 

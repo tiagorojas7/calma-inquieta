@@ -1,4 +1,4 @@
-import type { OrderStatus } from "../domain/order-core";
+import type { OrderKind, OrderStatus } from "../domain/order-core";
 
 /** A period is `YYYY-MM`; omitting it reads every period. */
 export interface InsightsPeriodFilter {
@@ -36,7 +36,13 @@ export interface IncomeRow {
   readonly period: string;
   readonly orders: number;
   readonly feeCentavos: number;
+  /** What the students paid for the materials. */
   readonly materialsCentavos: number;
+  /**
+   * What the materials cost the studio: each line's own supplier cost, or its
+   * price where none was loaded. Absent means the price counts as the cost.
+   */
+  readonly materialsCostCentavos?: number;
 }
 
 /**
@@ -56,6 +62,29 @@ export interface PendingSummary {
   readonly older: number;
 }
 
+/** A monthly record no owner opened yet, as the panel bell shows it. */
+export interface UnseenOrderRow {
+  readonly id: string;
+  readonly studentName: string;
+  readonly workshopName: string;
+  /** `YYYY-MM`. */
+  readonly period: string;
+  readonly requestedAt: Date;
+}
+
+/** An order still waiting for its payment: a monthly fee or a later material sale. */
+export interface PendingOrderPaymentRow {
+  readonly id: string;
+  readonly kind: OrderKind;
+  readonly studentName: string;
+  readonly workshopName: string;
+  /** `YYYY-MM`. */
+  readonly period: string;
+  /** What is owed: the fee plus the materials. */
+  readonly totalCentavos: number;
+  readonly requestedAt: Date;
+}
+
 export interface MaterialRow {
   readonly status: OrderStatus;
   readonly workshopId: string;
@@ -66,7 +95,12 @@ export interface MaterialRow {
   readonly materialName: string;
   readonly orders: number;
   readonly units: number;
+  /** What the students paid. */
   readonly amountCentavos: number;
+  /** What the lines cost the studio: each line's own cost, or its price where none was loaded. */
+  readonly costCentavos: number;
+  /** Lines with no supplier cost, whose price stands in as the cost. */
+  readonly uncostedLines: number;
 }
 
 export interface ParticipationRow {
@@ -96,4 +130,15 @@ export interface EnrollmentInsightsReader {
   /** Material lines of orders that are not cancelled. */
   materials(filter: InsightsPeriodFilter): Promise<readonly MaterialRow[]>;
   participation(period: string): Promise<ParticipationRow>;
+  /**
+   * Public monthly records that were not cancelled and that no owner opened,
+   * newest first. A record an admin created, and every material sale, is
+   * stored already read and never appears.
+   */
+  unseenOrders(): Promise<readonly UnseenOrderRow[]>;
+  /**
+   * Every pending monthly fee and pending material sale, oldest first. There
+   * is no due date: a payment stays here until it is paid or cancelled.
+   */
+  pendingPayments(): Promise<readonly PendingOrderPaymentRow[]>;
 }

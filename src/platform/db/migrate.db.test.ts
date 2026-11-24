@@ -117,6 +117,9 @@ describe("runMigrations", () => {
       { table_name: "attendance_mark" },
       { table_name: "enrollment_order" },
       { table_name: "intensive_image" },
+      { table_name: "intensive_project" },
+      { table_name: "intensive_project_material" },
+      { table_name: "intensive_request_material" },
       { table_name: "intensive_seat_request" },
       { table_name: "intensive_workshop" },
       { table_name: "material" },
@@ -124,15 +127,20 @@ describe("runMigrations", () => {
       { table_name: "media_asset" },
       { table_name: "monthly_workshop" },
       { table_name: "order_audit" },
+      { table_name: "order_correction" },
       { table_name: "order_line" },
       { table_name: "order_number_sequence" },
       { table_name: "period_material_offer" },
       { table_name: "period_turno" },
+      { table_name: "policy_version" },
       { table_name: "private_event_request" },
+      { table_name: "stock_adjustment" },
+      { table_name: "student" },
       { table_name: "student_note" },
       { table_name: "supplier" },
       { table_name: "teacher" },
       { table_name: "turno_seat_counter" },
+      { table_name: "variant_stock" },
       { table_name: "workshop_image" },
       { table_name: "workshop_period" },
       { table_name: "workshop_turno" },
@@ -153,6 +161,32 @@ describe("runMigrations", () => {
 
     expect(column).toEqual([{ is_nullable: "YES" }]);
     expect(checks).toEqual([{ conname: "material_variant_price_check" }]);
+  });
+
+  it("keeps stock apart from the variants and guards its counts", async () => {
+    const { url } = await database;
+
+    const cost = await query<{ is_nullable: string }>(
+      url,
+      "SELECT is_nullable FROM information_schema.columns WHERE table_name = 'material_variant' AND column_name = 'cost_centavos'",
+    );
+    const checks = await query<{ conname: string }>(
+      url,
+      "SELECT conname FROM pg_constraint WHERE conname IN ('material_variant_cost_check', 'variant_stock_on_hand_check', 'stock_adjustment_delta_check', 'stock_adjustment_reason_check') ORDER BY conname",
+    );
+    const foreignKeys = await query<{ conname: string }>(
+      url,
+      "SELECT conname FROM pg_constraint WHERE contype = 'f' AND conrelid IN ('variant_stock'::regclass, 'stock_adjustment'::regclass)",
+    );
+
+    expect(cost).toEqual([{ is_nullable: "YES" }]);
+    expect(checks).toEqual([
+      { conname: "material_variant_cost_check" },
+      { conname: "stock_adjustment_delta_check" },
+      { conname: "stock_adjustment_reason_check" },
+      { conname: "variant_stock_on_hand_check" },
+    ]);
+    expect(foreignKeys).toEqual([]);
   });
 
   it("applies 0011 after the 0010 database state without replacing prior tables", async () => {
@@ -190,6 +224,7 @@ describe("runMigrations", () => {
         expect.arrayContaining([
           { table_name: "enrollment_order" },
           { table_name: "order_audit" },
+          { table_name: "order_correction" },
           { table_name: "order_line" },
           { table_name: "order_number_sequence" },
           { table_name: "turno_seat_counter" },

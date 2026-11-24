@@ -1,5 +1,6 @@
 export * from "./domain/cart-core";
 export * from "./domain/order-core";
+export * from "./domain/order-correction";
 export * from "./domain/period-window";
 export * from "./domain/student-input";
 export * from "./domain/whatsapp-message";
@@ -15,6 +16,11 @@ export {
   type AdminEnrollmentUseCases,
   type ConfirmPaymentInput,
   type CancelEnrollmentInput,
+  type CancelRefundInput,
+  type CorrectEnrollmentInput,
+  type CreateMaterialSaleInput,
+  type MaterialSaleDeps,
+  type MaterialSaleError,
 } from "./application/admin-enrollment-service";
 export type {
   AdminEnrollmentDetail,
@@ -24,6 +30,14 @@ export type {
   ConsolidationLine,
   DeliveryOrder,
   AdminListQuery,
+  Corrected,
+  CorrectionSnapshot,
+  CorrectionTarget,
+  CreateSaleInput,
+  MaterialSaleStore,
+  MaterialSaleSummary,
+  OrderCorrection,
+  SeenMark,
 } from "./application/admin-enrollment-store";
 export {
   createSupplierConsolidationService,
@@ -33,6 +47,8 @@ export {
   type SupplierConsolidation,
   type SupplierConsolidationUseCases,
   type SupplierSection,
+  type WorkshopSupplierLine,
+  type WorkshopSupplierLines,
 } from "./application/supplier-consolidation";
 export {
   createPublicEnrollmentService,
@@ -44,6 +60,10 @@ export {
   type RequestEnrollmentError,
   type RequestEnrollmentInput,
 } from "./application/public-enrollment-service";
+export type {
+  PolicyAcceptance,
+  PolicyVersionCheck,
+} from "./application/policy-acceptance";
 export type {
   AuditEntry,
   DuplicateOrder,
@@ -70,7 +90,12 @@ export type {
   OrderHistoryReader,
   OrderHistoryRow,
 } from "./application/order-history";
+export type {
+  OrderStockPort,
+  OrderStockStamp,
+} from "./application/order-stock";
 export type { RandomBytes } from "./application/random-bytes";
+export type { StudentActivityStore } from "./application/student-activity";
 export type { SeatLedger } from "./application/seat-ledger";
 export {
   rosterFeePaid,
@@ -86,8 +111,10 @@ export type {
   MaterialRow,
   OrderCountRow,
   ParticipationRow,
+  PendingOrderPaymentRow,
   PendingSummary,
   PeriodRegistrationRow,
+  UnseenOrderRow,
 } from "./application/insights-reader";
 export type {
   OrderAudienceReader,

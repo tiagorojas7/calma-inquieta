@@ -308,6 +308,90 @@ export const intensiveImage = pgTable(
   ],
 );
 
+/**
+ * A selectable project of a dated workshop. Every project shares the
+ * workshop's schedule and capacity; each one has its own image, total price
+ * and deposit. `intensive_seat_request.project_id` is a plain uuid, so a
+ * delete is refused by the repository while requests point here.
+ */
+export const intensiveProject = pgTable(
+  "intensive_project",
+  {
+    id: uuid("id").primaryKey(),
+    intensiveId: uuid("intensive_id")
+      .notNull()
+      .references(() => intensiveWorkshop.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    name: text("name").notNull(),
+    mediaAssetId: uuid("media_asset_id").references(() => mediaAsset.id, {
+      onDelete: "restrict",
+    }),
+    alt: text("alt"),
+    priceCentavos: bigint("price_centavos", { mode: "number" }).notNull(),
+    depositCentavos: bigint("deposit_centavos", { mode: "number" }).notNull(),
+    updatedBy: text("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    unique("intensive_project_position_unique").on(
+      table.intensiveId,
+      table.position,
+    ),
+    index("intensive_project_media_asset_idx").on(table.mediaAssetId),
+    check("intensive_project_position_check", sql`${table.position} >= 0`),
+    check(
+      "intensive_project_name_check",
+      sql`btrim(${table.name}) <> '' AND length(${table.name}) <= 80`,
+    ),
+    check(
+      "intensive_project_price_check",
+      sql`${table.priceCentavos} > 0 AND ${table.priceCentavos} % 100 = 0`,
+    ),
+    check(
+      "intensive_project_deposit_check",
+      sql`${table.depositCentavos} > 0 AND ${table.depositCentavos} <= ${table.priceCentavos} AND ${table.depositCentavos} % 100 = 0`,
+    ),
+    check(
+      "intensive_project_image_check",
+      sql`(${table.mediaAssetId} IS NULL AND ${table.alt} IS NULL)
+          OR (${table.mediaAssetId} IS NOT NULL AND ${table.alt} IS NOT NULL
+              AND btrim(${table.alt}) <> '' AND length(${table.alt}) <= 200)`,
+    ),
+  ],
+);
+
+/**
+ * The bill of materials of a project: variants and units per participant. It
+ * deliberately has no foreign key to `material_variant`: saving a material
+ * deletes and re-inserts its variant rows, and the bill must survive that
+ * (the same reason `variant_stock` has none).
+ */
+export const intensiveProjectMaterial = pgTable(
+  "intensive_project_material",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => intensiveProject.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "intensive_project_material_pkey",
+      columns: [table.projectId, table.position],
+    }),
+    check(
+      "intensive_project_material_position_check",
+      sql`${table.position} >= 0`,
+    ),
+    check(
+      "intensive_project_material_quantity_check",
+      sql`${table.quantity} BETWEEN 1 AND 20`,
+    ),
+  ],
+);
+
 export const workshopImage = pgTable(
   "workshop_image",
   {

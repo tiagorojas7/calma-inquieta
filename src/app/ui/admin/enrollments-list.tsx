@@ -1,7 +1,8 @@
 import { Text } from "../atoms/heading";
 import { AdminButton } from "./admin-button";
 import { AdminButtonLink } from "./admin-button-link";
-import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminFeedback, AdminPageActions, AdminPageHeader } from "./admin-page";
+import { enrollmentNewCopy } from "./enrollment-new-form";
 import { AdminCardList, adminFilterClasses } from "./admin-sections";
 import { SelectField, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
@@ -45,7 +46,7 @@ export interface EnrollmentsListProps {
   readonly workshops: readonly { id: string; name: string }[];
   readonly hasNext: boolean;
   readonly feedback: {
-    readonly kind: "paid" | "cancelled";
+    readonly kind: "paid" | "cancelled" | "created";
     readonly name: string | null;
   } | null;
   readonly actionError?: { readonly error: string; readonly orderId: string };
@@ -350,12 +351,21 @@ export function EnrollmentsList({
           { label: copy.title },
         ]}
         actions={
-          <AdminButtonLink
-            variant="outline"
-            href="/admin/inscripciones/materiales"
-          >
-            {copy.consolidationLink}
-          </AdminButtonLink>
+          <AdminPageActions
+            primary={
+              <AdminButtonLink href="/admin/inscripciones/nueva">
+                {enrollmentNewCopy.title}
+              </AdminButtonLink>
+            }
+            secondary={
+              <AdminButtonLink
+                variant="outline"
+                href="/admin/inscripciones/materiales"
+              >
+                {copy.consolidationLink}
+              </AdminButtonLink>
+            }
+          />
         }
       />
       {feedback ? (

@@ -3,11 +3,13 @@ import type { ReminderRequest } from "~/modules/reminders";
 import { isUuid } from "./enrollment-ids";
 
 const TEXT_MAX = 1000;
+const STUDENT_MAX = 100;
 const TURNO_MAX = 60;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export interface ReminderFormValues {
   readonly mensaje: string;
+  readonly alumna: string;
   readonly cuando: string;
   readonly actividad: string;
   readonly texto: string;
@@ -18,10 +20,11 @@ export interface ReminderFormValues {
 }
 
 /**
- * The reminders page reads its GET parameters (`mensaje`, `cuando`,
+ * The reminders page reads its GET parameters (`mensaje`, `alumna`, `cuando`,
  * `actividad`, `texto`, `taller`, `mes`, `turno`, `estado`). Nothing is
  * prepared until a valid `mensaje` is present; unknown audience filters are
- * dropped so they widen the audience instead of failing the page.
+ * dropped so they widen the audience instead of failing the page. Student
+ * name is a presentation filter and is intentionally not sent to the service.
  */
 export function parseReminderRequest(params: URLSearchParams): {
   request: ReminderRequest | null;
@@ -36,12 +39,14 @@ export function parseReminderRequest(params: URLSearchParams): {
   const mes = PERIOD.test(mesParam) ? mesParam : "";
   const turno = text("turno", TURNO_MAX);
   const status = REMINDER_STATUSES.find((s) => s === params.get("estado"));
+  const alumna = text("alumna", STUDENT_MAX);
   const cuando = text("cuando", TEXT_MAX);
   const actividad = text("actividad", TEXT_MAX);
   const texto = text("texto", TEXT_MAX);
 
   const values: ReminderFormValues = {
     mensaje: kind ?? "class",
+    alumna,
     cuando,
     actividad,
     texto,

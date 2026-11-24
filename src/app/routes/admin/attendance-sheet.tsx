@@ -8,6 +8,7 @@ import {
   sheetView,
   turnoOptions,
 } from "~/app/attendance/admin-view";
+import { attendanceRulesCopy } from "~/app/attendance/copy";
 import { servicesContext } from "~/app/context";
 import {
   AttendanceSheet,
@@ -51,8 +52,12 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   if (!turnos.ok) throw failureResponse(turnos.error);
   return {
     ...sheetView(found.value),
-    makeUpTurnos: turnoOptions(turnos.value),
-    feedback: feedbackCode(request, ["saved", "makeup-scheduled"]),
+    makeUpTurnos: turnoOptions(turnos.value, found.value.turno),
+    feedback: feedbackCode(request, [
+      "saved",
+      "makeup-scheduled",
+      "makeup-full",
+    ]),
   };
 }
 
@@ -62,6 +67,18 @@ function text(form: FormData, name: string): string {
 }
 
 const makeUpErrors = copy.makeUp.errors;
+
+/** The turno rule and the period rule have their own messages. */
+function makeUpMessage(issue: {
+  readonly field: keyof typeof makeUpErrors;
+  readonly code: string;
+}): string {
+  if (issue.field === "makeUpTurno" && issue.code === "not-selectable")
+    return attendanceRulesCopy.errors.makeUpTurnoOther;
+  if (issue.field === "makeUpDate" && issue.code === "not-selectable")
+    return attendanceRulesCopy.errors.makeUpDate;
+  return makeUpErrors[issue.field];
+}
 
 async function scheduleMakeUp(
   actor: AdminActor,
@@ -92,16 +109,21 @@ async function scheduleMakeUp(
     return redirect(
       withFeedback(
         `/admin/asistencia/${session.periodId}/${session.turnoId}/${session.date}`,
-        "makeup-scheduled",
+        planned.value.targetFull ? "makeup-full" : "makeup-scheduled",
       ),
     );
   const error = planned.error;
   if (error.kind === "make-up-exists")
     return rejected({ errors: {}, formError: makeUpErrors.exists });
+  if (error.kind === "make-up-used")
+    return rejected({
+      errors: {},
+      formError: attendanceRulesCopy.errors.makeUpUsed,
+    });
   if (error.kind === "invalid") {
     const errors: Record<string, string> = {};
     for (const issue of error.issues)
-      errors[issue.field] ??= makeUpErrors[issue.field];
+      errors[issue.field] ??= makeUpMessage(issue);
     return rejected({ errors });
   }
   throw failureResponse(error);
@@ -133,6 +155,11 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     );
   if (saved.error.kind === "invalid")
     return data({ error: copy.sheet.invalid }, { status: 422 });
+  if (saved.error.kind === "make-up-booked")
+    return data(
+      { error: attendanceRulesCopy.errors.makeUpBooked },
+      { status: 422 },
+    );
   throw failureResponse(saved.error);
 }
 
@@ -144,7 +171,10 @@ export default function AdminAttendanceSheet() {
       {...sheet}
       feedback={{
         saved: sheet.feedback === "saved",
-        makeUpScheduled: sheet.feedback === "makeup-scheduled",
+        makeUpScheduled:
+          sheet.feedback === "makeup-scheduled" ||
+          sheet.feedback === "makeup-full",
+        makeUpFull: sheet.feedback === "makeup-full",
         error: rejected && "error" in rejected ? rejected.error : undefined,
         makeUp: rejected && "makeUp" in rejected ? rejected.makeUp : undefined,
       }}

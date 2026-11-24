@@ -42,6 +42,88 @@ describe("short fields on a wide form", () => {
   });
 });
 
+describe("card text versus full content", () => {
+  it("names the card text Descripción and the full detail Contenido interno", () => {
+    stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    expect(screen.getByLabelText("Descripción")).toHaveAttribute(
+      "name",
+      "summary",
+    );
+    const content = screen.getByLabelText("Contenido interno");
+    expect(content).toHaveAttribute("name", "description");
+    expect(content).toHaveAccessibleDescription(
+      /antes de completar los datos de inscripción/,
+    );
+  });
+});
+
+describe("the agreed percentage", () => {
+  it("warns under the percentage that opened months keep theirs", () => {
+    stub(
+      <WorkshopForm
+        values={values}
+        errors={{}}
+        teachers={[]}
+        published={false}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Porcentaje acordado"),
+    ).toHaveAccessibleDescription(
+      /Los meses ya abiertos conservan su porcentaje; para cambiarlo, editá ese mes\./,
+    );
+  });
+});
+
+describe("the one-page form asks for both texts", () => {
+  const quickValues = {
+    name: "",
+    summary: "Cerámica desde cero.",
+    description: "Un taller para empezar de cero.",
+    teacherId: "",
+    defaultFee: "",
+    percentage: "",
+    images: [],
+    rows: [],
+  };
+
+  it("asks for the card Descripción before the Contenido interno and keeps what was typed", () => {
+    stub(
+      <QuickWorkshopForm
+        values={quickValues}
+        errors={{ summary: "Completá este campo." }}
+        turnoErrors={{}}
+        teachers={[]}
+        cancelHref="/admin/talleres"
+      />,
+    );
+
+    const summary = screen.getByLabelText("Descripción");
+    const content = screen.getByLabelText("Contenido interno");
+    expect(summary).toHaveAttribute("name", "summary");
+    expect(summary).toHaveValue("Cerámica desde cero.");
+    expect(summary).toHaveAccessibleDescription(/tarjetas/);
+    expect(summary).toHaveAccessibleDescription(/Completá este campo\./);
+    expect(content).toHaveAttribute("name", "description");
+    expect(
+      summary.compareDocumentPosition(content) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByText(/El resumen sale de la descripción/)).toBeNull();
+  });
+});
+
 /** Records whether a submit reached the document (not cancelled by the router). */
 function submitReachesBrowser(form: HTMLFormElement | null) {
   const seen: { prevented: boolean | null } = { prevented: null };
@@ -213,46 +295,28 @@ describe("taller photos", () => {
     );
   });
 
-  it("offers the shared material picker on the one-page form", () => {
+  it("offers no material picker on the one-page form", () => {
     const { container } = stub(
       <QuickWorkshopForm
         values={{
           name: "",
+          summary: "",
           description: "",
           teacherId: "",
           defaultFee: "",
           percentage: "",
           images: [],
           rows: [],
-          materialIds: ["m2"],
         }}
         errors={{}}
         turnoErrors={{}}
         teachers={[]}
-        materials={[
-          { id: "m1", name: "Canasto", category: "Canastos" },
-          { id: "m2", name: "Acrílico", category: "Pinturas" },
-        ]}
         cancelHref="/admin/talleres"
       />,
     );
-    const checked = () =>
-      [
-        ...container.querySelectorAll<HTMLInputElement>(
-          "input[name=materialIds]:checked",
-        ),
-      ].map((input) => input.value);
-    expect(screen.getByLabelText("Buscar material")).toBeInTheDocument();
-    expect(checked()).toEqual(["m2"]);
-    fireEvent.click(screen.getByRole("button", { name: "Elegir todos" }));
-    expect(checked()).toEqual(["m1", "m2"]);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Quitar todos: Canastos" }),
-    );
-    expect(checked()).toEqual(["m2"]);
-    expect(
-      screen.getByRole("group", { name: "Categoría Pinturas" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Buscar material")).toBeNull();
+    expect(container.querySelector("input[name=materialIds]")).toBeNull();
+    expect(screen.queryByText(/Materiales/)).toBeNull();
   });
 
   it("offers the same four slots on the one-page form", async () => {
@@ -260,18 +324,17 @@ describe("taller photos", () => {
       <QuickWorkshopForm
         values={{
           name: "",
+          summary: "",
           description: "",
           teacherId: "",
           defaultFee: "",
           percentage: "",
           images: [],
           rows: [],
-          materialIds: [],
         }}
         errors={{}}
         turnoErrors={{}}
         teachers={[]}
-        materials={[]}
         cancelHref="/admin/talleres"
       />,
     );

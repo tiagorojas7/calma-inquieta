@@ -27,10 +27,6 @@ export {
   type WorkshopEnrollmentOfferLookupDeps,
 } from "./application/enrollment-offer";
 export {
-  createWorkshopOfferedMaterialIdsLookup,
-  type WorkshopOfferedMaterialIdsLookupDeps,
-} from "./application/offered-materials";
-export {
   createPeriodTurnoUsageLookup,
   createWorkshopPeriodLookup,
   createWorkshopPeriodsService,
@@ -46,6 +42,7 @@ export {
   createIntensiveSeatOfferLookup,
   type IntensiveSeatOffer,
   type IntensiveSeatOfferLookup,
+  type IntensiveSeatOfferProject,
   type IntensiveSeatOfferLookupDeps,
 } from "./application/intensive-seat-offer";
 export { createPublicIntensivosReader } from "./application/public-intensivos-reader";

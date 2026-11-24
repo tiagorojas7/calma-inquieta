@@ -71,11 +71,17 @@ const INSERT_ORDER = `
     turno_id, workshop_name, turno_label, weekday, starts_at, ends_at,
     student_name, student_email, student_phone_digits, fee_centavos,
     materials_centavos, total_centavos, policy_version, requested_at, paid_at,
-    paid_amount_centavos
+    paid_amount_centavos, student_id
   ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-    $17, $18, $19, $20, $21, $22, $23, $24
+    $17, $18, $19, $20, $21, $22, $23, $24, md5($16)::uuid
   )`;
+
+// One durable profile per email, each with its own phone (both are unique).
+const INSERT_STUDENT = `
+  INSERT INTO student (id, full_name, email, phone_digits, created_at, updated_at)
+  VALUES (md5($1)::uuid, 'Ana Perez', $1, $2, now(), now())
+  ON CONFLICT (id) DO NOTHING`;
 
 describe("enrollment schema", () => {
   const database = createTestDatabase({ empty: true });
@@ -93,17 +99,26 @@ describe("enrollment schema", () => {
     await (await database).drop();
   });
 
-  const insertOrder = (values: OrderValues) =>
-    client.query(INSERT_ORDER, orderValues(values));
+  const phones = new Map<string, string>();
+  const insertOrder = async (values: OrderValues) => {
+    const order = orderValues(values);
+    const email = String(order[15]);
+    const phone =
+      phones.get(email) ?? `549351${String(phones.size).padStart(7, "0")}`;
+    phones.set(email, phone);
+    await client.query(INSERT_STUDENT, [email, phone]);
+    return client.query(INSERT_ORDER, order);
+  };
 
-  it("creates the five enrollment-owned tables", async () => {
+  it("creates the seven enrollment-owned tables", async () => {
     const { rows } = await client.query<{ table_name: string }>(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
         AND table_name IN (
           'enrollment_order', 'order_line', 'order_audit',
-          'turno_seat_counter', 'order_number_sequence'
+          'order_correction', 'turno_seat_counter',
+          'order_number_sequence', 'student'
         )
       ORDER BY table_name
     `);
@@ -111,8 +126,10 @@ describe("enrollment schema", () => {
     expect(rows).toEqual([
       { table_name: "enrollment_order" },
       { table_name: "order_audit" },
+      { table_name: "order_correction" },
       { table_name: "order_line" },
       { table_name: "order_number_sequence" },
+      { table_name: "student" },
       { table_name: "turno_seat_counter" },
     ]);
   });
@@ -150,6 +167,31 @@ describe("enrollment schema", () => {
         paidAmountCentavos: 5800000,
       }),
     ).rejects.toMatchObject({ code: "23514" });
+  });
+
+  it("accepts a zero fee for a free enrollment, paid with $0, and still rejects a negative fee", async () => {
+    await expect(
+      insertOrder({
+        id: "00000000-0000-4000-8000-000000000106",
+        email: "free@example.com",
+        feeCentavos: 0,
+        totalCentavos: 0,
+        status: "paid",
+        paidAt: new Date("2026-10-21T12:00:00.000Z"),
+        paidAmountCentavos: 0,
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      insertOrder({
+        id: "00000000-0000-4000-8000-000000000107",
+        email: "negative@example.com",
+        feeCentavos: -100,
+        totalCentavos: -100,
+      }),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "enrollment_order_fee_check",
+    });
   });
 
   it("rejects invalid order lines and seat counters", async () => {
@@ -199,7 +241,111 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
-  it("enforces normalized active duplicates while allowing cancelled replacement", async () => {
+  describe("line source and cost", () => {
+    const BASE = `INSERT INTO order_line (
+          order_id, position, material_id, variant_id, material_name,
+          variant_label, unit_price_centavos, quantity, supplier_id,
+          supplier_name`;
+    const insertPlainLine = (orderId: string) =>
+      client.query(
+        `${BASE}) VALUES ($1, 0, $2, $3, 'Clay', 'White', 10000, 1, $4, 'Supplier')`,
+        [orderId, ids.material, ids.variant, ids.supplier],
+      );
+    const insertLine = (
+      orderId: string,
+      line: { source?: string; cost?: number },
+    ) =>
+      client.query(
+        `${BASE}, source, unit_cost_centavos)
+         VALUES ($1, 0, $2, $3, 'Clay', 'White', 10000, 1, $4, 'Supplier',
+           COALESCE($5, 'supplier'), $6)`,
+        [
+          orderId,
+          ids.material,
+          ids.variant,
+          ids.supplier,
+          line.source ?? null,
+          line.cost ?? null,
+        ],
+      );
+    const stored = async (orderId: string) =>
+      (
+        await client.query<{ source: string; cost: string | null }>(
+          `SELECT source, unit_cost_centavos AS cost FROM order_line
+           WHERE order_id = $1`,
+          [orderId],
+        )
+      ).rows[0];
+
+    it("defaults a line to the supplier with no cost", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000211";
+      await insertOrder({ id: orderId });
+      await insertPlainLine(orderId);
+      expect(await stored(orderId)).toEqual({ source: "supplier", cost: null });
+    });
+
+    it("keeps a stock line with its supplier cost", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000212";
+      await insertOrder({ id: orderId });
+      await insertLine(orderId, { source: "stock", cost: 6500 });
+      expect(await stored(orderId)).toEqual({ source: "stock", cost: "6500" });
+    });
+
+    it("rejects a source that is neither stock nor supplier", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000213";
+      await insertOrder({ id: orderId });
+      await expect(
+        insertLine(orderId, { source: "warehouse" }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("rejects a cost that is zero or negative", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000214";
+      await insertOrder({ id: orderId });
+      await expect(insertLine(orderId, { cost: 0 })).rejects.toMatchObject({
+        code: "23514",
+      });
+      await expect(insertLine(orderId, { cost: -100 })).rejects.toMatchObject({
+        code: "23514",
+      });
+    });
+
+    it("marks a taken stock line, defaults the mark to none, and refuses a mark on a supplier line", async () => {
+      const orderId = "00000000-0000-4000-8000-000000000215";
+      await insertOrder({ id: orderId });
+      await insertPlainLine(orderId);
+      expect(
+        (
+          await client.query<{ taken: string | null }>(
+            "SELECT stock_taken_at AS taken FROM order_line WHERE order_id = $1",
+            [orderId],
+          )
+        ).rows[0],
+      ).toEqual({ taken: null });
+
+      await client.query("DELETE FROM order_line WHERE order_id = $1", [
+        orderId,
+      ]);
+      await insertLine(orderId, { source: "stock" });
+      await client.query(
+        "UPDATE order_line SET stock_taken_at = now() WHERE order_id = $1",
+        [orderId],
+      );
+      await client.query(
+        "UPDATE order_line SET stock_taken_at = NULL WHERE order_id = $1",
+        [orderId],
+      );
+
+      await expect(
+        client.query(
+          "UPDATE order_line SET source = 'supplier', stock_taken_at = now() WHERE order_id = $1",
+          [orderId],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+  });
+
+  it("allows one active order per student and month, and a cancelled one frees the month", async () => {
     await insertOrder({
       id: "00000000-0000-4000-8000-000000000301",
       email: "ana@example.com",
@@ -209,17 +355,193 @@ describe("enrollment schema", () => {
         id: "00000000-0000-4000-8000-000000000302",
         email: "ana@example.com",
       }),
-    ).rejects.toMatchObject({ code: "23505" });
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "enrollment_order_student_period_active_unique",
+    });
     await client.query(
       "UPDATE enrollment_order SET status = 'cancelled' WHERE id = $1",
       ["00000000-0000-4000-8000-000000000301"],
     );
+    await insertOrder({
+      id: "00000000-0000-4000-8000-000000000302",
+      email: "ana@example.com",
+    });
     await expect(
       insertOrder({
-        id: "00000000-0000-4000-8000-000000000302",
+        id: "00000000-0000-4000-8000-000000000303",
         email: "ana@example.com",
       }),
-    ).resolves.toBeDefined();
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "enrollment_order_student_period_active_unique",
+    });
+    const stored = await client.query<{ status: string }>(
+      "SELECT status FROM enrollment_order WHERE student_id = (SELECT id FROM student WHERE email = $1) ORDER BY id",
+      ["ana@example.com"],
+    );
+    expect(stored.rows.map((row) => row.status)).toEqual([
+      "cancelled",
+      "pending_confirmation",
+    ]);
+  });
+
+  it("stores both accepted policy versions or none, and nothing by default", async () => {
+    const id = "00000000-0000-4000-8000-0000000000e1";
+    await insertOrder({ id, email: "accepted@example.com" });
+    const read = () =>
+      client.query<{
+        conditions_version: number | null;
+        privacy_version: number | null;
+      }>(
+        "SELECT conditions_version, privacy_version FROM enrollment_order WHERE id = $1",
+        [id],
+      );
+    expect((await read()).rows).toEqual([
+      { conditions_version: null, privacy_version: null },
+    ]);
+
+    await client.query(
+      "UPDATE enrollment_order SET conditions_version = 2, privacy_version = 1 WHERE id = $1",
+      [id],
+    );
+    expect((await read()).rows).toEqual([
+      { conditions_version: 2, privacy_version: 1 },
+    ]);
+
+    for (const half of [
+      "conditions_version = NULL",
+      "privacy_version = NULL",
+    ]) {
+      await expect(
+        client.query(`UPDATE enrollment_order SET ${half} WHERE id = $1`, [id]),
+      ).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_acceptance_check",
+      });
+    }
+    expect((await read()).rows).toEqual([
+      { conditions_version: 2, privacy_version: 1 },
+    ]);
+  });
+
+  describe("material sales", () => {
+    /** Copies a monthly record into a row of the given kind, as the sale store does. */
+    const copyAs = (
+      parentId: string,
+      id: string,
+      values: {
+        kind: string;
+        parent: string | null;
+        fee: number;
+        materials: number;
+      },
+    ) =>
+      client.query(
+        `INSERT INTO enrollment_order (
+           id, student_id, public_id, number, status, source, workshop_id,
+           period_id, period, turno_id, workshop_name, turno_label, weekday,
+           starts_at, ends_at, student_name, student_email,
+           student_phone_digits, fee_centavos, materials_centavos,
+           total_centavos, policy_version, requested_at, kind, parent_order_id
+         )
+         SELECT $2::uuid, student_id, 'sale_' || $2::text,
+           'CI-2026-' || right($2::text, 4),
+           'pending_confirmation', source, workshop_id, period_id, period,
+           turno_id, workshop_name, turno_label, weekday, starts_at, ends_at,
+           student_name, student_email, student_phone_digits, $3::bigint,
+           $4::bigint, $3::bigint + $4::bigint, policy_version, requested_at,
+           $5, $6::uuid
+         FROM enrollment_order WHERE id = $1`,
+        [
+          parentId,
+          id,
+          values.fee,
+          values.materials,
+          values.kind,
+          values.parent,
+        ],
+      );
+
+    it("lets a sale sit next to the active monthly record of its student and month, any number of times", async () => {
+      const parent = "00000000-0000-4000-8000-000000000a01";
+      await insertOrder({ id: parent, email: "sale@example.com" });
+      for (const id of [
+        "00000000-0000-4000-8000-000000000a02",
+        "00000000-0000-4000-8000-000000000a03",
+      ])
+        await copyAs(parent, id, {
+          kind: "material_sale",
+          parent,
+          fee: 0,
+          materials: 400000,
+        });
+      await expect(
+        insertOrder({
+          id: "00000000-0000-4000-8000-000000000a04",
+          email: "sale@example.com",
+        }),
+      ).rejects.toMatchObject({
+        code: "23505",
+        constraint: "enrollment_order_student_period_active_unique",
+      });
+      const stored = await client.query<{ kind: string }>(
+        "SELECT kind FROM enrollment_order WHERE student_email = $1 ORDER BY id",
+        ["sale@example.com"],
+      );
+      expect(stored.rows.map((row) => row.kind)).toEqual([
+        "enrollment",
+        "material_sale",
+        "material_sale",
+      ]);
+    });
+
+    it("rejects a sale without its monthly record or with a fee, an enrollment that points at a record, and an unknown kind", async () => {
+      const parent = "00000000-0000-4000-8000-000000000a11";
+      await insertOrder({ id: parent, email: "sale-checks@example.com" });
+      const sale = {
+        kind: "material_sale",
+        parent,
+        fee: 0,
+        materials: 400000,
+      };
+      const rejected = (id: string, values: typeof sale) =>
+        expect(copyAs(parent, id, values)).rejects.toMatchObject({
+          code: "23514",
+        });
+      await rejected("00000000-0000-4000-8000-000000000a12", {
+        ...sale,
+        parent: null as unknown as string,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a13", {
+        ...sale,
+        fee: 5800000,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a14", {
+        ...sale,
+        materials: 0,
+      });
+      await rejected("00000000-0000-4000-8000-000000000a15", {
+        ...sale,
+        kind: "enrollment",
+      });
+      await rejected("00000000-0000-4000-8000-000000000a16", {
+        ...sale,
+        kind: "voucher",
+      });
+    });
+
+    it("defaults an order to a monthly record without a parent", async () => {
+      const id = "00000000-0000-4000-8000-000000000a21";
+      await insertOrder({ id, email: "default-kind@example.com" });
+      const { rows } = await client.query<{
+        kind: string;
+        parent_order_id: string | null;
+      }>("SELECT kind, parent_order_id FROM enrollment_order WHERE id = $1", [
+        id,
+      ]);
+      expect(rows).toEqual([{ kind: "enrollment", parent_order_id: null }]);
+    });
   });
 
   it("enforces unique public ids and order numbers", async () => {
@@ -316,6 +638,387 @@ describe("enrollment schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 
+  describe("refund columns", () => {
+    const paidAt = new Date("2026-10-21T12:00:00.000Z");
+    const refundedAt = new Date("2026-10-25T03:00:00.000Z");
+    const PAID = 5800000;
+
+    const paidOrder = async (id: string, status = "paid") => {
+      await insertOrder({
+        id,
+        status,
+        paidAt,
+        paidAmountCentavos: PAID,
+      });
+      return id;
+    };
+    const refund = (
+      id: string,
+      values: {
+        status?: string;
+        amount?: number | null;
+        at?: Date | null;
+        by?: string | null;
+        note?: string | null;
+      },
+    ) =>
+      client.query(
+        `UPDATE enrollment_order SET status = $2, refunded_amount_centavos = $3,
+           refunded_at = $4, refunded_by = $5, refund_note = $6 WHERE id = $1`,
+        [
+          id,
+          values.status ?? "cancelled",
+          values.amount === undefined ? 0 : values.amount,
+          values.at === undefined ? refundedAt : values.at,
+          values.by === undefined ? "admin@example.com" : values.by,
+          values.note === undefined ? null : values.note,
+        ],
+      );
+
+    it.each([
+      ["nothing returned", 0],
+      ["a partial amount", 2500000],
+      ["the full paid amount", PAID],
+    ])(
+      "keeps the payment and accepts a refund of %s",
+      async (_label, cents) => {
+        const id = await paidOrder(
+          `00000000-0000-4000-8000-0000000006${String(cents).slice(0, 2).padStart(2, "0")}`,
+        );
+
+        await refund(id, { amount: cents, note: "transfer back" });
+
+        const { rows } = await client.query<{
+          paid_amount_centavos: string;
+          refunded_amount_centavos: string;
+        }>(
+          "SELECT paid_amount_centavos, refunded_amount_centavos FROM enrollment_order WHERE id = $1",
+          [id],
+        );
+        expect(rows).toEqual([
+          {
+            paid_amount_centavos: String(PAID),
+            refunded_amount_centavos: String(cents),
+          },
+        ]);
+      },
+    );
+
+    it("rejects a refund above what was paid or below zero", async () => {
+      const above = await paidOrder("00000000-0000-4000-8000-000000000701");
+      await expect(refund(above, { amount: PAID + 100 })).rejects.toMatchObject(
+        { code: "23514", constraint: "enrollment_order_refund_bounds_check" },
+      );
+      const negative = await paidOrder("00000000-0000-4000-8000-000000000702");
+      await expect(refund(negative, { amount: -100 })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_bounds_check",
+      });
+    });
+
+    it("rejects a refund with cents", async () => {
+      const id = await paidOrder("00000000-0000-4000-8000-000000000703");
+      await expect(refund(id, { amount: 1050 })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_whole_pesos_check",
+      });
+    });
+
+    it("rejects a refund on an order that is not cancelled", async () => {
+      const id = await paidOrder("00000000-0000-4000-8000-000000000704");
+      await expect(refund(id, { status: "paid" })).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_state_check",
+      });
+    });
+
+    it("rejects a refund on a cancelled order that was never paid", async () => {
+      const id = "00000000-0000-4000-8000-000000000705";
+      await insertOrder({ id });
+      await expect(refund(id, {})).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it.each([
+      ["without a date", { at: null }],
+      ["without who recorded it", { by: null }],
+      ["without an amount", { amount: null, note: "orphan note" }],
+    ])("rejects a refund %s", async (_label, values) => {
+      const id = await paidOrder(
+        `00000000-0000-4000-8000-00000000071${String(_label.length % 10)}`,
+      );
+      await expect(refund(id, values)).rejects.toMatchObject({
+        code: "23514",
+        constraint: "enrollment_order_refund_state_check",
+      });
+    });
+  });
+
+  describe("order corrections", () => {
+    const paidAt = new Date("2026-10-21T12:00:00.000Z");
+    const at = new Date("2026-10-28T12:00:00.000Z");
+    const PAID = 5800000;
+    let sequence = 0;
+
+    const paidOrder = async () => {
+      sequence += 1;
+      const id = `00000000-0000-4000-8000-0000000008${String(sequence).padStart(2, "0")}`;
+      await insertOrder({
+        id,
+        status: "paid",
+        paidAt,
+        paidAmountCentavos: PAID,
+      });
+      return id;
+    };
+
+    /** A lowered paid order: fee 58000 down to 50000 with 8000 given back. */
+    const base = (orderId: string): Record<string, unknown> => ({
+      id: crypto.randomUUID(),
+      order_id: orderId,
+      at,
+      actor: "admin@example.com",
+      note: null,
+      before_workshop_id: ids.workshop,
+      before_workshop_name: "Ceramica",
+      before_period_id: ids.period,
+      before_period: "2026-10",
+      before_turno_id: ids.turno,
+      before_turno_label: "Monday morning",
+      before_weekday: 1,
+      before_starts_at: "10:00",
+      before_ends_at: "12:00",
+      before_fee_centavos: PAID,
+      before_total_centavos: PAID,
+      before_status: "paid",
+      after_workshop_id: ids.workshop,
+      after_workshop_name: "Ceramica",
+      after_period_id: ids.period,
+      after_period: "2026-10",
+      after_turno_id: ids.turno,
+      after_turno_label: "Monday morning",
+      after_weekday: 1,
+      after_starts_at: "10:00",
+      after_ends_at: "12:00",
+      after_fee_centavos: 5000000,
+      after_total_centavos: 5000000,
+      after_status: "paid",
+      previous_paid_amount_centavos: null,
+      previous_paid_at: null,
+      previous_confirmed_by: null,
+      refunded_amount_centavos: 800000,
+      refunded_at: new Date("2026-10-28T03:00:00.000Z"),
+      refund_note: null,
+    });
+    const insertCorrection = (values: Record<string, unknown>) => {
+      const columns = Object.keys(values);
+      return client.query(
+        `INSERT INTO order_correction (${columns.join(", ")})
+         VALUES (${columns.map((_, index) => `$${String(index + 1)}`).join(", ")})`,
+        Object.values(values),
+      );
+    };
+    /** A raised total: fee 58000 up to 60000, back to pending with the old payment kept. */
+    const raised = (orderId: string): Record<string, unknown> => ({
+      ...base(orderId),
+      after_fee_centavos: 6000000,
+      after_total_centavos: 6000000,
+      after_status: "pending_confirmation",
+      previous_paid_amount_centavos: PAID,
+      previous_paid_at: paidAt,
+      previous_confirmed_by: "admin@example.com",
+      refunded_amount_centavos: null,
+      refunded_at: null,
+    });
+    const rejected = (constraint: string) => ({ code: "23514", constraint });
+
+    it.each([
+      ["a lowered paid order with the refunded difference", base],
+      ["a raised total with the previous payment kept", raised],
+      [
+        "a pending order that stays pending",
+        (orderId: string) => ({
+          ...base(orderId),
+          before_status: "pending_confirmation",
+          after_status: "pending_confirmation",
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ],
+      [
+        "a paid order whose total is unchanged",
+        (orderId: string) => ({
+          ...base(orderId),
+          after_fee_centavos: PAID,
+          after_total_centavos: PAID,
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ],
+    ])("accepts %s", async (_label, build) => {
+      await expect(insertCorrection(build(await paidOrder()))).resolves.toEqual(
+        expect.objectContaining({ rowCount: 1 }),
+      );
+    });
+
+    it.each([
+      ["nothing", 0],
+      ["the whole difference", 800000],
+    ])("accepts a refunded difference of %s", async (_label, cents) => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          refunded_amount_centavos: cents,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ rowCount: 1 }));
+    });
+
+    it.each([
+      ["above the difference", { refunded_amount_centavos: 800100 }],
+      ["negative", { refunded_amount_centavos: -100 }],
+      ["with cents", { refunded_amount_centavos: 5050 }],
+      ["without a date", { refunded_amount_centavos: 100, refunded_at: null }],
+    ])("rejects a refunded difference %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a lowered paid order that records no refund", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a refund when the total did not drop", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          refunded_amount_centavos: 100,
+          refunded_at: at,
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_refund_check"));
+    });
+
+    it("rejects a raised total that keeps no previous payment", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          previous_paid_amount_centavos: null,
+          previous_paid_at: null,
+          previous_confirmed_by: null,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it("rejects a previous payment that is not what was paid", async () => {
+      await expect(
+        insertCorrection({
+          ...raised(await paidOrder()),
+          previous_paid_amount_centavos: PAID - 100,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it("rejects a previous payment on a correction that never left paid", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          previous_paid_amount_centavos: PAID,
+          previous_paid_at: paidAt,
+        }),
+      ).rejects.toMatchObject(
+        rejected("order_correction_previous_payment_check"),
+      );
+    });
+
+    it.each([
+      [
+        "a paid order that goes pending without a higher total",
+        { after_status: "pending_confirmation" },
+      ],
+      [
+        "a higher total that stays paid",
+        {
+          after_fee_centavos: 6000000,
+          after_total_centavos: 6000000,
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        },
+      ],
+      [
+        "a pending order that becomes paid",
+        {
+          before_status: "pending_confirmation",
+          refunded_amount_centavos: null,
+          refunded_at: null,
+        },
+      ],
+      [
+        "a paid order that changes paid state",
+        { after_status: "materials_received" },
+      ],
+    ])("rejects %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("rejects a cancelled order on either side", async () => {
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          before_status: "cancelled",
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          after_status: "cancelled",
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it.each([
+      ["a fee with cents", { after_fee_centavos: 5000050 }],
+      ["a negative fee", { after_fee_centavos: -100 }],
+      [
+        "changed materials",
+        { after_fee_centavos: 5000000, after_total_centavos: 5100000 },
+      ],
+    ])("rejects %s", async (_label, values) => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), ...values }),
+      ).rejects.toMatchObject(rejected("order_correction_amounts_check"));
+    });
+
+    it("rejects a weekday or a time range that is not valid", async () => {
+      await expect(
+        insertCorrection({ ...base(await paidOrder()), after_weekday: 8 }),
+      ).rejects.toMatchObject(rejected("order_correction_weekday_check"));
+      await expect(
+        insertCorrection({
+          ...base(await paidOrder()),
+          after_starts_at: "12:00",
+          after_ends_at: "10:00",
+        }),
+      ).rejects.toMatchObject(rejected("order_correction_time_range_check"));
+    });
+
+    it("rejects a correction of an order that does not exist", async () => {
+      await expect(
+        insertCorrection(base("00000000-0000-4000-8000-0000000009ff")),
+      ).rejects.toMatchObject({ code: "23503" });
+    });
+  });
+
   it("contains no foreign keys to other module tables", async () => {
     const { rows } = await client.query<{ foreign_table_name: string }>(`
       SELECT ccu.table_name AS foreign_table_name
@@ -325,11 +1028,18 @@ describe("enrollment schema", () => {
         AND tc.constraint_schema = ccu.constraint_schema
       WHERE tc.constraint_type = 'FOREIGN KEY'
         AND tc.table_schema = 'public'
-        AND tc.table_name IN ('enrollment_order', 'order_line', 'order_audit')
+        AND tc.table_name IN (
+          'enrollment_order', 'order_line', 'order_audit',
+          'order_correction'
+        )
       ORDER BY tc.table_name, ccu.table_name
     `);
 
     expect(rows).toEqual([
+      // A material sale points at its monthly record.
+      { foreign_table_name: "enrollment_order" },
+      { foreign_table_name: "student" },
+      { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },
       { foreign_table_name: "enrollment_order" },
     ]);

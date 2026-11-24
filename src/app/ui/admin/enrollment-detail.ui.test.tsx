@@ -7,6 +7,19 @@ import {
   type EnrollmentDetailProps,
 } from "./enrollment-detail";
 
+const correctionForm: NonNullable<
+  EnrollmentDetailProps["order"]["correction"]
+> = {
+  options: [
+    {
+      value: "ceramica|2026-11|t-2",
+      label: "Cerámica · noviembre 2026 · Jueves",
+    },
+  ],
+  feePesos: "48000",
+  paid: null,
+};
+
 const base: EnrollmentDetailProps = {
   order: {
     id: "o1",
@@ -21,6 +34,7 @@ const base: EnrollmentDetailProps = {
     turno: "Lunes · 10:00 a 12:00 h",
     requestedAt: "31/10/2026 12:30",
     policyVersion: "2026-10",
+    acceptance: "Condiciones v2 · Privacidad v3",
     fee: "$ 48.000",
     materialsTotal: "$ 10.000",
     total: "$ 58.000",
@@ -35,6 +49,8 @@ const base: EnrollmentDetailProps = {
       },
     ],
     payment: null,
+    correction: correctionForm,
+    corrections: [],
     seat: { confirmed: 3, capacity: 8 },
     audit: [
       {
@@ -51,8 +67,30 @@ const base: EnrollmentDetailProps = {
       materialsRequested: false,
       materialsReceived: false,
     },
+    cancelRefund: null,
+    refund: null,
     today: "2026-10-31",
   },
+};
+
+const paidOrder: EnrollmentDetailProps["order"] = {
+  ...base.order,
+  status: "paid",
+  statusLabel: "Cobrado",
+  payment: {
+    paidOn: "30/10/2026",
+    amount: "$ 58.000",
+    confirmedBy: "admin@x.test",
+    note: null,
+  },
+  actions: {
+    confirm: false,
+    cancel: true,
+    materialsRequested: true,
+    materialsReceived: false,
+  },
+  cancelRefund: { paid: "$ 58.000", paidPesos: "58000" },
+  correction: { ...correctionForm, paid: "$ 58.000" },
 };
 
 describe("EnrollmentDetail", () => {
@@ -89,6 +127,39 @@ describe("EnrollmentDetail", () => {
       within(history as HTMLElement).getByText("public"),
     ).toBeInTheDocument();
     await expectNoAxeViolations(container);
+  });
+
+  it("lists the accepted conditions and privacy versions among the order data", () => {
+    render(<EnrollmentDetail {...base} />);
+    const more = screen.getByText("Más datos del pedido").closest("details");
+    expect(
+      within(more as HTMLElement).getByText("Aceptación"),
+    ).toBeInTheDocument();
+    expect(
+      within(more as HTMLElement).getByText("Condiciones v2 · Privacidad v3"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the legacy policy version only when the order carries one", () => {
+    const { rerender } = render(<EnrollmentDetail {...base} />);
+    const more = () =>
+      screen.getByText("Más datos del pedido").closest("details");
+    expect(
+      within(more() as HTMLElement).getByText("Política aceptada"),
+    ).toBeInTheDocument();
+    expect(
+      within(more() as HTMLElement).getByText("2026-10"),
+    ).toBeInTheDocument();
+
+    rerender(
+      <EnrollmentDetail order={{ ...base.order, policyVersion: null }} />,
+    );
+    expect(
+      within(more() as HTMLElement).queryByText("Política aceptada"),
+    ).toBeNull();
+    expect(
+      within(more() as HTMLElement).getByText("Aceptación"),
+    ).toBeInTheDocument();
   });
 
   it("works in two columns: the job on the left, the facts on the right", () => {
@@ -154,6 +225,7 @@ describe("EnrollmentDetail", () => {
           ...base.order,
           status: "cancelled",
           statusLabel: "Cancelado",
+          correction: null,
           actions: {
             confirm: false,
             cancel: false,
@@ -256,6 +328,123 @@ describe("EnrollmentDetail", () => {
     expect(within(dialog).getByText(/no se puede deshacer/i)).toBeVisible();
   });
 
+  it("asks a paid order's cancellation for the refund, prefilled with what was paid and today", async () => {
+    const user = userEvent.setup();
+    render(<EnrollmentDetail {...base} order={paidOrder} />);
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Motivo")).toBeVisible();
+    const amount = within(form).getByLabelText("Monto devuelto");
+    expect(amount).toHaveValue("58000");
+    expect(amount).toHaveAttribute("inputmode", "numeric");
+    expect(amount).toBeRequired();
+    expect(within(form).getByText(/Cobraste \$ 58\.000/)).toBeVisible();
+    const date = within(form).getByLabelText("Fecha de devolución");
+    expect(date).toHaveValue("2026-10-31");
+    expect(date).toHaveAttribute("max", "2026-10-31");
+    expect(date).toBeRequired();
+    expect(
+      within(form).getByLabelText("Nota de la devolución (opcional)"),
+    ).not.toBeRequired();
+
+    await user.click(
+      within(form).getByRole("button", { name: "Cancelar pedido" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/la devolución/i)).toBeVisible();
+  });
+
+  it("keeps the simple cancel, with no refund fields, for a pending order", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Motivo")).toBeVisible();
+    expect(within(form).queryByLabelText("Monto devuelto")).toBeNull();
+    expect(within(form).queryByLabelText("Fecha de devolución")).toBeNull();
+  });
+
+  it("shows the refund errors and keeps what was typed", () => {
+    render(
+      <EnrollmentDetail
+        {...base}
+        order={paidOrder}
+        form={{
+          errors: {
+            refundAmount: "La devolución no puede ser mayor que lo cobrado.",
+            refundedOn: "La fecha de devolución no puede ser futura.",
+          },
+          values: {
+            reason: "Pidió la baja",
+            refundAmount: "70000",
+            refundedOn: "2026-11-05",
+            refundNote: "Transferencia",
+          },
+        }}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Cancelar pedido" });
+    expect(within(form).getByLabelText("Monto devuelto")).toHaveValue("70000");
+    expect(
+      within(form).getByLabelText("Monto devuelto"),
+    ).toHaveAccessibleDescription(/mayor que lo cobrado/);
+    expect(within(form).getByLabelText("Fecha de devolución")).toHaveValue(
+      "2026-11-05",
+    );
+    expect(
+      within(form).getByText("La fecha de devolución no puede ser futura."),
+    ).toBeVisible();
+    expect(
+      within(form).getByLabelText("Nota de la devolución (opcional)"),
+    ).toHaveValue("Transferencia");
+  });
+
+  it.each([
+    ["a partial refund", "$ 25.000"],
+    ["nothing returned", "$ 0"],
+  ])(
+    "shows the recorded refund beside the payment for %s",
+    (_label, amount) => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...paidOrder,
+            status: "cancelled",
+            statusLabel: "Cancelado",
+            correction: null,
+            actions: {
+              confirm: false,
+              cancel: false,
+              materialsRequested: false,
+              materialsReceived: false,
+            },
+            cancelRefund: null,
+            refund: {
+              amount,
+              refundedOn: "31/10/2026",
+              note: "Transferencia",
+              refundedBy: "owner@x.test",
+            },
+          }}
+        />,
+      );
+
+      const refund = screen.getByRole("region", { name: "Devolución" });
+      expect(within(refund).getByText(amount)).toBeVisible();
+      expect(within(refund).getByText("31/10/2026")).toBeVisible();
+      expect(within(refund).getByText("Transferencia")).toBeVisible();
+      expect(within(refund).getByText("owner@x.test")).toBeVisible();
+      expect(screen.getByRole("region", { name: "Cobro" })).toBeVisible();
+    },
+  );
+
+  it("shows no refund section when nothing was refunded", () => {
+    render(<EnrollmentDetail {...base} />);
+
+    expect(screen.queryByRole("region", { name: "Devolución" })).toBeNull();
+  });
+
   it("offers only the next materials step for a paid order", () => {
     render(
       <EnrollmentDetail
@@ -298,6 +487,7 @@ describe("EnrollmentDetail", () => {
           ...base.order,
           status: "cancelled",
           statusLabel: "Cancelado",
+          correction: null,
           actions: {
             confirm: false,
             cancel: false,
@@ -310,5 +500,313 @@ describe("EnrollmentDetail", () => {
 
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
+  });
+
+  describe("corrections", () => {
+    it("offers the correction form on an active order, closed until it is needed", () => {
+      render(<EnrollmentDetail {...base} />);
+
+      const disclosure = screen
+        .getByText("Corregir inscripción", { selector: "summary" })
+        .closest("details");
+      expect(disclosure).not.toHaveAttribute("open");
+      expect(
+        within(disclosure as HTMLElement).getByRole("form", {
+          name: "Corregir inscripción",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(disclosure as HTMLElement).queryByLabelText("Monto devuelto"),
+      ).toBeNull();
+    });
+
+    it("asks for the refunded difference on a paid order", () => {
+      render(<EnrollmentDetail order={paidOrder} />);
+
+      const form = screen.getByRole("form", { name: "Corregir inscripción" });
+      expect(within(form).getByLabelText("Monto devuelto")).toBeInTheDocument();
+    });
+
+    it("reopens the form with what was typed after a refused correction", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          form={{
+            errors: { correctFee: "Ingresá la cuota en pesos enteros." },
+            values: { correctFee: "48,5" },
+          }}
+        />,
+      );
+
+      const disclosure = screen
+        .getByText("Corregir inscripción", { selector: "summary" })
+        .closest("details");
+      expect(disclosure).toHaveAttribute("open");
+      expect(screen.getByRole("textbox", { name: "Cuota" })).toHaveValue(
+        "48,5",
+      );
+      expect(
+        screen.getByText("Ingresá la cuota en pesos enteros."),
+      ).toBeInTheDocument();
+    });
+
+    it("does not offer a correction on a cancelled order", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...base.order,
+            status: "cancelled",
+            statusLabel: "Cancelado",
+            correction: null,
+          }}
+        />,
+      );
+
+      expect(screen.queryByText("Corregir inscripción")).toBeNull();
+    });
+
+    it("shows the history of corrections next to the audit trail", () => {
+      render(
+        <EnrollmentDetail
+          {...base}
+          order={{
+            ...base.order,
+            corrections: [
+              {
+                at: "31/10/2026 16:00",
+                actor: "admin@example.com",
+                note: null,
+                outcome: "kept-pending",
+                before: {
+                  workshop: "Cerámica",
+                  month: "noviembre 2026",
+                  turno: "Lunes",
+                  fee: "$ 48.000",
+                  total: "$ 58.000",
+                },
+                after: {
+                  workshop: "Cerámica",
+                  month: "noviembre 2026",
+                  turno: "Jueves",
+                  fee: "$ 50.000",
+                  total: "$ 60.000",
+                },
+                previousPayment: null,
+                refund: null,
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Correcciones (1)")).toBeInTheDocument();
+      expect(screen.getByText("Historial")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("EnrollmentDetail: where the materials come from", () => {
+  const line = (source: "stock" | "supplier", label: string) => ({
+    label,
+    supplier: "Proveedor Sur",
+    quantity: 1,
+    unitPrice: "$ 5.000",
+    lineTotal: "$ 5.000",
+    source,
+  });
+
+  it("labels each line as in stock or to be ordered", () => {
+    render(
+      <EnrollmentDetail
+        order={{
+          ...paidOrder,
+          lines: [line("stock", "Arcilla 1 kg"), line("supplier", "Esmalte")],
+        }}
+      />,
+    );
+
+    const lines = within(screen.getByRole("list", { name: "Materiales" }));
+    const [stocked, ordered] = lines.getAllByRole("listitem");
+    expect(within(stocked as HTMLElement).getByText("En stock")).toBeVisible();
+    expect(within(ordered as HTMLElement).getByText("A pedir")).toBeVisible();
+  });
+
+  it("offers only the received step for a paid order whose lines all come from stock", () => {
+    render(
+      <EnrollmentDetail
+        order={{
+          ...paidOrder,
+          lines: [line("stock", "Arcilla 1 kg")],
+          actions: {
+            confirm: false,
+            cancel: true,
+            materialsRequested: false,
+            materialsReceived: true,
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Siguiente paso: marcar como entregado/),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Marcar como recibido" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Marcar como solicitado" }),
+    ).toBeNull();
+  });
+});
+
+describe("EnrollmentDetail: material sales", () => {
+  const sales: NonNullable<EnrollmentDetailProps["order"]["sales"]> = [
+    {
+      id: "s1",
+      number: "CI-2026-0009",
+      href: "/admin/inscripciones/s1",
+      status: "pending_confirmation",
+      statusLabel: "Pendiente de confirmación",
+      total: "$ 10.000",
+      requestedOn: "20/11/2026",
+    },
+    {
+      id: "s2",
+      number: "CI-2026-0010",
+      href: "/admin/inscripciones/s2",
+      status: "paid",
+      statusLabel: "Cobrado",
+      total: "$ 4.000",
+      requestedOn: "21/11/2026",
+    },
+  ];
+  const record: EnrollmentDetailProps["order"] = {
+    ...paidOrder,
+    kind: "enrollment",
+    parent: null,
+    sales,
+    newSaleHref: "/admin/inscripciones/o1/venta-nueva",
+  };
+  const sale: EnrollmentDetailProps["order"] = {
+    ...base.order,
+    id: "s1",
+    number: "CI-2026-0009",
+    kind: "material_sale",
+    parent: { number: "CI-2026-0007", href: "/admin/inscripciones/o1" },
+    fee: "$ 0",
+    materialsTotal: "$ 10.000",
+    total: "$ 10.000",
+    totalPesos: "10000",
+    correction: null,
+    sales: [],
+    newSaleHref: null,
+  };
+
+  it("lists the sales of a monthly record with their state and a way to add one", async () => {
+    const { container } = render(<EnrollmentDetail order={record} />);
+
+    const section = screen.getByRole("region", {
+      name: "Ventas de materiales",
+    });
+    const items = within(section).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(
+      within(items[0] as HTMLElement).getByRole("link", {
+        name: /CI-2026-0009/,
+      }),
+    ).toHaveAttribute("href", "/admin/inscripciones/s1");
+    expect(within(items[0] as HTMLElement).getByText("$ 10.000")).toBeVisible();
+    expect(
+      within(items[0] as HTMLElement).getByText("Pendiente de confirmación"),
+    ).toBeVisible();
+    expect(within(items[1] as HTMLElement).getByText("Cobrado")).toBeVisible();
+    expect(
+      within(section).getByRole("link", { name: "Nueva venta de materiales" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1/venta-nueva");
+    // The monthly facts stay the record's own.
+    expect(container.querySelector("[data-order-total]")).toHaveTextContent(
+      "$ 58.000",
+    );
+    await expectNoAxeViolations(container);
+  });
+
+  it("says there are no sales yet, and offers none on a record that cannot take one", () => {
+    const { rerender } = render(
+      <EnrollmentDetail order={{ ...record, sales: [] }} />,
+    );
+    expect(
+      screen.getByText(/Todavía no hay ventas de materiales/),
+    ).toBeVisible();
+
+    rerender(
+      <EnrollmentDetail order={{ ...record, sales: [], newSaleHref: null }} />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Nueva venta de materiales" }),
+    ).toBeNull();
+  });
+
+  it("shows a sale as its own sale: linked to its record, with no fee, seat, correction or sales section", async () => {
+    const { container } = render(<EnrollmentDetail order={sale} />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Venta de materiales CI-2026-0009",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Inscripción CI-2026-0007" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/o1");
+    expect(screen.queryByText("Cuota")).toBeNull();
+    expect(screen.queryByText(/lugares confirmados/)).toBeNull();
+    expect(screen.queryByText("Corregir inscripción")).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: "Ventas de materiales" }),
+    ).toBeNull();
+    expect(screen.getByRole("form", { name: "Confirmar cobro" })).toBeVisible();
+    await expectNoAxeViolations(container);
+  });
+
+  it("cancels a paid sale by returning the stock, not by freeing a seat", async () => {
+    const user = userEvent.setup();
+    render(
+      <EnrollmentDetail
+        order={{
+          ...sale,
+          status: "paid",
+          statusLabel: "Cobrado",
+          actions: { ...sale.actions, confirm: false },
+          cancelRefund: { paid: "$ 10.000", paidPesos: "10000" },
+        }}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Cancelar venta" });
+    expect(within(form).getByLabelText("Monto devuelto")).toHaveValue("10000");
+    await user.click(
+      within(form).getByRole("button", { name: "Cancelar venta" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/vuelve al stock lo que todavía no se entregó/),
+    ).toBeVisible();
+    expect(within(dialog).queryByText(/lugar del turno/)).toBeNull();
+  });
+
+  it("keeps cancelling a monthly record as it was", () => {
+    render(<EnrollmentDetail order={record} />);
+
+    expect(screen.getByRole("form", { name: "Cancelar pedido" })).toBeVisible();
+    expect(screen.getByText("Corregir inscripción")).toBeVisible();
+  });
+
+  it("shows the sale-created banner", () => {
+    render(<EnrollmentDetail order={sale} feedback="sale-created" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Venta creada. Falta confirmar el cobro.",
+    );
   });
 });

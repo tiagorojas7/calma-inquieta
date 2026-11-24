@@ -1,22 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
 import {
   data,
   redirect,
   useActionData,
   useLoaderData,
-  useNavigate,
   useParams,
 } from "react-router";
 import { servicesContext } from "~/app/context";
-import {
-  loadEnrollmentDraft,
-  saveEnrollmentDraft,
-  type EnrollmentDraft,
-} from "~/app/enrollment/enrollment-draft";
 import { monthLabel } from "~/app/enrollment/order-labels";
+import {
+  POLICY_CHANGED_MESSAGE,
+  acceptanceFrom,
+  shownVersions,
+} from "~/app/enrollment/policy-acceptance";
 import { EnrollmentPage } from "~/app/ui/templates/enrollment-page";
 import type { AppServices } from "~/composition/request-services";
-import type { RequestEnrollmentError } from "~/modules/enrollments";
+import type {
+  PolicyAcceptance,
+  RequestEnrollmentError,
+} from "~/modules/enrollments";
 
 type RouteArgs = {
   request: Request;
@@ -39,7 +40,6 @@ type ActionFailure = {
   values: FormValues;
   errors: FieldErrors;
   formError?: string;
-  needsMaterials?: true;
 };
 
 const EMPTY_VALUES: FormValues = {
@@ -83,13 +83,15 @@ function studentErrors(error: RequestEnrollmentError): FieldErrors | null {
   return Object.fromEntries(
     error.issues.map((issue) => [
       issue.field,
-      issue.field === "fullName"
-        ? "Ingresá tu nombre completo."
-        : issue.field === "email"
-          ? "Ingresá un email válido."
-          : issue.field === "phone"
-            ? "Ingresá un teléfono argentino válido."
-            : "Tenés que aceptar la política de privacidad.",
+      issue.field === "policy" && issue.code === "unknown-reference"
+        ? POLICY_CHANGED_MESSAGE
+        : issue.field === "fullName"
+          ? "Ingresá tu nombre completo."
+          : issue.field === "email"
+            ? "Ingresá un email válido."
+            : issue.field === "phone"
+              ? "Ingresá un teléfono argentino válido."
+              : "Tenés que aceptar las condiciones y la política de privacidad.",
     ]),
   );
 }
@@ -108,8 +110,6 @@ function formError(error: RequestEnrollmentError): string {
       return "Ese turno ya no tiene lugares disponibles.";
     case "duplicate-order":
       return "Ya registraste una inscripción activa para este taller.";
-    case "materials-required":
-      return "Elegí los materiales para continuar.";
     default:
       return "No pudimos registrar tu inscripción. Probá de nuevo.";
   }
@@ -127,13 +127,19 @@ export async function loader({ context, params, request }: RouteArgs) {
     throw data(null, { status: 404 });
   }
   const offer = result.value;
+  const services = context.get(servicesContext);
+  const taller = await services.publicCatalog.talleres.findBySlug(
+    params.slug ?? "",
+  );
   return {
+    // The versions of the conditions and privacy documents this page shows.
+    policies: await shownVersions(services.policies),
     offer: {
       workshopName: offer.workshopName,
       period: offer.period,
       periodLabel: monthLabel(offer.period),
       fee: formatPesos(offer.fee.toCentavos()),
-      materialsRequired: offer.materialsRequired,
+      content: taller?.description ?? "",
       turnos: offer.turnos.map((turno) => ({
         id: turno.id,
         label: turno.label,
@@ -153,6 +159,7 @@ function textField(form: FormData, name: string): string {
 export async function action({ request, context, params }: RouteArgs) {
   const form = await request.formData();
   const values = valuesFrom(form);
+  const acceptance = acceptanceFrom(form);
   const result = await context
     .get(servicesContext)
     .publicEnrollments.requestEnrollment({
@@ -167,14 +174,12 @@ export async function action({ request, context, params }: RouteArgs) {
         honeypot: textField(form, "honeypot"),
       },
       lines: [],
+      ...(acceptance === undefined ? {} : { acceptance }),
     });
   if (result.ok) return redirect(`/pedido/${result.value.publicId}`);
 
   const errors = studentErrors(result.error);
   if (errors) return { values, errors } satisfies ActionFailure;
-  if (result.error.kind === "materials-required") {
-    return { values, errors: {}, needsMaterials: true } satisfies ActionFailure;
-  }
   return {
     values,
     errors: {},
@@ -182,69 +187,37 @@ export async function action({ request, context, params }: RouteArgs) {
   } satisfies ActionFailure;
 }
 
+type PolicyVersions = PolicyAcceptance | null;
+
 type OpenOffer = NonNullable<
   ReturnType<typeof useLoaderData<typeof loader>>["offer"]
 >;
 
-/** What this student already filled in for this month, if anything. */
-function savedDraft(slug: string, period: string): EnrollmentDraft | null {
-  const draft = loadEnrollmentDraft(window.sessionStorage, slug);
-  return draft?.student.period === period ? draft : null;
-}
-
-function OpenEnrollment({ offer }: { offer: OpenOffer }) {
+function OpenEnrollment({
+  offer,
+  policies,
+}: {
+  offer: OpenOffer;
+  policies: PolicyVersions;
+}) {
   const rejected = useActionData<typeof action>();
-  const navigate = useNavigate();
   const { slug = "" } = useParams();
-  const { period } = offer;
-  const [saved, setSaved] = useState<FormValues | null>(null);
-
-  // Coming back from the materials: the student keeps what they typed.
-  useEffect(() => {
-    const student = savedDraft(slug, period)?.student;
-    if (!student) return;
-    const { fullName, email, phone, turnoId } = student;
-    setSaved({ fullName, email, phone, turnoId });
-  }, [slug, period]);
-
-  const continueToMaterials = useCallback(() => {
-    if (!rejected?.needsMaterials) return;
-    saveEnrollmentDraft(window.sessionStorage, slug, {
-      student: {
-        ...rejected.values,
-        period,
-        policyAccepted: true,
-      },
-      lines: savedDraft(slug, period)?.lines ?? [],
-    });
-    void navigate(
-      `/talleres/${slug}/inscripcion/materiales?period=${encodeURIComponent(period)}`,
-    );
-  }, [navigate, period, rejected, slug]);
-
-  // Valid details need no extra tap: the button below is only the fallback.
-  useEffect(() => {
-    continueToMaterials();
-  }, [continueToMaterials]);
 
   return (
     <EnrollmentPage
-      key={saved ? "saved" : "blank"}
       state="open"
       offer={offer}
-      values={rejected?.values ?? saved ?? EMPTY_VALUES}
+      policies={policies}
+      values={rejected?.values ?? EMPTY_VALUES}
       errors={rejected?.errors ?? {}}
       backHref={`/talleres/${slug}`}
       {...(rejected?.formError ? { formError: rejected.formError } : {})}
-      {...(rejected?.needsMaterials
-        ? { needsMaterials: true, onContinueToMaterials: continueToMaterials }
-        : {})}
     />
   );
 }
 
 export default function EnrollmentRoute() {
-  const { offer } = useLoaderData<typeof loader>();
+  const { offer, policies } = useLoaderData<typeof loader>();
   if (offer === undefined) return <EnrollmentPage state="paused" />;
-  return <OpenEnrollment offer={offer} />;
+  return <OpenEnrollment offer={offer} policies={policies ?? null} />;
 }

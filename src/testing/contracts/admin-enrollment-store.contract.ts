@@ -23,6 +23,11 @@ export interface AdminEnrollmentStoreContractHarness {
   createOrder(overrides?: Partial<OrderDraft>): Promise<StoredOrder>;
   seatCount(order: StoredOrder): Promise<number>;
   audit(order: StoredOrder): Promise<readonly AuditEntry[]>;
+  /** The stock of the one variant every fixture line points at. */
+  readonly fixtureStock: {
+    seed(units: number): Promise<void>;
+    onHand(): Promise<number>;
+  };
   /** A test-only fixture that fails after claiming a seat during confirmation. */
   failingAfterSeatMutation(): Promise<AdminEnrollmentStoreContractHarness>;
 }
@@ -41,13 +46,58 @@ const confirm = (
     now,
   });
 
-const cancel = (store: AdminEnrollmentStore, order: StoredOrder) =>
+type CancelInput = Parameters<AdminEnrollmentStore["cancel"]>[0];
+
+/** A refund of the whole payment, dated the day of the contract clock. */
+const fullRefund = (
+  order: StoredOrder,
+): NonNullable<CancelInput["refund"]> => ({
+  amount: order.total,
+  refundedOn: "2026-10-31",
+  note: "returned in cash",
+});
+
+const cancel = (
+  store: AdminEnrollmentStore,
+  order: StoredOrder,
+  refund?: CancelInput["refund"],
+) =>
   store.cancel({
     orderId: order.id,
     reason: "changed plans",
+    ...(refund === undefined ? {} : { refund }),
     actor,
     now,
   });
+
+const materialLine = (
+  source: "stock" | "supplier",
+  quantity: number,
+): OrderDraft["lines"][number] => ({
+  materialId: "m-1",
+  variantId: "v-1",
+  materialName: "Clay",
+  variantLabel: source === "stock" ? "Stocked" : "Ordered",
+  unitPrice: pesos(1),
+  quantity,
+  supplierId: "supplier-1",
+  supplierName: "Supplier",
+  source,
+  unitCost: pesos(1),
+});
+
+/** An order whose materials come from stock, from the supplier, or both. */
+const withMaterials = (
+  harness: AdminEnrollmentStoreContractHarness,
+  lines: readonly OrderDraft["lines"][number][],
+) => {
+  const materials = lines.reduce((sum, line) => sum + line.quantity, 0);
+  return harness.createOrder({
+    lines,
+    materialsTotal: pesos(materials),
+    total: pesos(58_000 + materials),
+  });
+};
 
 /** Behavior every transactional admin enrollment store implementation must share. */
 export function runAdminEnrollmentStoreContract(
@@ -85,6 +135,27 @@ export function runAdminEnrollmentStoreContract(
           note: "bank transfer",
         },
       ]);
+    });
+
+    it("confirms a free order with a $0 payment and still claims the seat", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder({
+        fee: pesos(0),
+        total: pesos(0),
+      });
+
+      await expect(confirm(harness.store, order)).resolves.toEqual({
+        ok: true,
+        value: { kind: "confirmed" },
+      });
+      await expect(harness.seatCount(order)).resolves.toBe(1);
+      const detail = await harness.store.detail(order.id);
+      expect(detail).toMatchObject({
+        ok: true,
+        value: { status: "paid", paidAt, confirmedBy: actor.email },
+      });
+      if (!detail.ok) throw new Error("expected detail");
+      expect(detail.value.paidAmount?.isZero()).toBe(true);
     });
 
     it("makes repeat confirmation idempotent", async () => {
@@ -154,7 +225,9 @@ export function runAdminEnrollmentStoreContract(
         },
       });
       await confirm(harness.store, paid, "cash");
-      await expect(cancel(harness.store, paid)).resolves.toEqual({
+      await expect(
+        cancel(harness.store, paid, fullRefund(paid)),
+      ).resolves.toEqual({
         ok: true,
         value: { kind: "cancelled" },
       });
@@ -171,14 +244,180 @@ export function runAdminEnrollmentStoreContract(
       });
     });
 
+    it("records no refund when a pending order is cancelled", async () => {
+      const harness = await setup();
+      const pending = await harness.createOrder();
+
+      await cancel(harness.store, pending);
+
+      const detail = await harness.store.detail(pending.id);
+      expect(detail.ok && detail.value.refund).toBeUndefined();
+    });
+
+    it.each([
+      ["paid", []],
+      ["materials_requested", ["materials_requested"]],
+      ["materials_received", ["materials_requested", "materials_received"]],
+    ] as const)(
+      "cancels a %s order, releases its seat once and records the refund beside the payment",
+      async (_state, steps) => {
+        const harness = await setup();
+        const order = await harness.createOrder({
+          lines: [
+            {
+              materialId: "m-1",
+              variantId: "v-1",
+              materialName: "Clay",
+              variantLabel: "Large",
+              unitPrice: pesos(1),
+              quantity: 1,
+              supplierId: "supplier-1",
+              supplierName: "Supplier",
+            },
+          ],
+          materialsTotal: pesos(1),
+          total: pesos(58001),
+        });
+        await confirm(harness.store, order);
+        for (const to of steps)
+          await harness.store.markMaterials({
+            orderId: order.id,
+            to,
+            actor,
+            now,
+          });
+        await expect(harness.seatCount(order)).resolves.toBe(1);
+
+        await expect(
+          cancel(harness.store, order, {
+            amount: pesos(58000),
+            refundedOn: "2026-10-31",
+            note: "materials stay with the student",
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+        await expect(
+          cancel(harness.store, order, fullRefund(order)),
+        ).resolves.toEqual({ ok: true, value: { kind: "already-cancelled" } });
+
+        await expect(harness.seatCount(order)).resolves.toBe(0);
+        await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+          ok: true,
+          value: {
+            status: "cancelled",
+            paidAt,
+            paidAmount: order.total,
+            refund: {
+              amount: pesos(58000),
+              refundedAt: new Date("2026-10-31T03:00:00.000Z"),
+              note: "materials stay with the student",
+              refundedBy: actor.email,
+            },
+          },
+        });
+        const trail = await harness.audit(order);
+        expect(trail.filter((entry) => entry.to === "cancelled")).toEqual([
+          expect.objectContaining({
+            actor: actor.email,
+            note: "changed plans",
+          }),
+        ]);
+      },
+    );
+
+    it("accepts a refund of nothing and keeps the payment as history", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder();
+      await confirm(harness.store, order);
+
+      await cancel(harness.store, order, {
+        amount: pesos(0),
+        refundedOn: "2026-10-30",
+      });
+
+      const detail = await harness.store.detail(order.id);
+      expect(detail.ok && detail.value.refund).toEqual({
+        amount: pesos(0),
+        refundedAt: new Date("2026-10-30T03:00:00.000Z"),
+        refundedBy: actor.email,
+      });
+      expect(detail.ok && detail.value.paidAmount).toEqual(order.total);
+    });
+
+    it.each([
+      [
+        "above what was paid",
+        { amount: pesos(58001), refundedOn: "2026-10-31" },
+        "amount",
+        "above-paid",
+      ],
+      [
+        "in the future",
+        { amount: pesos(1), refundedOn: "2026-11-01" },
+        "refundedOn",
+        "future-date",
+      ],
+      [
+        "before the payment",
+        { amount: pesos(1), refundedOn: "2026-10-29" },
+        "refundedOn",
+        "before-payment",
+      ],
+      ["missing for a paid order", undefined, "amount", "required"],
+    ] as const)(
+      "refuses a refund %s and leaves the paid order untouched",
+      async (_label, refund, field, code) => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+        await confirm(harness.store, order);
+        const trail = await harness.audit(order);
+
+        await expect(cancel(harness.store, order, refund)).resolves.toEqual({
+          ok: false,
+          error: { kind: "invalid-refund", field, code },
+        });
+
+        await expect(harness.seatCount(order)).resolves.toBe(1);
+        await expect(harness.audit(order)).resolves.toEqual(trail);
+        await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+          ok: true,
+          value: { status: "paid" },
+        });
+      },
+    );
+
+    it("refuses a refund on a pending order", async () => {
+      const harness = await setup();
+      const order = await harness.createOrder();
+
+      await expect(
+        cancel(harness.store, order, {
+          amount: pesos(0),
+          refundedOn: "2026-10-31",
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid-refund",
+          field: "amount",
+          code: "not-refundable",
+        },
+      });
+      await expect(harness.store.detail(order.id)).resolves.toMatchObject({
+        ok: true,
+        value: { status: "pending_confirmation" },
+      });
+    });
+
     it("makes repeat cancellation idempotent", async () => {
       const harness = await setup();
       const order = await harness.createOrder();
       await confirm(harness.store, order);
-      await cancel(harness.store, order);
+      await cancel(harness.store, order, fullRefund(order));
       const audit = await harness.audit(order);
 
-      await expect(cancel(harness.store, order)).resolves.toEqual({
+      await expect(
+        cancel(harness.store, order, fullRefund(order)),
+      ).resolves.toEqual({
         ok: true,
         value: { kind: "already-cancelled" },
       });
@@ -315,7 +554,7 @@ export function runAdminEnrollmentStoreContract(
       await confirm(harness.store, order);
 
       const results = await Promise.all([
-        cancel(harness.store, order),
+        cancel(harness.store, order, fullRefund(order)),
         confirm(harness.store, order),
       ]);
 
@@ -461,6 +700,7 @@ export function runAdminEnrollmentStoreContract(
               quantity,
               supplierId: "supplier-1",
               supplierName: "Papelería Sur",
+              source: "supplier",
             },
           ],
           materialsTotal: pesos(1_000 * quantity),
@@ -538,6 +778,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 2,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -556,6 +797,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 1,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -574,6 +816,7 @@ export function runAdminEnrollmentStoreContract(
               quantity: 3,
               supplierName: "Papelería Sur",
               unitPrice: pesos(1_000),
+              source: "supplier",
             },
           ],
         },
@@ -581,6 +824,181 @@ export function runAdminEnrollmentStoreContract(
       await expect(harness.store.deliveryOrders("2026-12")).resolves.toEqual(
         [],
       );
+    });
+
+    describe("stock movements of a paid order", () => {
+      it("takes the units of the stock lines once, and a retry takes nothing", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+
+        await confirm(harness.store, order);
+        await confirm(harness.store, order);
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+      });
+
+      it("switches a line to the supplier when the stock ran out, and still pays", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(1);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+
+        await expect(confirm(harness.store, order)).resolves.toEqual({
+          ok: true,
+          value: { kind: "confirmed" },
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(1);
+        const detail = await harness.store.detail(order.id);
+        if (!detail.ok) throw new Error("expected detail");
+        expect(detail.value.status).toBe("paid");
+        expect(detail.value.lines.map((line) => line.source)).toEqual([
+          "supplier",
+        ]);
+      });
+
+      it("puts the units back once on cancel, but not after the materials were received", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(6);
+        const cancelled = await withMaterials(harness, [
+          materialLine("stock", 2),
+        ]);
+        const received = await withMaterials(harness, [
+          materialLine("stock", 3),
+        ]);
+        await confirm(harness.store, cancelled);
+        await confirm(harness.store, received);
+        await harness.store.markMaterials({
+          orderId: received.id,
+          to: "materials_received",
+          actor,
+          now,
+        });
+
+        await cancel(harness.store, cancelled, fullRefund(cancelled));
+        await cancel(harness.store, cancelled, fullRefund(cancelled));
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+        await cancel(harness.store, received, fullRefund(received));
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(3);
+      });
+
+      it("puts the units back when a correction sends the order to pending", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+        await confirm(harness.store, order);
+
+        await expect(
+          harness.store.correct({
+            orderId: order.id,
+            fee: pesos(70_000),
+            actor,
+            now,
+          }),
+        ).resolves.toEqual({
+          ok: true,
+          value: { kind: "corrected", outcome: "returned-to-pending" },
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(5);
+      });
+
+      it("does not take the units of a delivered order again when it is corrected up and paid again", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(2);
+        const order = await withMaterials(harness, [materialLine("stock", 2)]);
+        await confirm(harness.store, order);
+        await harness.store.markMaterials({
+          orderId: order.id,
+          to: "materials_received",
+          actor,
+          now,
+        });
+
+        await expect(
+          harness.store.correct({
+            orderId: order.id,
+            fee: pesos(70_000),
+            actor,
+            now,
+          }),
+        ).resolves.toEqual({
+          ok: true,
+          value: { kind: "corrected", outcome: "returned-to-pending" },
+        });
+        const raised = await harness.store.detail(order.id);
+        if (!raised.ok) throw new Error("expected detail");
+        await harness.store.confirm({
+          orderId: order.id,
+          amount: raised.value.total,
+          paidAt,
+          actor,
+          now,
+        });
+
+        await expect(harness.fixtureStock.onHand()).resolves.toBe(0);
+        const detail = await harness.store.detail(order.id);
+        if (!detail.ok) throw new Error("expected detail");
+        expect(detail.value.status).toBe("paid");
+        expect(detail.value.lines.map((line) => line.source)).toEqual([
+          "stock",
+        ]);
+        await expect(
+          harness.store.consolidationLines("2026-10"),
+        ).resolves.toMatchObject({ lines: [] });
+      });
+
+      it("consolidates only the supplier lines but delivers every line, with its source", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const order = await withMaterials(harness, [
+          materialLine("stock", 2),
+          materialLine("supplier", 1),
+        ]);
+        await confirm(harness.store, order);
+
+        const consolidated = await harness.store.consolidationLines("2026-10");
+        expect(
+          consolidated.lines.map((item) => [item.variantLabel, item.quantity]),
+        ).toEqual([["Ordered", 1]]);
+        const [delivery] = await harness.store.deliveryOrders("2026-10");
+        expect(
+          delivery?.lines.map((item) => [item.variantLabel, item.source]),
+        ).toEqual([
+          ["Stocked", "stock"],
+          ["Ordered", "supplier"],
+        ]);
+      });
+
+      it("lets an order with only stock lines go from paid straight to received, and no other", async () => {
+        const harness = await setup();
+        await harness.fixtureStock.seed(5);
+        const stockOnly = await withMaterials(harness, [
+          materialLine("stock", 1),
+        ]);
+        const mixed = await withMaterials(harness, [
+          materialLine("stock", 1),
+          materialLine("supplier", 1),
+        ]);
+        await confirm(harness.store, stockOnly);
+        await confirm(harness.store, mixed);
+        const receive = (order: StoredOrder) =>
+          harness.store.markMaterials({
+            orderId: order.id,
+            to: "materials_received",
+            actor,
+            now,
+          });
+
+        await expect(receive(stockOnly)).resolves.toEqual({
+          ok: true,
+          value: undefined,
+        });
+        await expect(receive(mixed)).resolves.toMatchObject({
+          ok: false,
+          error: { kind: "illegal-transition", from: "paid" },
+        });
+      });
     });
 
     it("allows different turnos to progress independently", async () => {
@@ -606,6 +1024,65 @@ export function runAdminEnrollmentStoreContract(
       ]);
       await expect(harness.seatCount(first)).resolves.toBe(1);
       await expect(harness.seatCount(second)).resolves.toBe(1);
+    });
+
+    describe("shared read state", () => {
+      const mark = (store: AdminEnrollmentStore, orderId: string) =>
+        store.markSeen({ orderId, actor, now });
+
+      it("marks a public order seen once and keeps the first mark", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+
+        await expect(mark(harness.store, order.id)).resolves.toEqual({
+          ok: true,
+          value: { kind: "seen" },
+        });
+        await expect(
+          harness.store.markSeen({
+            orderId: order.id,
+            actor: { email: "other-owner@example.com" },
+            now: new Date("2026-11-02T15:00:00Z"),
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "already-seen" } });
+      });
+
+      it("stores an order an admin created already seen", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder({ createdBy: actor.email });
+
+        await expect(mark(harness.store, order.id)).resolves.toEqual({
+          ok: true,
+          value: { kind: "already-seen" },
+        });
+      });
+
+      it("answers not found for an unknown order", async () => {
+        const harness = await setup();
+
+        await expect(
+          mark(harness.store, "00000000-0000-4000-8000-0000000000ff"),
+        ).resolves.toEqual({ ok: false, error: { kind: "not-found" } });
+      });
+
+      it("changes nothing but the read state: status, seats, audit and stock", async () => {
+        const harness = await setup();
+        const order = await harness.createOrder();
+        await confirm(harness.store, order);
+        const before = {
+          detail: await harness.store.detail(order.id),
+          seats: await harness.seatCount(order),
+          audit: await harness.audit(order),
+        };
+
+        await mark(harness.store, order.id);
+
+        await expect(harness.store.detail(order.id)).resolves.toEqual(
+          before.detail,
+        );
+        await expect(harness.seatCount(order)).resolves.toBe(before.seats);
+        await expect(harness.audit(order)).resolves.toEqual(before.audit);
+      });
     });
   });
 }

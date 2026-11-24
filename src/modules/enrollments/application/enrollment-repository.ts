@@ -1,6 +1,13 @@
 import type { Money, NotFound, Result } from "~/modules/_shared";
-import type { IllegalTransition, OrderStatus } from "../domain/order-core";
+import type {
+  IllegalTransition,
+  LineSource,
+  OrderKind,
+  OrderStatus,
+  TurnoFull,
+} from "../domain/order-core";
 import type { StudentContact } from "../domain/student-input";
+import type { PolicyAcceptance } from "./policy-acceptance";
 
 export interface OrderLineDraft {
   readonly materialId: string;
@@ -11,6 +18,15 @@ export interface OrderLineDraft {
   readonly quantity: number;
   readonly supplierId: string;
   readonly supplierName: string;
+  /**
+   * Where the units come from, decided when the line is created: `stock` when
+   * the units on hand cover the quantity, otherwise `supplier`. Paying the
+   * order takes a `stock` line's units, or switches it to `supplier` when the
+   * stock ran out in the meantime. Absent means `supplier`, like the column default.
+   */
+  readonly source?: LineSource;
+  /** The variant's supplier cost when the line was created; absent or null when none was set. */
+  readonly unitCost?: Money | null;
 }
 
 export interface OrderDraft {
@@ -32,19 +48,55 @@ export interface OrderDraft {
   readonly materialsTotal: Money;
   readonly total: Money;
   readonly policyVersion: string;
+  /**
+   * The conditions and privacy versions the student accepted; absent for an
+   * order an owner creates by hand and for orders made before they existed.
+   */
+  readonly acceptance?: PolicyAcceptance;
   /** Position is the array index. */
   readonly lines: readonly OrderLineDraft[];
+  /** Admin email when an owner enrolls a student by hand; absent for the public form. */
+  readonly createdBy?: string;
+  /**
+   * A free order an admin creates is stored already paid: the paid state, its
+   * $0 payment and the turno seat claim happen in the creation transaction.
+   */
+  readonly paidOnCreation?: PaidOnCreation;
 }
 
-export interface StoredOrder extends Omit<OrderDraft, "year"> {
+export interface PaidOnCreation {
+  readonly paidAt: Date;
+  /** Admin email recorded as the confirmer and the audit actor. */
+  readonly confirmedBy: string;
+  /** Capacity of the turno the seat is claimed against. */
+  readonly capacity: number;
+}
+
+export interface StoredOrder extends Omit<
+  OrderDraft,
+  "year" | "createdBy" | "paidOnCreation"
+> {
   readonly id: string;
   /** `CI-YYYY-NNNN`, assigned by the repository inside the create transaction. */
   readonly number: string;
   readonly status: OrderStatus;
+  /** Present only for a material sale; absent means the monthly `enrollment`. */
+  readonly kind?: OrderKind;
   readonly paidAt?: Date;
   readonly paidAmount?: Money;
   readonly confirmedBy?: string;
   readonly paymentNote?: string;
+  readonly refund?: OrderRefund;
+}
+
+/** What was returned to the student when a paid order was cancelled; the payment stays as history. */
+export interface OrderRefund {
+  /** Whole pesos, from $0 up to what was paid. */
+  readonly amount: Money;
+  /** The Córdoba day of the refund, stored at its local midnight. */
+  readonly refundedAt: Date;
+  readonly note?: string;
+  readonly refundedBy: string;
 }
 
 export type DuplicateOrder = { readonly kind: "duplicate-order" };
@@ -73,16 +125,21 @@ export interface TransitionContext {
   readonly note?: string;
   readonly paidAt?: Date;
   readonly paidAmount?: Money;
+  /** Recorded with the cancellation of a paid order; `actor` is who refunded. */
+  readonly refund?: Pick<OrderRefund, "amount" | "refundedAt" | "note">;
 }
 
 /**
  * Order aggregate port. `create` is one transaction: duplicate check, number
- * from the yearly sequence, order, lines and the creation audit row; a failure
- * leaves nothing behind and the number is reused. The seat-effecting
+ * from the yearly sequence, order, lines, the seat claim of a paid-on-creation
+ * order and the creation audit row; a failure (a full turno included) leaves
+ * nothing behind and the number is reused. The seat-effecting
  * transitions (confirm, cancel of a paid order) are added by slice E3.
  */
 export interface OrderRepository {
-  create(draft: OrderDraft): Promise<Result<StoredOrder, DuplicateOrder>>;
+  create(
+    draft: OrderDraft,
+  ): Promise<Result<StoredOrder, DuplicateOrder | TurnoFull>>;
   /** The only public lookup key; an order number never matches. */
   findByPublicId(publicId: string): Promise<StoredOrder | null>;
   /** Admin-only lookup; implementations later lock this row with its transition. */

@@ -20,6 +20,8 @@ import {
   createUnavailableInsightsService,
 } from "./insights-service";
 
+import { InMemoryPrivateEventRepository } from "~/testing/fakes/in-memory-private-event-repository";
+
 // 2026-10-31 12:30 in Cordoba: the current period is 2026-10.
 const NOW = new Date("2026-10-31T15:30:00.000Z");
 const actor = testAdminActor();
@@ -35,6 +37,7 @@ function fixture() {
     workshops,
     intensives,
     intensiveRequests,
+    privateEvents: new InMemoryPrivateEventRepository(),
     teachers,
     clock: fixedClock(NOW),
   });
@@ -95,6 +98,9 @@ const material = (overrides: Partial<MaterialRow>): MaterialRow => ({
   orders: 1,
   units: 2,
   amountCentavos: 4_000_00,
+  // No cost loaded: the price counts as the cost.
+  costCentavos: overrides.amountCentavos ?? 4_000_00,
+  uncostedLines: 1,
   ...overrides,
 });
 

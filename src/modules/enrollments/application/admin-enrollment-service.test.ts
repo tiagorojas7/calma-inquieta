@@ -6,19 +6,42 @@ import {
   type AdminEnrollmentUseCases,
 } from "./admin-enrollment-service";
 import type { AdminEnrollmentStore } from "./admin-enrollment-store";
+import type { CreatePendingEnrollment } from "./admin-enrollment-service";
 import type { OrderRepository } from "./enrollment-repository";
+import type { EnrollmentOfferLookup } from "./offer-lookup";
 import type { SeatLedger } from "./seat-ledger";
 import {
   InMemoryAdminEnrollmentStore,
   InMemoryOrderRepository,
 } from "~/testing/fakes/enrollments-order-repository";
 import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
-import { orderDraft, pesos } from "~/testing/fakes/enrollments-builders";
+import {
+  offerFixture,
+  orderDraft,
+  pesos,
+} from "~/testing/fakes/enrollments-builders";
 
 const admin = { kind: "admin-actor" as const, email: "admin@example.com" };
 const now = new Date("2026-11-01T02:59:00Z");
 const offer = { status: "open" as const, capacity: 8 };
 const payment = { amount: "58000", paidOn: "2026-10-31" };
+const noOffers: EnrollmentOfferLookup = {
+  findOffer: () => Promise.resolve(null),
+};
+const notCalled = () => Promise.reject(new Error("createPending not expected"));
+const pendingInput = {
+  slug: "ceramica",
+  period: "2026-11",
+  turnoId: "turno-1",
+  student: {
+    fullName: "Ana Perez",
+    email: "ana@example.com",
+    phone: "+54 9 351 555 1000",
+    policyAccepted: true,
+    honeypot: "",
+  },
+  lines: [],
+};
 
 async function fixture(
   overrides: {
@@ -34,10 +57,15 @@ async function fixture(
       } | null>;
     };
     readonly repository?: OrderRepository;
+    readonly offers?: EnrollmentOfferLookup;
+    readonly createPending?: (
+      orders: InMemoryOrderRepository,
+    ) => CreatePendingEnrollment;
   } = {},
 ) {
   const orders = new InMemoryOrderRepository();
   const seats = new InMemorySeatLedger();
+  const pendingCalls: unknown[] = [];
   const created = await orders.create(orderDraft());
   if (!created.ok) throw new Error("fixture order");
   const service = createAdminEnrollmentService({
@@ -53,8 +81,37 @@ async function fixture(
       },
     ),
     clock: overrides.clock ?? { now: () => now },
+    offers: overrides.offers ?? noOffers,
+    createPending:
+      overrides.createPending?.(orders) ??
+      ((input, actorEmail, options) => {
+        pendingCalls.push({
+          input,
+          actorEmail,
+          ...(options === undefined ? {} : { options }),
+        });
+        return Promise.resolve({
+          ok: true,
+          value: {
+            publicId: "A".repeat(22),
+            number: "CI-2026-0002",
+            status: "pending_confirmation" as const,
+            studentName: input.student.fullName,
+            workshopName: "Ceramica",
+            period: input.period,
+            turnoLabel: "Lunes 18:00",
+            weekday: 1,
+            startsAt: "18:00",
+            endsAt: "20:00",
+            lines: [],
+            fee: pesos(58000),
+            materialsTotal: pesos(0),
+            total: pesos(58000),
+          },
+        });
+      }),
   });
-  return { service, orders, seats, order: created.value };
+  return { service, orders, seats, pendingCalls, order: created.value };
 }
 
 async function createOrder(
@@ -89,6 +146,107 @@ const materialsLine = {
 };
 
 describe("admin enrollment service", () => {
+  it("hands an admin-set fee to the creation and leaves a priced order pending", async () => {
+    const { service, pendingCalls, seats } = await fixture();
+    const before = seats.snapshot();
+
+    const created = await service.createPending(admin, pendingInput, {
+      fee: pesos(40000),
+    });
+
+    expect(created).toMatchObject({
+      ok: true,
+      value: { status: "pending_confirmation" },
+    });
+    expect(pendingCalls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: { fee: pesos(40000) },
+      },
+    ]);
+    expect(seats.snapshot()).toEqual(before);
+  });
+
+  it("hands a $0 fee to the creation with the Córdoba creation date and returns its paid order without a second step", async () => {
+    const paid = {
+      ok: true as const,
+      value: {
+        publicId: "F".repeat(22),
+        number: "CI-2026-0003",
+        status: "paid" as const,
+        studentName: "Ana Perez",
+        workshopName: "Ceramica",
+        period: "2026-11",
+        turnoLabel: "Lunes 18:00",
+        weekday: 1,
+        startsAt: "18:00",
+        endsAt: "20:00",
+        lines: [],
+        fee: pesos(0),
+        materialsTotal: pesos(0),
+        total: pesos(0),
+      },
+    };
+    const calls: unknown[] = [];
+    const { service, seats } = await fixture({
+      createPending: () => (input, actorEmail, options) => {
+        calls.push({ input, actorEmail, options });
+        return Promise.resolve(paid);
+      },
+    });
+    const before = seats.snapshot();
+
+    await expect(
+      service.createPending(admin, pendingInput, { fee: pesos(0) }),
+    ).resolves.toEqual(paid);
+    expect(calls).toEqual([
+      {
+        input: pendingInput,
+        actorEmail: "admin@example.com",
+        options: {
+          fee: pesos(0),
+          paidAtIfFree: new Date("2026-10-31T03:00:00.000Z"),
+        },
+      },
+    ]);
+    expect(seats.snapshot()).toEqual(before);
+  });
+
+  it("returns the turno-full refusal of a free enrollment untouched", async () => {
+    const { service } = await fixture({
+      createPending: () => () =>
+        Promise.resolve({ ok: false, error: { kind: "turno-full" } }),
+    });
+
+    await expect(
+      service.createPending(admin, pendingInput, { fee: pesos(0) }),
+    ).resolves.toEqual({ ok: false, error: { kind: "turno-full" } });
+  });
+
+  it("creates a pending monthly enrollment as the authorized admin", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    const created = await service.createPending(admin, pendingInput);
+
+    expect(created).toMatchObject({
+      ok: true,
+      value: { status: "pending_confirmation", studentName: "Ana Perez" },
+    });
+    expect(pendingCalls).toEqual([
+      { input: pendingInput, actorEmail: "admin@example.com" },
+    ]);
+  });
+
+  it("refuses a manual enrollment from a non-admin without creating it", async () => {
+    const { service, pendingCalls } = await fixture();
+
+    await expect(
+      service.createPending({ kind: "visitor" }, pendingInput),
+    ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+    expect(pendingCalls).toEqual([]);
+  });
+
   it.each([
     [
       "confirmPayment",
@@ -181,6 +339,13 @@ describe("admin enrollment service", () => {
     ).resolves.toEqual(denied);
     await expect(service.list(undefined)).resolves.toEqual(denied);
     await expect(service.detail(undefined, "order-1")).resolves.toEqual(denied);
+    await expect(
+      service.createPending(undefined, pendingInput),
+    ).resolves.toEqual(denied);
+    await expect(service.createPending(admin, pendingInput)).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
     await expect(
       service.markMaterialsRequestedBulk(undefined, ["order-1"]),
     ).resolves.toEqual([{ orderId: "order-1", result: denied }]);
@@ -390,11 +555,14 @@ describe("admin enrollment service", () => {
     const closedService = createAdminEnrollmentService({
       store: closedStore,
       clock: { now: () => now },
+      createPending: notCalled,
+      offers: noOffers,
     });
     await expect(
       closedService.cancel(admin, {
         orderId: paid.order.id,
         reason: "closed period cancellation",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({
       ok: true,
@@ -404,6 +572,7 @@ describe("admin enrollment service", () => {
       closedService.cancel(admin, {
         orderId: paid.order.id,
         reason: "closed period cancellation",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({
       ok: true,
@@ -425,15 +594,162 @@ describe("admin enrollment service", () => {
     await expect(
       material.service.cancel(admin, {
         orderId: withLines.id,
-        reason: "too late",
+        reason: "materials already requested",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
-    ).resolves.toEqual({
+    ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+    expect(
+      await material.seats.confirmedSeats(
+        withLines.periodId,
+        withLines.turnoId,
+      ),
+    ).toBe(0);
+  });
+
+  describe("refunds", () => {
+    const paidFixture = async () => {
+      const paid = await fixture();
+      await paid.service.confirmPayment(admin, {
+        orderId: paid.order.id,
+        ...payment,
+      });
+      return paid;
+    };
+    const cancelWith = (
+      paid: Awaited<ReturnType<typeof paidFixture>>,
+      refund: { amount: string; refundedOn: string; note?: string },
+    ) =>
+      paid.service.cancel(admin, {
+        orderId: paid.order.id,
+        reason: "changed plans",
+        refund,
+      });
+    const refused = (
+      field: "amount" | "refundedOn" | "note",
+      code: string,
+    ) => ({
       ok: false,
-      error: {
-        kind: "illegal-transition",
-        from: "materials_requested",
-        to: "cancelled",
+      error: { kind: "invalid-refund", field, code },
+    });
+
+    it.each(["0", "25000", "58.000"])(
+      "accepts a refund of %s pesos and records who returned it",
+      async (amount) => {
+        const paid = await paidFixture();
+
+        await expect(
+          cancelWith(paid, {
+            amount,
+            refundedOn: "2026-10-31",
+            note: "  transfer back  ",
+          }),
+        ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+
+        const stored = await paid.orders.findForAdmin(paid.order.id);
+        expect(stored?.refund).toEqual({
+          amount: pesos(Number(amount.replace(".", ""))),
+          refundedAt: new Date("2026-10-31T03:00:00.000Z"),
+          note: "transfer back",
+          refundedBy: admin.email,
+        });
+        expect(stored?.paidAmount).toEqual(pesos(58000));
+        await expect(
+          paid.seats.confirmedSeats(paid.order.periodId, paid.order.turnoId),
+        ).resolves.toBe(0);
       },
+    );
+
+    it.each([
+      ["", "required"],
+      ["-5", "invalid-format"],
+      ["abc", "invalid-format"],
+      ["100,50", "not-whole-pesos"],
+      ["100.5", "not-whole-pesos"],
+      ["99999999999999999999", "out-of-range"],
+    ])("refuses the typed amount %j", async (amount, code) => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount, refundedOn: "2026-10-31" }),
+      ).resolves.toEqual(refused("amount", code));
+      await expect(
+        paid.orders.findForAdmin(paid.order.id),
+      ).resolves.toMatchObject({ status: "paid" });
+    });
+
+    it("refuses a refund above what was paid", async () => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount: "58001", refundedOn: "2026-10-31" }),
+      ).resolves.toEqual(refused("amount", "above-paid"));
+    });
+
+    it.each([
+      ["2026-02-30", "invalid-calendar-date"],
+      ["31/10/2026", "invalid-calendar-date"],
+      ["2026-11-01", "future-date"],
+      ["2026-10-30", "before-payment"],
+    ])("refuses the refund date %s", async (refundedOn, code) => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, { amount: "100", refundedOn }),
+      ).resolves.toEqual(refused("refundedOn", code));
+    });
+
+    it("refuses a note over 300 characters", async () => {
+      const paid = await paidFixture();
+
+      await expect(
+        cancelWith(paid, {
+          amount: "100",
+          refundedOn: "2026-10-31",
+          note: "x".repeat(301),
+        }),
+      ).resolves.toEqual(refused("note", "too-long"));
+    });
+
+    it("needs a refund to cancel a paid order and records none for a pending one", async () => {
+      const paid = await paidFixture();
+      await expect(
+        paid.service.cancel(admin, {
+          orderId: paid.order.id,
+          reason: "changed plans",
+        }),
+      ).resolves.toEqual(refused("amount", "required"));
+
+      const pending = await fixture();
+      await expect(
+        pending.service.cancel(admin, {
+          orderId: pending.order.id,
+          reason: "changed mind",
+        }),
+      ).resolves.toEqual({ ok: true, value: { kind: "cancelled" } });
+      expect(
+        (await pending.orders.findForAdmin(pending.order.id))?.refund,
+      ).toBeUndefined();
+
+      const other = await fixture();
+      await expect(
+        other.service.cancel(admin, {
+          orderId: other.order.id,
+          reason: "changed mind",
+          refund: { amount: "0", refundedOn: "2026-10-31" },
+        }),
+      ).resolves.toEqual(refused("amount", "not-refundable"));
+    });
+
+    it("keeps the first refund when the cancellation is repeated", async () => {
+      const paid = await paidFixture();
+      await cancelWith(paid, { amount: "100", refundedOn: "2026-10-31" });
+
+      await expect(
+        cancelWith(paid, { amount: "58000", refundedOn: "2026-10-31" }),
+      ).resolves.toEqual({ ok: true, value: { kind: "already-cancelled" } });
+      expect(
+        (await paid.orders.findForAdmin(paid.order.id))?.refund?.amount,
+      ).toEqual(pesos(100));
     });
   });
 
@@ -767,6 +1083,8 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 8 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
+      offers: noOffers,
     });
     const before = await paid.orders.findForAdmin(paid.order.id);
     const audit = await paid.orders.auditTrail(paid.order.id);
@@ -775,6 +1093,7 @@ describe("admin enrollment service", () => {
       service.cancel(admin, {
         orderId: paid.order.id,
         reason: "changed plans",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     await expect(paid.orders.findForAdmin(paid.order.id)).resolves.toEqual(
@@ -816,12 +1135,15 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 8 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
+      offers: noOffers,
     });
 
     await expect(
       service.cancel(admin, {
         orderId: paid.order.id,
         reason: "changed plans",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
       }),
     ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
     expect(releases).toBe(1);
@@ -865,11 +1187,14 @@ describe("admin enrollment service", () => {
         find: () => Promise.resolve({ status: "open", capacity: 1 }),
       }),
       clock: { now: () => now },
+      createPending: notCalled,
+      offers: noOffers,
     });
 
     const cancellation = service.cancel(admin, {
       orderId: paid.order.id,
       reason: "changed plans",
+      refund: { amount: "58000", refundedOn: "2026-10-31" },
     });
     await entered;
     const confirmation = service.confirmPayment(admin, {
@@ -895,16 +1220,21 @@ describe("admin enrollment service", () => {
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       cancel: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
+      correct: () =>
+        Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       consolidationLines: () => Promise.reject(new Error("read failed")),
       deliveryOrders: () => Promise.reject(new Error("read failed")),
       markMaterials: () =>
         Promise.resolve({ ok: false, error: { kind: "unavailable" } }),
       list: () => Promise.reject(new Error("read failed")),
       detail: () => Promise.reject(new Error("read failed")),
+      markSeen: () => Promise.reject(new Error("read failed")),
     };
     const service = createAdminEnrollmentService({
       store,
       clock: { now: () => now },
+      createPending: notCalled,
+      offers: noOffers,
     });
     await expect(service.list(admin)).resolves.toEqual({
       ok: false,
@@ -997,5 +1327,418 @@ describe("admin enrollment service", () => {
     });
     const detail = await reader.detail(admin, order.id);
     expect(detail.ok && Array.isArray(detail.value.audit)).toBe(true);
+  });
+});
+
+describe("admin order corrections", () => {
+  const offers = (offer = offerFixture()): EnrollmentOfferLookup => ({
+    findOffer: () => Promise.resolve(offer),
+  });
+  const secondTurno = { slug: "ceramica", period: "2026-10", turnoId: "t-2" };
+
+  it("denies a non-admin before reading anything", async () => {
+    const { service, orders, seats, order } = await fixture();
+    const reads = orders.readCount();
+    const ledgerCalls = seats.callCount();
+
+    await expect(
+      service.correct(undefined, { orderId: order.id, fee: "50000" }),
+    ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+    await expect(
+      createUnavailableAdminEnrollmentService().correct(undefined, {
+        orderId: order.id,
+        fee: "50000",
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind: "denied" } });
+    await expect(
+      createUnavailableAdminEnrollmentService().correct(admin, {
+        orderId: order.id,
+        fee: "50000",
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(orders.readCount()).toBe(reads);
+    expect(seats.callCount()).toBe(ledgerCalls);
+  });
+
+  it("corrects a pending order to the picked turno and the typed fee", async () => {
+    const { service, order } = await fixture({ offers: offers() });
+
+    await expect(
+      service.correct(admin, {
+        orderId: order.id,
+        target: secondTurno,
+        fee: "$ 70.000",
+        note: "  switched turno  ",
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { kind: "corrected", outcome: "kept-pending" },
+    });
+
+    await expect(service.detail(admin, order.id)).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "pending_confirmation",
+        turnoId: "t-2",
+        turnoLabel: "Jueves 10:00 a 12:00",
+        weekday: 4,
+        fee: pesos(70000),
+        total: pesos(70000),
+        corrections: [{ note: "switched turno", actor: admin.email }],
+      },
+    });
+  });
+
+  it("keeps the current place when no target is picked and accepts a $0 fee", async () => {
+    const { service, order } = await fixture();
+
+    await expect(
+      service.correct(admin, { orderId: order.id, fee: "0" }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { kind: "corrected", outcome: "kept-pending" },
+    });
+    await expect(service.detail(admin, order.id)).resolves.toMatchObject({
+      ok: true,
+      value: { turnoId: "t-1", fee: pesos(0), total: pesos(0) },
+    });
+  });
+
+  it.each([
+    ["nothing", ""],
+    ["cents", "100,50"],
+    ["a negative amount", "-5"],
+    ["text", "abc"],
+  ])("refuses a fee of %s and changes nothing", async (_label, fee) => {
+    const { service, order } = await fixture();
+    const before = await service.detail(admin, order.id);
+
+    await expect(
+      service.correct(admin, { orderId: order.id, fee }),
+    ).resolves.toEqual({ ok: false, error: { kind: "invalid-fee" } });
+    await expect(service.detail(admin, order.id)).resolves.toEqual(before);
+  });
+
+  it("refuses a note longer than 300 characters", async () => {
+    const { service, order } = await fixture();
+
+    await expect(
+      service.correct(admin, {
+        orderId: order.id,
+        fee: "50000",
+        note: "x".repeat(301),
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "reason", code: "too-long" }],
+      },
+    });
+  });
+
+  it.each([
+    [
+      "an unknown workshop",
+      (): EnrollmentOfferLookup => ({
+        findOffer: () => Promise.resolve(null),
+      }),
+      "turno-not-offered",
+    ],
+    [
+      "an unpublished workshop",
+      () =>
+        offers(
+          offerFixture({
+            workshop: {
+              id: "w-1",
+              name: "Cerámica inicial",
+              published: false,
+              paused: false,
+            },
+          }),
+        ),
+      "turno-not-offered",
+    ],
+    [
+      "a paused workshop",
+      () =>
+        offers(
+          offerFixture({
+            workshop: {
+              id: "w-1",
+              name: "Cerámica inicial",
+              published: true,
+              paused: true,
+            },
+          }),
+        ),
+      "enrollments-paused",
+    ],
+    [
+      "a workshop without that month",
+      () => offers(offerFixture({ period: null })),
+      "period-closed",
+    ],
+    [
+      "a turno the month does not offer",
+      () => offers(offerFixture({ turnos: [] })),
+      "turno-not-offered",
+    ],
+    [
+      "an offer lookup that fails",
+      (): EnrollmentOfferLookup => ({
+        findOffer: () => Promise.reject(new Error("offer failed")),
+      }),
+      "unavailable",
+    ],
+  ])("refuses %s and changes nothing", async (_label, lookup, kind) => {
+    const { service, order, seats } = await fixture({ offers: lookup() });
+    const before = await service.detail(admin, order.id);
+    const ledgerCalls = seats.callCount();
+
+    await expect(
+      service.correct(admin, {
+        orderId: order.id,
+        target: secondTurno,
+        fee: "50000",
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind } });
+    expect(seats.callCount()).toBe(ledgerCalls);
+    await expect(service.detail(admin, order.id)).resolves.toEqual(before);
+  });
+
+  describe("on a paid order", () => {
+    const paidFixture = async (options: Parameters<typeof fixture>[0] = {}) => {
+      const paid = await fixture(options);
+      await paid.service.confirmPayment(admin, {
+        orderId: paid.order.id,
+        ...payment,
+      });
+      return paid;
+    };
+
+    it("returns it to pending when the new total is higher, and the owner confirms the new total", async () => {
+      const { service, order, seats } = await paidFixture();
+      await expect(seats.confirmedSeats("p-1", "t-1")).resolves.toBe(1);
+
+      await expect(
+        service.correct(admin, { orderId: order.id, fee: "60000" }),
+      ).resolves.toEqual({
+        ok: true,
+        value: { kind: "corrected", outcome: "returned-to-pending" },
+      });
+      await expect(seats.confirmedSeats("p-1", "t-1")).resolves.toBe(0);
+      await expect(
+        service.confirmPayment(admin, {
+          orderId: order.id,
+          ...payment,
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: { kind: "amount-mismatch" },
+      });
+      await expect(
+        service.confirmPayment(admin, {
+          orderId: order.id,
+          amount: "60000",
+          paidOn: "2026-10-31",
+        }),
+      ).resolves.toEqual({ ok: true, value: { kind: "confirmed" } });
+      await expect(seats.confirmedSeats("p-1", "t-1")).resolves.toBe(1);
+    });
+
+    it("keeps it paid and records the typed refund when the new total is lower", async () => {
+      const { service, order } = await paidFixture();
+
+      await expect(
+        service.correct(admin, {
+          orderId: order.id,
+          fee: "50000",
+          refund: {
+            amount: " 8000 ",
+            refundedOn: "2026-10-31",
+            note: "  cash  ",
+          },
+        }),
+      ).resolves.toEqual({
+        ok: true,
+        value: { kind: "corrected", outcome: "lowered" },
+      });
+      await expect(service.detail(admin, order.id)).resolves.toMatchObject({
+        ok: true,
+        value: {
+          status: "paid",
+          paidAmount: pesos(50000),
+          corrections: [
+            {
+              refund: {
+                amount: pesos(8000),
+                refundedAt: new Date("2026-10-31T03:00:00.000Z"),
+                note: "cash",
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    it.each([
+      [
+        "cents",
+        { amount: "8000,50", refundedOn: "2026-10-31" },
+        { kind: "invalid-refund", field: "amount", code: "not-whole-pesos" },
+      ],
+      [
+        "a date that does not exist",
+        { amount: "8000", refundedOn: "2026-02-31" },
+        {
+          kind: "invalid-refund",
+          field: "refundedOn",
+          code: "invalid-calendar-date",
+        },
+      ],
+      [
+        "a note that is too long",
+        { amount: "8000", refundedOn: "2026-10-31", note: "x".repeat(301) },
+        { kind: "invalid-refund", field: "note", code: "too-long" },
+      ],
+      [
+        "more than the difference",
+        { amount: "8001", refundedOn: "2026-10-31" },
+        {
+          kind: "invalid-refund",
+          field: "amount",
+          code: "above-difference",
+        },
+      ],
+    ])(
+      "refuses a refund with %s and changes nothing",
+      async (_label, refund, error) => {
+        const { service, order, seats } = await paidFixture();
+        const before = await service.detail(admin, order.id);
+
+        await expect(
+          service.correct(admin, { orderId: order.id, fee: "50000", refund }),
+        ).resolves.toEqual({ ok: false, error });
+        await expect(service.detail(admin, order.id)).resolves.toEqual(before);
+        await expect(seats.confirmedSeats("p-1", "t-1")).resolves.toBe(1);
+      },
+    );
+
+    it("refuses the whole correction when the picked turno is full", async () => {
+      const { service, order, seats, orders } = await paidFixture({
+        offers: offers(),
+        capacity: 1,
+      });
+      const other = await createOrder(orders, 1, { turnoId: "t-2" });
+      await service.confirmPayment(admin, { orderId: other.id, ...payment });
+      const before = await service.detail(admin, order.id);
+
+      await expect(
+        service.correct(admin, {
+          orderId: order.id,
+          target: secondTurno,
+          fee: "58000",
+        }),
+      ).resolves.toEqual({ ok: false, error: { kind: "turno-full" } });
+      await expect(service.detail(admin, order.id)).resolves.toEqual(before);
+      await expect(seats.confirmedSeats("p-1", "t-1")).resolves.toBe(1);
+      await expect(seats.confirmedSeats("p-1", "t-2")).resolves.toBe(1);
+    });
+
+    it("refuses to correct a cancelled order", async () => {
+      const { service, order } = await paidFixture();
+      await service.cancel(admin, {
+        orderId: order.id,
+        reason: "changed plans",
+        refund: { amount: "58000", refundedOn: "2026-10-31" },
+      });
+
+      await expect(
+        service.correct(admin, { orderId: order.id, fee: "1000" }),
+      ).resolves.toEqual({ ok: false, error: { kind: "not-correctable" } });
+    });
+  });
+
+  it("refuses a move into a month that is no longer open", async () => {
+    const { service, order } = await fixture({
+      offers: offers(),
+      periods: {
+        find: () => Promise.resolve({ status: "closed", capacity: 8 }),
+      },
+    });
+
+    await expect(
+      service.correct(admin, {
+        orderId: order.id,
+        target: secondTurno,
+        fee: "58000",
+      }),
+    ).resolves.toEqual({ ok: false, error: { kind: "period-closed" } });
+  });
+});
+
+describe("admin enrollment read state", () => {
+  it("stamps the first opener and the clock time, and never overwrites them", async () => {
+    const { service, orders, order } = await fixture();
+
+    await expect(service.markSeen(admin, order.id)).resolves.toEqual({
+      ok: true,
+      value: { kind: "seen" },
+    });
+    await expect(
+      service.markSeen(
+        { kind: "admin-actor" as const, email: "other@example.com" },
+        order.id,
+      ),
+    ).resolves.toEqual({ ok: true, value: { kind: "already-seen" } });
+    expect(orders.seenMark(order.id)).toEqual({
+      by: "admin@example.com",
+      at: now,
+    });
+  });
+
+  it("leaves an order an admin created already read", async () => {
+    const { service, orders } = await fixture();
+    const manual = await createOrder(orders, 2, { createdBy: admin.email });
+
+    await expect(service.markSeen(admin, manual.id)).resolves.toEqual({
+      ok: true,
+      value: { kind: "already-seen" },
+    });
+  });
+
+  it("denies without an admin actor and answers not found for an unknown order", async () => {
+    const { service, order } = await fixture();
+
+    await expect(service.markSeen(null, order.id)).resolves.toMatchObject({
+      ok: false,
+      error: { kind: "denied" },
+    });
+    await expect(service.markSeen(admin, "missing")).resolves.toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+
+  it("reports unavailable when the store fails", async () => {
+    const { order } = await fixture();
+    const failing = createAdminEnrollmentService({
+      store: {
+        markSeen: () => Promise.reject(new Error("db down")),
+      } as unknown as AdminEnrollmentStore,
+      clock: { now: () => now },
+      offers: noOffers,
+      createPending: notCalled,
+    });
+
+    await expect(failing.markSeen(admin, order.id)).resolves.toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+    await expect(
+      createUnavailableAdminEnrollmentService().markSeen(admin, order.id),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 });

@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
 import { check, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-// The students registry is derived from `enrollment_order`; only the owner's
-// observations are stored, keyed by the normalized email.
+// The durable student profile lives with the enrollments that create it
+// (`student` in ./enrollments); this module stores only the owner's
+// observations, keyed by the normalized email.
 export const studentNote = pgTable(
   "student_note",
   {

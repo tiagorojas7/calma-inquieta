@@ -8,7 +8,6 @@ import {
   TextAreaField,
   TextField,
 } from "./form-fields";
-import { PeriodMaterialsPicker } from "./workshop-period-materials";
 import { GalleryFields, type GalleryFieldImage } from "./gallery-fields";
 import { adminMicrocopy } from "./microcopy";
 import { ADMIN_SHEET, AdminFieldPair } from "./admin-sections";
@@ -17,7 +16,13 @@ const copy = adminMicrocopy.workshops;
 const quick = copy.quick;
 
 export type QuickWorkshopFormField =
-  "name" | "description" | "defaultFee" | "teacherId" | "percentage" | "images";
+  | "name"
+  | "summary"
+  | "description"
+  | "defaultFee"
+  | "teacherId"
+  | "percentage"
+  | "images";
 
 export interface QuickTurnoValues {
   readonly weekday: string;
@@ -28,25 +33,19 @@ export interface QuickTurnoValues {
 
 export interface QuickFormValues {
   readonly name: string;
+  readonly summary: string;
   readonly description: string;
   readonly teacherId: string;
   readonly defaultFee: string;
   readonly percentage: string;
   readonly images: readonly GalleryFieldImage[];
   readonly rows: readonly QuickTurnoValues[];
-  readonly materialIds: readonly string[];
 }
 
 export interface QuickFormTeacher {
   readonly id: string;
   readonly name: string;
   readonly modality: "own" | "third_party";
-}
-
-export interface QuickFormMaterial {
-  readonly id: string;
-  readonly name: string;
-  readonly category: string;
 }
 
 const WEEKDAYS = [
@@ -120,8 +119,8 @@ function TurnoRow({
 /**
  * The whole taller on one page: nothing else is needed to publish. A native
  * `<form method="post">`, never a router `Form` or fetcher, because the Worker
- * gate denies `/admin/**.data`. The slug, the summary and the technique are
- * not asked: they are derived. The percentage opens by itself for a
+ * gate denies `/admin/**.data`. Like the full form it asks for the card text
+ * and the full content; the slug and the technique are derived. The percentage opens by itself for a
  * third-party teacher and the server validates it either way. The first
  * submit button is the primary one, so Enter publishes.
  */
@@ -132,7 +131,6 @@ export function QuickWorkshopForm({
   turnosError,
   formError,
   teachers,
-  materials,
   cancelHref,
 }: {
   values: QuickFormValues;
@@ -141,7 +139,6 @@ export function QuickWorkshopForm({
   turnosError?: string | undefined;
   formError?: string | undefined;
   teachers: readonly QuickFormTeacher[];
-  materials: readonly QuickFormMaterial[];
   cancelHref: string;
 }) {
   const teacherOptions = [
@@ -171,8 +168,16 @@ export function QuickWorkshopForm({
         error={errors.name}
         autoComplete="off"
       />
+      <TextField
+        label={copy.form.summary}
+        hint={copy.form.summaryHint}
+        name="summary"
+        defaultValue={values.summary}
+        error={errors.summary}
+      />
       <TextAreaField
         label={copy.form.description}
+        hint={copy.form.descriptionHint}
         name="description"
         rows={5}
         defaultValue={values.description}
@@ -253,28 +258,6 @@ export function QuickWorkshopForm({
           </details>
         ) : null}
       </section>
-      {materials.length === 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-display text-xl text-ink-900">
-            {quick.sectionMaterials}
-          </h2>
-          <Text tone="muted">{quick.noMaterials}</Text>
-        </section>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <Text tone="muted">{quick.materialsHint}</Text>
-          <PeriodMaterialsPicker
-            legend={quick.sectionMaterials}
-            selectedIds={values.materialIds}
-            options={materials.map((material) => ({
-              ...material,
-              active: true,
-              available: true,
-              historical: false,
-            }))}
-          />
-        </div>
-      )}
       <Text tone="muted">{quick.derivedNote}</Text>
       <div className="flex flex-wrap gap-3">
         <AdminButton

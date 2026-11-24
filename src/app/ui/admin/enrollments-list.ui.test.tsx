@@ -335,6 +335,15 @@ describe("EnrollmentsList feedback and filters", () => {
     );
   });
 
+  it("words an enrollment created by hand", () => {
+    render(
+      <EnrollmentsList {...props} feedback={{ kind: "created", name: null }} />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Inscripción creada. Queda pendiente de pago.",
+    );
+  });
+
   it("words a cancellation and an unnamed order", () => {
     const { rerender } = render(
       <EnrollmentsList
@@ -420,5 +429,14 @@ describe("EnrollmentsList feedback and filters", () => {
       "href",
       "/admin/inscripciones?estado=pending_confirmation&q=ana&page=3",
     );
+  });
+});
+
+describe("EnrollmentsList new enrollment entry point", () => {
+  it("links to the manual enrollment screen with a document navigation", () => {
+    render(<EnrollmentsList {...props} />);
+    expect(
+      screen.getByRole("link", { name: "Nueva inscripción" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/nueva");
   });
 });

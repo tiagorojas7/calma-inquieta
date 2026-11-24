@@ -2,7 +2,7 @@ import { err, ok, type Result } from "~/modules/_shared";
 import type {
   AttendanceRepository,
   MakeUpExists,
-  SessionKey,
+  MakeUpStatus,
   StoredMakeUp,
   StoredMark,
 } from "~/modules/attendance";
@@ -14,18 +14,18 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
   readonly marks: StoredMark[] = [];
   readonly makeUps = new Map<string, StoredMakeUp>();
 
-  replaceSession(
-    session: SessionKey,
-    marks: readonly StoredMark[],
-  ): Promise<void> {
-    const keep = this.marks.filter(
-      (mark) =>
-        mark.periodId !== session.periodId ||
-        mark.turnoId !== session.turnoId ||
-        mark.date !== session.date,
-    );
-    this.marks.length = 0;
-    this.marks.push(...keep, ...marks);
+  upsertMarks(marks: readonly StoredMark[]): Promise<void> {
+    for (const mark of marks) {
+      const at = this.marks.findIndex(
+        (m) =>
+          m.periodId === mark.periodId &&
+          m.turnoId === mark.turnoId &&
+          m.date === mark.date &&
+          m.email === mark.email,
+      );
+      if (at === -1) this.marks.push(mark);
+      else this.marks[at] = mark;
+    }
     return Promise.resolve();
   }
 
@@ -71,7 +71,7 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
       );
   }
 
-  listMakeUps(status: "pending" | "done" | "all") {
+  listMakeUps(status: MakeUpStatus | "all") {
     return Promise.resolve(
       this.ordered((m) => status === "all" || m.status === status),
     );
@@ -79,6 +79,17 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
 
   makeUpsByStudent(email: string) {
     return Promise.resolve(this.ordered((m) => m.email === email));
+  }
+
+  countMakeUpsInto(periodId: string, turnoId: string, date: string) {
+    return Promise.resolve(
+      [...this.makeUps.values()].filter(
+        (m) =>
+          m.makeUpPeriodId === periodId &&
+          m.makeUpTurnoId === turnoId &&
+          m.makeUpDate === date,
+      ).length,
+    );
   }
 
   makeUpsForTurno(periodId: string, turnoId: string) {
@@ -91,12 +102,28 @@ export class InMemoryAttendanceRepository implements AttendanceRepository {
     id: string,
     change: { readonly by: string; readonly at: Date },
   ): Promise<StoredMakeUp | null> {
+    return this.closePending(id, "done", change);
+  }
+
+  markMakeUpMissed(
+    id: string,
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
+    return this.closePending(id, "missed", change);
+  }
+
+  /** Only a pending make-up changes; a closed one is returned as it is. */
+  private closePending(
+    id: string,
+    status: "done" | "missed",
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
     const stored = this.makeUps.get(id);
     if (!stored) return Promise.resolve(null);
-    if (stored.status === "done") return Promise.resolve(stored);
+    if (stored.status !== "pending") return Promise.resolve(stored);
     const next: StoredMakeUp = {
       ...stored,
-      status: "done",
+      status,
       doneBy: change.by,
       doneAt: change.at,
     };

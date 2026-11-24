@@ -14,6 +14,8 @@ import {
   validateMaterialDraft,
   type ValidMaterialDraft,
 } from "../domain/material-core";
+import { validateStockAdjustment } from "../domain/stock-core";
+import type { StockStore } from "./stock-store";
 import type {
   Material,
   MaterialError,
@@ -29,6 +31,7 @@ import {
   type MaterialRepository,
 } from "./material-repository";
 import { createCatalogTools } from "./catalog-tools";
+import { saleVariantsOf } from "./sale-catalog";
 import type { SupplierRepository } from "./supplier-repository";
 
 type MaybeActor = AdminActor | null | undefined;
@@ -47,6 +50,7 @@ export interface MaterialServiceDeps {
   readonly suppliers: SupplierRepository;
   readonly media: MediaLookup;
   readonly clock: Clock;
+  readonly stock: StockStore;
   readonly newId?: () => string;
   readonly newVariantId?: () => string;
 }
@@ -175,6 +179,7 @@ export function createMaterialsService(
         id: existing ? existing.id : newVariantId(),
         label: variant.label,
         price: variant.price,
+        cost: variant.cost,
         available: variant.available,
         used: existing?.used ?? false,
         position: variant.position,
@@ -276,6 +281,12 @@ export function createMaterialsService(
       if (!authorized.ok) return authorized;
       const active = await repository.list({ state: "active" });
       return ok(active.filter((material) => material.available).map(summary));
+    },
+
+    async listSaleVariants(actor) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      return ok(saleVariantsOf(await repository.list({ state: "active" })));
     },
 
     async get(actor, id) {
@@ -395,6 +406,34 @@ export function createMaterialsService(
       const authorized = requireAdminActor(actor);
       if (!authorized.ok) return authorized;
       return tools.raisePrices(authorized.value, scope, percent);
+    },
+
+    async stockOf(actor, materialId) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const material = await repository.findById(materialId);
+      if (!material) return err(notFound);
+      return ok(await deps.stock.onHand(material.variants.map((v) => v.id)));
+    },
+
+    async adjustStock(actor, materialId, variantId, draft) {
+      const authorized = requireAdminActor(actor);
+      if (!authorized.ok) return authorized;
+      const material = await repository.findById(materialId);
+      if (!material?.variants.some((variant) => variant.id === variantId))
+        return err(notFound);
+      const valid = validateStockAdjustment(draft);
+      if (!valid.ok) return err({ kind: "invalid", issues: valid.error });
+      const outcome = await deps.stock.adjust({
+        variantId,
+        delta: valid.value.delta,
+        reason: valid.value.reason,
+        by: authorized.value.email,
+        at: clock.now(),
+      });
+      return outcome.kind === "adjusted"
+        ? ok({ onHand: outcome.onHand })
+        : err({ kind: "insufficient-stock", onHand: outcome.onHand });
     },
 
     async categorySuggestions(actor) {

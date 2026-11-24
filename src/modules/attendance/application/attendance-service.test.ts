@@ -23,6 +23,7 @@ const turno = (overrides: Partial<ScheduledTurno> = {}): ScheduledTurno => ({
   weekday: 1,
   startsAt: "18:00",
   endsAt: "20:00",
+  capacity: 10,
   ...overrides,
 });
 
@@ -45,21 +46,42 @@ const caro: RosterStudent = {
   feePaid: false,
 };
 
-function setup() {
+const THURSDAY = "5e4d3c2b-1a09-4f8e-9d7c-6b5a4f3e2d10";
+
+function setup(options: { wednesdayCapacity?: number } = {}) {
   const turnos = [
     turno(),
-    turno({ turnoId: WEDNESDAY, turnoLabel: "Miércoles mañana", weekday: 3 }),
+    turno({
+      turnoId: WEDNESDAY,
+      turnoLabel: "Miércoles mañana",
+      weekday: 3,
+      capacity: options.wednesdayCapacity ?? 10,
+    }),
+    turno({
+      turnoId: THURSDAY,
+      workshopId: "w2",
+      workshopName: "Acuarela",
+      turnoLabel: "Jueves tarde",
+      weekday: 4,
+    }),
   ];
   const roster = [ana, bea, caro];
+  const rosters: Record<string, RosterStudent[]> = {
+    [MONDAY]: roster,
+    [WEDNESDAY]: [],
+  };
   const repository = new InMemoryAttendanceRepository();
+  let next = 0;
   const service = createAttendanceService({
     schedule: { listScheduledTurnos: () => Promise.resolve(turnos) },
-    roster: { forTurno: () => Promise.resolve(roster) },
+    roster: {
+      forTurno: (_periodId, turnoId) => Promise.resolve(rosters[turnoId] ?? []),
+    },
     repository,
     clock: fixedClock(now),
-    newId: () => "makeup-1",
+    newId: () => `makeup-${String(++next)}`,
   });
-  return { service, repository, actor: testAdminActor() };
+  return { service, repository, actor: testAdminActor(), roster, rosters };
 }
 
 describe("attendance service", () => {
@@ -78,6 +100,7 @@ describe("attendance service", () => {
     ).resolves.toEqual(denied);
     await expect(service.listMakeUps(null, "all")).resolves.toEqual(denied);
     await expect(service.completeMakeUp(null, "x")).resolves.toEqual(denied);
+    await expect(service.markMakeUpMissed(null, "x")).resolves.toEqual(denied);
     await expect(service.studentSummary(null, "a@b.co")).resolves.toEqual(
       denied,
     );
@@ -89,6 +112,7 @@ describe("attendance service", () => {
     expect(listed.ok && listed.value.map((t) => t.turnoLabel)).toEqual([
       "Lunes tarde",
       "Miércoles mañana",
+      "Jueves tarde",
     ]);
   });
 
@@ -173,7 +197,7 @@ describe("attendance service", () => {
     ).resolves.toEqual(missing);
   });
 
-  it("records a session in one go, replacing earlier marks and stamping the actor", async () => {
+  it("records a session in one go, updating the submitted marks and stamping the actor", async () => {
     const { service, repository, actor } = setup();
     await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
       { email: "ana@example.com", status: "absent" },
@@ -198,29 +222,121 @@ describe("attendance service", () => {
         markedBy: "owner@example.com",
         markedAt: now,
       },
+      {
+        periodId: PERIOD,
+        turnoId: MONDAY,
+        date: "2026-10-05",
+        email: "bea@example.com",
+        status: "present",
+        markedBy: "owner@example.com",
+        markedAt: now,
+      },
     ]);
   });
 
-  it("refuses marks for someone outside the paid roster", async () => {
+  it("marks a student whose fee is pending like a paid one", async () => {
     const { service, repository, actor } = setup();
-    const invalid = {
+
+    const result = await service.recordSession(
+      actor,
+      PERIOD,
+      MONDAY,
+      "2026-10-05",
+      [
+        { email: "ana@example.com", status: "present" },
+        { email: "caro@example.com", status: "absent" },
+      ],
+    );
+
+    expect(result).toEqual({ ok: true, value: { recorded: 2 } });
+    expect(repository.marks.map((m) => [m.email, m.status])).toEqual([
+      ["ana@example.com", "present"],
+      ["caro@example.com", "absent"],
+    ]);
+    const sheet = await service.sheet(actor, PERIOD, MONDAY, "2026-10-05");
+    expect(
+      sheet.ok && sheet.value.rows.map((r) => [r.email, r.feePaid, r.status]),
+    ).toEqual([
+      ["ana@example.com", true, "present"],
+      ["bea@example.com", true, null],
+      ["caro@example.com", false, "absent"],
+    ]);
+  });
+
+  it("refuses marks for someone who is not on the roster", async () => {
+    const { service, repository, actor } = setup();
+    await expect(
+      service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "otra@example.com", status: "present" },
+      ]),
+    ).resolves.toEqual({
       ok: false,
       error: {
         kind: "invalid",
         issues: [{ field: "marks", code: "unknown-reference" }],
       },
-    };
-    await expect(
-      service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
-        { email: "caro@example.com", status: "present" },
-      ]),
-    ).resolves.toEqual(invalid);
-    await expect(
-      service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
-        { email: "otra@example.com", status: "present" },
-      ]),
-    ).resolves.toEqual(invalid);
+    });
     expect(repository.marks).toEqual([]);
+  });
+
+  it("keeps the mark of a student who left the roster when the session is saved again", async () => {
+    const { service, repository, actor, roster } = setup();
+    await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+      { email: "ana@example.com", status: "present" },
+      { email: "bea@example.com", status: "absent" },
+    ]);
+    roster.splice(roster.indexOf(bea), 1);
+
+    const result = await service.recordSession(
+      actor,
+      PERIOD,
+      MONDAY,
+      "2026-10-05",
+      [{ email: "ana@example.com", status: "absent" }],
+    );
+
+    expect(result).toEqual({ ok: true, value: { recorded: 1 } });
+    expect(repository.marks.map((m) => [m.email, m.status])).toEqual([
+      ["ana@example.com", "absent"],
+      ["bea@example.com", "absent"],
+    ]);
+  });
+
+  it("refuses to turn an absence with a make-up into a presence", async () => {
+    const { service, repository, actor } = setup();
+    await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+      { email: "ana@example.com", status: "absent" },
+      { email: "bea@example.com", status: "absent" },
+    ]);
+    await service.scheduleMakeUp(actor, {
+      email: "ana@example.com",
+      periodId: PERIOD,
+      turnoId: MONDAY,
+      date: "2026-10-05",
+      makeUpPeriodId: PERIOD,
+      makeUpTurnoId: WEDNESDAY,
+      makeUpDate: "2026-10-14",
+    });
+
+    const result = await service.recordSession(
+      actor,
+      PERIOD,
+      MONDAY,
+      "2026-10-05",
+      [
+        { email: "ana@example.com", status: "present" },
+        { email: "bea@example.com", status: "present" },
+      ],
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: { kind: "make-up-booked", emails: ["ana@example.com"] },
+    });
+    expect(repository.marks.map((m) => [m.email, m.status])).toEqual([
+      ["ana@example.com", "absent"],
+      ["bea@example.com", "absent"],
+    ]);
   });
 
   describe("make-up classes", () => {
@@ -268,7 +384,132 @@ describe("attendance service", () => {
           createdAt: now,
           doneBy: null,
           doneAt: null,
+          targetFull: false,
         },
+      });
+    });
+
+    it("schedules a make-up for an absent student whose fee is pending", async () => {
+      const { service, actor } = setup();
+      await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "caro@example.com", status: "absent" },
+      ]);
+
+      const result = await service.scheduleMakeUp(actor, {
+        ...input,
+        email: "caro@example.com",
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        value: { email: "caro@example.com", studentName: "Caro Díaz" },
+      });
+    });
+
+    it("refuses the student's own turno as the make-up turno", async () => {
+      const { service, repository, actor } = await withAbsence();
+      await expect(
+        service.scheduleMakeUp(actor, {
+          ...input,
+          makeUpTurnoId: MONDAY,
+          makeUpDate: "2026-10-12",
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "makeUpTurno", code: "not-selectable" }],
+        },
+      });
+      expect(repository.makeUps.size).toBe(0);
+    });
+
+    it("refuses a make-up turno of another workshop", async () => {
+      const { service, repository, actor } = await withAbsence();
+      await expect(
+        service.scheduleMakeUp(actor, {
+          ...input,
+          makeUpTurnoId: THURSDAY,
+          makeUpDate: "2026-10-15",
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "makeUpTurno", code: "not-selectable" }],
+        },
+      });
+      expect(repository.makeUps.size).toBe(0);
+    });
+
+    it("refuses a make-up date outside the period of the chosen turno", async () => {
+      const { service, repository, actor } = await withAbsence();
+      await expect(
+        service.scheduleMakeUp(actor, { ...input, makeUpDate: "2026-11-04" }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "makeUpDate", code: "not-selectable" }],
+        },
+      });
+      expect(repository.makeUps.size).toBe(0);
+    });
+
+    it("warns, without blocking, when the roster already fills the make-up turno", async () => {
+      const { service, repository, actor, rosters } = setup({
+        wednesdayCapacity: 2,
+      });
+      rosters[WEDNESDAY] = [bea, caro];
+      await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "ana@example.com", status: "absent" },
+      ]);
+
+      const result = await service.scheduleMakeUp(actor, input);
+
+      expect(result).toMatchObject({ ok: true, value: { targetFull: true } });
+      expect(repository.makeUps.size).toBe(1);
+    });
+
+    it("keeps a booked make-up successful when the occupancy check cannot be read", async () => {
+      const { service, repository, actor } = setup({ wednesdayCapacity: 2 });
+      await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "ana@example.com", status: "absent" },
+      ]);
+      repository.countMakeUpsInto = () =>
+        Promise.reject(new Error("occupancy read failed"));
+
+      const result = await service.scheduleMakeUp(actor, input);
+
+      expect(result).toMatchObject({ ok: true, value: { targetFull: false } });
+      expect(repository.makeUps.size).toBe(1);
+    });
+
+    it("counts the make-ups already booked on that date toward the capacity", async () => {
+      const { service, actor, rosters } = setup({ wednesdayCapacity: 3 });
+      rosters[WEDNESDAY] = [bea, caro];
+      await service.recordSession(actor, PERIOD, MONDAY, "2026-10-05", [
+        { email: "ana@example.com", status: "absent" },
+        { email: "bea@example.com", status: "absent" },
+        { email: "caro@example.com", status: "absent" },
+      ]);
+
+      const first = await service.scheduleMakeUp(actor, input);
+      const sameDay = await service.scheduleMakeUp(actor, {
+        ...input,
+        email: "bea@example.com",
+      });
+      const otherDay = await service.scheduleMakeUp(actor, {
+        ...input,
+        email: "caro@example.com",
+        makeUpDate: "2026-10-21",
+      });
+
+      expect(first).toMatchObject({ ok: true, value: { targetFull: false } });
+      expect(sameDay).toMatchObject({ ok: true, value: { targetFull: true } });
+      expect(otherDay).toMatchObject({
+        ok: true,
+        value: { targetFull: false },
       });
     });
 
@@ -360,6 +601,75 @@ describe("attendance service", () => {
         error: { kind: "not-found" },
       });
     });
+
+    it("marks a pending make-up as missed with who and when, and lists it as missed", async () => {
+      const { service, actor } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+
+      const missed = await service.markMakeUpMissed(actor, "makeup-1");
+
+      expect(missed).toMatchObject({
+        ok: true,
+        value: { status: "missed", doneBy: "owner@example.com", doneAt: now },
+      });
+      const listed = await service.listMakeUps(actor, "missed");
+      expect(listed.ok && listed.value.map((m) => m.id)).toEqual(["makeup-1"]);
+      const pending = await service.listMakeUps(actor, "pending");
+      expect(pending).toEqual({ ok: true, value: [] });
+      await expect(service.markMakeUpMissed(actor, "nope")).resolves.toEqual({
+        ok: false,
+        error: { kind: "not-found" },
+      });
+    });
+
+    it("keeps a repeated missed action idempotent and refuses to change a closed make-up", async () => {
+      const { service, actor, repository } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+      const missed = await service.markMakeUpMissed(actor, "makeup-1");
+
+      await expect(
+        service.markMakeUpMissed(actor, "makeup-1"),
+      ).resolves.toEqual(missed);
+      await expect(service.completeMakeUp(actor, "makeup-1")).resolves.toEqual({
+        ok: false,
+        error: { kind: "make-up-closed" },
+      });
+      expect(repository.makeUps.get("makeup-1")).toMatchObject({
+        status: "missed",
+      });
+
+      const other = await withAbsence();
+      await other.service.scheduleMakeUp(other.actor, input);
+      await other.service.completeMakeUp(other.actor, "makeup-1");
+      await expect(
+        other.service.markMakeUpMissed(other.actor, "makeup-1"),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-closed" } });
+      expect(other.repository.makeUps.get("makeup-1")).toMatchObject({
+        status: "done",
+      });
+    });
+
+    it("grants no new make-up once the absence's make-up was missed or done", async () => {
+      const { service, actor, repository } = await withAbsence();
+      await service.scheduleMakeUp(actor, input);
+      await service.markMakeUpMissed(actor, "makeup-1");
+
+      await expect(service.scheduleMakeUp(actor, input)).resolves.toEqual({
+        ok: false,
+        error: { kind: "make-up-used" },
+      });
+      await expect(
+        service.scheduleMakeUp(actor, { ...input, makeUpDate: "2026-10-21" }),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-used" } });
+      expect(repository.makeUps.size).toBe(1);
+
+      const other = await withAbsence();
+      await other.service.scheduleMakeUp(other.actor, input);
+      await other.service.completeMakeUp(other.actor, "makeup-1");
+      await expect(
+        other.service.scheduleMakeUp(other.actor, input),
+      ).resolves.toEqual({ ok: false, error: { kind: "make-up-used" } });
+    });
   });
 
   it("summarizes a student's attendance across turnos", async () => {
@@ -384,7 +694,13 @@ describe("attendance service", () => {
       service.studentSummary(actor, "Ana@Example.com "),
     ).resolves.toEqual({
       ok: true,
-      value: { present: 1, absent: 1, makeUpsPending: 1, makeUpsDone: 0 },
+      value: {
+        present: 1,
+        absent: 1,
+        makeUpsPending: 1,
+        makeUpsDone: 0,
+        makeUpsMissed: 0,
+      },
     });
   });
 

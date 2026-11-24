@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
-import type { Material, MaterialLookup } from "~/modules/materials";
 import { createWorkshopPeriodsService } from "./workshop-period-service";
 import { InMemoryWorkshopPeriodRepository } from "~/testing/fakes/in-memory-workshop-period-repository";
 import { InMemoryMonthlyWorkshopRepository } from "~/testing/fakes/in-memory-monthly-workshop-repository";
@@ -10,7 +9,6 @@ import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import {
   buildImageUse,
-  buildMaterial,
   buildTeacher,
   buildWorkshopPeriod,
 } from "~/testing/fakes/admin-builders";
@@ -57,45 +55,16 @@ async function setup(
     defaultCapacity: 8,
     active: true,
   });
-  const materials = new Map<string, Material>([
-    ["material-1", buildMaterial({ id: "material-1", name: "Clay" })],
-    [
-      "material-2",
-      buildMaterial({ id: "material-2", name: "Paint", active: false }),
-    ],
-    [
-      "material-3",
-      buildMaterial({ id: "material-3", name: "Glue", available: false }),
-    ],
-    ["material-4", buildMaterial({ id: "material-4", name: "Ink" })],
-  ]);
-  const materialLookupCalls: string[][] = [];
-  const materialLookup: MaterialLookup = {
-    findByIds(ids) {
-      materialLookupCalls.push([...ids]);
-      return Promise.resolve(
-        new Map(
-          ids.flatMap((id) => {
-            const material = materials.get(id);
-            return material ? [[id, material] as const] : [];
-          }),
-        ),
-      );
-    },
-  };
   return {
     periods,
     workshops,
     turnos,
     teachers,
-    materials,
-    materialLookupCalls,
     service: createWorkshopPeriodsService({
       repository: periods,
       workshops,
       turnos,
       teachers,
-      materials: materialLookup,
       clock: fixedClock(new Date(now)),
       newId: (() => {
         let sequence = 0;
@@ -114,13 +83,11 @@ const periodsCount = (
 
 const draft = {
   fee: "41000",
-  materialsRequired: false,
   projectTitle: "",
   projectDescription: "",
   projectImages: [],
   capacities: [{ turnoId: "t", capacity: "7" }],
   snapshotPercentage: "30",
-  materialIds: [],
 };
 
 describe("WorkshopPeriodsService", () => {
@@ -144,7 +111,6 @@ describe("WorkshopPeriodsService", () => {
       workshops: { findById: called },
       turnos: { listForWorkshop: called },
       teachers: { findByIds: called },
-      materials: { findByIds: called },
       clock: fixedClock(new Date("2026-10-15T12:00:00Z")),
     } as never);
 
@@ -224,11 +190,9 @@ describe("WorkshopPeriodsService", () => {
       workshopId: "w",
       period: "2026-10",
       fee,
-      materialsRequired: false,
       status: "draft",
       project: { title: "", description: "", images: [] },
       turnos: [],
-      materials: [],
       snapshot: {
         teacher: { id: "teacher-1", name: "Cami", active: true },
         modality: "third_party",
@@ -276,7 +240,7 @@ describe("WorkshopPeriodsService", () => {
     ).toEqual({ ok: false, error: { kind: "unavailable" } });
   });
 
-  it("preserves stored deferred images while an empty material selection clears offers", async () => {
+  it("preserves stored deferred images when saving", async () => {
     const { service, periods } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
     const stored = periods.items.get("p");
@@ -284,14 +248,11 @@ describe("WorkshopPeriodsService", () => {
     periods.items.set("p", {
       ...stored,
       project: { ...stored.project, images: [buildImageUse()] },
-      materials: [
-        { id: "material-1", name: "Clay", active: true, available: true },
-      ],
     });
 
     expect(await service.update(testAdminActor(), "p", draft)).toMatchObject({
       ok: true,
-      value: { project: { images: [buildImageUse()] }, materials: [] },
+      value: { project: { images: [buildImageUse()] } },
     });
   });
 
@@ -303,9 +264,6 @@ describe("WorkshopPeriodsService", () => {
     periods.items.set("p", {
       ...stored,
       project: { ...stored.project, images: [buildImageUse()] },
-      materials: [
-        { id: "material-1", name: "Clay", active: true, available: true },
-      ],
     });
 
     const opened = await service.openMonth(testAdminActor(), "w", "2026-11");
@@ -619,7 +577,6 @@ describe("WorkshopPeriodsService", () => {
       service.update(testAdminActor(), "p", {
         ...draft,
         fee: "42000",
-        materialsRequired: true,
         projectTitle: "New project",
         projectDescription: "New description",
         snapshotPercentage: "25",
@@ -800,220 +757,33 @@ describe("WorkshopPeriodsService", () => {
     expect(periods.items.get("p")?.status).toBe("closed");
   });
 
-  it("preserves unchanged historical materials without revalidating them", async () => {
-    const { service, periods, materialLookupCalls } = await setup();
-    await service.openMonth(testAdminActor(), "w", "2026-10");
-    const opened = await periods.findById("p");
-    if (!opened) throw new Error("missing period fixture");
-    const historical = [
-      { id: "legacy", name: "Retired clay", active: false, available: false },
-    ];
-    await periods.update({ ...opened, materials: historical });
-
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["legacy"],
-      }),
-    ).toMatchObject({ ok: true, value: { materials: historical } });
-    expect(materialLookupCalls).toEqual([]);
-  });
-
-  it("preserves an existing material that later becomes unselectable while saving other fields", async () => {
-    const { service, periods, materialLookupCalls } = await setup();
-    await service.openMonth(testAdminActor(), "w", "2026-10");
-    const opened = await periods.findById("p");
-    if (!opened) throw new Error("missing period fixture");
-    const historical = {
-      id: "material-2",
-      name: "Original paint",
-      active: true,
-      available: true,
-    };
-    await periods.update({ ...opened, materials: [historical] });
-
-    await expect(
-      service.update(testAdminActor(), "p", {
-        ...draft,
-        fee: "42000",
-        materialIds: ["material-2", "material-4"],
-      }),
-    ).resolves.toMatchObject({
-      ok: true,
-      value: {
-        materials: [
-          historical,
-          { id: "material-4", name: "Ink", active: true, available: true },
-        ],
-      },
-    });
-    expect(materialLookupCalls).toEqual([["material-4"]]);
-
-    await expect(
-      service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-4", "material-2"],
-      }),
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { materials: [{ id: "material-4" }, historical] },
-    });
-    await expect(
-      service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-2"],
-      }),
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { materials: [historical] },
-    });
-    expect(materialLookupCalls).toEqual([["material-4"]]);
-  });
-
-  it("refuses a newly added inactive or unavailable material", async () => {
-    const { service, periods } = await setup();
-    await service.openMonth(testAdminActor(), "w", "2026-10");
-    const before = await periods.findById("p");
-
-    for (const materialId of ["material-2", "material-3"]) {
-      await expect(
-        service.update(testAdminActor(), "p", {
-          ...draft,
-          materialIds: [materialId],
-        }),
-      ).resolves.toEqual({
-        ok: false,
-        error: {
-          kind: "invalid",
-          issues: [{ field: "materialIds", code: "not-selectable" }],
-        },
-      });
-    }
-    expect(await periods.findById("p")).toEqual(before);
-  });
-
-  it("rejects duplicate, unknown, inactive, and unavailable material selections without mutation", async () => {
-    const { service, periods, materialLookupCalls } = await setup();
-    await service.openMonth(testAdminActor(), "w", "2026-10");
-    const before = await periods.findById("p");
-
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-1", "material-1"],
-      }),
-    ).toEqual({
-      ok: false,
-      error: {
-        kind: "invalid",
-        issues: [{ field: "materialIds", code: "duplicate" }],
-      },
-    });
-    expect(materialLookupCalls).toEqual([]);
-
-    for (const [materialId, code] of [
-      ["missing", "unknown-reference"],
-      ["material-2", "not-selectable"],
-      ["material-3", "not-selectable"],
-    ] as const) {
-      expect(
-        await service.update(testAdminActor(), "p", {
-          ...draft,
-          materialIds: [materialId],
-        }),
-      ).toEqual({
-        ok: false,
-        error: { kind: "invalid", issues: [{ field: "materialIds", code }] },
-      });
-    }
-    expect(await periods.findById("p")).toEqual(before);
-  });
-
-  it("replaces the flat material list in submitted order and clears it explicitly", async () => {
+  it("opens and saves a period without any material data", async () => {
     const { service } = await setup();
-    await service.openMonth(testAdminActor(), "w", "2026-10");
+    const opened = await service.openMonth(testAdminActor(), "w", "2026-10");
+    if (!opened.ok) throw new Error("expected opened period");
+    expect(Object.keys(opened.value)).not.toContain("materials");
+    expect(Object.keys(opened.value)).not.toContain("materialsRequired");
 
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-4", "material-1"],
-      }),
-    ).toMatchObject({
-      ok: true,
-      value: {
-        materials: [
-          { id: "material-4", name: "Ink" },
-          { id: "material-1", name: "Clay" },
-        ],
-      },
+    const saved = await service.update(testAdminActor(), "p", {
+      ...draft,
+      fee: "42000",
     });
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-1"],
-      }),
-    ).toMatchObject({
-      ok: true,
-      value: { materials: [{ id: "material-1", name: "Clay" }] },
-    });
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: [],
-      }),
-    ).toMatchObject({ ok: true, value: { materials: [] } });
+    if (!saved.ok) throw new Error("expected saved period");
+    expect(saved.value.fee.toCentavos()).toBe(4200000);
+    expect(Object.keys(saved.value)).not.toContain("materials");
+    expect(Object.keys(saved.value)).not.toContain("materialsRequired");
   });
 
-  it("copies only currently selectable historical materials in source order", async () => {
-    const { service, periods, materialLookupCalls } = await setup();
-    const historicalMaterials = [
-      { id: "material-4", name: "Old ink", active: true, available: true },
-      { id: "material-2", name: "Old paint", active: true, available: true },
-      { id: "missing", name: "Removed", active: true, available: true },
-      { id: "material-1", name: "Old clay", active: true, available: true },
-      { id: "material-3", name: "Old glue", active: true, available: true },
-    ];
-    await periods.insert(
-      buildWorkshopPeriod({
-        id: "source",
-        workshopId: "w",
-        period: "2026-10",
-        fee,
-        materials: historicalMaterials,
-      }),
-    );
-
-    expect(
-      await service.openMonth(testAdminActor(), "w", "2026-11"),
-    ).toMatchObject({
-      ok: true,
-      value: {
-        materials: [
-          { id: "material-4", name: "Ink", active: true, available: true },
-          { id: "material-1", name: "Clay", active: true, available: true },
-        ],
-      },
-    });
-    expect(materialLookupCalls).toEqual([
-      ["material-4", "material-2", "missing", "material-1", "material-3"],
-    ]);
-    expect((await periods.findById("source"))?.materials).toEqual(
-      historicalMaterials,
-    );
-  });
-
-  it("refuses explicit and effective closure before material lookup", async () => {
-    const { service, periods, materialLookupCalls } = await setup();
+  it("refuses explicit and effective closure on update", async () => {
+    const { service, periods } = await setup();
     await service.openMonth(testAdminActor(), "w", "2026-10");
     await service.publish(testAdminActor(), "p");
     await service.close(testAdminActor(), "p");
 
-    expect(
-      await service.update(testAdminActor(), "p", {
-        ...draft,
-        materialIds: ["material-1"],
-      }),
-    ).toEqual({ ok: false, error: { kind: "period-closed" } });
+    expect(await service.update(testAdminActor(), "p", draft)).toEqual({
+      ok: false,
+      error: { kind: "period-closed" },
+    });
 
     await periods.insert(
       buildWorkshopPeriod({
@@ -1024,13 +794,10 @@ describe("WorkshopPeriodsService", () => {
         status: "open",
       }),
     );
-    expect(
-      await service.update(testAdminActor(), "elapsed", {
-        ...draft,
-        materialIds: ["material-1"],
-      }),
-    ).toEqual({ ok: false, error: { kind: "period-closed" } });
-    expect(materialLookupCalls).toEqual([]);
+    expect(await service.update(testAdminActor(), "elapsed", draft)).toEqual({
+      ok: false,
+      error: { kind: "period-closed" },
+    });
   });
 });
 

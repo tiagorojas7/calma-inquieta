@@ -1,17 +1,23 @@
-import { and, asc, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { err, Money, ok } from "~/modules/_shared";
 import {
   intensiveImage,
+  intensiveProject,
+  intensiveProjectMaterial,
   intensiveWorkshop,
 } from "~/platform/db/schema/workshops";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type { IntensiveStatus } from "../application/contracts";
 import type {
   IntensiveRepository,
+  NewIntensiveProject,
+  NewProjectMaterial,
   StoredIntensive,
+  StoredIntensiveProject,
 } from "../application/intensive-repository";
 
 type Row = typeof intensiveWorkshop.$inferSelect;
+type ProjectRow = typeof intensiveProject.$inferSelect;
 type ImageRow = typeof intensiveImage.$inferSelect;
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type Gallery = StoredIntensive["images"];
@@ -113,6 +119,35 @@ function isSlugConflict(error: unknown): boolean {
   return false;
 }
 
+function toStoredProject(row: ProjectRow): StoredIntensiveProject {
+  return {
+    id: row.id,
+    intensiveId: row.intensiveId,
+    position: row.position,
+    name: row.name,
+    image:
+      row.mediaAssetId === null || row.alt === null
+        ? null
+        : { assetId: row.mediaAssetId, alt: row.alt },
+    price: toMoney(row.priceCentavos),
+    deposit: toMoney(row.depositCentavos),
+    audit: { updatedBy: row.updatedBy, updatedAt: row.updatedAt },
+  };
+}
+
+/** Everything a project row stores except its identity and position. */
+function projectValues(project: NewIntensiveProject) {
+  return {
+    name: project.name,
+    mediaAssetId: project.image?.assetId ?? null,
+    alt: project.image?.alt ?? null,
+    priceCentavos: project.price.toCentavos(),
+    depositCentavos: project.deposit.toCentavos(),
+    updatedBy: project.audit.updatedBy,
+    updatedAt: project.audit.updatedAt,
+  };
+}
+
 function galleryRows(value: StoredIntensive) {
   return value.images.map((image, position) => ({
     intensiveId: value.id,
@@ -178,7 +213,7 @@ export function createDrizzleIntensiveRepository(
   }
 
   return {
-    insert: (value) =>
+    insert: (value, firstProject) =>
       withSession(async (db) => {
         try {
           await db.transaction(async (tx) => {
@@ -188,6 +223,13 @@ export function createDrizzleIntensiveRepository(
             const images = galleryRows(value);
             if (images.length > 0)
               await tx.insert(intensiveImage).values(images);
+            if (firstProject)
+              await tx.insert(intensiveProject).values({
+                id: firstProject.id,
+                intensiveId: value.id,
+                position: 0,
+                ...projectValues(firstProject),
+              });
           });
           return ok(undefined);
         } catch (error) {
@@ -260,5 +302,256 @@ export function createDrizzleIntensiveRepository(
           return remaining.length > 0 ? "not-draft" : "not-found";
         }),
       ),
+
+    listProjects: (intensiveId) =>
+      withSession(async (db) =>
+        (
+          await db
+            .select()
+            .from(intensiveProject)
+            .where(eq(intensiveProject.intensiveId, intensiveId))
+            .orderBy(asc(intensiveProject.position))
+        ).map(toStoredProject),
+      ),
+
+    findProject: (intensiveId, projectId) =>
+      withSession(async (db) => {
+        const rows = await db
+          .select()
+          .from(intensiveProject)
+          .where(
+            and(
+              eq(intensiveProject.id, projectId),
+              eq(intensiveProject.intensiveId, intensiveId),
+            ),
+          );
+        const row = rows[0];
+        return row ? toStoredProject(row) : null;
+      }),
+
+    addProject: (project) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          // The workshop row serializes concurrent appends to its projects.
+          const owner = await tx
+            .select({ id: intensiveWorkshop.id })
+            .from(intensiveWorkshop)
+            .where(eq(intensiveWorkshop.id, project.intensiveId))
+            .for("update");
+          if (owner.length === 0) return err({ kind: "not-found" as const });
+          const [last] = await tx
+            .select({
+              next: sql<number>`coalesce(max(${intensiveProject.position}), -1) + 1`,
+            })
+            .from(intensiveProject)
+            .where(eq(intensiveProject.intensiveId, project.intensiveId));
+          const position = last?.next ?? 0;
+          await tx.insert(intensiveProject).values({
+            id: project.id,
+            intensiveId: project.intensiveId,
+            position,
+            ...projectValues(project),
+          });
+          return ok({ ...project, position });
+        }),
+      ),
+
+    updateProject: (project) =>
+      withSession(async (db) => {
+        const rows = await db
+          .update(intensiveProject)
+          .set(projectValues(project))
+          .where(
+            and(
+              eq(intensiveProject.id, project.id),
+              eq(intensiveProject.intensiveId, project.intensiveId),
+            ),
+          )
+          .returning({ id: intensiveProject.id });
+        return rows.length === 0 ? err({ kind: "not-found" }) : ok(undefined);
+      }),
+
+    moveProject: (intensiveId, projectId, direction) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          await tx
+            .select({ id: intensiveWorkshop.id })
+            .from(intensiveWorkshop)
+            .where(eq(intensiveWorkshop.id, intensiveId))
+            .for("update");
+          const rows = await tx
+            .select({
+              id: intensiveProject.id,
+              position: intensiveProject.position,
+            })
+            .from(intensiveProject)
+            .where(eq(intensiveProject.intensiveId, intensiveId))
+            .orderBy(asc(intensiveProject.position));
+          const index = rows.findIndex((row) => row.id === projectId);
+          const moving = rows[index];
+          if (!moving) return "not-found";
+          const neighbour = rows[direction === "up" ? index - 1 : index + 1];
+          if (!neighbour) return "at-edge";
+          // Positions are unique per workshop: park one row out of the way.
+          const parked = (rows.at(-1)?.position ?? 0) + 1;
+          const setPosition = (id: string, position: number) =>
+            tx
+              .update(intensiveProject)
+              .set({ position })
+              .where(eq(intensiveProject.id, id));
+          await setPosition(moving.id, parked);
+          await setPosition(neighbour.id, moving.position);
+          await setPosition(moving.id, neighbour.position);
+          return "moved";
+        }),
+      ),
+
+    deleteProject: (intensiveId, projectId) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          // Row lock: a request being filed for this project takes a share
+          // lock on it first, so the two cannot interleave.
+          const found = await tx
+            .select({ id: intensiveProject.id })
+            .from(intensiveProject)
+            .where(
+              and(
+                eq(intensiveProject.id, projectId),
+                eq(intensiveProject.intensiveId, intensiveId),
+              ),
+            )
+            .for("update");
+          if (found.length === 0) return "not-found";
+          // The requests table belongs to the intensive-requests module, so
+          // its schema file is not imported here: only the table name and its
+          // `project_id` column are read, inside this transaction, so the
+          // check and the delete cannot interleave with a request being filed.
+          const referenced = await tx.execute(
+            sql`SELECT 1 FROM intensive_seat_request WHERE project_id = ${projectId} LIMIT 1`,
+          );
+          if (referenced.rows.length > 0) return "in-use";
+          await tx
+            .delete(intensiveProject)
+            .where(eq(intensiveProject.id, projectId));
+          return "deleted";
+        }),
+      ),
+
+    listProjectMaterials: (intensiveId) =>
+      withSession(async (db) => {
+        const rows = await db
+          .select({
+            projectId: intensiveProjectMaterial.projectId,
+            variantId: intensiveProjectMaterial.variantId,
+            quantity: intensiveProjectMaterial.quantity,
+            position: intensiveProjectMaterial.position,
+          })
+          .from(intensiveProjectMaterial)
+          .innerJoin(
+            intensiveProject,
+            eq(intensiveProject.id, intensiveProjectMaterial.projectId),
+          )
+          .where(eq(intensiveProject.intensiveId, intensiveId))
+          .orderBy(
+            asc(intensiveProject.position),
+            asc(intensiveProjectMaterial.position),
+          );
+        return rows;
+      }),
+
+    addProjectMaterial: (line: NewProjectMaterial) =>
+      withSession((db) =>
+        db.transaction(async (tx) => {
+          // The project row serializes concurrent edits of its list, so the
+          // duplicate check and the next position cannot interleave.
+          const owner = await tx
+            .select({ id: intensiveProject.id })
+            .from(intensiveProject)
+            .where(
+              and(
+                eq(intensiveProject.id, line.projectId),
+                eq(intensiveProject.intensiveId, line.intensiveId),
+              ),
+            )
+            .for("update");
+          if (owner.length === 0) return err({ kind: "not-found" as const });
+          const lines = await tx
+            .select({
+              variantId: intensiveProjectMaterial.variantId,
+              position: intensiveProjectMaterial.position,
+            })
+            .from(intensiveProjectMaterial)
+            .where(eq(intensiveProjectMaterial.projectId, line.projectId));
+          if (lines.some((existing) => existing.variantId === line.variantId))
+            return err({ kind: "duplicate-variant" as const });
+          const position =
+            lines.reduce(
+              (max, existing) => Math.max(max, existing.position),
+              -1,
+            ) + 1;
+          await tx.insert(intensiveProjectMaterial).values({
+            projectId: line.projectId,
+            position,
+            variantId: line.variantId,
+            quantity: line.quantity,
+          });
+          return ok({
+            projectId: line.projectId,
+            variantId: line.variantId,
+            quantity: line.quantity,
+            position,
+          });
+        }),
+      ),
+
+    setProjectMaterialQuantity: (intensiveId, projectId, variantId, quantity) =>
+      withSession(async (db) => {
+        const rows = await db
+          .update(intensiveProjectMaterial)
+          .set({ quantity })
+          .where(
+            and(
+              eq(intensiveProjectMaterial.projectId, projectId),
+              eq(intensiveProjectMaterial.variantId, variantId),
+              inArray(
+                intensiveProjectMaterial.projectId,
+                ownedProject(db, intensiveId, projectId),
+              ),
+            ),
+          )
+          .returning({ position: intensiveProjectMaterial.position });
+        return rows.length === 0 ? err({ kind: "not-found" }) : ok(undefined);
+      }),
+
+    removeProjectMaterial: (intensiveId, projectId, variantId) =>
+      withSession(async (db) => {
+        const rows = await db
+          .delete(intensiveProjectMaterial)
+          .where(
+            and(
+              eq(intensiveProjectMaterial.projectId, projectId),
+              eq(intensiveProjectMaterial.variantId, variantId),
+              inArray(
+                intensiveProjectMaterial.projectId,
+                ownedProject(db, intensiveId, projectId),
+              ),
+            ),
+          )
+          .returning({ position: intensiveProjectMaterial.position });
+        return rows.length === 0 ? err({ kind: "not-found" }) : ok(undefined);
+      }),
   };
+}
+
+/** The project's id when it belongs to that intensivo: a subquery for scoping a line. */
+function ownedProject(db: Db, intensiveId: string, projectId: string) {
+  return db
+    .select({ id: intensiveProject.id })
+    .from(intensiveProject)
+    .where(
+      and(
+        eq(intensiveProject.id, projectId),
+        eq(intensiveProject.intensiveId, intensiveId),
+      ),
+    );
 }

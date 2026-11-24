@@ -7,6 +7,7 @@ const student: StudentDetailProps["student"] = {
   name: "Ana Pérez",
   email: "ana@example.com",
   phone: "5493515550000",
+  active: true,
   activities: [
     {
       workshop: "Cerámica",
@@ -58,12 +59,88 @@ describe("StudentDetail", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("marks a material sale in the payment history, linked to its own page", () => {
+    render(
+      <StudentDetail
+        student={{
+          ...student,
+          orders: [
+            {
+              id: "s1",
+              number: "CI-2026-0009",
+              kind: "material_sale",
+              workshop: "Cerámica",
+              month: "noviembre 2026",
+              status: "pending_confirmation",
+              statusLabel: "Pendiente de confirmación",
+              total: "$ 10.000",
+              paidOn: null,
+            },
+            ...student.orders,
+          ],
+        }}
+      />,
+    );
+
+    const history = screen.getByRole("region", {
+      name: "Historial de pedidos y pagos",
+    });
+    const cards = within(history).getAllByRole("listitem");
+    const sale = cards[0] as HTMLElement;
+    expect(within(sale).getByText("Venta de materiales")).toBeVisible();
+    expect(
+      within(sale).getByRole("link", { name: "CI-2026-0009" }),
+    ).toHaveAttribute("href", "/admin/inscripciones/s1");
+    expect(within(sale).getByText("Sin cobrar")).toBeVisible();
+    expect(
+      within(cards[1] as HTMLElement).queryByText("Venta de materiales"),
+    ).toBeNull();
+  });
+
   it("confirms a saved note with a status message", () => {
     render(<StudentDetail student={student} feedback="note-saved" />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Observaciones guardadas",
     );
+  });
+
+  it("shows she is active and offers to deactivate her with a post form", () => {
+    render(<StudentDetail student={student} />);
+
+    const state = screen.getByRole("form", { name: "Estado de la alumna" });
+    expect(state).toHaveAttribute("method", "post");
+    expect(within(state).getByText("Activa")).toBeVisible();
+    expect(within(state).getByText(/no bloquea nada/)).toBeVisible();
+    expect(
+      within(state).getByRole("button", { name: "Marcar como inactiva" }),
+    ).toBeVisible();
+    expect(state.querySelector("input[name=intent]")).toHaveValue("deactivate");
+  });
+
+  it("shows she is inactive and offers to reactivate her", () => {
+    render(<StudentDetail student={{ ...student, active: false }} />);
+
+    const state = screen.getByRole("form", { name: "Estado de la alumna" });
+    expect(within(state).getByText("Inactiva")).toBeVisible();
+    expect(
+      within(state).getByRole("button", { name: "Reactivar alumna" }),
+    ).toBeVisible();
+    expect(state.querySelector("input[name=intent]")).toHaveValue("reactivate");
+    expect(
+      screen.queryByRole("button", { name: "Marcar como inactiva" }),
+    ).toBeNull();
+  });
+
+  it("confirms a change of state with a status message", () => {
+    const { rerender } = render(
+      <StudentDetail student={student} feedback="deactivated" />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Alumna marcada como inactiva",
+    );
+    rerender(<StudentDetail student={student} feedback="reactivated" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Alumna reactivada");
   });
 
   it("shows her data, activities and order history with links to each order", async () => {
@@ -140,6 +217,7 @@ describe("StudentDetail", () => {
             absent: "2",
             makeUpsPending: "1",
             makeUpsDone: "1",
+            makeUpsMissed: "1",
           },
         }}
       />,
@@ -149,6 +227,7 @@ describe("StudentDetail", () => {
     expect(summary).toHaveTextContent("Clases a las que vino8");
     expect(summary).toHaveTextContent("Clases que faltó2");
     expect(summary).toHaveTextContent("Recuperaciones pendientes1");
+    expect(summary).toHaveTextContent("Recuperaciones perdidas1");
     expect(summary).toHaveTextContent("Recuperaciones realizadas1");
   });
 

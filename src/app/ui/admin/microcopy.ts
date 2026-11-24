@@ -2,12 +2,6 @@
  * Admin primitive strings (es-AR, voseo). F0a extends this file with the
  * layout and navigation copy; the same copy rule scans both.
  */
-function materialAvailability(active: boolean, available: boolean): string {
-  const state = active ? "activo" : "inactivo";
-  const availability = available ? "disponible" : "no disponible";
-  return `${state}, ${availability}`;
-}
-
 export const adminMicrocopy = {
   status: {
     draft: "Borrador",
@@ -69,6 +63,10 @@ export const adminMicrocopy = {
         name === null
           ? "Inscripción cancelada"
           : `Inscripción de ${name} cancelada`,
+      created: (name: string | null) =>
+        name === null
+          ? "Inscripción creada. Queda pendiente de pago."
+          : `Inscripción de ${name} creada. Queda pendiente de pago.`,
     },
     filters: {
       month: "Mes",
@@ -137,8 +135,15 @@ export const adminMicrocopy = {
         count === 1
           ? "1 pedido marcado como recibido."
           : `${String(count)} pedidos marcados como recibidos.`,
+      "workshop-requested": (count: number) =>
+        count === 1
+          ? "Se marcó 1 material del workshop como pedido."
+          : `Se marcaron ${String(count)} materiales del workshop como pedidos.`,
+      workshopConsequence:
+        "Marca como pedidos los materiales de este workshop y los saca de la lista.",
       columns: { material: "Material", quantity: "Cantidad", total: "Total" },
       itemsTitle: "Qué pedir",
+      workshopOrigin: (name: string) => `Workshop: ${name}`,
       stepsLabel: (supplier: string) => `Pasos para pedir a ${supplier}`,
       steps: {
         copy: "Copiá el pedido y mandalo por WhatsApp",
@@ -170,6 +175,7 @@ export const adminMicrocopy = {
         whatsappWith: (name: string) => `WhatsApp con ${name}`,
         requestedStatus: "Pedido",
         receivedStatus: "Recibido",
+        stockStatus: "En stock",
       },
     },
     detail: {
@@ -191,6 +197,8 @@ export const adminMicrocopy = {
           "Siguiente paso: confirmar el cobro cuando recibas el pago.",
         paid: "Siguiente paso: pedir los materiales al proveedor.",
         paidNoMaterials: "No hay materiales para pedir. El pedido está al día.",
+        paidFromStock:
+          "Siguiente paso: marcar como entregado cuando le des los materiales que tenés en stock.",
         materials_requested:
           "Siguiente paso: marcar como recibido cuando lleguen los materiales.",
         materials_received: "Pedido completo. No queda nada por hacer.",
@@ -199,8 +207,32 @@ export const adminMicrocopy = {
       feedback: {
         confirmed: "Cobro confirmado",
         cancelled: "Pedido cancelado",
+        corrected: "Corrección guardada",
+        "returned-to-pending":
+          "Corrección guardada. El total subió: el pedido volvió a pendiente y falta confirmar el cobro del nuevo total.",
         "materials-requested": "Materiales marcados como solicitados",
         "materials-received": "Materiales marcados como recibidos",
+        "sale-created": "Venta creada. Falta confirmar el cobro.",
+      },
+      // A later material purchase under a monthly record.
+      sale: {
+        listLabel: "Venta de materiales",
+        title: (number: string) => `Venta de materiales ${number}`,
+        parent: (number: string) => `Inscripción ${number}`,
+        parentLabel: "Inscripción",
+        sectionTitle: "Ventas de materiales",
+        sectionHint:
+          "Compras de materiales después del pago del mes. Cada venta tiene su propio cobro y no cambia el total de la inscripción.",
+        empty: "Todavía no hay ventas de materiales para esta inscripción.",
+        newSale: "Nueva venta de materiales",
+        cancel: {
+          title: "Cancelar venta",
+          dialogTitle: "¿Cancelar esta venta?",
+          dialogMessage:
+            "Si la venta ya estaba cobrada, vuelve al stock lo que todavía no se entregó. Esto no se puede deshacer.",
+          dialogMessageRefund:
+            "Queda registrado el cobro y la devolución, y vuelve al stock lo que todavía no se entregó. Esto no se puede deshacer.",
+        },
       },
       student: "Alumno",
       name: "Nombre",
@@ -212,10 +244,15 @@ export const adminMicrocopy = {
       turno: "Turno",
       requestedAt: "Solicitado",
       policyVersion: "Política aceptada",
+      acceptance: "Aceptación",
+      acceptanceLine: (conditions: number, privacy: number) =>
+        `Condiciones v${String(conditions)} · Privacidad v${String(privacy)}`,
+      noAcceptance: "Sin registro de aceptación",
       seat: (confirmed: number, capacity: number) =>
         `${String(confirmed)} de ${String(capacity)} lugares confirmados`,
       lines: "Materiales",
       noLines: "Sin materiales",
+      lineSource: { stock: "En stock", supplier: "A pedir" },
       lineColumns: {
         material: "Material",
         supplier: "Proveedor",
@@ -261,6 +298,65 @@ export const adminMicrocopy = {
         dialogTitle: "¿Cancelar este pedido?",
         dialogMessage:
           "Si el pedido ya estaba cobrado, se libera el lugar del turno. Esto no se puede deshacer.",
+        refundTitle: "Devolución",
+        refundAmount: "Monto devuelto",
+        refundAmountHint: (paid: string) =>
+          `Cobraste ${paid}. Poné 0 si no devolviste nada.`,
+        refundedOn: "Fecha de devolución",
+        refundNote: "Nota de la devolución (opcional)",
+        dialogMessageRefund:
+          "Se libera el lugar del turno y queda registrado el cobro y la devolución. Esto no se puede deshacer.",
+      },
+      refund: {
+        title: "Devolución",
+        amount: "Monto devuelto",
+        refundedOn: "Fecha de devolución",
+        refundedBy: "Registrada por",
+        note: "Nota",
+      },
+      correction: {
+        title: "Corregir inscripción",
+        intro:
+          "Cambiá el taller, el mes, el turno o la cuota. Los materiales quedan como están. Si el total sube, el pedido vuelve a pendiente; si baja, sigue cobrado y cargás lo que devolviste.",
+        offer: "Taller, mes y turno",
+        keepOffer: "Dejar el actual",
+        fee: "Cuota",
+        feeHint:
+          "En pesos enteros, sin centavos; 0 para una beca. El total es la cuota más los materiales.",
+        note: "Motivo (opcional)",
+        refundTitle: "Diferencia devuelta",
+        refundHint: (paid: string) =>
+          `Cobraste ${paid}. Si el total baja, cargá cuánto devolviste: desde 0 hasta la diferencia. Si no baja, dejalo vacío.`,
+        refundAmount: "Monto devuelto",
+        refundedOn: "Fecha de devolución",
+        refundNote: "Nota de la devolución (opcional)",
+        submit: "Guardar corrección",
+      },
+      corrections: {
+        title: "Correcciones",
+        before: "Antes",
+        after: "Después",
+        previousPayment: (amount: string, paidOn: string, by: string) =>
+          `Cobro anterior que quedó sin efecto: ${amount} el ${paidOn}, confirmado por ${by}.`,
+        previousPaymentNoAuthor: (amount: string, paidOn: string) =>
+          `Cobro anterior que quedó sin efecto: ${amount} el ${paidOn}.`,
+        refund: (amount: string, refundedOn: string) =>
+          `Diferencia devuelta: ${amount} el ${refundedOn}.`,
+        refundNote: (note: string) => `Nota de la devolución: ${note}`,
+        outcome: {
+          "kept-pending": "Siguió pendiente",
+          "kept-paid": "Siguió cobrado",
+          "returned-to-pending": "Volvió a pendiente",
+          lowered: "Siguió cobrado con el total más bajo",
+        },
+        summary: (
+          workshop: string,
+          month: string,
+          turno: string,
+          fee: string,
+          total: string,
+        ) =>
+          `${workshop} · ${month} · ${turno} · cuota ${fee} · total ${total}`,
       },
       materials: {
         requested: "Marcar como solicitado",
@@ -348,9 +444,21 @@ export const adminMicrocopy = {
     title: "Alumnas",
     filterLabel: "Filtrar alumnas",
     count: (n: number) => (n === 1 ? "1 alumna" : `${String(n)} alumnas`),
-    cardLabels: { email: "Email", phone: "Teléfono", orders: "Pedidos" },
+    cardLabels: {
+      email: "Email",
+      phone: "Teléfono",
+      orders: "Pedidos",
+      state: "Estado",
+    },
+    state: { active: "Activa", inactive: "Inactiva" },
+    viewInactive: "Ver alumnas inactivas",
+    viewActive: "Ver alumnas activas",
     filters: {
       summary: "Buscar y filtrar",
+      show: "Mostrar",
+      showActive: "Activas",
+      showInactive: "Inactivas",
+      showAll: "Todas",
       search: "Buscar",
       searchHint: "Nombre, email o teléfono.",
       workshop: "Taller",
@@ -366,6 +474,7 @@ export const adminMicrocopy = {
       workshops: "Talleres",
       orders: "Pedidos",
       lastRequest: "Última solicitud",
+      state: "Estado",
     },
     pagination: {
       label: "Paginación",
@@ -379,8 +488,20 @@ export const adminMicrocopy = {
     },
     detail: {
       back: "Volver a alumnas",
-      feedback: { "note-saved": "Observaciones guardadas" },
+      feedback: {
+        "note-saved": "Observaciones guardadas",
+        deactivated: "Alumna marcada como inactiva",
+        reactivated: "Alumna reactivada",
+      },
       personal: "Datos",
+      state: {
+        title: "Estado de la alumna",
+        active: "Activa",
+        inactive: "Inactiva",
+        help: "Inactiva solo ordena la lista del panel: no bloquea nada y su historial se conserva. Si se inscribe de nuevo, vuelve a quedar activa sola.",
+        deactivate: "Marcar como inactiva",
+        reactivate: "Reactivar alumna",
+      },
       name: "Nombre",
       email: "Email",
       phone: "Teléfono",
@@ -405,6 +526,7 @@ export const adminMicrocopy = {
           paidOn: "Cobrado el",
         },
         unpaid: "Sin cobrar",
+        sale: "Venta de materiales",
         emptyAction: "Ver inscripciones",
       },
       notes: {
@@ -694,6 +816,15 @@ export const adminMicrocopy = {
       saved: { title: "Cambios guardados" },
       archived: { title: "Profesor archivado" },
       restored: { title: "Profesor reactivado" },
+      percentage: { title: "Porcentaje guardado" },
+    },
+    workshops: {
+      title: "Talleres asignados",
+      empty: "No tiene talleres asignados.",
+      percentage: "Porcentaje acordado",
+      save: "Guardar porcentaje",
+      formLabel: (name: string) => `Porcentaje de ${name}`,
+      ownNote: "Modalidad propia: sin porcentaje acordado.",
     },
     modalityHint:
       "Propia: no hay porcentaje acordado y no se calcula un importe. De terceros: la liquidación usa el porcentaje acordado de cada período.",
@@ -769,7 +900,7 @@ export const adminMicrocopy = {
       form: {
         title: "Abrir inscripciones",
         intro:
-          "Al abrir un mes se crea con los cupos de tus turnos activos. Después elegís los materiales y lo publicás: recién ahí el sitio acepta inscripciones.",
+          "Al abrir un mes se crea con los cupos de tus turnos activos. Después lo publicás: recién ahí el sitio acepta inscripciones.",
         period: "Mes",
         hint: (months: string) =>
           months
@@ -784,7 +915,7 @@ export const adminMicrocopy = {
         title: (period: string) => `Período ${period}`,
         backToMonths: "Volver a inscripciones del taller",
         feedback: {
-          opened: "Mes abierto. Ahora definí cupos y materiales.",
+          opened: "Mes abierto. Ahora revisá los cupos.",
           saved: "Cambios guardados",
           published: "Mes publicado: ya acepta inscripciones",
           closed: "Mes cerrado",
@@ -793,7 +924,7 @@ export const adminMicrocopy = {
           draft: {
             title: "Todavía no acepta inscripciones",
             message: (month: string, seats: number) =>
-              `${month} está en borrador con ${String(seats)} cupos. Publicalo cuando los cupos y los materiales estén listos.`,
+              `${month} está en borrador con ${String(seats)} cupos. Publicalo cuando los cupos estén listos.`,
           },
           open: {
             title: "Acepta inscripciones",
@@ -807,9 +938,6 @@ export const adminMicrocopy = {
         },
         status: "Estado",
         fee: "Arancel mensual",
-        materialsRequired: "Requiere materiales",
-        yes: "Sí",
-        no: "No",
         project: "Proyecto",
         projectTitle: "Título",
         projectDescription: "Descripción",
@@ -840,26 +968,8 @@ export const adminMicrocopy = {
         capacityFloor: "No bajes el cupo debajo de los lugares confirmados.",
         updatedBy: "Actualizado por",
         updatedAt: "Última actualización",
-        materials: "Materiales",
-        historicalMaterials: "Materiales históricos",
-        duplicateMaterial: "No repitas materiales en el período.",
-        materialOption: (item: {
-          name: string;
-          active: boolean;
-          available: boolean;
-          historical: boolean;
-        }) =>
-          item.historical
-            ? `${item.name} (histórico: ${materialAvailability(item.active, item.available)})`
-            : item.name,
         images: "Imágenes históricas",
         notApplicable: "No corresponde",
-        material: (item: {
-          name: string;
-          active: boolean;
-          available: boolean;
-        }) =>
-          `${item.name} (${materialAvailability(item.active, item.available)})`,
       },
     },
 
@@ -903,8 +1013,6 @@ export const adminMicrocopy = {
       form: {
         addTitle: "Agregar turno",
         editTitle: "Editar turno",
-        label: "Nombre del turno",
-        labelHint: "Por ejemplo: Mañana, Tarde o Noche.",
         weekday: "Día de la semana",
         startsAt: "Desde",
         endsAt: "Hasta",
@@ -927,9 +1035,12 @@ export const adminMicrocopy = {
         "Letras minúsculas, números y guiones. Si lo dejás vacío se arma con el nombre.",
       confirmSlugChange:
         "Entiendo que cambiar el enlace de un taller publicado rompe su dirección actual",
-      summary: "Resumen",
-      summaryHint: "Una frase para las tarjetas del sitio.",
-      description: "Descripción",
+      summary: "Descripción",
+      summaryHint:
+        "Texto corto que se ve en las tarjetas del inicio y del listado de talleres.",
+      description: "Contenido interno",
+      descriptionHint:
+        "Detalle completo: se ve en la página del taller y antes de completar los datos de inscripción.",
       technique: "Técnica",
       defaultFee: "Arancel mensual (en pesos)",
       defaultFeeHint:
@@ -939,6 +1050,8 @@ export const adminMicrocopy = {
       percentage: "Porcentaje acordado",
       percentageHint:
         "Solo para profesores de terceros, de 0 a 100 con hasta dos decimales. Ejemplo: 35,5.",
+      percentageNote:
+        "Los meses ya abiertos conservan su porcentaje; para cambiarlo, editá ese mes.",
       photosTitle: "Fotos",
       photosHint:
         "Hasta 4 fotos. La primera es la que se ve en la tarjeta del taller.",
@@ -963,15 +1076,11 @@ export const adminMicrocopy = {
         "Revisá este turno: elegí el día, un horario válido (desde antes que hasta) y cupos de 1 a 500.",
       rowDuplicate: "Ya cargaste un turno con el mismo día y horario.",
       turnosRequired: "Agregá al menos un turno para poder publicar.",
-      sectionMaterials: "Materiales (opcional)",
-      materialsHint: "Marcá los materiales que las alumnas pueden sumar.",
-      noMaterials: "Todavía no hay materiales en el catálogo.",
       percentageDetails: "Profesor de terceros: porcentaje acordado",
       percentageSummary: "Porcentaje (solo profesores de terceros)",
       publish: "Publicar y abrir inscripciones",
       saveDraft: "Guardar borrador",
-      derivedNote:
-        "El enlace se arma solo con el nombre. El resumen sale de la descripción.",
+      derivedNote: "El enlace se arma solo con el nombre.",
       techniqueDetails: "Más opciones",
     },
     failures: {
@@ -981,8 +1090,6 @@ export const adminMicrocopy = {
         "El taller quedó como borrador porque no se pudo publicar. Revisá los datos del taller.",
       month:
         "El taller está publicado, pero no se pudo abrir el mes. Abrilo desde la lista de meses.",
-      materials:
-        "El taller está publicado y el mes abierto, pero no se pudieron guardar los materiales. Elegilos en el mes.",
       enroll:
         "El mes quedó abierto en borrador y todavía no acepta inscripciones. Publicalo desde el mes.",
     },
@@ -1142,6 +1249,86 @@ export const adminMicrocopy = {
       dangerTitle: "Cancelar, archivar o eliminar",
       rescheduleTitle: "Cambiar fecha y horario",
     },
+    projects: {
+      title: "Proyectos",
+      description:
+        "Cada proyecto tiene su propio precio, seña e imagen. Todos comparten la fecha y los cupos del workshop.",
+      empty:
+        "Todavía no hay proyectos. Agregá uno para poder publicar el workshop.",
+      amounts: (price: string, deposit: string) =>
+        `Precio ${price} · Seña ${deposit}`,
+      noImage: "Sin imagen",
+      addTitle: "Nuevo proyecto",
+      add: "Agregar proyecto",
+      edit: (name: string) => `Editar ${name}`,
+      editSummary: "Editar",
+      save: "Guardar proyecto",
+      moveUp: "Subir",
+      moveDown: "Bajar",
+      moveUpName: (name: string) => `Subir ${name}`,
+      moveDownName: (name: string) => `Bajar ${name}`,
+      delete: "Eliminar",
+      deleteName: (name: string) => `Eliminar ${name}`,
+      confirmDelete: {
+        title: "¿Eliminar el proyecto?",
+        message: (name: string) =>
+          `Se elimina "${name}" de este workshop. No se puede deshacer.`,
+      },
+      form: {
+        name: "Nombre del proyecto",
+        price: "Precio total (en pesos)",
+        deposit: "Seña (en pesos)",
+        image: "Imagen del proyecto",
+        removeImage: "Quitar la imagen",
+      },
+      materials: {
+        title: "Materiales por participante",
+        hint: "Están incluidos en el precio del proyecto. No se venden aparte.",
+        listLabel: (project: string) => `Materiales de ${project}`,
+        empty: "Este proyecto todavía no tiene materiales.",
+        missing: "Material no disponible en el catálogo",
+        inStock: (units: number) => `En stock: ${String(units)}`,
+        quantity: "Cantidad por participante",
+        quantityName: (material: string) => `Cantidad de ${material}`,
+        saveQuantity: "Guardar cantidad",
+        saveQuantityName: (material: string) =>
+          `Guardar cantidad de ${material}`,
+        remove: "Quitar",
+        removeName: (material: string, project: string) =>
+          `Quitar ${material} de ${project}`,
+        addSummary: "Agregar material",
+        search: "Buscar material",
+        searchHint: "Buscá por nombre o por medida, por ejemplo: arcilla 5 kg.",
+        typeToSearch: "Escribí para buscar en el catálogo.",
+        noMatches: "No encontramos materiales con ese nombre.",
+        noCatalog: "No hay materiales en el catálogo para agregar.",
+        showing: (shown: number, total: number) =>
+          `Mostrando ${String(shown)} de ${String(total)}. Escribí más para afinar la búsqueda.`,
+        add: "Agregar",
+        addName: (material: string) => `Agregar ${material}`,
+      },
+      feedback: {
+        materialAdded: { title: "Material agregado" },
+        materialSaved: { title: "Cantidad guardada" },
+        materialRemoved: { title: "Material quitado" },
+        projectAdded: { title: "Proyecto agregado" },
+        projectSaved: { title: "Proyecto guardado" },
+        projectMoved: { title: "Orden de proyectos actualizado" },
+        projectDeleted: { title: "Proyecto eliminado" },
+      },
+      errors: {
+        inUse:
+          "No se puede eliminar: ya hay solicitudes que eligieron este proyecto.",
+        lastProject:
+          "Un workshop publicado necesita al menos un proyecto. Agregá otro antes de eliminar este.",
+        invalid: "Revisá los campos marcados e intentá de nuevo.",
+        materialQuantity:
+          "La cantidad tiene que ser un número entero de 1 a 20.",
+        materialDuplicate:
+          "Ese material ya está en la lista de este proyecto. Cambiá su cantidad.",
+        materialUnavailable: "Ese material no está disponible en el catálogo.",
+      },
+    },
     form: {
       name: "Nombre",
       slug: "Enlace",
@@ -1218,6 +1405,7 @@ export const adminMicrocopy = {
       saved: "Cambios guardados",
       deactivated: "Material desactivado",
       reactivated: "Material reactivado",
+      stock: "Stock ajustado",
     },
     edit: {
       title: "Editar material",
@@ -1238,6 +1426,18 @@ export const adminMicrocopy = {
     imageUnavailable: "La imagen ya no está disponible.",
     variants: "Variantes",
     price: (value: string) => `$${value}`,
+    cost: (value: string) => `Costo: $${value}`,
+    costMissing: "Costo sin cargar",
+    stock: {
+      onHand: (units: number) => `En stock: ${String(units)}`,
+      formLabel: (variant: string) => `Ajustar stock de ${variant}`,
+      delta: "Cantidad (+ suma, - resta)",
+      deltaHint: "Por ejemplo 5 si compraste unidades o -1 si se rompió una.",
+      reason: "Motivo",
+      reasonHint: "Una frase corta: compra, rotura, conteo.",
+      submit: "Ajustar stock",
+      failed: "No se pudo ajustar el stock. Revisá los campos marcados.",
+    },
     used: "Usada",
     swatch: "Muestra de color",
     audit: {
@@ -1277,6 +1477,8 @@ export const adminMicrocopy = {
     variant: "Variante",
     price: "Precio (en pesos)",
     priceHint: "Solo números, por ejemplo 12500 o 12.500.",
+    cost: "Costo del proveedor (en pesos)",
+    costHint: "Lo que te cuesta a vos. Es opcional y no lo ven las alumnas.",
     useSwatch: "Usar color de muestra",
     color: "Color",
     variantAvailable: "Disponible para pedir",
@@ -1338,11 +1540,12 @@ export const adminMicrocopy = {
     title: "Reservas",
     feedback: {
       confirmed: "Seña registrada: el lugar quedó confirmado",
+      balance: "Saldo registrado: la reserva quedó paga",
       cancelled: "Solicitud cancelada",
     },
     cancelStep: "Cancelar esta solicitud",
     cancelConsequence:
-      "No se puede deshacer. Si estaba confirmada, libera el lugar.",
+      "No se puede deshacer. Si estaba confirmada, libera el lugar y los materiales vuelven al stock.",
     link: "Ver reservas",
     back: "Volver al workshop",
     summary: {
@@ -1362,38 +1565,77 @@ export const adminMicrocopy = {
       email: "Correo electrónico",
       phone: "Teléfono",
       received: "Recibida",
+      acceptance: "Aceptación",
       reference: "Número de solicitud",
       paidAmount: "Seña registrada",
       paidOn: "Fecha de pago",
       note: "Nota del pago",
       confirmed: "Confirmada por",
+      price: "Precio del proyecto",
+      balance: "Saldo",
+      balanceNote: "Nota del saldo",
+      balanceBy: "Saldo registrado por",
       cancelReason: "Motivo de la cancelación",
       cancelled: "Cancelada por",
+      refund: "Monto devuelto",
+      refundedOn: "Fecha de devolución",
+      refundNote: "Nota de la devolución",
+    },
+    balanceState: {
+      due: (amount: string) => `Pendiente: ${amount}`,
+      paid: (amount: string, paidOn: string) =>
+        `Cobrado: ${amount} el ${paidOn}`,
+      none: "No hay saldo: la seña cubrió el total",
     },
     whatsapp: "Escribirle por WhatsApp",
     confirmForm: {
       label: "Registrar la seña",
       amount: "Seña cobrada",
-      amountHint: "Tiene que ser la seña completa del workshop.",
+      amountHint: (deposit: string) =>
+        `Tiene que ser la seña de este proyecto (${deposit}).`,
       paidOn: "Fecha del pago",
       note: "Nota (opcional)",
       submit: "Registrar seña y confirmar lugar",
+    },
+    balanceForm: {
+      label: "Registrar el saldo",
+      amount: "Saldo cobrado",
+      amountHint: (due: string) =>
+        `Tiene que ser el saldo completo (${due}); se cobra una sola vez.`,
+      paidOn: "Fecha del pago",
+      note: "Nota (opcional)",
+      submit: "Registrar saldo",
     },
     cancelForm: {
       label: "Cancelar la solicitud",
       reason: "Motivo",
       reasonHint:
         "Entre 3 y 300 caracteres. Si estaba confirmada, libera el lugar.",
+      refundTitle: "Devolución",
+      refundAmount: "Monto devuelto",
+      refundAmountHint: (paid: string) =>
+        `Cobraste ${paid}. Poné 0 si no devolviste nada.`,
+      refundedOn: "Fecha de devolución",
+      refundNote: "Nota de la devolución (opcional)",
       submit: "Cancelar solicitud",
     },
     errors: {
-      amount: "Ingresá la seña completa del workshop, tal como figura arriba.",
+      amount:
+        "Ingresá la seña completa de este proyecto, tal como figura en la solicitud.",
+      balanceAmount:
+        "Ingresá el saldo completo, tal como figura en la solicitud.",
       paidOn: "Elegí una fecha válida, de hoy hacia atrás.",
+      balancePaidOn:
+        "Elegí una fecha válida, de hoy hacia atrás y no anterior a la seña.",
       note: "La nota puede tener hasta 500 caracteres.",
       reason: "Escribí un motivo de entre 3 y 300 caracteres.",
       full: "El workshop ya tiene todos sus lugares confirmados.",
       notPending: "Esta solicitud ya no está pendiente.",
       alreadyCancelled: "Esta solicitud ya estaba cancelada.",
+      notConfirmed:
+        "Solo se puede registrar el saldo de una reserva con la seña confirmada.",
+      balanceAlreadyPaid: "El saldo de esta reserva ya estaba registrado.",
+      noBalance: "Esta reserva no tiene saldo: la seña cubrió el total.",
       failed: "No pudimos guardar el cambio. Probá de nuevo.",
     },
   },
@@ -1455,6 +1697,101 @@ export const adminMicrocopy = {
       failed: "Elegí un estado de la lista e intentá de nuevo.",
     },
   },
+  policies: {
+    title: "Políticas",
+    subtitle:
+      "Las condiciones y la política de privacidad de todo el sitio. Cada cambio publica una versión nueva: las anteriores quedan guardadas.",
+    sections: {
+      conditions: {
+        title: "Condiciones",
+        description:
+          "Lo que ven y aceptan quienes se inscriben. Cada workshop muestra además sus propias condiciones.",
+      },
+      privacy: {
+        title: "Privacidad",
+        description:
+          "Cómo usamos los datos de quienes se inscriben. También se acepta al inscribirse.",
+      },
+    },
+    form: {
+      label: (title: string) => `Texto de ${title}`,
+      body: "Texto vigente",
+      bodyHint:
+        "Separá los párrafos con una línea en blanco. Al publicar se guarda como versión nueva.",
+      publish: "Publicar nueva versión",
+      current: (version: number) => `Versión vigente: ${String(version)}`,
+    },
+    history: {
+      title: "Versiones anteriores",
+      current: "Vigente",
+      publishedOn: (date: string) => `Publicada el ${date}`,
+      // Migration 0018 seeds version 1 of each document; owners see it as the base text.
+      publishedBy: (name: string) =>
+        name === "migration 0018" ? "· Texto base inicial" : `por ${name}`,
+      read: "Leer el texto",
+    },
+    feedback: { published: "Nueva versión publicada" },
+    errors: {
+      duplicate:
+        "Es igual a la versión vigente. Cambiá el texto para publicar una nueva.",
+      conflict:
+        "Otra persona publicó al mismo tiempo. Recargá la página, revisá el texto vigente y volvé a intentar.",
+      saveFailed: "No pudimos publicar la versión. Probá de nuevo.",
+    },
+  },
+  notifications: {
+    title: "Novedades",
+    subtitle:
+      "Lo nuevo que todavía nadie abrió y los pagos que siguen pendientes.",
+    bell: {
+      label: "Novedades",
+      unread: (n: number) => `Novedades: ${String(n)} sin leer`,
+      overflow: "99+",
+    },
+    newSection: {
+      title: "Nuevas",
+      description:
+        "Se marcan como leídas, para las dos, cuando abrís la inscripción, la reserva o la consulta.",
+      count: (n: number) =>
+        n === 1 ? "1 sin abrir" : `${String(n)} sin abrir`,
+      empty: {
+        title: "No hay nada nuevo",
+        message:
+          "Cuando llegue una inscripción, una reserva de workshop o una consulta de evento privado, la vas a ver acá hasta que la abras.",
+        action: "Ir al inicio",
+      },
+    },
+    paymentsSection: {
+      title: "Pagos pendientes",
+      description:
+        "Siguen acá hasta que se cobran. No tienen fecha de vencimiento.",
+      count: (n: number) =>
+        n === 1 ? "1 pago pendiente" : `${String(n)} pagos pendientes`,
+      empty: {
+        title: "No hay pagos pendientes",
+        message:
+          "Cuando una cuota, una seña, un saldo o una venta de materiales quede sin cobrar, la vas a ver acá.",
+        action: "Ver inscripciones",
+      },
+    },
+    kinds: {
+      enrollment: "Inscripción",
+      "workshop-request": "Reserva de workshop",
+      "private-event": "Evento privado",
+    },
+    owed: {
+      enrollment: "Cuota del mes",
+      "material-sale": "Venta de materiales",
+      "workshop-deposit": "Seña de workshop",
+      "workshop-balance": "Saldo de workshop",
+    },
+    received: "Recibida",
+    forDate: "Fecha deseada",
+    list: {
+      news: "Novedades sin abrir",
+      payments: "Pagos pendientes",
+    },
+  },
   attendance: {
     title: "Asistencia",
     filterLabel: "Elegir clases",
@@ -1514,8 +1851,6 @@ export const adminMicrocopy = {
       feePending: "Cuota pendiente",
       present: "Presente",
       absent: "Ausente",
-      pendingNote:
-        "Las alumnas con la cuota pendiente se pueden marcar cuando confirmes el pago.",
       save: "Guardar asistencia",
       saved: "Asistencia guardada.",
       makeUpScheduled: "Recuperación programada.",
@@ -1575,6 +1910,7 @@ export const adminMicrocopy = {
       absent: "Clases que faltó",
       makeUpsPending: "Recuperaciones pendientes",
       makeUpsDone: "Recuperaciones realizadas",
+      makeUpsMissed: "Recuperaciones perdidas",
     },
   },
   errors: {

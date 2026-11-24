@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  index,
   integer,
   pgTable,
   text,
@@ -81,6 +82,8 @@ export const materialVariant = pgTable(
     labelKey: text("label_key").notNull(),
     // NULL means "consultar precio": shown to students, never orderable.
     priceCentavos: bigint("price_centavos", { mode: "number" }),
+    // Current supplier cost; NULL until the owner loads it.
+    costCentavos: bigint("cost_centavos", { mode: "number" }),
     available: boolean("available").notNull().default(true),
     position: integer("position").notNull(),
     swatch: text("swatch"),
@@ -96,10 +99,45 @@ export const materialVariant = pgTable(
     ),
     check("material_variant_label_check", sql`btrim(${table.label}) <> ''`),
     check("material_variant_price_check", sql`${table.priceCentavos} > 0`),
+    check("material_variant_cost_check", sql`${table.costCentavos} > 0`),
     check("material_variant_position_check", sql`${table.position} >= 0`),
     check(
       "material_variant_swatch_check",
       sql`${table.swatch} IS NULL OR ${table.swatch} ~ '^#[0-9a-f]{6}$'`,
     ),
+  ],
+);
+
+/**
+ * On-hand units per variant. It deliberately has no foreign key to
+ * `material_variant`: saving a material deletes and re-inserts its variant
+ * rows, and the count must survive that. A variant without a row has 0 units.
+ */
+export const variantStock = pgTable(
+  "variant_stock",
+  {
+    variantId: uuid("variant_id").primaryKey(),
+    onHand: integer("on_hand").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+    updatedBy: text("updated_by").notNull(),
+  },
+  (table) => [check("variant_stock_on_hand_check", sql`${table.onHand} >= 0`)],
+);
+
+/** Audit trail of manual stock adjustments; no foreign key, like the count. */
+export const stockAdjustment = pgTable(
+  "stock_adjustment",
+  {
+    id: uuid("id").primaryKey(),
+    variantId: uuid("variant_id").notNull(),
+    delta: integer("delta").notNull(),
+    reason: text("reason").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    by: text("by").notNull(),
+  },
+  (table) => [
+    index("stock_adjustment_variant_idx").on(table.variantId, table.at),
+    check("stock_adjustment_delta_check", sql`${table.delta} <> 0`),
+    check("stock_adjustment_reason_check", sql`btrim(${table.reason}) <> ''`),
   ],
 );

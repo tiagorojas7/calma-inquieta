@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { enrollmentOrder } from "~/platform/db/schema/enrollments";
+import { enrollmentOrder, student } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
 import {
   createTestDatabase,
@@ -17,7 +17,7 @@ afterAll(async () => {
 });
 
 describe("createDrizzleTurnoRosterReader", () => {
-  it("lists the active orders of one period and turno by student name", async () => {
+  it("lists the active monthly records of one period and turno by student name, never a material sale", async () => {
     const database = await createTestDatabase();
     created.push(database);
     const openSession = createDbSessionFactory({
@@ -30,8 +30,22 @@ describe("createDrizzleTurnoRosterReader", () => {
     ) => {
       n += 1;
       const status = overrides.status ?? "paid";
+      const studentId = `00000000-0000-4000-8003-${String(n).padStart(12, "0")}`;
+      const studentName = overrides.studentName ?? "Ana Pérez";
+      const studentEmail = overrides.studentEmail ?? "ana@example.com";
+      const studentPhoneDigits =
+        overrides.studentPhoneDigits ?? `549351${String(n).padStart(7, "0")}`;
+      await session.db.insert(student).values({
+        id: studentId,
+        fullName: studentName,
+        email: studentEmail.trim().toLowerCase(),
+        phoneDigits: studentPhoneDigits,
+        createdAt: new Date("2026-10-01T12:00:00Z"),
+        updatedAt: new Date("2026-10-01T12:00:00Z"),
+      });
       await session.db.insert(enrollmentOrder).values({
         id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+        studentId,
         publicId: `order-${String(n).padStart(17, "0")}`,
         number: `CI-2026-${String(n).padStart(4, "0")}`,
         status,
@@ -45,9 +59,9 @@ describe("createDrizzleTurnoRosterReader", () => {
         weekday: 1,
         startsAt: "18:00",
         endsAt: "20:00",
-        studentName: "Ana Pérez",
-        studentEmail: "ana@example.com",
-        studentPhoneDigits: "5493515550101",
+        studentName,
+        studentEmail,
+        studentPhoneDigits,
         feeCentavos: 5_000_000,
         materialsCentavos: 0,
         totalCentavos: 5_000_000,
@@ -81,6 +95,20 @@ describe("createDrizzleTurnoRosterReader", () => {
         studentEmail: "otro@example.com",
         turnoId: OTHER_TURNO,
       });
+      // A later material purchase under the first record: never on the roster.
+      for (const status of ["paid", "pending_confirmation"] as const) {
+        await add({
+          studentName: `Venta ${status}`,
+          studentEmail: `venta-${status}@example.com`,
+          kind: "material_sale",
+          parentOrderId: "00000000-0000-4000-8000-000000000001",
+          status,
+          feeCentavos: 0,
+          materialsCentavos: 400_000,
+          totalCentavos: 400_000,
+          paidAmountCentavos: status === "paid" ? 400_000 : null,
+        });
+      }
     } finally {
       await session.close();
     }

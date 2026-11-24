@@ -14,7 +14,6 @@ const TEMPLATES = [
   "intensivo-detail-page",
   "order-page",
   "enrollment-page",
-  "enrollment-materials-page",
   "intensivo-request-page",
   "intensivo-request-summary-page",
   "error-page",

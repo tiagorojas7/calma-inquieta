@@ -26,8 +26,8 @@ export function withEnrollmentEmails(
 ): PublicEnrollmentUseCases {
   return {
     ...inner,
-    async requestEnrollment(input) {
-      const result = await inner.requestEnrollment(input);
+    async requestEnrollment(input, options) {
+      const result = await inner.requestEnrollment(input, options);
       // The honeypot answers with a decoy that has no number and was never stored.
       if (result.ok && result.value.number !== "") {
         const order = result.value;
@@ -49,6 +49,42 @@ export function withEnrollmentEmails(
   };
 }
 
+/**
+ * A manual enrollment emails the student by case: a pending order gets "Recibimos
+ * tu inscripción", a free one (created already paid) gets "Confirmamos tu lugar".
+ */
+export function withManualEnrollmentEmails(
+  inner: AdminEnrollmentUseCases,
+  notifier: NotificationService,
+  defer: Defer,
+): AdminEnrollmentUseCases {
+  return {
+    ...inner,
+    async createPending(actor, input, options) {
+      const result = await inner.createPending(actor, input, options);
+      if (result.ok && result.value.number !== "") {
+        const order = result.value;
+        const notice = {
+          studentEmail: input.student.email.trim(),
+          studentName: order.studentName,
+          number: order.number,
+          publicId: order.publicId,
+          workshopName: order.workshopName,
+          period: order.period,
+          turnoLabel: order.turnoLabel,
+          total: order.total,
+        };
+        schedule(defer, () =>
+          order.status === "paid"
+            ? notifier.enrollmentConfirmed(notice)
+            : notifier.enrollmentReceived(notice),
+        );
+      }
+      return result;
+    },
+  };
+}
+
 export function withPaymentEmails(
   inner: AdminEnrollmentUseCases,
   notifier: NotificationService,
@@ -63,6 +99,8 @@ export function withPaymentEmails(
           const found = await inner.detail(actor, input.orderId);
           if (!found.ok) return;
           const order = found.value;
+          // A material sale has no email of its own: the student paid her month already.
+          if (order.kind === "material_sale") return;
           await notifier.paymentConfirmed({
             studentEmail: order.email,
             studentName: order.student.fullName,
@@ -113,7 +151,7 @@ export function withIntensiveRequestEmails(
   notifier: NotificationService,
   defer: Defer,
 ): IntensiveRequestUseCases {
-  /** The public summary carries the intensivo name, date and deposit. */
+  /** The public summary carries the workshop, the project and the snapshot terms. */
   async function notice(publicId: string, studentEmail: string) {
     const found = await inner.getRequestByPublicId(publicId);
     if (!found.ok) return null;
@@ -124,6 +162,8 @@ export function withIntensiveRequestEmails(
       publicId: view.publicId,
       intensivoName: view.intensivoName,
       eventDate: view.eventDate,
+      projectName: view.projectName,
+      price: view.price,
       deposit: view.deposit,
     };
   }

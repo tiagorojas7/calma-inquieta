@@ -59,7 +59,6 @@ export function createWorkshopEnrollmentOfferLookup(
           id: period.id,
           period: period.period,
           fee: period.fee,
-          materialsRequired: period.materialsRequired,
         },
         turnos,
       };

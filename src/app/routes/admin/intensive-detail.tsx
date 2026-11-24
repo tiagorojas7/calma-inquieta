@@ -18,15 +18,32 @@ import {
   parseIntensiveSchedule,
 } from "~/app/admin/intensive-form-data";
 import {
+  materialChoices,
+  materialIssueMessage,
+  materialRuleMessage,
+  parseMaterialDraft,
+  parseProjectDirection,
+  parseProjectDraft,
+  parseProjectId,
+  parseQuantity,
+  parseVariantId,
+  projectCards,
+  projectDeleteMessage,
+  rejectedProject,
+} from "~/app/admin/intensive-project-form-data";
+import {
   formatPercentage,
   formatWholePesos,
 } from "~/app/admin/workshop-form-data";
 import type { FieldIssue } from "~/modules/_shared";
-import type { IntensiveWorkshop } from "~/modules/workshops";
+import type { AdminActor } from "~/modules/admin-access";
+import type { IntensivesService, IntensiveWorkshop } from "~/modules/workshops";
+import type { AppServices } from "~/composition/request-services";
 import { Heading } from "~/app/ui/atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "~/app/ui/admin/admin-page";
 import { AdminButtonLink } from "~/app/ui/admin/admin-button-link";
 import { IntensiveForm } from "~/app/ui/admin/intensive-form";
+import { IntensiveProjects } from "~/app/ui/admin/intensive-projects";
 import {
   intensiveHasPrimaryAction,
   IntensiveOtherActions,
@@ -38,6 +55,7 @@ import type { Route } from "./+types/intensive-detail";
 
 const LIST = "/admin/intensivos";
 const copy = adminMicrocopy.intensives;
+const FEEDBACK_COPY = { ...copy.feedback, ...copy.projects.feedback };
 
 function rescheduleErrors(
   issues: readonly FieldIssue<"eventDate" | "timeRange">[],
@@ -54,7 +72,18 @@ const FEEDBACK = [
   "archived",
   "restored",
   "rescheduled",
+  "projectAdded",
+  "projectSaved",
+  "projectMoved",
+  "projectDeleted",
+  "materialAdded",
+  "materialSaved",
+  "materialRemoved",
 ] as const;
+
+/** The projects section: where a project action returns the owner to. */
+const PROJECTS_ANCHOR = "proyectos";
+const projectsPath = (id: string) => `${LIST}/${id}#${PROJECTS_ANCHOR}`;
 
 const INTENT_CODE = {
   publish: "published",
@@ -109,6 +138,18 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const intensive = found.value;
   const listed = await services.teachers.list(actor, "all");
   if (!listed.ok) throw failureResponse(listed.error);
+  const projects = await services.intensives.listProjects(actor, params.id);
+  if (!projects.ok) throw failureResponse(projects.error);
+  const bill = await services.intensives.listProjectMaterials(actor, params.id);
+  if (!bill.ok) throw failureResponse(bill.error);
+  const variants = await services.materials.listSaleVariants(actor);
+  if (!variants.ok) throw failureResponse(variants.error);
+  // Stock is shown for information only: a read that fails must not close the
+  // screen, so it then shows no stock instead of a misleading zero.
+  const onHand = await services.variantStock
+    .onHand(variants.value.map((variant) => variant.variantId))
+    .catch(() => null);
+  const choices = materialChoices(variants.value, onHand);
   const assigned = intensive.assignment?.teacher.id;
   return {
     id: intensive.id,
@@ -116,6 +157,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     feedback: feedbackCode(request, FEEDBACK),
     missing: intensiveMissing(request),
     values: formValues(intensive),
+    projects: projectCards(projects.value, bill.value, choices),
+    materialChoices: choices,
     teachers: listed.value
       .filter((teacher) => teacher.active || teacher.id === assigned)
       .map((teacher) => ({
@@ -135,7 +178,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = parseIntensiveIntent(form);
   if (intent === null) throw data(null, { status: 400 });
-  const intensives = context.get(servicesContext).intensives;
+  const services = context.get(servicesContext);
+  const intensives = services.intensives;
 
   if (intent === "save") {
     const draft = parseIntensiveDraft(form);
@@ -155,6 +199,19 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       );
     throw failureResponse(saved.error);
   }
+  if (
+    intent === "project-add" ||
+    intent === "project-save" ||
+    intent === "project-move" ||
+    intent === "project-delete"
+  )
+    return projectAction(intent, form, actor, intensives, params.id);
+  if (
+    intent === "project-material-add" ||
+    intent === "project-material-set" ||
+    intent === "project-material-remove"
+  )
+    return materialAction(intent, form, actor, services, params.id);
   if (intent === "reschedule") {
     const schedule = parseIntensiveSchedule(form);
     const changed = await intensives.reschedule(actor, params.id, schedule);
@@ -212,6 +269,135 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   throw failureResponse(changed.error);
 }
 
+type ProjectIntent =
+  "project-add" | "project-save" | "project-move" | "project-delete";
+
+async function projectAction(
+  intent: ProjectIntent,
+  form: FormData,
+  actor: AdminActor,
+  intensives: IntensivesService,
+  id: string,
+) {
+  const projectId = parseProjectId(form);
+  if (intent === "project-add" || intent === "project-save") {
+    const draft = parseProjectDraft(form);
+    const saved =
+      intent === "project-add"
+        ? await intensives.addProject(actor, id, draft)
+        : await intensives.updateProject(actor, id, projectId, draft);
+    if (saved.ok)
+      return redirect(
+        withFeedback(
+          projectsPath(id),
+          intent === "project-add" ? "projectAdded" : "projectSaved",
+        ),
+      );
+    if (saved.error.kind === "invalid")
+      return data(
+        {
+          projects: rejectedProject(
+            intent === "project-add" ? "new" : projectId,
+            draft,
+            form,
+            saved.error.issues,
+          ),
+        },
+        { status: 422 },
+      );
+    throw failureResponse(saved.error);
+  }
+  if (intent === "project-move") {
+    const direction = parseProjectDirection(form);
+    if (direction === null) throw data(null, { status: 400 });
+    const moved = await intensives.moveProject(actor, id, projectId, direction);
+    if (moved.ok)
+      return redirect(withFeedback(projectsPath(id), "projectMoved"));
+    throw failureResponse(moved.error);
+  }
+  const deleted = await intensives.deleteProject(actor, id, projectId);
+  if (deleted.ok)
+    return redirect(withFeedback(projectsPath(id), "projectDeleted"));
+  if (deleted.error.kind === "rules-unmet")
+    return data(
+      { projectError: projectDeleteMessage(deleted.error.rules) },
+      { status: 422 },
+    );
+  throw failureResponse(deleted.error);
+}
+
+type MaterialIntent =
+  "project-material-add" | "project-material-set" | "project-material-remove";
+
+/** A refused bill line, shown on the project it belongs to. */
+const refusedMaterial = (projectId: string, message: string) =>
+  data({ projectMaterial: { projectId, message } }, { status: 422 });
+
+async function materialAction(
+  intent: MaterialIntent,
+  form: FormData,
+  actor: AdminActor,
+  services: AppServices,
+  id: string,
+) {
+  const intensives = services.intensives;
+  const projectId = parseProjectId(form);
+  const done = (code: "materialAdded" | "materialSaved" | "materialRemoved") =>
+    redirect(withFeedback(projectsPath(id), code));
+  if (intent === "project-material-add") {
+    const draft = parseMaterialDraft(form);
+    // The workshops module never reads the catalog, so the variant is
+    // checked here against the same list the picker offers.
+    const variants = await services.materials.listSaleVariants(actor);
+    if (!variants.ok) throw failureResponse(variants.error);
+    if (!variants.value.some((v) => v.variantId === draft.variantId))
+      return refusedMaterial(
+        projectId,
+        adminMicrocopy.intensives.projects.errors.materialUnavailable,
+      );
+    const added = await intensives.addProjectMaterial(
+      actor,
+      id,
+      projectId,
+      draft,
+    );
+    if (added.ok) return done("materialAdded");
+    if (added.error.kind === "invalid")
+      return refusedMaterial(
+        projectId,
+        materialIssueMessage(added.error.issues),
+      );
+    if (added.error.kind === "rules-unmet")
+      return refusedMaterial(projectId, materialRuleMessage(added.error.rules));
+    throw failureResponse(added.error);
+  }
+  const variantId = parseVariantId(form);
+  if (intent === "project-material-set") {
+    const saved = await intensives.setProjectMaterialQuantity(
+      actor,
+      id,
+      projectId,
+      variantId,
+      parseQuantity(form),
+    );
+    if (saved.ok) return done("materialSaved");
+    if (saved.error.kind === "invalid")
+      return refusedMaterial(
+        projectId,
+        materialIssueMessage(saved.error.issues),
+      );
+    throw failureResponse(saved.error);
+  }
+  const removed = await intensives.removeProjectMaterial(
+    actor,
+    id,
+    projectId,
+    variantId,
+  );
+  if (removed.ok) return done("materialRemoved");
+  throw failureResponse(removed.error);
+}
+
 export default function AdminIntensiveDetail() {
   const intensive = useLoaderData<typeof loader>();
   const rejected = useActionData<typeof action>();
@@ -220,7 +406,15 @@ export default function AdminIntensiveDetail() {
     rejected && "stateError" in rejected ? rejected.stateError : undefined;
   const reschedule =
     rejected && "reschedule" in rejected ? rejected.reschedule : undefined;
-  const saved = intensive.feedback ? copy.feedback[intensive.feedback] : null;
+  const projectsRejected =
+    rejected && "projects" in rejected ? rejected.projects : undefined;
+  const materialRejected =
+    rejected && "projectMaterial" in rejected
+      ? rejected.projectMaterial
+      : undefined;
+  const projectError =
+    rejected && "projectError" in rejected ? rejected.projectError : undefined;
+  const saved = intensive.feedback ? FEEDBACK_COPY[intensive.feedback] : null;
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
@@ -259,6 +453,15 @@ export default function AdminIntensiveDetail() {
           intensiveHasPrimaryAction(intensive.status) ? "secondary" : "primary"
         }
       />
+      <div id={PROJECTS_ANCHOR} className="scroll-mt-4">
+        <IntensiveProjects
+          projects={intensive.projects}
+          materialChoices={intensive.materialChoices}
+          rejected={projectsRejected}
+          rejectedMaterial={materialRejected}
+          error={projectError}
+        />
+      </div>
       <IntensiveOtherActions
         status={intensive.status}
         schedule={intensive.values}

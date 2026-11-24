@@ -78,6 +78,8 @@ const reservation = {
   publicId: "res123",
   intensivoName: "Bordado libre",
   eventDate: "2026-12-05",
+  projectName: "Bordado de aro" as string | null,
+  price: money(60000),
   deposit: money(20000),
 };
 
@@ -93,6 +95,8 @@ describe("notification service", () => {
     expect(sent[0]?.text).toContain("Bordado libre");
     expect(sent[0]?.text).toContain("sábado 5 de diciembre");
     expect(sent[0]?.text).toContain("$ 20.000");
+    expect(sent[0]?.text).toContain("con el proyecto Bordado de aro");
+    expect(sent[0]?.text).toContain("$ 60.000");
     expect(sent[0]?.text).toContain(`${SITE}/reserva/res123`);
   });
 
@@ -133,6 +137,18 @@ describe("notification service", () => {
     expect(sent[0]?.text).toContain(`${SITE}/pedido/abc123`);
     expect(sent[0]?.text).toContain("$ 58.000");
     expect(sent[0]?.text).toContain("noviembre 2026");
+  });
+
+  it("emails the student that the place is confirmed, with the order link and no amounts", async () => {
+    const { service, sent } = setup();
+    await service.enrollmentConfirmed(notice);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: "ana@example.com",
+      subject: "Confirmamos tu lugar",
+    });
+    expect(sent[0]?.text).toContain(`${SITE}/pedido/abc123`);
+    expect(sent[0]?.text).not.toContain("$");
   });
 
   it("emails the student when the payment is confirmed", async () => {
@@ -179,6 +195,7 @@ describe("notification service", () => {
       enabled: false,
     });
     await service.enrollmentReceived(notice);
+    await service.enrollmentConfirmed(notice);
     await service.paymentConfirmed(notice);
     await expect(service.runDailyReminders()).resolves.toEqual({
       classes: 0,

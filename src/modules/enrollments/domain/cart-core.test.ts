@@ -124,7 +124,6 @@ describe("priceCart", () => {
   it("totals fee plus materials: 58.000 + 25.000 + 4.000 = 87.000", () => {
     const result = priceCart({
       fee: pesos(58000),
-      materialsRequired: true,
       lines: [
         priced("grande", 2, pesos(12500)),
         priced("chico", 1, pesos(4000)),
@@ -141,10 +140,9 @@ describe("priceCart", () => {
     ]);
   });
 
-  it("an empty cart is the fee alone when materials are optional", () => {
+  it("an empty cart is the fee alone, never a materials-required refusal", () => {
     const result = priceCart({
       fee: pesos(58000),
-      materialsRequired: false,
       lines: [],
     });
     if (!result.ok) throw new Error("expected ok");
@@ -153,26 +151,10 @@ describe("priceCart", () => {
     expect(result.value.lines).toEqual([]);
   });
 
-  it("refuses an empty cart when materials are required", () => {
-    expect(
-      priceCart({ fee: pesos(58000), materialsRequired: true, lines: [] }),
-    ).toEqual({ ok: false, error: { kind: "materials-required" } });
-  });
-
-  it("accepts a non-empty cart when materials are required", () => {
-    const result = priceCart({
-      fee: pesos(58000),
-      materialsRequired: true,
-      lines: [priced("chico", 1, pesos(4000))],
-    });
-    expect(result.ok).toBe(true);
-  });
-
   it("refuses a price that is not a multiple of 100 centavos, naming the line", () => {
     expect(
       priceCart({
         fee: pesos(58000),
-        materialsRequired: false,
         lines: [
           priced("grande", 1, pesos(100)),
           priced("chico", 1, money(450_050)),
@@ -188,7 +170,6 @@ describe("priceCart", () => {
     expect(
       priceCart({
         fee: pesos(58000),
-        materialsRequired: false,
         lines: [priced("chico", 1, pesos(-4000))],
       }),
     ).toEqual({
@@ -198,11 +179,22 @@ describe("priceCart", () => {
   });
 
   it("refuses an unusable fee", () => {
+    expect(priceCart({ fee: money(5_800_050), lines: [] })).toEqual({
+      ok: false,
+      error: { kind: "invalid-fee" },
+    });
+    expect(priceCart({ fee: pesos(0), lines: [] })).toEqual({
+      ok: false,
+      error: { kind: "invalid-fee" },
+    });
+  });
+
+  it("prices a zero fee as a free enrollment only when the caller allows it", () => {
+    const free = priceCart({ fee: pesos(0), lines: [], allowZeroFee: true });
+    if (!free.ok) throw new Error("expected ok");
+    expect(free.value.total.isZero()).toBe(true);
     expect(
-      priceCart({ fee: money(5_800_050), materialsRequired: false, lines: [] }),
-    ).toEqual({ ok: false, error: { kind: "invalid-fee" } });
-    expect(
-      priceCart({ fee: pesos(0), materialsRequired: false, lines: [] }),
+      priceCart({ fee: pesos(-1000), lines: [], allowZeroFee: true }),
     ).toEqual({ ok: false, error: { kind: "invalid-fee" } });
   });
 
@@ -211,7 +203,6 @@ describe("priceCart", () => {
     expect(
       priceCart({
         fee: pesos(58000),
-        materialsRequired: false,
         lines: [priced("grande", 2, huge)],
       }),
     ).toEqual({ ok: false, error: { kind: "invalid-total" } });
@@ -222,14 +213,12 @@ describe("priceCart", () => {
     expect(
       priceCart({
         fee: pesos(58000),
-        materialsRequired: false,
         lines: [priced("a", 1, huge), priced("b", 1, huge)],
       }),
     ).toEqual({ ok: false, error: { kind: "invalid-total" } });
     expect(
       priceCart({
         fee: pesos(58000),
-        materialsRequired: false,
         lines: [priced("a", 1, huge)],
       }),
     ).toEqual({ ok: false, error: { kind: "invalid-total" } });

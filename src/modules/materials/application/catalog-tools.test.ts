@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { Money } from "~/modules/_shared";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { buildSupplier } from "~/testing/fakes/admin-builders";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryStockStore } from "~/testing/fakes/in-memory-stock-store";
 import { InMemoryMaterialRepository } from "~/testing/fakes/in-memory-material-repository";
 import { InMemorySupplierRepository } from "~/testing/fakes/in-memory-supplier-repository";
 import { createMaterialsService } from "./material-service";
@@ -30,6 +32,7 @@ async function setup() {
     suppliers,
     media: { findAssets: () => Promise.resolve(new Map()) },
     clock: advancingClock(new Date("2026-10-20T12:00:00.000Z")),
+    stock: new InMemoryStockStore(),
     newId: () => `material-${String(++ids)}`,
     newVariantId: () => `variant-${String(++ids)}`,
   });
@@ -271,6 +274,56 @@ describe("price raise", () => {
       ok: false,
       error: { kind: "no-scope" },
     });
+  });
+});
+
+describe("supplier cost across bulk operations", () => {
+  async function costed() {
+    const context = await setup();
+    unwrap(
+      await context.service.importCatalog(
+        actor,
+        supplier.id,
+        `${HEADER}
+Tazas;Taza;Chica;1000
+`,
+      ),
+    );
+    const stored = [...context.repository.materials.values()][0];
+    const variant = stored?.variants[0];
+    if (!stored || !variant) throw new Error("expected imported variant");
+    const cost = Money.fromCentavos(60_000);
+    if (!cost.ok) throw new Error("expected cost");
+    context.repository.materials.set(stored.id, {
+      ...stored,
+      variants: [{ ...variant, cost: cost.value }],
+    });
+    return { ...context, materialId: stored.id };
+  }
+  const costOf = (repository: InMemoryMaterialRepository, materialId: string) =>
+    repository.materials
+      .get(materialId)
+      ?.variants.map((variant) => variant.cost?.toCentavos() ?? null);
+
+  it("keeps the loaded cost when an import changes a price and loads none for new variants", async () => {
+    const { service, repository, materialId } = await costed();
+    unwrap(
+      await service.importCatalog(
+        actor,
+        supplier.id,
+        `${HEADER}
+Tazas;Taza;Chica;1500
+Tazas;Taza;Grande;2000
+`,
+      ),
+    );
+    expect(costOf(repository, materialId)).toEqual([60_000, null]);
+  });
+
+  it("keeps the loaded cost when prices are raised", async () => {
+    const { service, repository, materialId } = await costed();
+    unwrap(await service.raisePrices(actor, { supplierId: supplier.id }, 10));
+    expect(costOf(repository, materialId)).toEqual([60_000]);
   });
 });
 

@@ -22,13 +22,14 @@ import {
   monthLabel,
   ORDER_STATUS_LABELS,
 } from "~/app/enrollment/order-labels";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import { EnrollmentsList } from "~/app/ui/admin/enrollments-list";
 import { formatPesos } from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollments";
 
 const PAGE_SIZE = 50;
-const FEEDBACK = ["paid", "cancelled"] as const;
+const FEEDBACK = ["paid", "cancelled", "created"] as const;
 const ALL_STATUSES = ENROLLMENT_TABS.flatMap((tab) => TAB_STATUSES[tab]);
 
 export function meta() {
@@ -119,7 +120,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       number: order.number,
       studentName: order.studentName,
       whatsappHref: whatsappHref(order.phoneDigits),
-      workshopName: order.workshopName,
+      // A sale shares its record's workshop, so the list names it as a sale.
+      workshopName:
+        order.kind === "material_sale"
+          ? `${adminMicrocopy.enrollments.detail.sale.listLabel} · ${order.workshopName}`
+          : order.workshopName,
       month: monthLabel(order.period),
       turno: order.turnoLabel,
       status: order.status,

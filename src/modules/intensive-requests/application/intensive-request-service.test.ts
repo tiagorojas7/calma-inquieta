@@ -3,9 +3,27 @@ import { Money } from "~/modules/_shared";
 import { InMemoryIntensiveRequestRepository } from "~/testing/fakes/in-memory-intensive-request-repository";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
-import type { StudentDraft } from "~/modules/enrollments";
-import type { IntensiveOffer } from "./intensive-offer-lookup";
-import { createIntensiveRequestService } from "./intensive-request-service";
+import type { PolicyVersionCheck, StudentDraft } from "~/modules/enrollments";
+import { policyCheck } from "~/testing/fakes/enrollments-builders";
+import type {
+  IntensiveOffer,
+  IntensiveOfferProject,
+} from "./intensive-offer-lookup";
+import {
+  createIntensiveRequestService,
+  type IntensiveRequestUseCases,
+} from "./intensive-request-service";
+
+const ACCEPTED = { conditionsVersion: 1, privacyVersion: 1 };
+
+/** The form of the tests accepts version 1 of each document unless a call says otherwise. */
+const accepting = (
+  service: IntensiveRequestUseCases,
+): IntensiveRequestUseCases => ({
+  ...service,
+  requestSeat: (input) =>
+    service.requestSeat({ acceptance: ACCEPTED, ...input }),
+});
 
 const pesos = (amount: number): Money => {
   const money = Money.fromCentavos(amount * 100);
@@ -15,6 +33,26 @@ const pesos = (amount: number): Money => {
 
 const INTENSIVE_ID = "0b6f7a3e-1c1e-4a39-9d57-0d1d7c1f0a01";
 const NOW = new Date("2026-10-28T15:00:00.000Z");
+
+const PROJECT_A: IntensiveOfferProject = {
+  id: "c0000000-0000-4000-8000-00000000000a",
+  name: "Taza de torno",
+  image: null,
+  price: pesos(40000),
+  deposit: pesos(15000),
+};
+const PROJECT_B: IntensiveOfferProject = {
+  id: "c0000000-0000-4000-8000-00000000000b",
+  name: "Plato hondo",
+  image: {
+    src: "/media/plato.webp",
+    alt: "Un plato",
+    width: 800,
+    height: 600,
+  },
+  price: pesos(30000),
+  deposit: pesos(10000),
+};
 
 function offer(overrides: Partial<IntensiveOffer> = {}): IntensiveOffer {
   return {
@@ -31,6 +69,7 @@ function offer(overrides: Partial<IntensiveOffer> = {}): IntensiveOffer {
     capacity: 2,
     minSeats: 4,
     policyText: "Si no llegamos al mínimo, devolvemos la seña.",
+    projects: [PROJECT_A],
     ...overrides,
   };
 }
@@ -46,10 +85,14 @@ function student(overrides: Partial<StudentDraft> = {}): StudentDraft {
   };
 }
 
-function setup(intensivo: IntensiveOffer | null = offer()) {
+function setup(
+  intensivo: IntensiveOffer | null = offer(),
+  policies: PolicyVersionCheck = policyCheck(),
+) {
   const repository = new InMemoryIntensiveRequestRepository();
   let counter = 0;
-  const service = createIntensiveRequestService({
+  const raw = createIntensiveRequestService({
+    policies,
     repository,
     offers: {
       findBySlug: (slug) =>
@@ -62,12 +105,14 @@ function setup(intensivo: IntensiveOffer | null = offer()) {
     newId: () =>
       `00000000-0000-4000-8000-${String(++counter).padStart(12, "0")}`,
   });
-  return { service, repository };
+  return { service: accepting(raw), raw, repository };
 }
 
 const ADMIN = testAdminActor("duena@example.com");
 const SLUG = "intensivo-de-ceramica";
 const DEPOSIT_FORM = { amount: "15000", paidOn: "2026-10-27", note: "" };
+const BALANCE_FORM = { amount: "25000", paidOn: "2026-10-28", note: "" };
+const REFUND_FORM = { amount: "0", refundedOn: "2026-10-28" };
 
 async function onlyRequestId(
   service: ReturnType<typeof setup>["service"],
@@ -85,6 +130,7 @@ async function pendingRequest(
 ) {
   const sent = await service.requestSeat({
     slug: SLUG,
+    projectId: PROJECT_A.id,
     student: student(overrides),
   });
   if (!sent.ok) throw new Error("request refused");
@@ -93,11 +139,112 @@ async function pendingRequest(
   return sent.value.publicId;
 }
 
+describe("requestSeat policy acceptance", () => {
+  it("stores the accepted versions and the moment on the request", async () => {
+    const { service, repository } = setup(
+      offer(),
+      policyCheck({ conditions: [1, 2], privacy: [1, 3] }),
+    );
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+      acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+    });
+
+    expect(sent.ok).toBe(true);
+    const [stored] = [...repository.requests.values()];
+    expect(stored).toMatchObject({
+      acceptance: { conditionsVersion: 2, privacyVersion: 3 },
+      policyAcceptedAt: NOW,
+    });
+  });
+
+  it.each([
+    ["conditions", { conditionsVersion: 9, privacyVersion: 1 }],
+    ["privacy", { conditionsVersion: 1, privacyVersion: 9 }],
+  ] as const)(
+    "refuses an unknown %s version as a policy issue and stores nothing",
+    async (_kind, acceptance) => {
+      const { service, repository } = setup();
+
+      const sent = await service.requestSeat({
+        slug: SLUG,
+        projectId: PROJECT_A.id,
+        student: student(),
+        acceptance,
+      });
+
+      expect(sent).toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        },
+      });
+      expect(repository.requests.size).toBe(0);
+    },
+  );
+
+  it("is unavailable, storing nothing, when the form carried no versions", async () => {
+    const { raw, repository } = setup();
+
+    const sent = await raw.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("is unavailable, storing nothing, when the versions cannot be checked", async () => {
+    const { service, repository } = setup(offer(), {
+      isPublished: () => Promise.reject(new Error("offline")),
+    });
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("still reports the missing checkbox as required, even with an unknown version", async () => {
+    const { service, repository } = setup();
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student({ policyAccepted: false }),
+      acceptance: { conditionsVersion: 9, privacyVersion: 9 },
+    });
+
+    expect(sent).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "policy", code: "required" }],
+      },
+    });
+    expect(repository.requests.size).toBe(0);
+  });
+});
+
 describe("requestSeat", () => {
   it("records a pending request with normalized contact data", async () => {
     const { service, repository } = setup();
 
-    const sent = await service.requestSeat({ slug: SLUG, student: student() });
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
 
     expect(sent.ok).toBe(true);
     const [stored] = [...repository.requests.values()];
@@ -118,6 +265,7 @@ describe("requestSeat", () => {
 
     const sent = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ honeypot: "http://spam" }),
     });
 
@@ -135,6 +283,7 @@ describe("requestSeat", () => {
 
     const sent = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({
         fullName: "",
         email: "x",
@@ -167,7 +316,11 @@ describe("requestSeat", () => {
   ] as const)("refuses %s", async (_name, intensivo, kind) => {
     const { service, repository } = setup(intensivo);
 
-    const sent = await service.requestSeat({ slug: SLUG, student: student() });
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
 
     expect(sent).toEqual({ ok: false, error: { kind } });
     expect(repository.requests.size).toBe(0);
@@ -185,6 +338,7 @@ describe("requestSeat", () => {
 
     const late = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ email: "bea@example.com" }),
     });
 
@@ -197,10 +351,93 @@ describe("requestSeat", () => {
 
     const again = await service.requestSeat({
       slug: SLUG,
+      projectId: PROJECT_A.id,
       student: student({ email: "ana@example.com" }),
     });
 
     expect(again).toEqual({ ok: false, error: { kind: "duplicate-request" } });
+  });
+
+  it("stores the chosen project with a snapshot of its price and deposit", async () => {
+    const { service, repository } = setup(
+      offer({ projects: [PROJECT_A, PROJECT_B] }),
+    );
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+
+    expect(sent.ok).toBe(true);
+    const [stored] = [...repository.requests.values()];
+    expect(stored?.projectId).toBe(PROJECT_B.id);
+    expect(stored?.price?.toCentavos()).toBe(3_000_000);
+    expect(stored?.deposit?.toCentavos()).toBe(1_000_000);
+  });
+
+  it.each([
+    ["no project", "", "required"],
+    [
+      "an unknown project",
+      "c0000000-0000-4000-8000-0000000000ff",
+      "invalid-format",
+    ],
+  ] as const)(
+    "refuses %s and writes nothing",
+    async (_name, projectId, code) => {
+      const { service, repository } = setup(
+        offer({ projects: [PROJECT_A, PROJECT_B] }),
+      );
+
+      const sent = await service.requestSeat({
+        slug: SLUG,
+        projectId,
+        student: student(),
+      });
+
+      expect(sent).toEqual({
+        ok: false,
+        error: { kind: "invalid", issues: [{ field: "project", code }] },
+      });
+      expect(repository.requests.size).toBe(0);
+    },
+  );
+
+  it("refuses a project that belongs to another workshop", async () => {
+    const { service, repository } = setup(offer({ projects: [PROJECT_A] }));
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+
+    expect(sent).toMatchObject({
+      ok: false,
+      error: { kind: "invalid", issues: [{ field: "project" }] },
+    });
+    expect(repository.requests.size).toBe(0);
+  });
+
+  it("answers invalid when the project disappears between the check and the write", async () => {
+    const { service, repository } = setup();
+    repository.insert = () =>
+      Promise.resolve({ ok: false, error: { kind: "unknown-project" } });
+
+    const sent = await service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_A.id,
+      student: student(),
+    });
+
+    expect(sent).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "project", code: "invalid-format" }],
+      },
+    });
   });
 });
 
@@ -222,8 +459,73 @@ describe("getRequestByPublicId", () => {
         eventDate: "2026-11-14",
         startsAt: "10:00",
         endsAt: "14:00",
+        projectName: "Taza de torno",
+        price: pesos(40000),
         deposit: pesos(15000),
       },
+    });
+  });
+
+  it("reports the snapshot price and deposit, not the project's current ones", async () => {
+    const current = { ...PROJECT_A };
+    const catalog = { value: offer({ projects: [current] }) };
+    const repository = new InMemoryIntensiveRequestRepository();
+    const service = createIntensiveRequestService({
+      policies: policyCheck(),
+      repository,
+      offers: {
+        findBySlug: () => Promise.resolve(catalog.value),
+        findById: () => Promise.resolve(catalog.value),
+      },
+      clock: fixedClock(NOW),
+      random: { bytes: (length) => new Uint8Array(length).fill(7) },
+    });
+    const sent = await accepting(service).requestSeat({
+      slug: SLUG,
+      projectId: current.id,
+      student: student(),
+    });
+    if (!sent.ok) throw new Error("request refused");
+
+    catalog.value = offer({
+      projects: [
+        {
+          ...current,
+          name: "Renombrada",
+          price: pesos(90000),
+          deposit: pesos(50000),
+        },
+      ],
+    });
+    const view = await service.getRequestByPublicId(sent.value.publicId);
+
+    expect(view).toMatchObject({
+      ok: true,
+      value: {
+        projectName: "Renombrada",
+        price: pesos(40000),
+        deposit: pesos(15000),
+      },
+    });
+  });
+
+  it("falls back to the workshop terms for a request made before projects", async () => {
+    const { service, repository } = setup();
+    const publicId = await pendingRequest(service);
+    const [stored] = [...repository.requests.values()];
+    if (!stored) throw new Error("no request");
+    repository.requests.set(stored.id, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const view = await service.getRequestByPublicId(publicId);
+
+    expect(view).toMatchObject({
+      ok: true,
+      value: { projectName: null, price: pesos(40000), deposit: pesos(15000) },
     });
   });
 
@@ -250,7 +552,7 @@ describe("getOffer", () => {
       value: {
         slug: SLUG,
         name: "Intensivo de cerámica",
-        deposit: pesos(15000),
+        projects: [PROJECT_A],
         minSeats: 4,
         policyText: "Si no llegamos al mínimo, devolvemos la seña.",
         seatsLeft: 2,
@@ -274,6 +576,7 @@ describe("getOffer", () => {
 
   it("is unavailable when a dependency fails", async () => {
     const service = createIntensiveRequestService({
+      policies: policyCheck(),
       repository: new InMemoryIntensiveRequestRepository(),
       offers: {
         findBySlug: () => Promise.reject(new Error("db down")),
@@ -284,6 +587,121 @@ describe("getOffer", () => {
     });
 
     expect(await service.getOffer(SLUG)).toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+  });
+});
+
+describe("a workshop with a single project", () => {
+  it("takes a request from the form to a confirmed seat with the project's snapshot terms", async () => {
+    const { service, repository } = setup();
+    const publicId = await pendingRequest(service);
+
+    const confirmed = await service.confirm(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId: await onlyRequestId(service),
+      ...DEPOSIT_FORM,
+    });
+
+    expect(confirmed).toMatchObject({
+      ok: true,
+      value: { status: "confirmed", projectId: PROJECT_A.id },
+    });
+    expect([...repository.requests.values()][0]?.price?.toCentavos()).toBe(
+      4_000_000,
+    );
+    expect(await service.getRequestByPublicId(publicId)).toMatchObject({
+      ok: true,
+      value: {
+        status: "confirmed",
+        projectName: "Taza de torno",
+        price: pesos(40000),
+        deposit: pesos(15000),
+      },
+    });
+  });
+});
+
+describe("listProjects", () => {
+  it("lists the projects of a published or paused workshop, full ones included", async () => {
+    for (const intensivo of [
+      offer({ projects: [PROJECT_A, PROJECT_B] }),
+      offer({ status: "paused", projects: [PROJECT_A, PROJECT_B] }),
+      offer({ capacity: 0, projects: [PROJECT_A, PROJECT_B] }),
+    ])
+      expect(await setup(intensivo).service.listProjects(SLUG)).toEqual({
+        ok: true,
+        value: [PROJECT_A, PROJECT_B],
+      });
+  });
+
+  it.each([
+    ["an unknown slug", null],
+    ["a draft", offer({ status: "draft" })],
+    ["a past workshop", offer({ upcoming: false })],
+  ] as const)("answers not-found for %s", async (_name, intensivo) => {
+    expect(await setup(intensivo).service.listProjects(SLUG)).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    });
+  });
+});
+
+describe("shared read state", () => {
+  it("leaves a new public request unread", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+
+    expect([...repository.requests.keys()]).toHaveLength(1);
+    expect(repository.seenMarks.size).toBe(0);
+  });
+
+  it("marks every request of the intensivo read for both owners, once", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+    await pendingRequest(service, { email: "bea@example.com" });
+
+    expect(await service.markSeen(ADMIN, INTENSIVE_ID)).toEqual({
+      ok: true,
+      value: { marked: 2 },
+    });
+    expect(
+      await service.markSeen(
+        testAdminActor("second@example.com"),
+        INTENSIVE_ID,
+      ),
+    ).toEqual({ ok: true, value: { marked: 0 } });
+    expect([...repository.seenMarks.values()]).toEqual([
+      { by: "duena@example.com", at: NOW },
+      { by: "duena@example.com", at: NOW },
+    ]);
+  });
+
+  it("changes neither the statuses nor the overview of the intensivo", async () => {
+    const { service } = setup();
+    await pendingRequest(service);
+    const before = await service.overview(ADMIN, INTENSIVE_ID);
+
+    await service.markSeen(ADMIN, INTENSIVE_ID);
+
+    expect(await service.overview(ADMIN, INTENSIVE_ID)).toEqual(before);
+  });
+
+  it("denies without an admin actor", async () => {
+    const { service } = setup();
+
+    expect(await service.markSeen(null, INTENSIVE_ID)).toEqual({
+      ok: false,
+      error: { kind: "denied" },
+    });
+  });
+
+  it("answers unavailable when the repository fails", async () => {
+    const { service, repository } = setup();
+    repository.markSeenForIntensive = () => Promise.reject(new Error("down"));
+
+    expect(await service.markSeen(ADMIN, INTENSIVE_ID)).toEqual({
       ok: false,
       error: { kind: "unavailable" },
     });
@@ -301,6 +719,13 @@ describe("admin", () => {
         intensiveId: INTENSIVE_ID,
         requestId: "x",
         ...DEPOSIT_FORM,
+      }),
+    ).toEqual(denied);
+    expect(
+      await service.recordBalance(null, {
+        intensiveId: INTENSIVE_ID,
+        requestId: "x",
+        ...BALANCE_FORM,
       }),
     ).toEqual(denied);
     expect(
@@ -444,6 +869,7 @@ describe("admin", () => {
       intensiveId: INTENSIVE_ID,
       requestId,
       reason: "  no puede asistir ",
+      refund: REFUND_FORM,
     });
 
     expect(cancelled).toMatchObject({
@@ -469,5 +895,367 @@ describe("admin", () => {
       ok: false,
       error: { kind: "invalid", issues: [{ field: "reason" }] },
     });
+  });
+
+  it("cancels a pending request with no refund and leaves it unpaid", async () => {
+    const { service } = setup();
+    await pendingRequest(service);
+    const requestId = await onlyRequestId(service);
+
+    const cancelled = await service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "cambió de idea",
+    });
+
+    expect(cancelled).toMatchObject({
+      ok: true,
+      value: { status: "cancelled", refund: null, paidAmount: null },
+    });
+  });
+});
+
+/** A request that chose a project, confirmed with the deposit it was quoted. */
+async function confirmedRequest(
+  context: ReturnType<typeof setup>,
+  projectId = PROJECT_A.id,
+  deposit = "15000",
+) {
+  const sent = await context.service.requestSeat({
+    slug: SLUG,
+    projectId,
+    student: student(),
+  });
+  if (!sent.ok) throw new Error("request refused");
+  const requestId = await onlyRequestId(context.service);
+  const confirmed = await context.service.confirm(ADMIN, {
+    intensiveId: INTENSIVE_ID,
+    requestId,
+    ...DEPOSIT_FORM,
+    amount: deposit,
+  });
+  if (!confirmed.ok) throw new Error("confirm refused");
+  return requestId;
+}
+
+describe("confirming against the request snapshot", () => {
+  it("asks for the deposit the person was quoted, not the workshop's", async () => {
+    const context = setup(offer({ projects: [PROJECT_A, PROJECT_B] }));
+    await context.service.requestSeat({
+      slug: SLUG,
+      projectId: PROJECT_B.id,
+      student: student(),
+    });
+    const requestId = await onlyRequestId(context.service);
+    const base = { intensiveId: INTENSIVE_ID, requestId, ...DEPOSIT_FORM };
+
+    const workshopDeposit = await context.service.confirm(ADMIN, base);
+    const quoted = await context.service.confirm(ADMIN, {
+      ...base,
+      amount: "10.000",
+    });
+
+    expect(workshopDeposit).toMatchObject({
+      ok: false,
+      error: { kind: "invalid", issues: [{ field: "amount" }] },
+    });
+    expect(quoted).toMatchObject({ ok: true, value: { status: "confirmed" } });
+    expect(quoted.ok && quoted.value.paidAmount?.toCentavos()).toBe(1_000_000);
+  });
+
+  it("keeps asking for the workshop deposit when the request has no snapshot", async () => {
+    const { service, repository } = setup();
+    await pendingRequest(service);
+    const [stored] = [...repository.requests.values()];
+    if (!stored) throw new Error("no request");
+    repository.requests.set(stored.id, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const confirmed = await service.confirm(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId: stored.id,
+      ...DEPOSIT_FORM,
+    });
+
+    expect(confirmed.ok && confirmed.value.paidAmount?.toCentavos()).toBe(
+      1_500_000,
+    );
+  });
+});
+
+describe("recordBalance", () => {
+  const balanceOf = (
+    requestId: string,
+    over: Partial<typeof BALANCE_FORM> = {},
+  ) => ({
+    intensiveId: INTENSIVE_ID,
+    requestId,
+    ...BALANCE_FORM,
+    ...over,
+  });
+
+  it("records the snapshot price minus the snapshot deposit with who and when", async () => {
+    const context = setup(offer({ projects: [PROJECT_A, PROJECT_B] }));
+    const requestId = await confirmedRequest(context, PROJECT_B.id, "10000");
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { amount: "$ 20.000", note: " efectivo " }),
+    );
+
+    expect(paid).toMatchObject({
+      ok: true,
+      value: {
+        status: "confirmed",
+        balance: {
+          paidOn: "2026-10-28",
+          note: "efectivo",
+          by: "duena@example.com",
+          at: NOW,
+        },
+      },
+    });
+    expect(paid.ok && paid.value.balance?.amount.toCentavos()).toBe(2_000_000);
+  });
+
+  it("uses the workshop terms for a request without a snapshot", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    const stored = context.repository.requests.get(requestId);
+    if (!stored) throw new Error("no request");
+    context.repository.requests.set(requestId, {
+      ...stored,
+      projectId: null,
+      price: null,
+      deposit: null,
+    });
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId),
+    );
+
+    expect(paid.ok && paid.value.balance?.amount.toCentavos()).toBe(2_500_000);
+  });
+
+  it("refuses an amount that is not the whole balance, a future date and a date before the deposit", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    const refused = async (over: Partial<typeof BALANCE_FORM>) => {
+      const result = await context.service.recordBalance(
+        ADMIN,
+        balanceOf(requestId, over),
+      );
+      return result.ok || result.error.kind !== "invalid"
+        ? []
+        : result.error.issues.map((issue) => issue.field);
+    };
+
+    expect(await refused({ amount: "10000" })).toEqual(["amount"]);
+    expect(await refused({ paidOn: "2026-10-29" })).toEqual(["paidOn"]);
+    expect(await refused({ paidOn: "2026-10-26" })).toEqual(["paidOn"]);
+    expect(context.repository.requests.get(requestId)?.balance).toBeNull();
+  });
+
+  it("refuses a second balance and keeps the first", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { note: "primero" }),
+    );
+
+    const again = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId, { note: "segundo" }),
+    );
+
+    expect(again).toEqual({
+      ok: false,
+      error: { kind: "balance-already-paid" },
+    });
+    expect(context.repository.requests.get(requestId)?.balance?.note).toBe(
+      "primero",
+    );
+  });
+
+  it("refuses the balance of a pending or cancelled request", async () => {
+    const context = setup();
+    await pendingRequest(context.service);
+    const requestId = await onlyRequestId(context.service);
+
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf(requestId)),
+    ).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "pending_confirmation" },
+    });
+    await context.service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "cambió de idea",
+    });
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf(requestId)),
+    ).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "cancelled" },
+    });
+  });
+
+  it("has no balance when the deposit already covered the price", async () => {
+    const whole = { ...PROJECT_A, price: pesos(15000), deposit: pesos(15000) };
+    const context = setup(offer({ projects: [whole] }));
+    const requestId = await confirmedRequest(context);
+
+    const paid = await context.service.recordBalance(
+      ADMIN,
+      balanceOf(requestId),
+    );
+
+    expect(paid).toEqual({ ok: false, error: { kind: "no-balance-due" } });
+  });
+
+  it("answers not-found for another intensivo and for an unknown request", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    expect(
+      await context.service.recordBalance(ADMIN, {
+        ...balanceOf(requestId),
+        intensiveId: "7c9d1a52-83f4-4b0e-a7a5-5f0e2c4b9a02",
+      }),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
+    expect(
+      await context.service.recordBalance(ADMIN, balanceOf("nope")),
+    ).toEqual({ ok: false, error: { kind: "not-found" } });
+  });
+});
+
+describe("cancelling a request that paid", () => {
+  const cancelWith = (
+    context: ReturnType<typeof setup>,
+    requestId: string,
+    refund?: { amount: string; refundedOn: string; note?: string },
+  ) =>
+    context.service.cancel(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      reason: "no puede asistir",
+      ...(refund === undefined ? {} : { refund }),
+    });
+
+  it("records a zero refund and keeps the deposit as history", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    const cancelled = await cancelWith(context, requestId, REFUND_FORM);
+
+    expect(cancelled).toMatchObject({
+      ok: true,
+      value: { status: "cancelled", cancelledBy: "duena@example.com" },
+    });
+    expect(cancelled.ok && cancelled.value.refund?.amount.isZero()).toBe(true);
+    expect(cancelled.ok && cancelled.value.paidAmount?.toCentavos()).toBe(
+      1_500_000,
+    );
+  });
+
+  it("requires the refund, refuses one above what was paid, and leaves the request confirmed", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    expect(await cancelWith(context, requestId)).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "required" },
+    });
+    expect(
+      await cancelWith(context, requestId, { ...REFUND_FORM, amount: "15001" }),
+    ).toEqual({
+      ok: false,
+      error: { kind: "invalid-refund", field: "amount", code: "above-paid" },
+    });
+    expect(context.repository.requests.get(requestId)?.status).toBe(
+      "confirmed",
+    );
+  });
+
+  it("lets a request that paid its balance get back up to deposit plus balance", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await context.service.recordBalance(ADMIN, {
+      intensiveId: INTENSIVE_ID,
+      requestId,
+      ...BALANCE_FORM,
+    });
+
+    const above = await cancelWith(context, requestId, {
+      ...REFUND_FORM,
+      amount: "40001",
+    });
+    const all = await cancelWith(context, requestId, {
+      ...REFUND_FORM,
+      amount: "40.000",
+      note: " todo ",
+    });
+
+    expect(above).toMatchObject({ ok: false, error: { code: "above-paid" } });
+    expect(all.ok && all.value.refund).toEqual({
+      amount: pesos(40000),
+      refundedOn: "2026-10-28",
+      note: "todo",
+    });
+    expect(all.ok && all.value.balance?.amount.toCentavos()).toBe(2_500_000);
+  });
+
+  it("refuses a malformed amount, date or note, and any refund on a pending request", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+
+    for (const [refund, field] of [
+      [{ ...REFUND_FORM, amount: "12,5" }, "amount"],
+      [{ ...REFUND_FORM, refundedOn: "ayer" }, "refundedOn"],
+      [{ ...REFUND_FORM, note: "x".repeat(301) }, "note"],
+    ] as const)
+      expect(await cancelWith(context, requestId, refund)).toMatchObject({
+        ok: false,
+        error: { kind: "invalid-refund", field },
+      });
+
+    const pending = setup();
+    await pendingRequest(pending.service);
+    expect(
+      await cancelWith(
+        pending,
+        await onlyRequestId(pending.service),
+        REFUND_FORM,
+      ),
+    ).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid-refund",
+        field: "amount",
+        code: "not-refundable",
+      },
+    });
+  });
+
+  it("changes nothing on a second cancel", async () => {
+    const context = setup();
+    const requestId = await confirmedRequest(context);
+    await cancelWith(context, requestId, { ...REFUND_FORM, amount: "5000" });
+    const before = context.repository.requests.get(requestId);
+
+    const again = await cancelWith(context, requestId, REFUND_FORM);
+
+    expect(again).toEqual({
+      ok: false,
+      error: { kind: "illegal-transition", from: "cancelled" },
+    });
+    expect(context.repository.requests.get(requestId)).toEqual(before);
   });
 });

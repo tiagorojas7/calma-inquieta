@@ -28,13 +28,13 @@ export interface QuickTurnoRow {
 /** What the one-page form shows, typed or saved. */
 export interface QuickValues {
   readonly name: string;
+  readonly summary: string;
   readonly description: string;
   readonly teacherId: string;
   readonly defaultFee: string;
   readonly percentage: string;
   readonly images: readonly GalleryFormImage[];
   readonly rows: readonly QuickTurnoRow[];
-  readonly materialIds: readonly string[];
 }
 
 export type QuickIntent = "publish" | "draft";
@@ -46,7 +46,6 @@ export interface QuickWorkshopInput {
   readonly turnos: readonly { index: number; draft: TurnoDraft }[];
   /** Message per form row that cannot be saved. */
   readonly turnoErrors: Readonly<Record<number, string>>;
-  readonly materialIds: readonly string[];
   readonly values: QuickValues;
 }
 
@@ -93,8 +92,9 @@ const isBlank = (row: QuickTurnoRow) =>
 
 /**
  * The one-page taller form as a draft plus its turnos. The slug is left empty
- * so the flow derives a unique one; the summary comes from the description
- * and the technique falls back to a neutral word, so neither is asked. Rows
+ * so the flow derives a unique one, and the technique falls back to a neutral
+ * word. The card text ("Descripción") is asked like on the full form, so a
+ * blank one is the service's "required" error. Rows
  * that are completely empty are ignored; a half-filled row is reported before
  * anything is saved.
  */
@@ -137,26 +137,23 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     });
   });
   const description = text(form, "description");
-  const materialIds = form
-    .getAll("materialIds")
-    .filter((id): id is string => typeof id === "string" && id !== "");
   const intent = text(form, "intent") === "publish" ? "publish" : "draft";
   const values: QuickValues = {
     name: text(form, "name"),
+    summary: text(form, "summary"),
     description,
     teacherId: text(form, "teacherId"),
     defaultFee: text(form, "defaultFee"),
     percentage: text(form, "percentage"),
     images: parseGallery(form),
     rows,
-    materialIds,
   };
   return {
     intent,
     draft: {
       name: values.name,
       slug: "",
-      summary: text(form, "summary") || deriveSummary(description),
+      summary: values.summary,
       description,
       technique: text(form, "technique") || DEFAULT_TECHNIQUE,
       defaultFee: values.defaultFee,
@@ -167,7 +164,6 @@ export function parseQuickWorkshop(form: FormData): QuickWorkshopInput {
     },
     turnos,
     turnoErrors,
-    materialIds,
     values,
   };
 }

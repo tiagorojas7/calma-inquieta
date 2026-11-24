@@ -4,6 +4,7 @@ import {
   deriveStudents,
   filterStudents,
   normalizeStudentEmail,
+  resolveStudentIdentity,
   NOTE_MAX,
   validateNote,
 } from "./student-core";
@@ -11,6 +12,27 @@ import {
 describe("normalizeStudentEmail", () => {
   it("trims and lower-cases", () => {
     expect(normalizeStudentEmail("  Ana@Example.COM ")).toBe("ana@example.com");
+  });
+});
+
+describe("resolveStudentIdentity", () => {
+  it("creates, reuses, or rejects a profile without merging two people", () => {
+    expect(resolveStudentIdentity(null, null)).toEqual({ kind: "create" });
+    expect(resolveStudentIdentity("student-a", null)).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity(null, "student-a")).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity("student-a", "student-a")).toEqual({
+      kind: "reuse",
+      studentId: "student-a",
+    });
+    expect(resolveStudentIdentity("student-a", "student-b")).toEqual({
+      kind: "conflict",
+    });
   });
 });
 
@@ -72,6 +94,73 @@ describe("deriveStudents", () => {
       turnoLabel: "Martes 18:00 a 20:00",
       period: "2026-10",
     });
+  });
+});
+
+describe("deriveStudents and material sales", () => {
+  it("lists a sale in the order history with its kind, but never as a workshop or an activity", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, { studentEmail: "ana@example.com", status: "paid" }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        status: "pending_confirmation",
+        kind: "material_sale",
+        workshopId: "00000000-0000-4000-8000-0000000000bb",
+        workshopName: "Otro taller",
+      }),
+    ]);
+
+    expect(ana?.orders.map((order) => [order.number, order.kind])).toEqual([
+      ["CI-2026-0002", "material_sale"],
+      ["CI-2026-0001", undefined],
+    ]);
+    expect(ana?.activities).toHaveLength(1);
+    expect(ana?.workshops.map((workshop) => workshop.name)).toEqual([
+      "Cerámica inicial",
+    ]);
+  });
+
+  it("takes the name, phone and last request from the newest non-sale order, even when a sale is newer", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-10-05T15:00:00Z"),
+      }),
+      studentOrder(2, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Pérez",
+        studentPhoneDigits: "5493515559999",
+        requestedAt: new Date("2026-10-28T15:00:00Z"),
+      }),
+      studentOrder(3, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Perez",
+        studentPhoneDigits: "5493515550001",
+        requestedAt: new Date("2026-11-03T15:00:00Z"),
+        kind: "material_sale",
+      }),
+    ]);
+
+    expect(ana).toMatchObject({
+      fullName: "Ana Pérez",
+      phoneDigits: "5493515559999",
+      lastRequestedAt: new Date("2026-10-28T15:00:00Z"),
+    });
+    expect(ana?.orders[0]?.kind).toBe("material_sale");
+  });
+
+  it("falls back to the newest order when the student only has sales", () => {
+    const [ana] = deriveStudents([
+      studentOrder(1, {
+        studentEmail: "ana@example.com",
+        studentName: "Ana Sale",
+        kind: "material_sale",
+      }),
+    ]);
+
+    expect(ana?.fullName).toBe("Ana Sale");
   });
 });
 

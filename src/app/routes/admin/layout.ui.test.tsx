@@ -83,3 +83,55 @@ describe("admin layout screens", () => {
     ).toBeVisible();
   });
 });
+
+describe("admin layout bell", () => {
+  function renderWithCount(
+    layoutData: { email: string; unseen?: number | null },
+    childLoader: () => unknown = () => ({ email: layoutData.email, summary }),
+  ) {
+    const Stub = createRoutesStub([
+      {
+        id: "routes/admin/layout",
+        path: "/admin",
+        Component: AdminLayout,
+        ErrorBoundary: ErrorBoundary as never,
+        loader: () => layoutData,
+        children: [
+          { index: true, Component: AdminHome, loader: () => childLoader() },
+        ],
+      },
+    ]);
+    return render(<Stub initialEntries={["/admin"]} />);
+  }
+
+  it("shows the bell with the count on every admin screen, pointing to the novelties page", async () => {
+    renderWithCount({ email: "agus@example.com", unseen: 2 });
+
+    const bell = await screen.findByRole("link", {
+      name: "Novedades: 2 sin leer",
+    });
+    expect(bell).toHaveAttribute("href", "/admin/novedades");
+    expect(screen.getByTestId("admin-bell-badge")).toHaveTextContent("2");
+  });
+
+  it("hides the badge when the count could not be read, keeping the bell", async () => {
+    renderWithCount({ email: "agus@example.com", unseen: null });
+
+    expect(
+      await screen.findByRole("link", { name: "Novedades" }),
+    ).toHaveAttribute("href", "/admin/novedades");
+    expect(screen.queryByTestId("admin-bell-badge")).toBeNull();
+  });
+
+  it("still renders the error screen, with the bell and without a count, when a section fails", async () => {
+    renderWithCount({ email: "agus@example.com" }, () => {
+      throw new Error("boom");
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Algo salió mal" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Novedades" })).toBeVisible();
+    expect(screen.queryByTestId("admin-bell-badge")).toBeNull();
+  });
+});

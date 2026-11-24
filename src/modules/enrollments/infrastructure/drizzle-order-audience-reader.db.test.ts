@@ -1,11 +1,15 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { enrollmentOrder } from "~/platform/db/schema/enrollments";
+import { enrollmentOrder, student } from "~/platform/db/schema/enrollments";
 import { createDbSessionFactory } from "~/platform/db/session";
 import {
   createTestDatabase,
   type TestDatabase,
 } from "~/testing/db/test-database";
+import { Money } from "~/modules/_shared";
+import { createTestOrderStock } from "~/testing/db/order-stock";
+import { orderDraft } from "~/testing/fakes/enrollments-builders";
 import { createDrizzleOrderAudienceReader } from "./drizzle-order-audience-reader";
+import { createDrizzleOrderRepository } from "./drizzle-order-repository";
 
 const created: TestDatabase[] = [];
 afterAll(async () => {
@@ -14,6 +18,15 @@ afterAll(async () => {
 
 type Values = typeof enrollmentOrder.$inferInsert;
 const unpaid = { paidAt: null, paidAmountCentavos: null } as const;
+/** A later material purchase under the first record the test adds. */
+const sale = {
+  kind: "material_sale",
+  parentOrderId: "00000000-0000-4000-8000-000000000001",
+  feeCentavos: 0,
+  materialsCentavos: 400_000,
+  totalCentavos: 400_000,
+  paidAmountCentavos: 400_000,
+} as const;
 
 async function setup() {
   const database = await createTestDatabase();
@@ -26,8 +39,20 @@ async function setup() {
     next += 1;
     const session = await openSession();
     try {
+      const studentId = `00000000-0000-4000-8001-${String(next).padStart(12, "0")}`;
+      const studentEmail = `ana${String(next)}@example.com`;
+      const studentPhoneDigits = `549351${String(next).padStart(7, "0")}`;
+      await session.db.insert(student).values({
+        id: studentId,
+        fullName: "Ana Pérez",
+        email: studentEmail,
+        phoneDigits: studentPhoneDigits,
+        createdAt: new Date("2026-10-30T12:00:00.000Z"),
+        updatedAt: new Date("2026-10-30T12:00:00.000Z"),
+      });
       await session.db.insert(enrollmentOrder).values({
         id: `00000000-0000-4000-8000-${String(next).padStart(12, "0")}`,
+        studentId,
         publicId: `order-${String(next).padStart(17, "0")}`,
         number: `CI-2026-${String(next).padStart(4, "0")}`,
         status: "paid",
@@ -42,8 +67,8 @@ async function setup() {
         startsAt: "17:30",
         endsAt: "19:30",
         studentName: "Ana Pérez",
-        studentEmail: `ana${String(next)}@example.com`,
-        studentPhoneDigits: "5493511234567",
+        studentEmail,
+        studentPhoneDigits,
         feeCentavos: 5_800_000,
         materialsCentavos: 0,
         totalCentavos: 5_800_000,
@@ -61,10 +86,12 @@ async function setup() {
 }
 
 describe("drizzle order audience reader", () => {
-  it("lists paid orders of the weekday and period, with the time and the public id", async () => {
+  it("lists paid monthly records of the weekday and period, with the time and the public id, never a material sale", async () => {
     const { reader, add } = await setup();
     await add();
     await add({ status: "materials_received" });
+    await add({ ...sale });
+    await add({ ...sale, status: "materials_received" });
     await add({ status: "pending_confirmation", ...unpaid });
     await add({ status: "cancelled" });
     await add({ weekday: 3 });
@@ -82,7 +109,7 @@ describe("drizzle order audience reader", () => {
     expect(rows[0]?.total.toCentavos()).toBe(5_800_000);
   });
 
-  it("lists pending orders requested inside the window only", async () => {
+  it("lists pending monthly records requested inside the window only, never a pending material sale", async () => {
     const { reader, add } = await setup();
     const at = (iso: string) => ({
       status: "pending_confirmation",
@@ -94,6 +121,7 @@ describe("drizzle order audience reader", () => {
     await add(at("2026-10-31T12:00:00.000Z")); // to, excluded
     await add(at("2026-10-29T12:00:00.000Z")); // too old
     await add({ requestedAt: new Date("2026-10-30T18:00:00.000Z") }); // paid
+    await add({ ...sale, ...at("2026-10-30T18:00:00.000Z"), ...unpaid }); // a sale
 
     const rows = await reader.pendingRequestedBetween(
       new Date("2026-10-30T12:00:00.000Z"),
@@ -101,5 +129,48 @@ describe("drizzle order audience reader", () => {
     );
 
     expect(rows).toHaveLength(2);
+  });
+
+  it("never selects a free order created paid as a fee reminder, only as a class reminder", async () => {
+    const database = await createTestDatabase();
+    created.push(database);
+    const openSession = createDbSessionFactory({
+      connectionString: database.url,
+    });
+    const repository = createDrizzleOrderRepository(
+      openSession,
+      createTestOrderStock(openSession).port,
+    );
+    const reader = createDrizzleOrderAudienceReader(openSession);
+    const requestedAt = new Date("2026-10-30T12:00:00.000Z");
+    const free = Money.zero();
+    const stored = await repository.create(
+      orderDraft({
+        workshopId: "00000000-0000-4000-8000-000000000001",
+        periodId: "00000000-0000-4000-8000-000000000003",
+        turnoId: "00000000-0000-4000-8000-000000000004",
+        period: "2026-11",
+        weekday: 2,
+        requestedAt,
+        fee: free,
+        total: free,
+        createdBy: "admin@example.com",
+        paidOnCreation: {
+          paidAt: new Date("2026-10-30T03:00:00.000Z"),
+          confirmedBy: "admin@example.com",
+          capacity: 8,
+        },
+      }),
+    );
+    expect(stored.ok && stored.value.status).toBe("paid");
+
+    const fees = await reader.pendingRequestedBetween(
+      new Date("2026-10-30T00:00:00.000Z"),
+      new Date("2026-10-31T00:00:00.000Z"),
+    );
+    const classes = await reader.classesOn(2, "2026-11");
+
+    expect(fees).toEqual([]);
+    expect(classes).toHaveLength(1);
   });
 });

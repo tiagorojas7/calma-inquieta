@@ -5,12 +5,12 @@ import {
   enrollmentOrder,
   orderAudit,
   orderLine,
-  orderNumberSequence,
+  student,
 } from "~/platform/db/schema/enrollments";
 import {
-  formatOrderNumber,
   transition,
   type IllegalTransition,
+  type LineSource,
   type OrderStatus,
 } from "../domain/order-core";
 import type {
@@ -18,6 +18,10 @@ import type {
   OrderRepository,
   StoredOrder,
 } from "../application/enrollment-repository";
+import type { OrderStockPort } from "../application/order-stock";
+import { nextOrderNumber } from "./order-number";
+import { takeStockLines } from "./order-stock-lines";
+import { claimSeat } from "./seat-claim";
 
 type Db = Awaited<ReturnType<DbSessionFactory>>["db"];
 type OrderRow = typeof enrollmentOrder.$inferSelect;
@@ -36,6 +40,7 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     publicId: row.publicId,
     number: row.number,
     status: row.status as OrderStatus,
+    ...(row.kind === "material_sale" ? { kind: row.kind } : {}),
     requestedAt: row.requestedAt,
     workshopId: row.workshopId,
     workshopName: row.workshopName,
@@ -55,6 +60,14 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
     materialsTotal: money(row.materialsCentavos),
     total: money(row.totalCentavos),
     policyVersion: row.policyVersion,
+    ...(row.conditionsVersion === null || row.privacyVersion === null
+      ? {}
+      : {
+          acceptance: {
+            conditionsVersion: row.conditionsVersion,
+            privacyVersion: row.privacyVersion,
+          },
+        }),
     lines: lines.map((line) => ({
       materialId: line.materialId,
       variantId: line.variantId,
@@ -64,6 +77,9 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
       quantity: line.quantity,
       supplierId: line.supplierId,
       supplierName: line.supplierName,
+      source: line.source as LineSource,
+      unitCost:
+        line.unitCostCentavos === null ? null : money(line.unitCostCentavos),
     })),
     ...(row.paidAt
       ? {
@@ -73,6 +89,18 @@ function toOrder(row: OrderRow, lines: readonly LineRow[]): StoredOrder {
           ...(row.paymentNote === null ? {} : { paymentNote: row.paymentNote }),
         }
       : {}),
+    ...(row.refundedAmountCentavos === null ||
+    row.refundedAt === null ||
+    row.refundedBy === null
+      ? {}
+      : {
+          refund: {
+            amount: money(row.refundedAmountCentavos),
+            refundedAt: row.refundedAt,
+            ...(row.refundNote === null ? {} : { note: row.refundNote }),
+            refundedBy: row.refundedBy,
+          },
+        }),
   };
 }
 
@@ -136,9 +164,16 @@ function toAudit(row: AuditRow): AuditEntry {
   };
 }
 
-/** Short-lived PostgreSQL sessions with atomic order creation and transitions. */
+/** Thrown inside the create transaction to roll everything back when the turno is full. */
+class TurnoFullRollback extends Error {}
+
+/**
+ * Short-lived PostgreSQL sessions with atomic order creation and transitions.
+ * An order created already paid takes its stock lines in the same transaction.
+ */
 export function createDrizzleOrderRepository(
   openSession: DbSessionFactory,
+  stock: OrderStockPort<Db>,
 ): OrderRepository {
   async function withSession<T>(run: (db: Db) => Promise<T>): Promise<T> {
     const session = await openSession();
@@ -152,26 +187,75 @@ export function createDrizzleOrderRepository(
   return {
     create: (draft) =>
       withSession(async (db) => {
+        const paid = draft.paidOnCreation;
         try {
           return await db.transaction(async (tx) => {
-            const sequence = await tx
-              .insert(orderNumberSequence)
-              .values({ year: draft.year, last: 1 })
-              .onConflictDoUpdate({
-                target: orderNumberSequence.year,
-                set: { last: sql`${orderNumberSequence.last} + 1` },
-              })
-              .returning({ last: orderNumberSequence.last });
-            const last = sequence[0]?.last;
-            if (last === undefined)
-              throw new Error("order sequence unavailable");
+            const identityKeys = [
+              `email:${draft.student.email}`,
+              `phone:${draft.student.phoneDigits}`,
+            ].sort();
+            for (const identityKey of identityKeys) {
+              await tx.execute(
+                sql`select pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))`,
+              );
+            }
+            const matchedStudents = await tx
+              .select()
+              .from(student)
+              .where(
+                or(
+                  eq(student.email, draft.student.email),
+                  eq(student.phoneDigits, draft.student.phoneDigits),
+                ),
+              )
+              .for("update");
+            const emailStudent =
+              matchedStudents.find(
+                (candidate) => candidate.email === draft.student.email,
+              ) ?? null;
+            const phoneStudent =
+              matchedStudents.find(
+                (candidate) =>
+                  candidate.phoneDigits === draft.student.phoneDigits,
+              ) ?? null;
+            if (
+              emailStudent !== null &&
+              phoneStudent !== null &&
+              emailStudent.id !== phoneStudent.id
+            )
+              return err({ kind: "duplicate-order" as const });
+            const matchedStudent = emailStudent ?? phoneStudent;
+            const studentId = matchedStudent?.id ?? crypto.randomUUID();
+            if (matchedStudent === null) {
+              await tx.insert(student).values({
+                id: studentId,
+                fullName: draft.student.fullName,
+                email: draft.student.email,
+                phoneDigits: draft.student.phoneDigits,
+                createdAt: draft.requestedAt,
+                updatedAt: draft.requestedAt,
+              });
+            } else {
+              await tx
+                .update(student)
+                .set({
+                  fullName: draft.student.fullName,
+                  email: draft.student.email,
+                  phoneDigits: draft.student.phoneDigits,
+                  // A new enrollment brings an inactive profile back.
+                  active: true,
+                  updatedAt: draft.requestedAt,
+                })
+                .where(eq(student.id, studentId));
+            }
+            const number = await nextOrderNumber(tx, draft.year);
             const id = crypto.randomUUID();
-            const number = formatOrderNumber(draft.year, last);
             await tx.insert(enrollmentOrder).values({
               id,
+              studentId,
               publicId: draft.publicId,
               number,
-              status: "pending_confirmation",
+              status: paid ? "paid" : "pending_confirmation",
               source: "public",
               workshopId: draft.workshopId,
               workshopName: draft.workshopName,
@@ -189,7 +273,24 @@ export function createDrizzleOrderRepository(
               materialsCentavos: draft.materialsTotal.toCentavos(),
               totalCentavos: draft.total.toCentavos(),
               policyVersion: draft.policyVersion,
+              ...(draft.acceptance === undefined
+                ? {}
+                : {
+                    conditionsVersion: draft.acceptance.conditionsVersion,
+                    privacyVersion: draft.acceptance.privacyVersion,
+                  }),
               requestedAt: draft.requestedAt,
+              // A request an admin created is read by its creator; a public one is new.
+              ...(draft.createdBy === undefined
+                ? {}
+                : { seenAt: draft.requestedAt, seenBy: draft.createdBy }),
+              ...(paid
+                ? {
+                    paidAt: paid.paidAt,
+                    paidAmountCentavos: draft.total.toCentavos(),
+                    confirmedBy: paid.confirmedBy,
+                  }
+                : {}),
             });
             if (draft.lines.length > 0) {
               await tx.insert(orderLine).values(
@@ -204,16 +305,34 @@ export function createDrizzleOrderRepository(
                   quantity: line.quantity,
                   supplierId: line.supplierId,
                   supplierName: line.supplierName,
+                  source: line.source,
+                  unitCostCentavos: line.unitCost?.toCentavos() ?? null,
                 })),
               );
             }
+            // Last writes before the audit row: a full turno rolls back the
+            // student, the number, the order and the stock with it.
+            if (
+              paid &&
+              !(await claimSeat(tx, {
+                periodId: draft.periodId,
+                turnoId: draft.turnoId,
+                capacity: paid.capacity,
+              }))
+            )
+              throw new TurnoFullRollback();
+            if (paid)
+              await takeStockLines(tx, stock, id, {
+                by: paid.confirmedBy,
+                at: paid.paidAt,
+              });
             await tx.insert(orderAudit).values({
               id: crypto.randomUUID(),
               orderId: id,
               at: draft.requestedAt,
-              actor: "public",
+              actor: paid?.confirmedBy ?? draft.createdBy ?? "public",
               from: null,
-              to: "pending_confirmation",
+              to: paid ? "paid" : "pending_confirmation",
               note: null,
             });
             const persistedRows = await tx
@@ -230,17 +349,30 @@ export function createDrizzleOrderRepository(
             return ok(toOrder(persisted, persistedLines));
           });
         } catch (error) {
-          if (hasConstraint(error, "enrollment_order_active_duplicate_unique"))
+          if (error instanceof TurnoFullRollback)
+            return err({ kind: "turno-full" as const });
+          if (
+            hasConstraint(
+              error,
+              "enrollment_order_student_period_active_unique",
+            ) ||
+            hasConstraint(error, "student_email_unique") ||
+            hasConstraint(error, "student_phone_digits_unique")
+          )
             return err({ kind: "duplicate-order" });
           throw error;
         }
       }),
 
+    // A sale is never reachable by a public link: the public page is the monthly record's.
     findByPublicId: (publicId) =>
       withSession(async (db) => {
         const values = await loadOrders(
           db,
-          eq(enrollmentOrder.publicId, publicId),
+          and(
+            eq(enrollmentOrder.publicId, publicId),
+            eq(enrollmentOrder.kind, "enrollment"),
+          ),
         );
         return values[0] ?? null;
       }),
@@ -291,11 +423,15 @@ export function createDrizzleOrderRepository(
             const current = rows[0];
             if (!current) return err({ kind: "not-found" });
             const lineCount = await tx
-              .select({ count: sql<number>`count(*)::int` })
+              .select({
+                count: sql<number>`count(*)::int`,
+                fromSupplier: sql<number>`(count(*) filter (where ${orderLine.source} = 'supplier'))::int`,
+              })
               .from(orderLine)
               .where(eq(orderLine.orderId, orderId));
             const moved = transition(current.status as OrderStatus, to, {
               hasMaterialLines: (lineCount[0]?.count ?? 0) > 0,
+              hasSupplierLines: (lineCount[0]?.fromSupplier ?? 0) > 0,
             });
             if (!moved.ok) return moved;
             await tx
@@ -315,6 +451,15 @@ export function createDrizzleOrderRepository(
                       cancelledAt: context.at,
                       cancelReason: context.note ?? null,
                       cancelledBy: context.actor,
+                      ...(context.refund
+                        ? {
+                            refundedAmountCentavos:
+                              context.refund.amount.toCentavos(),
+                            refundedAt: context.refund.refundedAt,
+                            refundNote: context.refund.note ?? null,
+                            refundedBy: context.actor,
+                          }
+                        : {}),
                     }
                   : {}),
               })
@@ -345,6 +490,15 @@ export function createDrizzleOrderRepository(
                           context.paidAmount?.toCentavos() ?? null,
                         confirmedBy: context.actor,
                         paymentNote: context.note ?? null,
+                      }
+                    : {}),
+                  ...(to === "cancelled" && context.refund
+                    ? {
+                        refundedAmountCentavos:
+                          context.refund.amount.toCentavos(),
+                        refundedAt: context.refund.refundedAt,
+                        refundNote: context.refund.note ?? null,
+                        refundedBy: context.actor,
                       }
                     : {}),
                 },

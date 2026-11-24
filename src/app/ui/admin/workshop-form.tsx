@@ -105,6 +105,7 @@ export function WorkshopForm({
       />
       <TextAreaField
         label={copy.form.description}
+        hint={copy.form.descriptionHint}
         name="description"
         rows={6}
         defaultValue={values.description}
@@ -136,7 +137,7 @@ export function WorkshopForm({
         />
         <TextField
           label={copy.form.percentage}
-          hint={copy.form.percentageHint}
+          hint={`${copy.form.percentageHint} ${copy.form.percentageNote}`}
           name="percentage"
           inputMode="decimal"
           defaultValue={values.percentage}

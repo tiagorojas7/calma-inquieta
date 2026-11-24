@@ -2,6 +2,7 @@ import { data, useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { intensivoToDetail } from "~/app/catalog/mappers";
 import { buildActivityWhatsAppUrl } from "~/app/catalog/whatsapp";
+import { formatPesos } from "~/app/catalog/format";
 import { intensiveRequestCopy } from "~/app/intensive-requests/copy";
 import { buildEventJsonLd, serializeJsonLd } from "~/app/seo/json-ld";
 import { buildPageMeta, truncateDescription } from "~/app/seo/meta";
@@ -45,6 +46,18 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     intensivo.status === "open"
       ? await services.intensiveRequests.getOffer(intensivo.slug)
       : null;
+  // The projects show whether or not the workshop takes requests; a failure
+  // reading them leaves the workshop price alone instead of failing the page.
+  const listed = await services.intensiveRequests.listProjects(intensivo.slug);
+  const projects = listed.ok
+    ? listed.value.map((project) => ({
+        id: project.id,
+        name: project.name,
+        total: formatPesos(project.price),
+        deposit: formatPesos(project.deposit),
+        ...(project.image ? { image: project.image } : {}),
+      }))
+    : [];
   const reservation = open?.ok
     ? {
         href: `/intensivos/${intensivo.slug}/reserva`,
@@ -72,7 +85,10 @@ export async function loader({ context, params }: Route.LoaderArgs) {
         services.site.baseUrl,
       ),
     ),
-    detail: intensivoToDetail(intensivo, content, link, reservation),
+    detail: {
+      ...intensivoToDetail(intensivo, content, link, reservation),
+      ...(projects.length > 0 ? { projects } : {}),
+    },
     metaInput: {
       title: intensivo.name,
       description: truncateDescription(intensivo.summary, DESCRIPTION_LIMIT),

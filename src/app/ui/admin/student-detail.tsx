@@ -18,6 +18,8 @@ export interface StudentActivityRow {
 export interface StudentOrderRow {
   readonly id: string;
   readonly number: string;
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: "enrollment" | "material_sale";
   readonly workshop: string;
   readonly month: string;
   readonly status: string;
@@ -31,6 +33,7 @@ export interface StudentDetailProps {
     readonly name: string;
     readonly email: string;
     readonly phone: string;
+    readonly active: boolean;
     readonly activities: readonly StudentActivityRow[];
     readonly orders: readonly StudentOrderRow[];
     readonly note: { readonly text: string; readonly meta: string | null };
@@ -40,6 +43,7 @@ export interface StudentDetailProps {
           readonly absent: string;
           readonly makeUpsPending: string;
           readonly makeUpsDone: string;
+          readonly makeUpsMissed: string;
         }
       | null
       | undefined;
@@ -94,6 +98,30 @@ export function StudentDetail({
         <Fact label={copy.phone}>{student.phone}</Fact>
       </dl>
 
+      <form
+        method="post"
+        aria-label={copy.state.title}
+        className="flex flex-col gap-3 rounded-md bg-surface p-4 shadow-card"
+      >
+        <Heading level={2} size="h3">
+          {copy.state.title}
+        </Heading>
+        <p className="font-semibold text-ink-900">
+          {student.active ? copy.state.active : copy.state.inactive}
+        </p>
+        <Text tone="muted">{copy.state.help}</Text>
+        <input
+          type="hidden"
+          name="intent"
+          value={student.active ? "deactivate" : "reactivate"}
+        />
+        <div>
+          <Button type="submit" variant="outline">
+            {student.active ? copy.state.deactivate : copy.state.reactivate}
+          </Button>
+        </div>
+      </form>
+
       <section
         aria-label={copy.activities.title}
         className="flex flex-col gap-3"
@@ -142,6 +170,9 @@ export function StudentDetail({
                 </a>
                 <OrderStatusBadge status={row.status} label={row.statusLabel} />
               </div>
+              {row.kind === "material_sale" ? (
+                <Text tone="muted">{copy.orders.sale}</Text>
+              ) : null}
               <Text tone="muted">
                 {row.workshop} - {row.month}
               </Text>
@@ -178,6 +209,9 @@ export function StudentDetail({
             </Fact>
             <Fact label={attendanceCopy.makeUpsDone}>
               {student.attendance.makeUpsDone}
+            </Fact>
+            <Fact label={attendanceCopy.makeUpsMissed}>
+              {student.attendance.makeUpsMissed}
             </Fact>
           </dl>
         </section>

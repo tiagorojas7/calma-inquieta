@@ -77,16 +77,54 @@ function NavList({ pathname }: { pathname: string }) {
   );
 }
 
+/** The most the badge writes; the accessible name always carries the real count. */
+const BADGE_MAX = 99;
+
+/**
+ * The panel bell: a plain anchor to the novelties page (the Worker gate
+ * refuses the `.data` requests a client navigation makes). The number counts
+ * the requests nobody opened yet; with none, or with no reading, only the bell.
+ */
+function NotificationsBell({ unseen }: { unseen: number | null | undefined }) {
+  const copy = adminMicrocopy.notifications.bell;
+  const count =
+    unseen !== null && unseen !== undefined && unseen > 0 ? unseen : 0;
+  return (
+    <a
+      href="/admin/novedades"
+      aria-label={count > 0 ? copy.unread(count) : copy.label}
+      className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-clay-800 hover:bg-sand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800"
+    >
+      <Icon name="reminders" size={24} aria-hidden="true" />
+      {count > 0 ? (
+        <span
+          data-testid="admin-bell-badge"
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-pill bg-clay-800 px-1 text-xs font-bold leading-none text-white"
+        >
+          {count > BADGE_MAX ? copy.overflow : count}
+        </span>
+      ) : null}
+    </a>
+  );
+}
+
 /**
  * Admin chrome: top bar with the signed-in email and "Salir", a desktop
  * sidebar and a phone menu fed by the same `ADMIN_NAV`. Presentational: the
- * email and the current path arrive as props.
+ * email, the current path and the unopened-request count arrive as props.
  */
 export function AdminShell({
   email,
   pathname,
+  unseen,
   children,
-}: PropsWithChildren<{ email: string | null; pathname: string }>) {
+}: PropsWithChildren<{
+  email: string | null;
+  pathname: string;
+  /** Requests nobody opened yet; null or absent when it could not be read. */
+  unseen?: number | null | undefined;
+}>) {
   const [menuOpen, setMenuOpen] = useState(false);
   const copy = adminMicrocopy.shell;
   return (
@@ -111,6 +149,7 @@ export function AdminShell({
             data-testid="admin-actions"
             className="flex shrink-0 items-center gap-4"
           >
+            <NotificationsBell unseen={unseen} />
             <a
               href={ADMIN_SIGN_OUT_HREF}
               className="inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4"

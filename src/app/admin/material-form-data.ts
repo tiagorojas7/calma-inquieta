@@ -6,7 +6,7 @@ import {
 } from "~/modules/materials";
 import { fieldErrors, type FieldMessages } from "./issue-messages";
 
-export type MaterialVariantField = "label" | "price" | "swatch";
+export type MaterialVariantField = "label" | "price" | "cost" | "swatch";
 export type MaterialIssueField = MaterialField;
 type MaterialScalarField = Exclude<
   MaterialField,
@@ -19,6 +19,10 @@ const VARIANT_FIELD_MESSAGES = {
   price: {
     "invalid-format": "Ingresá solo números, por ejemplo 12500 o 12.500.",
     "out-of-range": "Ingresá un precio mayor a cero.",
+  },
+  cost: {
+    "invalid-format": "Ingresá solo números, por ejemplo 8000 o 8.000.",
+    "out-of-range": "Ingresá un costo mayor a cero.",
   },
   swatch: { "invalid-format": "Elegí un color con el selector." },
 } as const satisfies FieldMessages<MaterialVariantField>;
@@ -46,7 +50,7 @@ function texts(form: FormData, key: string): readonly string[] {
 function indexedVariantField(
   field: MaterialIssueField,
 ): { readonly index: number; readonly field: MaterialVariantField } | null {
-  const match = /^variants\.(\d+)\.(label|price|swatch)$/.exec(field);
+  const match = /^variants\.(\d+)\.(label|price|cost|swatch)$/.exec(field);
   if (!match) return null;
   return {
     index: Number(match[1]),
@@ -104,6 +108,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
   const ids = texts(form, "variantId");
   const labels = texts(form, "variantLabel");
   const prices = texts(form, "variantPrice");
+  const costs = texts(form, "variantCost");
   const swatches = texts(form, "variantSwatch");
   const availableVariants = new Set(texts(form, "variantAvailable"));
   const onRequestVariants = new Set(texts(form, "variantPriceOnRequest"));
@@ -111,6 +116,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
     ids.length,
     labels.length,
     prices.length,
+    costs.length,
     swatches.length,
     1,
   );
@@ -129,6 +135,7 @@ export function parseMaterialDraft(form: FormData): MaterialDraft {
       ...(ids[index] ? { id: ids[index] } : {}),
       label: labels[index] ?? (index === 0 ? DEFAULT_VARIANT_LABEL : ""),
       price: prices[index] ?? "",
+      ...(costs[index] === undefined ? {} : { cost: costs[index] }),
       ...(onRequestVariants.has(String(index)) ? { priceOnRequest: true } : {}),
       swatch: swatches[index] ?? "",
       available:

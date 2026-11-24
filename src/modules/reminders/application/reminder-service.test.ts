@@ -9,7 +9,10 @@ const actor = testAdminActor();
 
 function service(...orders: ReturnType<typeof studentOrder>[]) {
   const source: ReminderOrderSource = { all: () => Promise.resolve(orders) };
-  return createRemindersService({ orders: source });
+  return createRemindersService({
+    orders: source,
+    clock: { now: () => new Date("2026-10-05T15:00:00Z") },
+  });
 }
 
 const fee = { kind: "fee" as const, inputs: {}, filter: {} };
@@ -81,12 +84,14 @@ describe("reminders service", () => {
       studentOrder(1, {
         studentEmail: "ana@example.com",
         workshopName: "Bordado",
+        weekday: 2,
       }),
       studentOrder(2, {
         studentEmail: "ana@example.com",
         workshopId: "00000000-0000-4000-8000-000000000009",
         studentName: "Ana",
         workshopName: "Acuarela",
+        weekday: 2,
       }),
     ).prepare(actor, { kind: "class", inputs: {}, filter: {} });
 
@@ -94,6 +99,22 @@ describe("reminders service", () => {
       expect.stringContaining("Acuarela"),
       expect.stringContaining("Bordado"),
     ]);
+  });
+
+  it("selects only classes scheduled for tomorrow in Córdoba", async () => {
+    const result = await service(
+      studentOrder(1, { studentName: "Lunes", weekday: 1 }),
+      studentOrder(2, { studentName: "Martes", weekday: 2 }),
+      studentOrder(3, {
+        studentName: "Otro mes",
+        weekday: 2,
+        period: "2026-11",
+      }),
+    ).prepare(actor, { kind: "class", inputs: {}, filter: {} });
+
+    expect(result.ok && result.value.recipients.map((row) => row.name)).toEqual(
+      ["Martes"],
+    );
   });
 
   it("filters the audience", async () => {

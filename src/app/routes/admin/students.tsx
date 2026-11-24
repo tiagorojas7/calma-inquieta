@@ -2,6 +2,7 @@ import { useLoaderData } from "react-router";
 import { servicesContext } from "~/app/context";
 import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { parseStudentFilter } from "~/app/admin/student-filter";
+import { parseActivityFilter } from "~/app/students/activity-filter";
 import { dateLabel, ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
 import { StudentsList } from "~/app/ui/admin/students-list";
 import { ORDER_STATUSES } from "~/modules/enrollments";
@@ -17,22 +18,23 @@ const CORDOBA_OFFSET_MS = 10_800_000;
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   const services = context.get(servicesContext);
-  const { query, values } = parseStudentFilter(
-    new URL(request.url).searchParams,
-  );
+  const params = new URL(request.url).searchParams;
+  const { query, values } = parseStudentFilter(params);
+  const { activity, param } = parseActivityFilter(params);
   const [listed, workshops] = await Promise.all([
-    services.students.list(actor, query),
+    services.students.list(actor, { ...query, activity }),
     services.monthlyWorkshops.list(actor, { status: "live" }),
   ]);
   if (!listed.ok) throw enrollmentFailureResponse(listed.error);
   return {
-    filter: values,
+    filter: { ...values, mostrar: param },
     rows: listed.value.items.map((student) => ({
       email: student.email,
       name: student.fullName,
       phone: student.phoneDigits,
       workshops: student.workshops.map((w) => w.name).join(", "),
       orders: student.orders.length,
+      active: student.active,
       lastRequest: dateLabel(
         new Date(student.lastRequestedAt.getTime() - CORDOBA_OFFSET_MS)
           .toISOString()

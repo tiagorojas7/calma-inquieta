@@ -37,6 +37,7 @@ describe("short admin navigation", () => {
       "Eventos privados",
       "Recordatorios",
       "Estadísticas",
+      "Políticas",
       "Catálogo de materiales",
     ]);
   });
@@ -66,8 +67,8 @@ describe("short admin navigation", () => {
 describe("area identity", () => {
   it("gives every entry an area key and an icon, one of each per area", () => {
     const all = [...ADMIN_NAV_MAIN, ...ADMIN_NAV_MORE];
-    expect(all).toHaveLength(13);
-    expect(new Set(all.map((entry) => entry.area)).size).toBe(13);
-    expect(new Set(all.map((entry) => entry.icon)).size).toBe(13);
+    expect(all).toHaveLength(14);
+    expect(new Set(all.map((entry) => entry.area)).size).toBe(14);
+    expect(new Set(all.map((entry) => entry.icon)).size).toBe(14);
   });
 });

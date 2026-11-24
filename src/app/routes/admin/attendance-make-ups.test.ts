@@ -93,6 +93,45 @@ describe("admin attendance make-ups route", () => {
     );
   });
 
+  it("marks a make-up as missed and moves it to the missed list", async () => {
+    const { post, load, repository } = await setup();
+    const id = [...repository.makeUps.keys()][0] ?? "";
+
+    const response = await post({ intent: "missed", id });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(`${PATH}?ok=missed`);
+    const result = await load();
+    expect(result.pending.map((row) => row.student)).toEqual(["Bea Gómez"]);
+    expect(result.done).toEqual([]);
+    expect(result.missed.map((row) => row.student)).toEqual(["Ana Pérez"]);
+    expect(result.missed[0]?.doneNote).toBe(
+      "No vino. Lo marcó a@x.test el 06/10/2026 12:00",
+    );
+  });
+
+  it("refuses to change a done or missed make-up and says it is closed", async () => {
+    const { post, load, repository } = await setup();
+    const [first = "", second = ""] = [...repository.makeUps.keys()];
+    await post({ intent: "complete", id: first });
+    await post({ intent: "missed", id: second });
+
+    const missedDone = await post({ intent: "missed", id: first });
+    const doneMissed = await post({ intent: "complete", id: second });
+
+    expect(missedDone.headers.get("Location")).toBe(`${PATH}?ok=closed`);
+    expect(doneMissed.headers.get("Location")).toBe(`${PATH}?ok=closed`);
+    const result = await load();
+    expect(result.done.map((row) => row.student)).toEqual(["Ana Pérez"]);
+    expect(result.missed.map((row) => row.student)).toEqual(["Bea Gómez"]);
+    const closed = await loader({
+      request: getRequest(`${PATH}?ok=closed`),
+      params: {},
+      context: adminContext({ attendance: attendanceFixture().service }),
+    } as never);
+    expect(closed.feedback).toBe("closed");
+  });
+
   it("answers 400 for an unknown intent and 404 for a bad or unknown id", async () => {
     const { post } = await setup();
     expect(await thrownStatus(() => post({ intent: "nope" }))).toBe(400);

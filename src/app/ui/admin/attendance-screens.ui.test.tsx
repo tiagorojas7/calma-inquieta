@@ -120,9 +120,11 @@ const sheet: AttendanceSheetProps = {
   heading: "Lunes 05/10/2026",
   subtitle: "Cerámica, Lunes tarde · octubre 2026",
   backHref: "/admin/asistencia/p/t",
+  pendingNote: "Todavía debe la cuota. Se la puede marcar igual.",
+  makeUpFullWarning: "Ese turno no tiene lugares libres ese día.",
   makeUpTurnos: [
-    { value: "p:t", label: "Cerámica, Lunes tarde (octubre 2026)" },
     { value: "p:u", label: "Cerámica, Miércoles (octubre 2026)" },
+    { value: "p:v", label: "Cerámica, Viernes (octubre 2026)" },
   ],
   rows: [
     {
@@ -152,7 +154,7 @@ describe("AttendanceSheet", () => {
       name: "Asistencia de la clase",
     });
     expect(marking).toHaveAttribute("method", "post");
-    expect(within(marking).getAllByRole("radio")).toHaveLength(2);
+    expect(within(marking).getAllByRole("radio")).toHaveLength(4);
     const ana = screen.getByRole("group", { name: "Ana Pérez" });
     expect(within(ana).getByLabelText("Ausente")).toBeChecked();
     expect(within(ana).getByLabelText("Presente")).not.toBeChecked();
@@ -184,22 +186,25 @@ describe("AttendanceSheet", () => {
     expect(
       screen.getByRole("button", { name: "Guardar asistencia" }).closest("div"),
     ).toHaveClass("sticky");
-    expect(screen.getByLabelText("Presente").closest("label")).toHaveClass(
-      "min-h-14",
-    );
+    expect(
+      screen.getAllByLabelText("Presente")[0]?.closest("label"),
+    ).toHaveClass("min-h-14");
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("shows the fee state and withholds marks until the fee is paid", () => {
+  it("shows the fee state and lets a pending student be marked like a paid one", () => {
     render(<AttendanceSheet {...sheet} />);
 
     expect(screen.getByText("Cuota pagada")).toBeVisible();
     expect(screen.getByText("Cuota pendiente")).toBeVisible();
-    expect(screen.queryByRole("group", { name: "Caro Díaz" })).toBeNull();
+    const caro = screen.getByRole("group", { name: "Caro Díaz" });
+    expect(within(caro).getByLabelText("Presente")).toHaveAttribute(
+      "name",
+      "status:caro@example.com",
+    );
+    expect(within(caro).getByLabelText("Ausente")).toBeVisible();
     expect(
-      screen.getByText(
-        "Las alumnas con la cuota pendiente se pueden marcar cuando confirmes el pago.",
-      ),
+      screen.getByText("Todavía debe la cuota. Se la puede marcar igual."),
     ).toBeVisible();
   });
 
@@ -221,16 +226,37 @@ describe("AttendanceSheet", () => {
     );
   });
 
-  it("has no save button when nobody has paid yet", () => {
+  it("keeps the save button when only students with a pending fee are listed", () => {
     render(
       <AttendanceSheet
         {...sheet}
         rows={sheet.rows.filter((row) => !row.feePaid)}
       />,
     );
+    expect(
+      screen.getByRole("button", { name: "Guardar asistencia" }),
+    ).toBeVisible();
+  });
+
+  it("has no save button when there are no students", () => {
+    render(<AttendanceSheet {...sheet} rows={[]} />);
     expect(screen.queryByRole("button", { name: "Guardar asistencia" })).toBe(
       null,
     );
+  });
+
+  it("warns without blocking when the make-up turno is full", () => {
+    render(
+      <AttendanceSheet
+        {...sheet}
+        feedback={{ makeUpScheduled: true, makeUpFull: true }}
+      />,
+    );
+    expect(screen.getByText("Recuperación programada.")).toBeVisible();
+    expect(
+      screen.getByText("Ese turno no tiene lugares libres ese día."),
+    ).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   describe("make-up classes", () => {
@@ -247,7 +273,7 @@ describe("AttendanceSheet", () => {
       );
       expect(
         within(form).getByLabelText("Turno de la recuperación"),
-      ).toHaveValue("p:t");
+      ).toHaveValue("p:u");
       expect(
         within(form).getByLabelText("Fecha de la recuperación"),
       ).toHaveAttribute("type", "date");
@@ -304,7 +330,7 @@ describe("AttendanceSheet", () => {
             makeUp: {
               email: "ana@example.com",
               errors: { makeUpDate: "Elegí una fecha válida." },
-              values: { makeUpTurno: "p:u", makeUpDate: "2026-10-15" },
+              values: { makeUpTurno: "p:v", makeUpDate: "2026-10-15" },
             },
           }}
         />,
@@ -314,7 +340,7 @@ describe("AttendanceSheet", () => {
       });
       expect(
         within(form).getByLabelText("Turno de la recuperación"),
-      ).toHaveValue("p:u");
+      ).toHaveValue("p:v");
       expect(
         within(form).getByLabelText("Fecha de la recuperación"),
       ).toHaveValue("2026-10-15");

@@ -45,6 +45,8 @@ const detailData = {
       id: "v1",
       label: "Chico",
       price: "2500",
+      cost: "",
+      onHand: 0,
       available: true,
       used: false,
       swatch: null,

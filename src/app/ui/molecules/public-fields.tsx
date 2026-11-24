@@ -9,7 +9,7 @@ import { FieldIcon, iconPadding } from "./field-icon";
 interface FieldProps {
   /** Stable id: the error summary links to it and tests can address it. */
   id: string;
-  label: string;
+  label: ReactNode;
   hint?: string | undefined;
   error?: string | undefined;
 }

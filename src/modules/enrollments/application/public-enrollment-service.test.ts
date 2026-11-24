@@ -1,19 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Clock } from "~/modules/_shared";
+import { Money, type Clock } from "~/modules/_shared";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
 import {
   materialFixture,
   offerFixture,
   pesos,
+  policyCheck,
   studentDraft,
 } from "~/testing/fakes/enrollments-builders";
 import { InMemoryOfferLookup } from "~/testing/fakes/enrollments-offer-lookup";
 import { InMemoryOfferedMaterials } from "~/testing/fakes/enrollments-offered-materials";
 import { InMemoryOrderRepository } from "~/testing/fakes/enrollments-order-repository";
 import { InMemorySeatLedger } from "~/testing/fakes/enrollments-seat-ledger";
-import { createOfferedMaterialsAdapter } from "~/composition/offered-materials-adapter";
 import type { EnrollmentOffer } from "./offer-lookup";
 import type { OfferedMaterialsLookup } from "./offered-materials";
+import type { PolicyVersionCheck } from "./policy-acceptance";
 import {
   createPublicEnrollmentService,
   type RequestEnrollmentInput,
@@ -26,6 +27,8 @@ function setup(
     offer?: EnrollmentOffer;
     clock?: Clock;
     materials?: OfferedMaterialsLookup;
+    adminMaterials?: OfferedMaterialsLookup;
+    policies?: PolicyVersionCheck;
   } = {},
 ) {
   const offers = new InMemoryOfferLookup([options.offer ?? offerFixture()]);
@@ -34,11 +37,14 @@ function setup(
   });
   const materials = options.materials ?? defaultMaterials;
   const seats = new InMemorySeatLedger();
-  const orders = new InMemoryOrderRepository();
+  const orders = new InMemoryOrderRepository(seats);
   let counter = 0;
   const service = createPublicEnrollmentService({
     offers,
     materials,
+    ...(options.adminMaterials === undefined
+      ? {}
+      : { adminMaterials: options.adminMaterials }),
     seats,
     orders,
     clock: options.clock ?? fixedClock(NOW),
@@ -49,6 +55,7 @@ function setup(
       },
     },
     policyVersion: "2026-10",
+    policies: options.policies ?? policyCheck(),
   });
   return { service, offers, materials: defaultMaterials, seats, orders };
 }
@@ -61,8 +68,15 @@ const request = (
   turnoId: "t-1",
   student: studentDraft(),
   lines: [],
+  acceptance: { conditionsVersion: 1, privacyVersion: 1 },
   ...overrides,
 });
+
+/** The request as a form without versions (or an owner) would send it. */
+const withoutAcceptance = (): RequestEnrollmentInput => {
+  const { slug, period, turnoId, student, lines } = request();
+  return { slug, period, turnoId, student, lines };
+};
 
 const withPeriod = (
   patch: Partial<NonNullable<EnrollmentOffer["period"]>>,
@@ -103,6 +117,127 @@ describe("requestEnrollment happy path", () => {
     });
     expect(stored?.policyVersion).toBe("2026-10");
     expect(seats.snapshot()).toEqual(before);
+  });
+
+  it("attributes an enrollment created on behalf of a student to that admin", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    if (!stored) throw new Error("fixture");
+
+    expect(await orders.auditTrail(stored.id)).toMatchObject([
+      { actor: "owner@example.com", to: "pending_confirmation" },
+    ]);
+  });
+
+  it("stores an admin-set fee as fee and total, with no materials", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+      fee: pesos(40000),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(40000))).toBe(true);
+    expect(result.value.total.equals(pesos(40000))).toBe(true);
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.fee.equals(pesos(40000))).toBe(true);
+    expect(stored?.materialsTotal.isZero()).toBe(true);
+    expect(stored?.total.equals(pesos(40000))).toBe(true);
+  });
+
+  it("accepts a zero admin-set fee as a free enrollment", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(request(), {
+      createdBy: "owner@example.com",
+      fee: pesos(0),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.fee.isZero()).toBe(true);
+    expect(stored?.total.isZero()).toBe(true);
+  });
+
+  const settle = {
+    createdBy: "owner@example.com",
+    fee: pesos(0),
+    paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+  };
+
+  it("stores a free manual order already paid and claims its seat in the same creation", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request(), settle);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("paid");
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored).toMatchObject({
+      status: "paid",
+      paidAt: settle.paidAtIfFree,
+      confirmedBy: "owner@example.com",
+    });
+    expect(stored?.paidAmount?.isZero()).toBe(true);
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(1);
+  });
+
+  it("stores nothing and returns turno-full for a free manual order on a full turno", async () => {
+    const { service, orders, seats } = setup();
+    seats.setConfirmed("p-1", "t-1", 8);
+    await expect(service.requestEnrollment(request(), settle)).resolves.toEqual(
+      { ok: false, error: { kind: "turno-full" } },
+    );
+    expect(orders.size()).toBe(0);
+    expect(seats.snapshot()).toEqual([["p-1|t-1", 8]]);
+  });
+
+  it("keeps a priced manual order pending even when a paid-if-free date is given", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request(), {
+      ...settle,
+      fee: pesos(40000),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "pending_confirmation",
+    );
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(0);
+  });
+
+  it("never settles a public enrollment: it stays pending and claims no seat", async () => {
+    const { service, orders, seats } = setup();
+    const result = await service.requestEnrollment(request());
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "pending_confirmation",
+    );
+    expect(seats.snapshot()).toEqual([]);
+  });
+
+  it("refuses an admin-set fee that is negative or not whole pesos", async () => {
+    const { service, orders } = setup();
+    const fraction = Money.fromCentavos(5_800_050);
+    if (!fraction.ok) throw new Error("fixture");
+    for (const fee of [pesos(-1000), fraction.value])
+      expect(await service.requestEnrollment(request(), { fee })).toEqual({
+        ok: false,
+        error: { kind: "invalid-fee" },
+      });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("keeps the period fee when no admin fee is given and never takes one from the input", async () => {
+    const { service } = setup();
+    const tampered = {
+      ...request(),
+      fee: pesos(1),
+    } as unknown as RequestEnrollmentInput;
+    const result = await service.requestEnrollment(tampered);
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(58000))).toBe(true);
+    expect(result.value.total.equals(pesos(58000))).toBe(true);
   });
 
   it("normalizes email and phone", async () => {
@@ -189,6 +324,90 @@ describe("requestEnrollment student validation and honeypot", () => {
   });
 });
 
+describe("requestEnrollment policy acceptance", () => {
+  it("stores the accepted versions on the created order", async () => {
+    const { service, orders } = setup({
+      policies: policyCheck({ conditions: [1, 2], privacy: [1, 3] }),
+    });
+    const result = await service.requestEnrollment(
+      request({ acceptance: { conditionsVersion: 2, privacyVersion: 3 } }),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.acceptance).toEqual({
+      conditionsVersion: 2,
+      privacyVersion: 3,
+    });
+  });
+
+  it.each([
+    ["conditions", { conditionsVersion: 9, privacyVersion: 1 }],
+    ["privacy", { conditionsVersion: 1, privacyVersion: 9 }],
+  ] as const)(
+    "refuses an unknown %s version as a policy issue and stores nothing",
+    async (_kind, acceptance) => {
+      const { service, orders } = setup();
+      const result = await service.requestEnrollment(request({ acceptance }));
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [{ field: "policy", code: "unknown-reference" }],
+        },
+      });
+      expect(orders.size()).toBe(0);
+    },
+  );
+
+  it("is unavailable, storing nothing, when the form carried no versions", async () => {
+    const { service, orders } = setup();
+    const withoutVersions = withoutAcceptance();
+    const result = await service.requestEnrollment(withoutVersions);
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("is unavailable, storing nothing, when the versions cannot be checked", async () => {
+    const { service, orders } = setup({
+      policies: { isPublished: () => Promise.reject(new Error("offline")) },
+    });
+    const result = await service.requestEnrollment(request());
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("still reports the missing checkbox as required, even with an unknown version", async () => {
+    const { service, orders } = setup();
+    const result = await service.requestEnrollment(
+      request({
+        student: studentDraft({ policyAccepted: false }),
+        acceptance: { conditionsVersion: 9, privacyVersion: 9 },
+      }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "policy", code: "required" }],
+      },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("does not ask about versions for an order an owner creates by hand, and stores none", async () => {
+    const isPublished = vi.fn(() => Promise.resolve(false));
+    const { service, orders } = setup({ policies: { isPublished } });
+    const withoutVersions = withoutAcceptance();
+    const result = await service.requestEnrollment(withoutVersions, {
+      createdBy: "owner@example.com",
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored?.acceptance).toBeUndefined();
+    expect(isPublished).not.toHaveBeenCalled();
+  });
+});
+
 describe("dependency availability", () => {
   it.each([
     [
@@ -206,20 +425,25 @@ describe("dependency availability", () => {
           .mockRejectedValue(new Error("offline")),
     ],
   ])(
-    "maps rejected %s calls to unavailable for getOffer and requestEnrollment",
+    "maps rejected %s calls to unavailable for requestEnrollment",
     async (_name, reject) => {
       const value = setup();
       reject(value);
 
-      await expect(
-        value.service.getOffer({ slug: "ceramica-inicial", period: "2026-10" }),
-      ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
       await expect(
         value.service.requestEnrollment(request({ lines: [line("v-1")] })),
       ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
       expect(value.orders.size()).toBe(0);
     },
   );
+
+  it("maps a rejected offer lookup to unavailable for getOffer", async () => {
+    const value = setup();
+    vi.spyOn(value.offers, "findOffer").mockRejectedValue(new Error("offline"));
+    await expect(
+      value.service.getOffer({ slug: "ceramica-inicial", period: "2026-10" }),
+    ).resolves.toEqual({ ok: false, error: { kind: "unavailable" } });
+  });
 
   it.each([
     [
@@ -340,7 +564,10 @@ describe("requestEnrollment seats and duplicates", () => {
     for (let i = 0; i < 5; i += 1) {
       const r = await service.requestEnrollment(
         request({
-          student: studentDraft({ email: `s${String(i)}@example.com` }),
+          student: studentDraft({
+            email: `s${String(i)}@example.com`,
+            phone: `351 555-200${String(i)}`,
+          }),
         }),
       );
       expect(r.ok).toBe(true);
@@ -356,7 +583,7 @@ describe("requestEnrollment seats and duplicates", () => {
     ).toEqual({ ok: false, error: { kind: "duplicate-order" } });
   });
 
-  it("accepts a new order once the earlier one was cancelled", async () => {
+  it("lets the same student enroll again that month after a cancellation", async () => {
     const { service, orders } = setup();
     const first = await service.requestEnrollment(request());
     if (!first.ok) throw new Error("fixture");
@@ -365,8 +592,12 @@ describe("requestEnrollment seats and duplicates", () => {
       actor: "owner@example.com",
       at: NOW,
     });
-    const second = await service.requestEnrollment(request());
-    expect(second.ok && second.value.number).toBe("CI-2026-0002");
+    const again = await service.requestEnrollment(request());
+    expect(again.ok && again.value.number).toBe("CI-2026-0002");
+    expect(await service.requestEnrollment(request())).toEqual({
+      ok: false,
+      error: { kind: "duplicate-order" },
+    });
   });
 });
 
@@ -405,7 +636,12 @@ describe("requestEnrollment order number", () => {
     const { service } = setup();
     const a = await service.requestEnrollment(request());
     const b = await service.requestEnrollment(
-      request({ student: studentDraft({ email: "bea@example.com" }) }),
+      request({
+        student: studentDraft({
+          email: "bea@example.com",
+          phone: "351 555-9876",
+        }),
+      }),
     );
     if (!a.ok || !b.ok) throw new Error("fixture");
     expect(a.value.publicId).toMatch(/^[A-Za-z0-9_-]{22,}$/);
@@ -414,29 +650,12 @@ describe("requestEnrollment order number", () => {
 });
 
 describe("requestEnrollment materials", () => {
-  it("requires at least one line when the period requires materials", async () => {
-    expect(
-      await setup({
-        offer: withPeriod({ materialsRequired: true }),
-      }).service.requestEnrollment(request()),
-    ).toEqual({ ok: false, error: { kind: "materials-required" } });
-  });
-
-  it("accepts an enrollment with no lines when required materials are all on request", async () => {
-    const result = await setup({
-      materials: new InMemoryOfferedMaterials({
-        "p-1": [
-          materialFixture({
-            variants: materialFixture().variants.map((v) => ({
-              ...v,
-              unitPrice: null,
-            })),
-          }),
-        ],
-      }),
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.requestEnrollment(request());
-    expect(result.ok).toBe(true);
+  it("accepts an enrollment with no lines and never asks for materials", async () => {
+    const result = await setup().service.requestEnrollment(request());
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.lines).toEqual([]);
+    expect(result.value.materialsTotal.isZero()).toBe(true);
+    expect(result.value.total.equals(pesos(58000))).toBe(true);
   });
 
   it("refuses an invalid quantity naming the variant", async () => {
@@ -547,6 +766,253 @@ describe("requestEnrollment materials", () => {
   });
 });
 
+describe("requestEnrollment catalog materials of a hand-made enrollment", () => {
+  const owner = { createdBy: "owner@example.com" };
+  // The catalog lookup ignores the period it is asked for.
+  const catalogLookup = (
+    materials: readonly ReturnType<typeof materialFixture>[],
+  ): OfferedMaterialsLookup => ({
+    listForPeriod: () => Promise.resolve(materials),
+  });
+  const catalogSetup = (
+    overrides: Parameters<typeof materialFixture>[0] = {},
+  ) =>
+    setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture(overrides)]),
+    });
+
+  it("stores catalog lines with their snapshots and totals fee plus materials", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(
+      request({ lines: [line("v-1", 2), line("v-2", 1)] }),
+      { ...owner, fee: pesos(40000) },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.fee.equals(pesos(40000))).toBe(true);
+    expect(result.value.materialsTotal.equals(pesos(29000))).toBe(true);
+    expect(result.value.total.equals(pesos(69000))).toBe(true);
+    expect(result.value.status).toBe("pending_confirmation");
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(
+      stored?.lines.map((l) => [
+        l.materialId,
+        l.variantId,
+        l.materialName,
+        l.variantLabel,
+        l.unitPrice.toCentavos() / 100,
+        l.quantity,
+        l.supplierId,
+        l.supplierName,
+      ]),
+    ).toEqual([
+      ["m-1", "v-1", "Arcilla", "Grande", 12500, 2, "s-1", "Proveedor Uno"],
+      ["m-1", "v-2", "Arcilla", "Chico", 4000, 1, "s-1", "Proveedor Uno"],
+    ]);
+    expect(stored?.total.equals(pesos(69000))).toBe(true);
+  });
+
+  describe("line source and cost snapshot", () => {
+    const withStock = (
+      stock: Readonly<Record<string, { onHand?: number; cost?: number }>>,
+    ) =>
+      catalogSetup({
+        variants: materialFixture().variants.map((v) => {
+          const facts = stock[v.variantId] ?? {};
+          return {
+            ...v,
+            ...(facts.onHand === undefined ? {} : { onHand: facts.onHand }),
+            ...(facts.cost === undefined
+              ? {}
+              : { unitCost: pesos(facts.cost) }),
+          };
+        }),
+      });
+    const storedLines = async (
+      harness: ReturnType<typeof withStock>,
+      lines: ReturnType<typeof line>[],
+    ) => {
+      const result = await harness.service.requestEnrollment(
+        request({ lines }),
+        owner,
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.error));
+      const stored = await harness.orders.findByPublicId(result.value.publicId);
+      return (stored?.lines ?? []).map((l) => ({
+        variantId: l.variantId,
+        source: l.source,
+        cost: l.unitCost ? l.unitCost.toCentavos() / 100 : null,
+      }));
+    };
+
+    it("takes a line from stock when the units on hand cover the quantity", async () => {
+      expect(
+        await storedLines(withStock({ "v-1": { onHand: 2, cost: 9000 } }), [
+          line("v-1", 2),
+        ]),
+      ).toEqual([{ variantId: "v-1", source: "stock", cost: 9000 }]);
+    });
+
+    it("orders a line from the supplier when the stock falls short or is empty", async () => {
+      expect(
+        await storedLines(
+          withStock({
+            "v-1": { onHand: 1, cost: 9000 },
+            "v-2": { cost: 2500 },
+          }),
+          [line("v-1", 2), line("v-2", 1)],
+        ),
+      ).toEqual([
+        { variantId: "v-1", source: "supplier", cost: 9000 },
+        { variantId: "v-2", source: "supplier", cost: 2500 },
+      ]);
+    });
+
+    it("stores no cost when the variant has none", async () => {
+      expect(
+        await storedLines(withStock({ "v-1": { onHand: 3 } }), [line("v-1")]),
+      ).toEqual([{ variantId: "v-1", source: "stock", cost: null }]);
+    });
+  });
+
+  it("keeps a zero fee with materials pending for the materials amount", async () => {
+    const { service, orders, seats } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(
+      request({ lines: [line("v-2", 3)] }),
+      {
+        ...owner,
+        fee: pesos(0),
+        paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+      },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("pending_confirmation");
+    expect(result.value.total.equals(pesos(12000))).toBe(true);
+    const stored = await orders.findByPublicId(result.value.publicId);
+    expect(stored).toMatchObject({ status: "pending_confirmation" });
+    expect(stored?.paidAt ?? null).toBeNull();
+    expect(await seats.confirmedSeats("p-1", "t-1")).toBe(0);
+  });
+
+  it("still stores a zero total paid when no material is chosen", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    const result = await service.requestEnrollment(request(), {
+      ...owner,
+      fee: pesos(0),
+      paidAtIfFree: new Date("2026-10-20T03:00:00.000Z"),
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.value.status).toBe("paid");
+    expect((await orders.findByPublicId(result.value.publicId))?.status).toBe(
+      "paid",
+    );
+  });
+
+  it("refuses every line on the public path, whatever the catalog holds", async () => {
+    const { service, orders } = setup({
+      materials: new InMemoryOfferedMaterials(),
+      adminMaterials: catalogLookup([materialFixture()]),
+    });
+    expect(
+      await service.requestEnrollment(request({ lines: [line("v-1")] })),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-1" },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("refuses a variant the catalog does not know and stores nothing", async () => {
+    const { service, orders } = catalogSetup();
+    expect(
+      await service.requestEnrollment(request({ lines: [line("v-9")] }), owner),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-1" },
+    });
+    expect(
+      await service.requestEnrollment(
+        request({ lines: [line("v-1", 1, "m-9")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-not-offered", materialId: "m-9" },
+    });
+    expect(orders.size()).toBe(0);
+  });
+
+  it("refuses an archived material and an unavailable or unpriced variant, storing nothing", async () => {
+    const archived = catalogSetup({ active: false });
+    expect(
+      await archived.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    const variants = materialFixture().variants;
+    const unavailable = catalogSetup({
+      variants: variants.map((v) =>
+        v.variantId === "v-1" ? { ...v, available: false } : v,
+      ),
+    });
+    expect(
+      await unavailable.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    const unpriced = catalogSetup({
+      variants: variants.map((v) =>
+        v.variantId === "v-1" ? { ...v, unitPrice: null } : v,
+      ),
+    });
+    expect(
+      await unpriced.service.requestEnrollment(
+        request({ lines: [line("v-1")] }),
+        owner,
+      ),
+    ).toEqual({
+      ok: false,
+      error: { kind: "material-unavailable", materialId: "m-1" },
+    });
+    for (const { orders } of [archived, unavailable, unpriced])
+      expect(orders.size()).toBe(0);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, 21])(
+    "refuses the quantity %s and stores nothing",
+    async (quantity) => {
+      const { service, orders } = catalogSetup();
+      expect(
+        await service.requestEnrollment(
+          request({ lines: [line("v-1", quantity)] }),
+          owner,
+        ),
+      ).toEqual({
+        ok: false,
+        error: { kind: "invalid-quantity", variantId: "v-1" },
+      });
+      expect(orders.size()).toBe(0);
+    },
+  );
+});
+
 describe("getOrderByPublicId", () => {
   it("returns the allowlisted view with no email, phone or internal id", async () => {
     const { service, orders } = setup();
@@ -585,140 +1051,26 @@ describe("getOrderByPublicId", () => {
 describe("getOffer", () => {
   const query = { slug: "ceramica-inicial", period: "2026-10" };
 
-  it("shows fee, month, turnos and offered materials for an open month", async () => {
+  it("shows fee, month and turnos for an open month, with no material data", async () => {
     const result = await setup().service.getOffer(query);
     if (!result.ok) throw new Error(JSON.stringify(result.error));
     expect(result.value.fee.equals(pesos(58000))).toBe(true);
     expect(result.value.period).toBe("2026-10");
-    expect(result.value.materialsRequired).toBe(false);
     expect(result.value.turnos.map((t) => t.id)).toEqual(["t-1", "t-2"]);
-    expect(result.value.materials.map((m) => m.materialId)).toEqual(["m-1"]);
-  });
-
-  it("lists variants without a price flagged as on request", async () => {
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          variants: materialFixture().variants.map((v) =>
-            v.variantId === "v-2" ? { ...v, unitPrice: null } : v,
-          ),
-        }),
-      ],
-    });
-    const result = await setup({ materials }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(
-      result.value.materials[0]?.variants.map((v) => [
-        v.variantId,
-        v.onRequest,
-        v.unitPrice === null,
-      ]),
-    ).toEqual([
-      ["v-1", false, false],
-      ["v-2", true, true],
+    expect(Object.keys(result.value).sort()).toEqual([
+      "fee",
+      "period",
+      "turnos",
+      "workshopName",
     ]);
   });
 
-  it("carries the material category, empty when unknown", async () => {
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({ category: "Arcilla" }),
-        materialFixture({ materialId: "m-2", name: "Pintura" }),
-      ],
-    });
-    const result = await setup({ materials }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materials.map((m) => m.category)).toEqual([
-      "Arcilla",
-      "",
-    ]);
-  });
-
-  const allOnRequest = () =>
-    new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          variants: materialFixture().variants.map((v) => ({
-            ...v,
-            unitPrice: null,
-          })),
-        }),
-      ],
-    });
-
-  it("keeps a material whose measures are all on request, with every measure flagged", async () => {
-    const result = await setup({ materials: allOnRequest() }).service.getOffer(
-      query,
-    );
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    const [material] = result.value.materials;
-    expect(material?.variants.length).toBeGreaterThan(0);
-    expect(material?.variants.every((v) => v.onRequest)).toBe(true);
-  });
-
-  it("does not report materials as required when nothing in the offer can be ordered", async () => {
-    const result = await setup({
-      materials: allOnRequest(),
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materialsRequired).toBe(false);
-  });
-
-  it("still reports materials as required when something can be ordered", async () => {
-    const result = await setup({
-      offer: withPeriod({ materialsRequired: true }),
-    }).service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materialsRequired).toBe(true);
-  });
-
-  it("carries the material image and variant swatch, and null when unset", async () => {
-    const image = {
-      src: "/media/arcilla.webp",
-      alt: "Arcilla blanca",
-      width: 800,
-      height: 600,
-    };
-    const [firstVariant] = materialFixture().variants;
-    if (!firstVariant) throw new Error("fixture variant");
-    const materials = new InMemoryOfferedMaterials({
-      "p-1": [
-        materialFixture({
-          image,
-          variants: [{ ...firstVariant, swatch: "#aabbcc" }],
-        }),
-        materialFixture({ materialId: "m-2", name: "Pintura" }),
-      ],
-    });
-    const { service } = setup({ materials });
+  it("never reads the offered materials", async () => {
+    const { service, materials } = setup();
+    const lookup = vi.spyOn(materials, "listForPeriod");
     const result = await service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    const [first, second] = result.value.materials;
-    expect(first?.image).toEqual(image);
-    expect(first?.variants[0]?.swatch).toBe("#aabbcc");
-    expect(second?.image).toBeNull();
-    expect(second?.variants[0]?.swatch).toBeNull();
-    expect(JSON.stringify(result.value)).not.toContain("assetId");
-  });
-
-  it("filters disappeared material sentinels from the public offer", async () => {
-    const materials = createOfferedMaterialsAdapter(
-      { listOfferedMaterialIds: () => Promise.resolve(["m-1"]) },
-      { findOfferedMaterialSnapshots: () => Promise.resolve(new Map()) },
-    );
-    const { service } = setup({ materials });
-
-    await expect(
-      service.requestEnrollment(request({ lines: [line("v-1")] })),
-    ).resolves.toEqual({
-      ok: false,
-      error: { kind: "material-unavailable", materialId: "m-1" },
-    });
-    const result = await service.getOffer(query);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
-    expect(result.value.materials).toEqual([]);
-    expect(JSON.stringify(result.value)).not.toContain('"supplierId":""');
+    expect(result.ok).toBe(true);
+    expect(lookup).not.toHaveBeenCalled();
   });
 
   it("applies the same gates: paused, unpublished and past month", async () => {

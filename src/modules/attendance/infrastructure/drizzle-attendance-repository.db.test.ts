@@ -81,4 +81,40 @@ describe("createDrizzleAttendanceRepository", () => {
       await session.close();
     }
   });
+
+  it("accepts the missed make-up status and still rejects an unknown one", async () => {
+    const { openSession } = await freshRepository();
+    const session = await openSession();
+    try {
+      const insert = (
+        status: string,
+        closedBy: string | null,
+        closedAt: Date | null,
+        day: string,
+      ) =>
+        session.db.execute(
+          sql`INSERT INTO attendance_make_up
+              (id, student_email, student_name, period_id, turno_id, session_date,
+               make_up_period_id, make_up_turno_id, make_up_date, status,
+               created_by, created_at, done_by, done_at)
+              VALUES (gen_random_uuid(), 'ana@example.com', 'Ana', gen_random_uuid(),
+               gen_random_uuid(), ${day}::date, gen_random_uuid(), gen_random_uuid(),
+               '2026-10-14', ${status}, 'o', now(), ${closedBy}, ${closedAt})`,
+        );
+      await expect(
+        insert("missed", "o", new Date("2026-10-15T12:00:00Z"), "2026-10-05"),
+      ).resolves.toBeDefined();
+      await expect(
+        insert("missed", null, null, "2026-10-12"),
+      ).rejects.toThrow();
+      await expect(
+        insert("pending", "o", new Date("2026-10-15T12:00:00Z"), "2026-10-19"),
+      ).rejects.toThrow();
+      await expect(
+        insert("cancelled", null, null, "2026-10-26"),
+      ).rejects.toThrow();
+    } finally {
+      await session.close();
+    }
+  });
 });

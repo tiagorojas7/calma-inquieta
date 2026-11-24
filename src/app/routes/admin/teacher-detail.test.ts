@@ -9,6 +9,7 @@ import {
   teachersFixture,
   thrownStatus,
   withOverrides,
+  workshopsFixture,
 } from "~/testing/admin/route-kit";
 import { insightsFixture } from "~/testing/admin/insights-kit";
 import { createUnavailableService } from "~/composition/unavailable-service";
@@ -85,6 +86,7 @@ describe("admin teacher detail loader", () => {
       values: DRAFT,
       assignedTo: [],
       settlement: null,
+      workshops: null,
     });
     expect(list).not.toHaveBeenCalled();
   });
@@ -260,6 +262,185 @@ describe("admin teacher detail action", () => {
     expect(
       await thrownStatus(() =>
         submit(service, id, { intent: "archive" }, { admin: false }),
+      ),
+    ).toBe(403);
+  });
+});
+
+async function withAssignedWorkshops() {
+  const fixture = workshopsFixture();
+  const actor = testAdminActor();
+  const teacher = await fixture.teachers.service.create(actor, {
+    ...DRAFT,
+    modality: "third_party",
+  });
+  if (!teacher.ok) throw new Error("seed failed");
+  const seed = async (slug: string, name: string) => {
+    const created = await fixture.service.create(actor, {
+      name,
+      slug,
+      summary: "Corto",
+      description: "Largo",
+      technique: "Torno",
+      defaultFee: "12000",
+      teacherId: teacher.value.id,
+      percentage: "35,5",
+      images: [],
+      confirmSlugChange: false,
+    });
+    if (!created.ok) throw new Error("seed failed");
+    return created.value.id;
+  };
+  const torno = await seed("torno", "Torno");
+  const modelado = await seed("modelado", "Modelado");
+  return { ...fixture, teacherId: teacher.value.id, torno, modelado };
+}
+
+function submitPercentage(
+  fixture: Awaited<ReturnType<typeof withAssignedWorkshops>>,
+  fields: Record<string, string>,
+  options: { admin?: boolean } = {},
+) {
+  return action({
+    request: postRequest(`/admin/profesores/${fixture.teacherId}`, {
+      intent: "percentage",
+      ...fields,
+    }),
+    params: { id: fixture.teacherId },
+    context: adminContext(
+      {
+        teachers: fixture.teachers.service,
+        monthlyWorkshops: fixture.service,
+      },
+      options,
+    ),
+  } as never);
+}
+
+describe("admin teacher detail workshops", () => {
+  it("lists her current workshops by name with each percentage, ready to edit", async () => {
+    const fixture = await withAssignedWorkshops();
+    const result = await load(
+      fixture.teachers.service,
+      fixture.teacherId,
+      fixture.service,
+    );
+    expect(result.workshops).toEqual([
+      {
+        id: fixture.modelado,
+        name: "Modelado",
+        status: "draft",
+        percentage: "35,5",
+      },
+      { id: fixture.torno, name: "Torno", status: "draft", percentage: "35,5" },
+    ]);
+  });
+
+  it("hides the block when her workshops cannot be read", async () => {
+    const { service, id } = await withTeacher();
+    const { service: workshops } = assignments(
+      Promise.resolve(ok({ monthly: [], intensives: [] })),
+    );
+    expect((await load(service, id, workshops)).workshops).toBeNull();
+  });
+
+  it("saves one workshop's percentage, which the workshop form then shows, and returns to her page", async () => {
+    const fixture = await withAssignedWorkshops();
+    const response = await submitPercentage(fixture, {
+      workshopId: fixture.torno,
+      percentage: "70",
+    });
+    expect((response as Response).status).toBe(302);
+    expect((response as Response).headers.get("Location")).toBe(
+      `/admin/profesores/${fixture.teacherId}?ok=percentage`,
+    );
+    expect(fixture.repository.items.get(fixture.torno)).toMatchObject({
+      percentage: { basisPoints: 7000 },
+      audit: { updatedBy: "a@x.test" },
+    });
+    expect(fixture.repository.items.get(fixture.modelado)).toMatchObject({
+      percentage: { basisPoints: 3550 },
+    });
+    const workshop = await fixture.service.get(testAdminActor(), fixture.torno);
+    expect(workshop).toMatchObject({
+      ok: true,
+      value: { assignment: { percentage: { basisPoints: 7000 } } },
+    });
+  });
+
+  it("returns 422 with the typed value and a Spanish message for that workshop, keeping it", async () => {
+    const fixture = await withAssignedWorkshops();
+    const before = fixture.repository.items.get(fixture.torno);
+    const result = await submitPercentage(fixture, {
+      workshopId: fixture.torno,
+      percentage: "120",
+    });
+    expect(result).toMatchObject({
+      init: { status: 422 },
+      data: {
+        percentageError: {
+          workshopId: fixture.torno,
+          value: "120",
+          message: "El valor está fuera del rango permitido.",
+        },
+      },
+    });
+    expect(fixture.repository.items.get(fixture.torno)).toEqual(before);
+  });
+
+  it("refuses a workshop that belongs to another teacher with 404 and stores nothing", async () => {
+    const fixture = await withAssignedWorkshops();
+    const actor = testAdminActor();
+    const other = await fixture.teachers.service.create(actor, {
+      ...DRAFT,
+      name: "Otra Profe",
+      modality: "third_party",
+    });
+    if (!other.ok) throw new Error("seed failed");
+    const foreign = await fixture.service.create(actor, {
+      name: "Ajena",
+      slug: "ajena",
+      summary: "Corto",
+      description: "Largo",
+      technique: "Torno",
+      defaultFee: "12000",
+      teacherId: other.value.id,
+      percentage: "20",
+      images: [],
+      confirmSlugChange: false,
+    });
+    if (!foreign.ok) throw new Error("seed failed");
+    const before = fixture.repository.items.get(foreign.value.id);
+
+    // Her own page, but the other teacher's workshop id.
+    const status = await thrownStatus(() =>
+      submitPercentage(fixture, {
+        workshopId: foreign.value.id,
+        percentage: "99",
+      }),
+    );
+
+    expect(status).toBe(404);
+    expect(fixture.repository.items.get(foreign.value.id)).toEqual(before);
+    expect(fixture.repository.items.get(foreign.value.id)).toMatchObject({
+      percentage: { basisPoints: 2000 },
+    });
+  });
+
+  it("answers 404 for an unknown workshop and 403 for a non-admin", async () => {
+    const fixture = await withAssignedWorkshops();
+    expect(
+      await thrownStatus(() =>
+        submitPercentage(fixture, { workshopId: "nope", percentage: "70" }),
+      ),
+    ).toBe(404);
+    expect(
+      await thrownStatus(() =>
+        submitPercentage(
+          fixture,
+          { workshopId: fixture.torno, percentage: "70" },
+          { admin: false },
+        ),
       ),
     ).toBe(403);
   });

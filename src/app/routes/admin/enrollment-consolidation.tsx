@@ -6,12 +6,17 @@ import { isUuid } from "~/app/admin/enrollment-ids";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { whatsappHref } from "~/app/admin/whatsapp-href";
 import { monthLabel } from "~/app/enrollment/order-labels";
+import { adminMicrocopy } from "~/app/ui/admin/microcopy";
 import {
   EnrollmentConsolidation,
   type DeliveryCardView,
   type MaterialsSection,
 } from "~/app/ui/admin/enrollment-consolidation";
-import { formatPesos, type DeliveryOrder } from "~/modules/enrollments";
+import {
+  formatPesos,
+  fulfillmentOf,
+  type DeliveryOrder,
+} from "~/modules/enrollments";
 import { requireAdmin } from "./require-admin";
 import type { Route } from "./+types/enrollment-consolidation";
 
@@ -19,7 +24,7 @@ const CORDOBA_OFFSET_MS = 10_800_000;
 const PERIOD_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_ORDERS = 200;
 const BASE_PATH = "/admin/inscripciones/materiales";
-const FEEDBACK = ["requested", "received"] as const;
+const FEEDBACK = ["requested", "received", "workshop-requested"] as const;
 
 export function meta() {
   return [{ title: "Materiales | Panel | Calma Inquieta" }];
@@ -39,14 +44,24 @@ function cardOf(order: DeliveryOrder): DeliveryCardView {
   return {
     id: order.id,
     studentName: order.studentName,
-    detail: `${order.workshopName} · ${order.turnoLabel}`,
+    // A sale has no turno of its own: it names the workshop of its record.
+    detail:
+      order.kind === "material_sale"
+        ? `${adminMicrocopy.enrollments.detail.sale.listLabel} · ${order.workshopName}`
+        : `${order.workshopName} · ${order.turnoLabel}`,
     lines: order.lines.map((line) => ({
       label: `${line.materialName} ${line.variantLabel}`,
       quantity: line.quantity,
     })),
     whatsappHref: whatsappHref(order.phoneDigits),
+    ...(order.status === "paid" ? { fromStock: true } : {}),
   };
 }
+
+/** Handed over from here: asked from the supplier, or paid with every line in stock. */
+const toHandOver = (order: DeliveryOrder): boolean =>
+  order.status === "materials_requested" ||
+  (order.status === "paid" && fulfillmentOf(order.lines).stockOnly);
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
@@ -66,19 +81,28 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         : enrollmentFailureResponse(outcome.error);
   if (!found.ok || !delivered.ok) throw data(null, { status: 503 });
   const consolidation = found.value;
-  const toDeliver = delivered.value
-    .filter((order) => order.status === "materials_requested")
-    .map(cardOf);
+  const toDeliver = delivered.value.filter(toHandOver).map(cardOf);
   const requestable = new Set(
     consolidation.suppliers.flatMap(
       (supplier) => supplier.pendingRequestOrderIds,
+    ),
+  );
+  // A workshop with lines to buy counts once, like an order to request.
+  const workshops = new Set(
+    consolidation.suppliers.flatMap((supplier) =>
+      supplier.materials.flatMap((item) =>
+        item.originId === undefined ? [] : [item.originId],
+      ),
     ),
   );
   return {
     period: consolidation.period,
     periodLabel: monthLabel(consolidation.period),
     section: sectionOf(params.get("seccion")),
-    counts: { pedir: requestable.size, entregar: toDeliver.length },
+    counts: {
+      pedir: requestable.size + workshops.size,
+      entregar: toDeliver.length,
+    },
     grandTotal: formatPesos(consolidation.grandTotal),
     pendingOrders: consolidation.pendingOrders,
     notice:
@@ -95,6 +119,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         label: `${item.materialName} ${item.variantLabel}`,
         quantity: item.quantity,
         total: formatPesos(item.total),
+        ...(item.origin === undefined || item.originId === undefined
+          ? {}
+          : { origin: item.origin, originId: item.originId }),
       })),
       total: formatPesos(supplier.total),
       summary: supplier.summary,
@@ -112,14 +139,40 @@ const INTENTS = {
   "mark-received": { code: "received", method: "markMaterialsReceivedBulk" },
 } as const;
 
+/** "Ya lo pedí" on a workshop row: its lines from that supplier leave the list. */
+async function markWorkshopRequested(
+  actor: ReturnType<typeof requireAdmin>,
+  form: FormData,
+  context: Route.ActionArgs["context"],
+  view: { period: string; section: MaterialsSection },
+) {
+  const workshopId = form.get("workshopId");
+  const supplierId = form.get("supplierId");
+  if (
+    typeof workshopId !== "string" ||
+    typeof supplierId !== "string" ||
+    !isUuid(workshopId) ||
+    !isUuid(supplierId)
+  )
+    throw data(null, { status: 400 });
+  const marked = await context
+    .get(servicesContext)
+    .consolidation.markWorkshopOrdered(actor, workshopId, supplierId);
+  if (!marked.ok) throw enrollmentFailureResponse(marked.error);
+  const back = `${BASE_PATH}?mes=${view.period}&seccion=${view.section}`;
+  // Pressed again (or by the other owner meanwhile): nothing moved, no notice.
+  return redirect(
+    marked.value.count === 0
+      ? back
+      : `${withFeedback(back, "workshop-requested")}&n=${String(marked.value.count)}`,
+  );
+}
+
 export async function action({ request, context }: Route.ActionArgs) {
   const actor = requireAdmin(request, context);
   const form = await request.formData().catch(() => null);
   if (form === null) throw data(null, { status: 400 });
   const intent = form.get("intent");
-  if (intent !== "mark-requested" && intent !== "mark-received")
-    throw data(null, { status: 400 });
-  const { code, method } = INTENTS[intent];
   const period = periodOf(
     typeof form.get("mes") === "string" ? (form.get("mes") as string) : null,
   );
@@ -128,6 +181,11 @@ export async function action({ request, context }: Route.ActionArgs) {
       ? (form.get("seccion") as string)
       : null,
   );
+  if (intent === "mark-workshop-requested")
+    return markWorkshopRequested(actor, form, context, { period, section });
+  if (intent !== "mark-requested" && intent !== "mark-received")
+    throw data(null, { status: 400 });
+  const { code, method } = INTENTS[intent];
   const orderIds = [
     ...new Set(
       form

@@ -12,14 +12,13 @@ If the owner wants protection before a domain exists, that is a code change (a W
 
 ## What to protect
 
-Only the two requests that can create an order:
+Only the request that can create an order:
 
-| Request | Path                                      |
-| ------- | ----------------------------------------- |
-| `POST`  | `/talleres/<slug>/inscripcion`            |
-| `POST`  | `/talleres/<slug>/inscripcion/materiales` |
+| Request | Path                           |
+| ------- | ------------------------------ |
+| `POST`  | `/talleres/<slug>/inscripcion` |
 
-Reads (`GET`) stay unlimited: browsing the form, the materials step and `/pedido/<id>` must keep working for shared school or office networks.
+The monthly enrollment has no materials step any more, so `/talleres/<slug>/inscripcion/materiales` no longer exists. Reads (`GET`) stay unlimited: browsing the form and `/pedido/<id>` must keep working for shared school or office networks.
 
 ## Steps
 
@@ -28,7 +27,7 @@ Reads (`GET`) stay unlimited: browsing the form, the materials step and `/pedido
 3. Expression (use the editor so the Method field is available; see the plan table below):
 
    ```
-   (http.request.method eq "POST" and http.request.uri.path matches "^/talleres/[^/]+/inscripcion(/materiales)?$")
+   (http.request.method eq "POST" and http.request.uri.path matches "^/talleres/[^/]+/inscripcion$")
    ```
 
 4. Characteristics: **IP**.
@@ -46,7 +45,7 @@ From the Cloudflare rate limiting availability table:
 | Pro      | 2     | up to 1 min     | up to 1 h      | No (host, URI, path)                   |
 | Business | 5     | up to 10 min    | up to 1 day    | Yes                                    |
 
-On Free and Pro the expression cannot test the method, so drop the `http.request.method` clause and match the two paths only. A `GET` to those paths then counts too, which is acceptable at the suggested rates because a person loads each page once.
+On Free and Pro the expression cannot test the method, so drop the `http.request.method` clause and match the path only. A `GET` to that path then counts too, which is acceptable at the suggested rates because a person loads the page once.
 
 ## Verify
 

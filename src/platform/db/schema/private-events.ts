@@ -25,8 +25,19 @@ export const privateEventRequest = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     statusChangedBy: text("status_changed_by"),
     statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    /**
+     * The panel's shared read state: set once, by the first owner who opens
+     * the request (or by its creator when an admin makes it); both columns are
+     * null or both set. Rows that predate the bell are backfilled as seen.
+     */
+    seenAt: timestamp("seen_at", { withTimezone: true }),
+    seenBy: text("seen_by"),
   },
   (table) => [
+    check(
+      "private_event_request_seen_check",
+      sql`(${table.seenAt} IS NULL) = (${table.seenBy} IS NULL)`,
+    ),
     check(
       "private_event_request_status_check",
       sql`${table.status} IN ('nueva', 'contactada', 'cerrada')`,

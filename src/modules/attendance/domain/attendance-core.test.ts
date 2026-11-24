@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isAttendanceStatus,
+  isMakeUpStatus,
   summarizeAttendance,
   validateMakeUpPlan,
 } from "./attendance-core";
@@ -13,14 +14,34 @@ describe("isAttendanceStatus", () => {
   });
 });
 
+describe("isMakeUpStatus", () => {
+  it("knows pending, done and missed only", () => {
+    expect(isMakeUpStatus("pending")).toBe(true);
+    expect(isMakeUpStatus("done")).toBe(true);
+    expect(isMakeUpStatus("missed")).toBe(true);
+    expect(isMakeUpStatus("cancelled")).toBe(false);
+  });
+});
+
 describe("summarizeAttendance", () => {
   it("counts marks and make-ups by status", () => {
     expect(
       summarizeAttendance(
         [{ status: "present" }, { status: "absent" }, { status: "present" }],
-        [{ status: "pending" }, { status: "done" }, { status: "done" }],
+        [
+          { status: "pending" },
+          { status: "done" },
+          { status: "done" },
+          { status: "missed" },
+        ],
       ),
-    ).toEqual({ present: 2, absent: 1, makeUpsPending: 1, makeUpsDone: 2 });
+    ).toEqual({
+      present: 2,
+      absent: 1,
+      makeUpsPending: 1,
+      makeUpsDone: 2,
+      makeUpsMissed: 1,
+    });
   });
 
   it("is all zeros without history", () => {
@@ -29,12 +50,13 @@ describe("summarizeAttendance", () => {
       absent: 0,
       makeUpsPending: 0,
       makeUpsDone: 0,
+      makeUpsMissed: 0,
     });
   });
 });
 
 describe("validateMakeUpPlan", () => {
-  const monday = { weekday: 1 };
+  const monday = { period: "2026-10", weekday: 1 };
 
   it("accepts a real date on the weekday of the chosen turno", () => {
     expect(validateMakeUpPlan("2026-10-19", monday)).toEqual({
@@ -55,6 +77,16 @@ describe("validateMakeUpPlan", () => {
 
   it("rejects a date that is not the weekday of the turno", () => {
     expect(validateMakeUpPlan("2026-10-20", monday)).toEqual({
+      ok: false,
+      error: {
+        kind: "invalid",
+        issues: [{ field: "makeUpDate", code: "not-selectable" }],
+      },
+    });
+  });
+
+  it("rejects a date on the right weekday but outside the period of the turno", () => {
+    expect(validateMakeUpPlan("2026-11-02", monday)).toEqual({
       ok: false,
       error: {
         kind: "invalid",

@@ -23,6 +23,13 @@ const bea: DeliveryCardView = {
   detail: "Cerámica · Martes 10:00",
   lines: [{ label: "Arcilla Grande", quantity: 1 }],
 };
+const eva: DeliveryCardView = {
+  id: "o4",
+  studentName: "Eva Stock",
+  detail: "Cerámica · Miércoles 10:00",
+  lines: [{ label: "Arcilla Grande", quantity: 2 }],
+  fromStock: true,
+};
 const cata: DeliveryCardView = {
   id: "o3",
   studentName: "Cata Díaz",
@@ -138,6 +145,182 @@ describe("EnrollmentConsolidation: shell", () => {
     expect(
       screen.queryByRole("link", { name: "Ir a Para entregar" }),
     ).toBeNull();
+  });
+});
+
+describe("EnrollmentConsolidation: workshop lines", () => {
+  const [first] = base.suppliers as [
+    EnrollmentConsolidationProps["suppliers"][number],
+  ];
+  const mixed: EnrollmentConsolidationProps = {
+    ...base,
+    suppliers: [
+      {
+        ...first,
+        materials: [
+          ...first.materials,
+          {
+            label: "Arcilla Grande",
+            quantity: 2,
+            total: "$ 600",
+            origin: "Torno intensivo",
+            originId: "w1",
+          },
+        ],
+      },
+    ],
+  };
+
+  it("shows which workshop a line is for, apart from the monthly line of the same material", () => {
+    render(<EnrollmentConsolidation {...mixed} />);
+
+    const list = screen.getByRole("list", {
+      name: "Papelería Sur: Material",
+    });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Arcilla Grande");
+    expect(rows[0]).toHaveTextContent("Cantidad: 3");
+    expect(within(rows[0] as HTMLElement).queryByText(/Workshop/)).toBeNull();
+    expect(rows[1]).toHaveTextContent("Cantidad: 2");
+    expect(rows[1]).toHaveTextContent("Workshop: Torno intensivo");
+  });
+
+  it("gives each workshop of the supplier its own Ya lo pedí, apart from the monthly one", () => {
+    const { container } = render(
+      <EnrollmentConsolidation
+        {...mixed}
+        suppliers={[
+          {
+            ...first,
+            materials: [
+              ...first.materials,
+              {
+                label: "Arcilla Grande",
+                quantity: 2,
+                total: "$ 600",
+                origin: "Torno intensivo",
+                originId: "w1",
+              },
+              {
+                label: "Esmalte Azul",
+                quantity: 1,
+                total: "$ 100",
+                origin: "Torno intensivo",
+                originId: "w1",
+              },
+              {
+                label: "Arcilla Grande",
+                quantity: 4,
+                total: "$ 1.200",
+                origin: "Pintura intensiva",
+                originId: "w2",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const torno = screen.getByRole("form", {
+      name: "Workshop: Torno intensivo",
+    });
+    const pintura = screen.getByRole("form", {
+      name: "Workshop: Pintura intensiva",
+    });
+    expect(torno).toHaveAttribute("method", "post");
+    expect(
+      within(torno).getByRole("button", { name: "Ya lo pedí" }),
+    ).toBeVisible();
+    expect(
+      within(pintura).getByRole("button", { name: "Ya lo pedí" }),
+    ).toBeVisible();
+    expect(torno.querySelector('input[name="intent"]')).toHaveValue(
+      "mark-workshop-requested",
+    );
+    expect(torno.querySelector('input[name="workshopId"]')).toHaveValue("w1");
+    expect(pintura.querySelector('input[name="workshopId"]')).toHaveValue("w2");
+    expect(torno.querySelector('input[name="supplierId"]')).toHaveValue("s1");
+    expect(torno.querySelector('input[name="mes"]')).toHaveValue("2026-11");
+    expect(torno.querySelector('input[name="seccion"]')).toHaveValue("pedir");
+    expect(torno.querySelector('input[name="orderId"]')).toBeNull();
+    // The monthly form is still there, once, with its own orders.
+    expect(
+      container.querySelectorAll(
+        'input[name="intent"][value="mark-requested"]',
+      ),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll('input[name="orderId"]')).toHaveLength(2);
+  });
+
+  it("offers only the workshop's Ya lo pedí for a supplier that only has workshop lines", () => {
+    const { container } = render(
+      <EnrollmentConsolidation
+        {...mixed}
+        suppliers={[
+          {
+            ...first,
+            materials: [
+              {
+                label: "Arcilla Grande",
+                quantity: 2,
+                total: "$ 600",
+                origin: "Torno intensivo",
+                originId: "w1",
+              },
+            ],
+            orderIds: [],
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("form", { name: "Workshop: Torno intensivo" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Ya lo pedí" })).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelector('input[name="intent"][value="mark-requested"]'),
+    ).toBeNull();
+  });
+
+  it("announces the workshop lines just marked, with their count and no delivery link", () => {
+    render(
+      <EnrollmentConsolidation
+        {...mixed}
+        notice={{ kind: "workshop-requested", count: 3 }}
+      />,
+    );
+
+    expect(
+      screen
+        .getByText("Se marcaron 3 materiales del workshop como pedidos.")
+        .closest("[role=status]"),
+    ).not.toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Ir a Para entregar" }),
+    ).toBeNull();
+  });
+
+  it("announces a single line in the singular", () => {
+    render(
+      <EnrollmentConsolidation
+        {...mixed}
+        notice={{ kind: "workshop-requested", count: 1 }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Se marcó 1 material del workshop como pedido."),
+    ).toBeVisible();
+  });
+
+  it("has no accessibility violations with workshop forms", async () => {
+    const { container } = render(<EnrollmentConsolidation {...mixed} />);
+
+    await expectNoAxeViolations(container);
   });
 });
 
@@ -432,5 +615,47 @@ describe("EnrollmentConsolidation: Para entregar", () => {
     expect(
       screen.getByText("No hay materiales para entregar este mes"),
     ).toBeVisible();
+  });
+});
+
+describe("EnrollmentConsolidation: orders served from stock", () => {
+  it("shows a paid stock-only order as in stock and lets it be marked received without a request", () => {
+    render(
+      <EnrollmentConsolidation
+        {...base}
+        section="entregar"
+        toDeliver={[ana, eva]}
+      />,
+    );
+
+    const card = screen
+      .getByRole("heading", { name: "Eva Stock" })
+      .closest("li");
+    if (card === null) throw new Error("missing card");
+    expect(within(card).getByText("En stock")).toBeVisible();
+    expect(within(card).queryByText("Pedido")).toBeNull();
+    const form = within(card)
+      .getByRole("button", {
+        name: "Marcar como recibido el pedido de Eva Stock",
+      })
+      .closest("form");
+    expect(form?.querySelector('input[name="orderId"]')).toHaveValue("o4");
+  });
+
+  it("keeps the requested chip on an order that was asked from the supplier", () => {
+    render(
+      <EnrollmentConsolidation
+        {...base}
+        section="entregar"
+        toDeliver={[ana, eva]}
+      />,
+    );
+
+    const card = screen
+      .getByRole("heading", { name: "Ana Pérez" })
+      .closest("li");
+    if (card === null) throw new Error("missing card");
+    expect(within(card).getByText("Pedido")).toBeVisible();
+    expect(within(card).queryByText("En stock")).toBeNull();
   });
 });

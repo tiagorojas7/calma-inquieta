@@ -18,6 +18,8 @@ export interface MaterialFormVariant {
   readonly id?: string | undefined;
   readonly label: string;
   readonly price: string;
+  /** Current supplier cost in whole pesos; blank when not loaded. */
+  readonly cost?: string | undefined;
   readonly priceOnRequest?: boolean | undefined;
   readonly swatch: string;
   readonly available: boolean;
@@ -47,6 +49,7 @@ export type MaterialFormErrors = Readonly<
       readonly rows?: readonly {
         readonly label?: string | undefined;
         readonly price?: string | undefined;
+        readonly cost?: string | undefined;
         readonly swatch?: string | undefined;
       }[];
     };
@@ -59,6 +62,7 @@ const copy = adminMicrocopy.materialForm;
 const defaultVariant: MaterialFormVariant = {
   label: "Única",
   price: "",
+  cost: "",
   swatch: "",
   available: true,
 };
@@ -230,6 +234,17 @@ export function MaterialForm({
                   }}
                 />
               )}
+              <TextField
+                label={copy.cost}
+                hint={copy.costHint}
+                name="variantCost"
+                inputMode="numeric"
+                value={variant.cost ?? ""}
+                error={rowErrors?.cost}
+                onChange={(event) => {
+                  updateVariant(index, "cost", event.target.value);
+                }}
+              />
               <CheckboxField
                 label={materialCatalogCopy.priceOnRequest}
                 hint={materialCatalogCopy.priceOnRequestHint}

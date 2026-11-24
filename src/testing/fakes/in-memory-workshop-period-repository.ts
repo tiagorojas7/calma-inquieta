@@ -19,7 +19,6 @@ const copy = (value: StoredWorkshopPeriod): StoredWorkshopPeriod => ({
     })),
   },
   turnos: value.turnos.map((turno) => ({ ...turno })),
-  materials: value.materials.map((material) => ({ ...material })),
   snapshot: {
     ...value.snapshot,
     teacher: { ...value.snapshot.teacher },

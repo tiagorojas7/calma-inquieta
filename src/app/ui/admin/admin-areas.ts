@@ -14,7 +14,8 @@ export type AdminAreaKey =
   | "events"
   | "reminders"
   | "statistics"
-  | "catalog";
+  | "catalog"
+  | "policies";
 
 export interface AdminAreaStyle {
   readonly icon: IconName;
@@ -102,6 +103,13 @@ export const ADMIN_AREAS: Record<AdminAreaKey, AdminAreaStyle> = {
   },
   catalog: {
     icon: "catalog",
+    chip: "bg-area-catalog-bg text-area-catalog-fg",
+    band: "bg-area-catalog-bg text-area-catalog-fg",
+    ink: "text-area-catalog-fg",
+  },
+  // Shares the catalog tint: a color of its own needs tokens in admin.css.
+  policies: {
+    icon: "note",
     chip: "bg-area-catalog-bg text-area-catalog-fg",
     band: "bg-area-catalog-bg text-area-catalog-fg",
     ink: "text-area-catalog-fg",

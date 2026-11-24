@@ -125,5 +125,77 @@ export function runPrivateEventRepositoryContract(
         }),
       ).toBeNull();
     });
+
+    describe("shared read state", () => {
+      const first = {
+        by: "agus@example.com",
+        at: new Date("2026-10-25T09:30:00.000Z"),
+      };
+      const second = {
+        by: "caro@example.com",
+        at: new Date("2026-10-26T09:30:00.000Z"),
+      };
+
+      it("lists only the unopened requests, newest first, with what the bell shows", async () => {
+        const repo = await create();
+        await repo.insert(
+          buildStoredPrivateEvent({
+            id: EVENT_A,
+            createdAt: new Date("2026-10-20T12:00:00.000Z"),
+          }),
+        );
+        await repo.insert(
+          buildStoredPrivateEvent({
+            id: EVENT_B,
+            fullName: "Beatriz Gómez",
+            desiredDate: "2027-01-10",
+            createdAt: new Date("2026-10-22T12:00:00.000Z"),
+          }),
+        );
+        await repo.insert(
+          buildStoredPrivateEvent({
+            id: EVENT_C,
+            createdAt: new Date("2026-10-21T12:00:00.000Z"),
+          }),
+        );
+        await repo.markSeen(EVENT_C, first);
+
+        expect(await repo.unseen()).toEqual([
+          {
+            id: EVENT_B,
+            fullName: "Beatriz Gómez",
+            desiredDate: "2027-01-10",
+            createdAt: new Date("2026-10-22T12:00:00.000Z"),
+          },
+          {
+            id: EVENT_A,
+            fullName: "Ana Pérez",
+            desiredDate: "2026-12-05",
+            createdAt: new Date("2026-10-20T12:00:00.000Z"),
+          },
+        ]);
+      });
+
+      it("marks once, never overwrites the first mark and answers null for an unknown id", async () => {
+        const repo = await create();
+        await repo.insert(buildStoredPrivateEvent());
+
+        expect(await repo.markSeen(EVENT_A, first)).toBe("seen");
+        expect(await repo.markSeen(EVENT_A, second)).toBe("already-seen");
+        expect(await repo.markSeen(EVENT_UNKNOWN, first)).toBeNull();
+        expect(await repo.unseen()).toEqual([]);
+      });
+
+      it("changes nothing but the read state of the request", async () => {
+        const repo = await create();
+        await repo.insert(buildStoredPrivateEvent());
+        const before = await repo.findById(EVENT_A);
+
+        await repo.markSeen(EVENT_A, first);
+
+        expect(await repo.findById(EVENT_A)).toEqual(before);
+        expect(await repo.list("all")).toEqual([before]);
+      });
+    });
   });
 }

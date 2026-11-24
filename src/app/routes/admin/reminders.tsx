@@ -4,7 +4,7 @@ import { enrollmentFailureResponse } from "~/app/admin/enrollment-failure";
 import { parseReminderRequest } from "~/app/admin/reminder-filter";
 import { ORDER_STATUS_LABELS } from "~/app/enrollment/order-labels";
 import { adminMicrocopy } from "~/app/ui/admin/microcopy";
-import { RemindersScreen } from "~/app/ui/admin/reminders-screen";
+import { RemindersList } from "~/app/ui/admin/reminders-list";
 import { monthLabel } from "~/modules/enrollments";
 import { REMINDER_KINDS, REMINDER_STATUSES } from "~/modules/reminders";
 import { requireAdmin } from "./require-admin";
@@ -15,6 +15,31 @@ export function meta() {
 }
 
 const copy = adminMicrocopy.reminders;
+
+type RecipientRow = {
+  readonly key: string;
+  readonly name: string;
+  readonly email: string;
+  readonly message: string;
+  readonly link: string | null;
+};
+
+const normalizedSearch = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("es");
+
+export function filterReminderRecipients(
+  recipients: readonly RecipientRow[],
+  studentName: string,
+): readonly RecipientRow[] {
+  const query = normalizedSearch(studentName.trim());
+  if (query === "") return recipients;
+  return recipients.filter((recipient) =>
+    normalizedSearch(recipient.name).includes(query),
+  );
+}
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
@@ -65,20 +90,23 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     })),
     result:
       prepared?.ok === true
-        ? {
-            preview: prepared.value.preview,
-            recipients: prepared.value.recipients.map((r, index) => ({
-              key: `${r.email}#${String(index)}`,
-              name: r.name,
-              email: r.email,
-              message: r.message,
-              link: r.link,
-            })),
-          }
+        ? (() => {
+            const recipients = filterReminderRecipients(
+              prepared.value.recipients.map((r, index) => ({
+                key: `${r.email}#${String(index)}`,
+                name: r.name,
+                email: r.email,
+                message: r.message,
+                link: r.link,
+              })),
+              values.alumna,
+            );
+            return { preview: prepared.value.preview, recipients };
+          })()
         : null,
   };
 }
 
 export default function AdminReminders() {
-  return <RemindersScreen {...useLoaderData<typeof loader>()} />;
+  return <RemindersList {...useLoaderData<typeof loader>()} />;
 }

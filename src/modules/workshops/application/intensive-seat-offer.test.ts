@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Money } from "~/modules/_shared";
 import { fixedClock } from "~/testing/fakes/fixed-clock";
-import type { StoredIntensive } from "./intensive-repository";
+import type { MediaAsset } from "~/modules/media";
+import type {
+  StoredIntensive,
+  StoredIntensiveProject,
+} from "./intensive-repository";
 import { createIntensiveSeatOfferLookup } from "./intensive-seat-offer";
 
 const money = (pesos: number): Money => {
@@ -38,14 +42,53 @@ function stored(overrides: Partial<StoredIntensive> = {}): StoredIntensive {
   };
 }
 
+function project(
+  overrides: Partial<StoredIntensiveProject> = {},
+): StoredIntensiveProject {
+  return {
+    id: "project-1",
+    intensiveId: "intensive-1",
+    position: 0,
+    name: "Taza de torno",
+    image: null,
+    price: money(40000),
+    deposit: money(15000),
+    audit: {
+      updatedBy: "owner@example.com",
+      updatedAt: new Date("2026-10-01"),
+    },
+    ...overrides,
+  };
+}
+
+const ASSET: MediaAsset = {
+  id: "asset-1",
+  fileName: "taza.webp",
+  src: "/media/taza.webp",
+  contentType: "image/webp",
+  byteSize: 1000,
+  width: 800,
+  height: 600,
+  createdBy: "owner@example.com",
+  createdAt: new Date("2026-10-01"),
+};
+
 function lookup(
   item: StoredIntensive | null,
   now = "2026-10-28T15:00:00.000Z",
+  projects: readonly StoredIntensiveProject[] = [project()],
 ) {
   return createIntensiveSeatOfferLookup({
     repository: {
       findBySlug: (slug) => Promise.resolve(item?.slug === slug ? item : null),
       findById: (id) => Promise.resolve(item?.id === id ? item : null),
+      listProjects: (id) => Promise.resolve(item?.id === id ? projects : []),
+    },
+    media: {
+      findAssets: (ids) =>
+        Promise.resolve(
+          new Map(ids.includes(ASSET.id) ? [[ASSET.id, ASSET]] : []),
+        ),
     },
     clock: fixedClock(new Date(now)),
   });
@@ -67,6 +110,15 @@ describe("createIntensiveSeatOfferLookup", () => {
       capacity: 8,
       minSeats: 4,
       policyText: "Devolvemos la seña si no hay cupo mínimo.",
+      projects: [
+        {
+          id: "project-1",
+          name: "Taza de torno",
+          image: null,
+          price: money(40000),
+          deposit: money(15000),
+        },
+      ],
     };
 
     expect(await lookup(stored()).findBySlug("intensivo-de-ceramica")).toEqual(
@@ -93,5 +145,53 @@ describe("createIntensiveSeatOfferLookup", () => {
 
     expect((await started.findById("intensive-1"))?.upcoming).toBe(false);
     expect((await notYet.findById("intensive-1"))?.upcoming).toBe(true);
+  });
+
+  it("lists the projects in their admin order with the cover resolved to its public image", async () => {
+    const offer = await lookup(stored(), undefined, [
+      project({
+        id: "project-1",
+        position: 0,
+        name: "Taza",
+        image: { assetId: ASSET.id, alt: "Una taza" },
+      }),
+      project({
+        id: "project-2",
+        position: 1,
+        name: "Plato",
+        price: money(30000),
+        deposit: money(10000),
+      }),
+    ]).findBySlug("intensivo-de-ceramica");
+
+    expect(offer?.projects).toEqual([
+      {
+        id: "project-1",
+        name: "Taza",
+        image: {
+          src: "/media/taza.webp",
+          alt: "Una taza",
+          width: 800,
+          height: 600,
+        },
+        price: money(40000),
+        deposit: money(15000),
+      },
+      {
+        id: "project-2",
+        name: "Plato",
+        image: null,
+        price: money(30000),
+        deposit: money(10000),
+      },
+    ]);
+  });
+
+  it("drops the image of a project whose asset the media lookup does not know", async () => {
+    const offer = await lookup(stored(), undefined, [
+      project({ image: { assetId: "missing", alt: "Perdida" } }),
+    ]).findById("intensive-1");
+
+    expect(offer?.projects[0]?.image).toBeNull();
   });
 });

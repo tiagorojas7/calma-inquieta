@@ -194,3 +194,64 @@ describe("admin private event detail route", () => {
     expect(await thrownStatus(() => run(ID, undefined, false))).toBe(403);
   });
 });
+
+describe("opening a private event request marks it read for both owners", () => {
+  const open = (id: string, services: object, admin = true) =>
+    detailLoader({
+      request: getRequest(`/admin/eventos/${id}`),
+      params: { id },
+      context: adminContext(services, { admin }),
+    } as never);
+
+  it("stamps the request with the opener and keeps the first mark on a second visit", async () => {
+    const { repository, services } = await seeded();
+    expect((await repository.unseen()).map((event) => event.id)).toEqual([ID]);
+
+    await open(ID, services);
+    await open(ID, services);
+
+    expect(repository.seenMarks.get(ID)).toEqual({
+      by: "a@x.test",
+      at: NOW,
+    });
+    expect(await repository.unseen()).toEqual([]);
+  });
+
+  it("returns the same page data, and the same inbox list, as before the mark", async () => {
+    const { services } = await seeded();
+    const list = () =>
+      listLoader({
+        request: getRequest("/admin/eventos?estado=nueva"),
+        params: {},
+        context: adminContext(services),
+      } as never);
+    const before = { detail: await open(ID, services), list: await list() };
+
+    const after = { detail: await open(ID, services), list: await list() };
+
+    expect(after).toEqual(before);
+    expect(after.list.rows).toHaveLength(1);
+  });
+
+  it("marks nothing for an unknown id, a bad id or a non-admin", async () => {
+    const { repository, services } = await seeded();
+
+    expect(
+      await thrownStatus(() =>
+        open("9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c04", services),
+      ),
+    ).toBe(404);
+    expect(await thrownStatus(() => open("no-uuid", services))).toBe(404);
+    expect(await thrownStatus(() => open(ID, services, false))).toBe(403);
+    expect(repository.seenMarks.size).toBe(0);
+  });
+
+  it("still shows the request when marking it fails", async () => {
+    const { repository, services } = await seeded();
+    repository.markSeen = () => Promise.reject(new Error("db down"));
+
+    const result = await open(ID, services);
+
+    expect(result).toMatchObject({ id: ID, name: "Ana Pérez" });
+  });
+});

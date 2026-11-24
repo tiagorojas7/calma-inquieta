@@ -103,8 +103,11 @@ export function WorkshopOverview({
             <ul className="flex flex-col gap-1">
               {turnos.map((turno) => (
                 <li key={turno.id}>
-                  {turno.label}: {turno.when} · {copy.quick.capacity}{" "}
-                  {String(turno.capacity)}
+                  {/* Generated names already are the schedule; older typed ones are not. */}
+                  {turno.label === turno.when
+                    ? turno.when
+                    : `${turno.label}: ${turno.when}`}{" "}
+                  · {copy.quick.capacity} {String(turno.capacity)}
                 </li>
               ))}
             </ul>

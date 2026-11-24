@@ -15,7 +15,7 @@ export interface AttendanceSheetRow {
   readonly feePaid: boolean;
   readonly status: "present" | "absent" | null;
   readonly makeUp: {
-    readonly status: "pending" | "done";
+    readonly status: "pending" | "done" | "missed";
     readonly label: string;
   } | null;
 }
@@ -38,12 +38,21 @@ export interface AttendanceSheetProps {
   readonly subtitle: string;
   readonly backHref: string;
   readonly rows: readonly AttendanceSheetRow[];
-  /** Every turno a make-up class can be taken in, as `periodId:turnoId`. */
+  /** Shown next to a student who still owes the monthly fee. */
+  readonly pendingNote: string;
+  /** Non-blocking warning shown after a make-up went into a full turno. */
+  readonly makeUpFullWarning: string;
+  /**
+   * The turnos a make-up class can be taken in, as `periodId:turnoId`: other
+   * turnos of the same workshop only.
+   */
   readonly makeUpTurnos: readonly { value: string; label: string }[];
   readonly feedback?:
     | {
         readonly saved?: boolean | undefined;
         readonly makeUpScheduled?: boolean | undefined;
+        /** The make-up turno had no free seat that day. */
+        readonly makeUpFull?: boolean | undefined;
         readonly error?: string | undefined;
         readonly makeUp?: MakeUpFeedback | undefined;
       }
@@ -64,10 +73,15 @@ function FeeBadge({ paid }: { paid: boolean }) {
   );
 }
 
-function MarkChoice({ row }: { row: AttendanceSheetRow }) {
-  if (!row.feePaid) return <span>{copy.sheet.pendingNote}</span>;
+function MarkChoice({
+  row,
+  pendingNote,
+}: {
+  row: AttendanceSheetRow;
+  pendingNote: string;
+}) {
   return (
-    <fieldset className="flex gap-3">
+    <fieldset className="flex flex-wrap gap-3">
       <legend className="sr-only">{row.name}</legend>
       <label className={radioClasses}>
         <input
@@ -87,6 +101,9 @@ function MarkChoice({ row }: { row: AttendanceSheetRow }) {
         />
         {copy.sheet.absent}
       </label>
+      {row.feePaid ? null : (
+        <p className="w-full text-sm text-ink-600">{pendingNote}</p>
+      )}
     </fieldset>
   );
 }
@@ -148,6 +165,8 @@ export function AttendanceSheet({
   subtitle,
   backHref,
   rows,
+  pendingNote,
+  makeUpFullWarning,
   makeUpTurnos,
   feedback,
 }: AttendanceSheetProps) {
@@ -171,6 +190,9 @@ export function AttendanceSheet({
       {feedback?.makeUpScheduled ? (
         <AdminFeedback tone="success" title={copy.sheet.makeUpScheduled} />
       ) : null}
+      {feedback?.makeUpFull ? (
+        <AdminFeedback tone="info" title={makeUpFullWarning} />
+      ) : null}
       <form
         method="post"
         aria-label={copy.sheet.formLabel}
@@ -193,7 +215,7 @@ export function AttendanceSheet({
                 </p>
                 <FeeBadge paid={row.feePaid} />
               </div>
-              <MarkChoice row={row} />
+              <MarkChoice row={row} pendingNote={pendingNote} />
             </>
           )}
           empty={{
@@ -202,7 +224,7 @@ export function AttendanceSheet({
             action: { href: backHref, label: copy.sheet.empty.action },
           }}
         />
-        {rows.some((row) => row.feePaid) ? (
+        {rows.length > 0 ? (
           <div className="sticky bottom-0 -mx-4 bg-surface p-3 shadow-card">
             <Button type="submit">{copy.sheet.save}</Button>
           </div>

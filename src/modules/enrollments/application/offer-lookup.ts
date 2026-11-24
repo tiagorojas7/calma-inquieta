@@ -25,7 +25,6 @@ export interface EnrollmentOffer {
     readonly period: string;
     readonly status: PeriodStatus;
     readonly fee: Money;
-    readonly materialsRequired: boolean;
   } | null;
   /** Active turnos of this workshop that the period offers. */
   readonly turnos: readonly OfferedTurno[];

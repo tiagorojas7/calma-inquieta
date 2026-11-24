@@ -1,9 +1,10 @@
-import { err, ok } from "~/modules/_shared";
+import { err, ok, type Clock } from "~/modules/_shared";
 import { requireAdminActor, type AdminActor } from "~/modules/admin-access";
 import { buildWhatsAppUrl } from "~/modules/site-content";
 import {
   buildReminderMessage,
   selectAudienceOrders,
+  tomorrowSchedule,
   validateReminderTemplate,
   type ReminderOrder,
 } from "../domain/reminder-core";
@@ -24,6 +25,7 @@ export type ReminderUseCases = {
 
 export interface ReminderServiceDeps {
   readonly orders: ReminderOrderSource;
+  readonly clock: Clock;
 }
 
 const SAMPLE_ORDER: ReminderOrder = {
@@ -32,6 +34,7 @@ const SAMPLE_ORDER: ReminderOrder = {
   workshopName: "tu taller",
   period: "",
   turnoLabel: "tu turno",
+  weekday: 1,
   studentName: "Ana",
   studentEmail: "",
   studentPhoneDigits: "",
@@ -68,9 +71,17 @@ export function createRemindersService(
       const template = validateReminderTemplate(request.kind, request.inputs);
       if (!template.ok) return template;
 
+      const schedule =
+        request.kind === "class" ? tomorrowSchedule(deps.clock.now()) : null;
       const selected = selectAudienceOrders(
         await deps.orders.all(),
-        request.filter,
+        schedule === null
+          ? request.filter
+          : {
+              ...request.filter,
+              period: schedule.period,
+              weekday: schedule.weekday,
+            },
         request.kind,
       );
       const seen = new Set<string>();

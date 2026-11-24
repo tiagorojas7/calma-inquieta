@@ -28,7 +28,6 @@ export function parsePeriodDraft(
 ): WorkshopPeriodDraft {
   return {
     fee: text(form, "fee"),
-    materialsRequired: form.get("materialsRequired") === "on",
     projectTitle: text(form, "projectTitle"),
     projectDescription: text(form, "projectDescription"),
     projectImages: [],
@@ -37,11 +36,6 @@ export function parsePeriodDraft(
       capacity: text(form, `capacity-${turno.turnoId}`),
     })),
     snapshotPercentage: text(form, "snapshotPercentage"),
-    materialIds: form
-      .getAll("materialIds")
-      .filter(
-        (materialId): materialId is string => typeof materialId === "string",
-      ),
   };
 }
 

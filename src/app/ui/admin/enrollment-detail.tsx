@@ -2,8 +2,16 @@ import { useRef, useState, type ReactNode } from "react";
 import { AdminButton as Button } from "./admin-button";
 import { Heading } from "../atoms/heading";
 import { AdminFeedback, AdminPageHeader } from "./admin-page";
+import { AdminButtonLink } from "./admin-button-link";
 import { AdminDangerZone, AdminSection } from "./admin-sections";
 import { ConfirmDialog } from "./confirm-dialog";
+import {
+  EnrollmentCorrectionForm,
+  EnrollmentCorrectionHistory,
+  type CorrectionFormField,
+  type CorrectionFormModel,
+  type CorrectionHistoryEntry,
+} from "./enrollment-correction";
 import { FormError, TextAreaField, TextField } from "./form-fields";
 import { adminMicrocopy } from "./microcopy";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -20,7 +28,10 @@ export interface EnrollmentDetailOrder {
   readonly month: string;
   readonly turno: string;
   readonly requestedAt: string;
-  readonly policyVersion: string;
+  /** The legacy month-based policy version; null when it says nothing true. */
+  readonly policyVersion: string | null;
+  /** "Condiciones v2 · Privacidad v3", or that there is no record. */
+  readonly acceptance: string;
   readonly fee: string;
   readonly materialsTotal: string;
   readonly total: string;
@@ -31,6 +42,8 @@ export interface EnrollmentDetailOrder {
     quantity: number;
     unitPrice: string;
     lineTotal: string;
+    /** Where the units come from: the studio's stock or an order to the supplier. */
+    source?: "stock" | "supplier";
   }[];
   readonly payment: {
     paidOn: string;
@@ -38,7 +51,35 @@ export interface EnrollmentDetailOrder {
     confirmedBy: string;
     note: string | null;
   } | null;
+  /** Set when cancelling must record a refund: what was paid, as text and as whole pesos. */
+  readonly cancelRefund: { paid: string; paidPesos: string } | null;
+  /** What was returned when the paid order was cancelled. */
+  readonly refund: {
+    amount: string;
+    refundedOn: string;
+    note: string | null;
+    refundedBy: string;
+  } | null;
   readonly seat: { confirmed: number; capacity: number };
+  /** `material_sale` for a later material purchase; absent means the monthly record. */
+  readonly kind?: "enrollment" | "material_sale";
+  /** The monthly record a sale belongs to. */
+  readonly parent?: { readonly number: string; readonly href: string } | null;
+  /** The sales under a monthly record, oldest first. */
+  readonly sales?: readonly {
+    readonly id: string;
+    readonly number: string;
+    readonly href: string;
+    readonly status: string;
+    readonly statusLabel: string;
+    readonly total: string;
+    readonly requestedOn: string;
+  }[];
+  /** Where a new sale of this record starts; null when it cannot take one. */
+  readonly newSaleHref?: string | null;
+  /** What the correction form offers; null once the order is cancelled or for a sale. */
+  readonly correction: CorrectionFormModel | null;
+  readonly corrections: readonly CorrectionHistoryEntry[];
   readonly audit: readonly {
     at: string;
     actor: string;
@@ -64,15 +105,48 @@ export interface EnrollmentDetailProps {
   readonly feedback?: EnrollmentDetailFeedback | null | undefined;
   readonly form?: {
     readonly formError?: string | undefined;
-    readonly errors?: Partial<Record<"amount" | "paidOn" | "reason", string>>;
+    readonly errors?: Partial<
+      Record<
+        | "amount"
+        | "paidOn"
+        | "reason"
+        | "refundAmount"
+        | "refundedOn"
+        | "refundNote"
+        | CorrectionFormField,
+        string
+      >
+    >;
     readonly values?: Partial<
-      Record<"amount" | "paidOn" | "note" | "reason", string>
+      Record<
+        | "amount"
+        | "paidOn"
+        | "note"
+        | "reason"
+        | "refundAmount"
+        | "refundedOn"
+        | "refundNote"
+        | CorrectionFormField,
+        string
+      >
     >;
   };
 }
 
+/** A refused correction reopens its form with what was typed. */
+function hasCorrectionFeedback(form: EnrollmentDetailProps["form"]): boolean {
+  const fields = [
+    ...Object.keys(form?.errors ?? {}),
+    ...Object.keys(form?.values ?? {}),
+  ];
+  return fields.some((field) => field.startsWith("correct"));
+}
+
 const summaryClasses =
   "inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-900";
+
+const linkClasses =
+  "inline-flex min-h-11 items-center text-clay-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-800";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -140,14 +214,25 @@ function ConfirmPaymentForm({
   );
 }
 
-function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
+function CancelOrderForm({
+  form,
+  refund,
+  today,
+  isSale,
+}: {
+  form: EnrollmentDetailProps["form"];
+  refund: EnrollmentDetailOrder["cancelRefund"];
+  today: string;
+  isSale: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const wording = isSale ? copy.sale.cancel : copy.cancel;
   return (
     <form
       ref={formRef}
       method="post"
-      aria-label={copy.cancel.title}
+      aria-label={wording.title}
       className="flex flex-col gap-3"
     >
       <input type="hidden" name="intent" value="cancel" />
@@ -160,6 +245,37 @@ function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
         defaultValue={form?.values?.reason ?? ""}
         error={form?.errors?.reason}
       />
+      {refund ? (
+        <fieldset className="flex flex-col gap-3 rounded-md bg-sand-100 p-4">
+          <legend className="px-1 font-semibold text-ink-900">
+            {copy.cancel.refundTitle}
+          </legend>
+          <TextField
+            label={copy.cancel.refundAmount}
+            hint={copy.cancel.refundAmountHint(refund.paid)}
+            name="refundAmount"
+            inputMode="numeric"
+            required
+            defaultValue={form?.values?.refundAmount ?? refund.paidPesos}
+            error={form?.errors?.refundAmount}
+          />
+          <TextField
+            label={copy.cancel.refundedOn}
+            name="refundedOn"
+            type="date"
+            max={today}
+            required
+            defaultValue={form?.values?.refundedOn ?? today}
+            error={form?.errors?.refundedOn}
+          />
+          <TextField
+            label={copy.cancel.refundNote}
+            name="refundNote"
+            defaultValue={form?.values?.refundNote ?? ""}
+            error={form?.errors?.refundNote}
+          />
+        </fieldset>
+      ) : null}
       <div>
         <Button
           type="button"
@@ -168,14 +284,14 @@ function CancelOrderForm({ form }: { form: EnrollmentDetailProps["form"] }) {
             setOpen(true);
           }}
         >
-          {copy.cancel.submit}
+          {wording.title}
         </Button>
       </div>
       <ConfirmDialog
         open={open}
-        title={copy.cancel.dialogTitle}
-        message={copy.cancel.dialogMessage}
-        confirmLabel={copy.cancel.submit}
+        title={wording.dialogTitle}
+        message={refund ? wording.dialogMessageRefund : wording.dialogMessage}
+        confirmLabel={wording.title}
         tone="destructive"
         onCancel={() => {
           setOpen(false);
@@ -224,6 +340,8 @@ function progress(order: EnrollmentDetailOrder) {
 function nextStepText(order: EnrollmentDetailOrder): string {
   if (order.status === "paid" && order.lines.length === 0)
     return copy.next.paidNoMaterials;
+  if (order.status === "paid" && order.actions.materialsReceived)
+    return copy.next.paidFromStock;
   const known: Record<string, string> = copy.next;
   return known[order.status] ?? copy.next.cancelled;
 }
@@ -235,10 +353,13 @@ export function EnrollmentDetail({
   feedback = null,
 }: EnrollmentDetailProps) {
   const steps = progress(order);
+  const isSale = order.kind === "material_sale";
   return (
     <section className="flex flex-col gap-6">
       <AdminPageHeader
-        title={copy.title(order.number)}
+        title={
+          isSale ? copy.sale.title(order.number) : copy.title(order.number)
+        }
         breadcrumbs={[
           { label: "Panel", href: "/admin" },
           {
@@ -264,17 +385,24 @@ export function EnrollmentDetail({
         <div data-detail-facts className="flex flex-col gap-6 lg:order-2">
           <AdminSection title={copy.summary}>
             <dl className="flex flex-col gap-3">
+              {order.parent ? (
+                <Fact label={copy.sale.parentLabel}>
+                  <a href={order.parent.href} className={linkClasses}>
+                    {copy.sale.parent(order.parent.number)}
+                  </a>
+                </Fact>
+              ) : null}
               <Fact label={copy.name}>{order.studentName}</Fact>
               <Fact label={copy.email}>{order.email}</Fact>
               <Fact label={copy.phone}>{order.phone}</Fact>
               <Fact label={copy.workshop}>{order.workshopName}</Fact>
               <Fact label={copy.month}>{order.month}</Fact>
-              <Fact label={copy.turno}>{order.turno}</Fact>
+              {isSale ? null : <Fact label={copy.turno}>{order.turno}</Fact>}
             </dl>
           </AdminSection>
           <div className="flex flex-col gap-2 rounded-md bg-surface p-5 shadow-card lg:p-6">
             <dl className="flex flex-col gap-2">
-              <Fact label={copy.totals.fee}>{order.fee}</Fact>
+              {isSale ? null : <Fact label={copy.totals.fee}>{order.fee}</Fact>}
               <Fact label={copy.totals.materials}>{order.materialsTotal}</Fact>
               <div
                 data-order-total
@@ -332,6 +460,67 @@ export function EnrollmentDetail({
             ) : null}
           </AdminSection>
 
+          {order.correction ? (
+            <details
+              open={hasCorrectionFeedback(form)}
+              className="rounded-md bg-surface p-4 shadow-card"
+            >
+              <summary className={summaryClasses}>
+                {copy.correction.title}
+              </summary>
+              <div className="mt-3">
+                <EnrollmentCorrectionForm
+                  correction={order.correction}
+                  today={order.today}
+                  form={form}
+                />
+              </div>
+            </details>
+          ) : null}
+
+          {isSale ? null : (
+            <AdminSection
+              title={copy.sale.sectionTitle}
+              description={copy.sale.sectionHint}
+              actions={
+                order.newSaleHref ? (
+                  <AdminButtonLink href={order.newSaleHref} variant="outline">
+                    {copy.sale.newSale}
+                  </AdminButtonLink>
+                ) : undefined
+              }
+            >
+              {(order.sales ?? []).length === 0 ? (
+                <p>{copy.sale.empty}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-admin-line">
+                  {(order.sales ?? []).map((sale) => (
+                    <li
+                      key={sale.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex min-w-0 flex-col">
+                        <a href={sale.href} className={linkClasses}>
+                          {sale.number}
+                        </a>
+                        <span className="text-sm text-ink-700">
+                          {sale.requestedOn}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-ink-900">{sale.total}</span>
+                        <OrderStatusBadge
+                          status={sale.status}
+                          label={sale.statusLabel}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AdminSection>
+          )}
+
           <AdminSection title={copy.lines}>
             {order.lines.length === 0 ? (
               <p>{copy.noLines}</p>
@@ -349,6 +538,11 @@ export function EnrollmentDetail({
                       {line.label}
                     </span>
                     <span className="text-ink-700">{line.supplier}</span>
+                    {line.source === undefined ? null : (
+                      <span className="text-ink-700">
+                        {copy.lineSource[line.source]}
+                      </span>
+                    )}
                     <span className="text-ink-700">
                       {`${String(line.quantity)} × ${line.unitPrice}`}
                     </span>
@@ -374,14 +568,38 @@ export function EnrollmentDetail({
             </AdminSection>
           ) : null}
 
+          {order.refund ? (
+            <AdminSection title={copy.refund.title}>
+              <dl className="grid gap-4 md:grid-cols-2">
+                <Fact label={copy.refund.amount}>{order.refund.amount}</Fact>
+                <Fact label={copy.refund.refundedOn}>
+                  {order.refund.refundedOn}
+                </Fact>
+                <Fact label={copy.refund.refundedBy}>
+                  {order.refund.refundedBy}
+                </Fact>
+                {order.refund.note ? (
+                  <Fact label={copy.refund.note}>{order.refund.note}</Fact>
+                ) : null}
+              </dl>
+            </AdminSection>
+          ) : null}
+
+          <EnrollmentCorrectionHistory entries={order.corrections} />
+
           <details className="rounded-md bg-surface p-4 shadow-card">
             <summary className={summaryClasses}>{copy.moreData}</summary>
             <dl className="mt-3 grid gap-4 md:grid-cols-2">
               <Fact label={copy.requestedAt}>{order.requestedAt}</Fact>
-              <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
-              <Fact label={copy.order}>
-                {copy.seat(order.seat.confirmed, order.seat.capacity)}
-              </Fact>
+              {order.policyVersion === null ? null : (
+                <Fact label={copy.policyVersion}>{order.policyVersion}</Fact>
+              )}
+              <Fact label={copy.acceptance}>{order.acceptance}</Fact>
+              {isSale ? null : (
+                <Fact label={copy.order}>
+                  {copy.seat(order.seat.confirmed, order.seat.capacity)}
+                </Fact>
+              )}
             </dl>
           </details>
 
@@ -408,7 +626,12 @@ export function EnrollmentDetail({
 
           {order.actions.cancel ? (
             <AdminDangerZone title={copy.dangerTitle}>
-              <CancelOrderForm form={form} />
+              <CancelOrderForm
+                form={form}
+                refund={order.cancelRefund}
+                today={order.today}
+                isSale={isSale}
+              />
             </AdminDangerZone>
           ) : null}
         </div>

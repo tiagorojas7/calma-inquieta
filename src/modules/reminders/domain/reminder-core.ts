@@ -33,6 +33,8 @@ export interface ReminderOrder {
   /** `YYYY-MM`. */
   readonly period: string;
   readonly turnoLabel: string;
+  /** ISO weekday: Monday 1 through Sunday 7. */
+  readonly weekday: number;
   readonly studentName: string;
   readonly studentEmail: string;
   readonly studentPhoneDigits: string;
@@ -168,6 +170,32 @@ export interface AudienceFilter {
   readonly period?: string;
   readonly turnoLabel?: string;
   readonly status?: ReminderStatus;
+  readonly weekday?: number;
+}
+
+/** Calendar day after `now`, interpreted in the studio's Córdoba timezone. */
+export function tomorrowSchedule(now: Date): {
+  readonly period: string;
+  readonly weekday: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Cordoba",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  const tomorrow = new Date(
+    Date.UTC(value("year"), value("month") - 1, value("day") + 1),
+  );
+  const weekday = tomorrow.getUTCDay() || 7;
+  return {
+    period: `${String(tomorrow.getUTCFullYear())}-${String(
+      tomorrow.getUTCMonth() + 1,
+    ).padStart(2, "0")}`,
+    weekday,
+  };
 }
 
 /**
@@ -189,6 +217,7 @@ export function selectAudienceOrders(
       (filter.period === undefined || order.period === filter.period) &&
       (filter.turnoLabel === undefined ||
         order.turnoLabel === filter.turnoLabel) &&
+      (filter.weekday === undefined || order.weekday === filter.weekday) &&
       (status === undefined
         ? order.status !== "cancelled"
         : order.status === status),

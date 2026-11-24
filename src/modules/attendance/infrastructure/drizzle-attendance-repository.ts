@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 import { err, ok } from "~/modules/_shared";
 import {
   attendanceMakeUp,
@@ -75,33 +75,62 @@ export function createDrizzleAttendanceRepository(
     }
   }
 
+  /** Only a pending make-up changes; a closed one is read back as it is. */
+  function closePending(
+    id: string,
+    status: "done" | "missed",
+    change: { readonly by: string; readonly at: Date },
+  ): Promise<StoredMakeUp | null> {
+    return withSession(async (db) => {
+      await db
+        .update(attendanceMakeUp)
+        .set({ status, doneBy: change.by, doneAt: change.at })
+        .where(
+          and(
+            eq(attendanceMakeUp.id, id),
+            eq(attendanceMakeUp.status, "pending"),
+          ),
+        );
+      const [row] = await db
+        .select()
+        .from(attendanceMakeUp)
+        .where(eq(attendanceMakeUp.id, id));
+      return row ? toMakeUp(row) : null;
+    });
+  }
+
   return {
-    replaceSession: (session, marks) =>
-      withSession((db) =>
-        db.transaction(async (tx) => {
-          await tx
-            .delete(attendanceMark)
-            .where(
-              and(
-                eq(attendanceMark.periodId, session.periodId),
-                eq(attendanceMark.turnoId, session.turnoId),
-                eq(attendanceMark.sessionDate, session.date),
-              ),
-            );
-          if (marks.length === 0) return;
-          await tx.insert(attendanceMark).values(
-            marks.map((mark) => ({
-              periodId: mark.periodId,
-              turnoId: mark.turnoId,
-              sessionDate: mark.date,
-              studentEmail: mark.email,
-              status: mark.status,
-              markedBy: mark.markedBy,
-              markedAt: mark.markedAt,
-            })),
-          );
-        }),
-      ),
+    upsertMarks: (marks) =>
+      marks.length === 0
+        ? Promise.resolve()
+        : withSession(async (db) => {
+            await db
+              .insert(attendanceMark)
+              .values(
+                marks.map((mark) => ({
+                  periodId: mark.periodId,
+                  turnoId: mark.turnoId,
+                  sessionDate: mark.date,
+                  studentEmail: mark.email,
+                  status: mark.status,
+                  markedBy: mark.markedBy,
+                  markedAt: mark.markedAt,
+                })),
+              )
+              .onConflictDoUpdate({
+                target: [
+                  attendanceMark.periodId,
+                  attendanceMark.turnoId,
+                  attendanceMark.sessionDate,
+                  attendanceMark.studentEmail,
+                ],
+                set: {
+                  status: sql`excluded.status`,
+                  markedBy: sql`excluded.marked_by`,
+                  markedAt: sql`excluded.marked_at`,
+                },
+              });
+          }),
 
     marksForTurno: (periodId, turnoId) =>
       withSession(async (db) => {
@@ -184,6 +213,21 @@ export function createDrizzleAttendanceRepository(
         return rows.map(toMakeUp);
       }),
 
+    countMakeUpsInto: (periodId, turnoId, date) =>
+      withSession(async (db) => {
+        const [row] = await db
+          .select({ total: count() })
+          .from(attendanceMakeUp)
+          .where(
+            and(
+              eq(attendanceMakeUp.makeUpPeriodId, periodId),
+              eq(attendanceMakeUp.makeUpTurnoId, turnoId),
+              eq(attendanceMakeUp.makeUpDate, date),
+            ),
+          );
+        return row?.total ?? 0;
+      }),
+
     makeUpsForTurno: (periodId, turnoId) =>
       withSession(async (db) => {
         const rows = await db
@@ -199,22 +243,8 @@ export function createDrizzleAttendanceRepository(
         return rows.map(toMakeUp);
       }),
 
-    completeMakeUp: (id, change) =>
-      withSession(async (db) => {
-        await db
-          .update(attendanceMakeUp)
-          .set({ status: "done", doneBy: change.by, doneAt: change.at })
-          .where(
-            and(
-              eq(attendanceMakeUp.id, id),
-              eq(attendanceMakeUp.status, "pending"),
-            ),
-          );
-        const [row] = await db
-          .select()
-          .from(attendanceMakeUp)
-          .where(eq(attendanceMakeUp.id, id));
-        return row ? toMakeUp(row) : null;
-      }),
+    completeMakeUp: (id, change) => closePending(id, "done", change),
+
+    markMakeUpMissed: (id, change) => closePending(id, "missed", change),
   };
 }

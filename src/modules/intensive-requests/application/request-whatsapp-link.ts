@@ -24,7 +24,11 @@ export function buildRequestWhatsAppLink(
       `Solicitud: ${request.reference}`,
       `Nombre: ${request.studentName}`,
       `Workshop: ${request.intensivoName}`,
+      ...(request.projectName === null
+        ? []
+        : [`Proyecto: ${request.projectName}`]),
       `Fecha: ${localDate(request.eventDate)}`,
+      `Total: ${formatPesos(request.price)}`,
       `Seña: ${formatPesos(request.deposit)}`,
     ].join("\n"),
   );

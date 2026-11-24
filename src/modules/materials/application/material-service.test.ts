@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { testAdminActor } from "~/testing/fakes/admin-actor";
 import { buildMediaAsset, buildSupplier } from "~/testing/fakes/admin-builders";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryStockStore } from "~/testing/fakes/in-memory-stock-store";
 import { InMemoryMaterialRepository } from "~/testing/fakes/in-memory-material-repository";
 import { InMemorySupplierRepository } from "~/testing/fakes/in-memory-supplier-repository";
 import type { MediaAsset, MediaLookup } from "~/modules/media";
@@ -55,6 +56,7 @@ async function setup() {
     },
   };
   const clock = advancingClock(NOW);
+  const stock = new InMemoryStockStore();
   let materialId = 0;
   let variantId = 0;
   const service = createMaterialsService({
@@ -62,10 +64,11 @@ async function setup() {
     suppliers,
     media,
     clock,
+    stock,
     newId: () => `material-${String(++materialId)}`,
     newVariantId: () => `variant-${String(++variantId)}`,
   });
-  return { repository, suppliers, assets, media, clock, service };
+  return { repository, suppliers, assets, media, clock, stock, service };
 }
 
 function valueOf<T>(result: { readonly ok: boolean; readonly value?: T }): T {
@@ -100,6 +103,13 @@ describe("material service", () => {
       expect(await service.deactivate(missingActor, "id")).toEqual(denied);
       expect(await service.reactivate(missingActor, "id")).toEqual(denied);
       expect(await service.categorySuggestions(missingActor)).toEqual(denied);
+      expect(await service.stockOf(missingActor, "id")).toEqual(denied);
+      expect(
+        await service.adjustStock(missingActor, "id", "variant", {
+          delta: "1",
+          reason: "Compra",
+        }),
+      ).toEqual(denied);
       expect(
         await service.setImage(missingActor, "id", { assetId: "a", alt: "b" }),
       ).toEqual(denied);
@@ -153,6 +163,192 @@ describe("material service", () => {
       audit: { updatedBy: actor.email, updatedAt: NOW },
     });
     expect(created.variants[0]?.price?.toCentavos()).toBe(1_250_000);
+  });
+
+  it("stores the supplier cost per variant, none when blank, and keeps it for a retained used variant", async () => {
+    const { repository, service } = await setup();
+    const created = valueOf(
+      await service.create(
+        actor,
+        draft({
+          variants: [
+            {
+              label: "Used",
+              price: "12500",
+              cost: "8.000",
+              available: true,
+              swatch: "",
+            },
+            { label: "Plain", price: "15000", available: true, swatch: "" },
+          ],
+        }),
+      ),
+    );
+    const [used, plain] = created.variants;
+    if (!used || !plain) throw new Error("expected variants");
+    expect(used.cost?.toCentavos()).toBe(800_000);
+    expect(plain.cost).toBeNull();
+    repository.materials.set(created.id, {
+      ...created,
+      variants: [{ ...used, used: true }, plain],
+    });
+
+    const updated = valueOf(
+      await service.update(
+        other,
+        created.id,
+        draft({
+          variants: [
+            {
+              id: plain.id,
+              label: "Plain",
+              price: "15000",
+              cost: "9000",
+              available: true,
+              swatch: "",
+            },
+          ],
+        }),
+      ),
+    );
+    expect(
+      updated.variants.map((variant) => variant.cost?.toCentavos() ?? null),
+    ).toEqual([900_000, 800_000]);
+  });
+
+  describe("stock", () => {
+    async function withVariant() {
+      const context = await setup();
+      const created = valueOf(await context.service.create(actor, draft()));
+      const variant = created.variants[0];
+      if (!variant) throw new Error("expected variant");
+      return { ...context, material: created, variant };
+    }
+
+    it("reads 0 for a variant without a stock row", async () => {
+      const { service, material, variant } = await withVariant();
+      expect(valueOf(await service.stockOf(actor, material.id))).toEqual(
+        new Map([[variant.id, 0]]),
+      );
+    });
+
+    it("adds and subtracts units and audits each change with who, when and why", async () => {
+      const { service, stock, material, variant } = await withVariant();
+      const adjust = (delta: string, reason: string) =>
+        service.adjustStock(actor, material.id, variant.id, { delta, reason });
+
+      expect(await adjust("+5", " Compra al proveedor ")).toEqual({
+        ok: true,
+        value: { onHand: 5 },
+      });
+      expect(await adjust("-1", "Rotura")).toEqual({
+        ok: true,
+        value: { onHand: 4 },
+      });
+      expect(valueOf(await service.stockOf(actor, material.id))).toEqual(
+        new Map([[variant.id, 4]]),
+      );
+      expect(stock.adjustments).toMatchObject([
+        {
+          variantId: variant.id,
+          delta: 5,
+          reason: "Compra al proveedor",
+          by: actor.email,
+        },
+        { variantId: variant.id, delta: -1, reason: "Rotura", by: actor.email },
+      ]);
+      expect(stock.adjustments[0]?.at).toBeInstanceOf(Date);
+    });
+
+    it("refuses to go below zero with a field error and changes nothing", async () => {
+      const { service, stock, material, variant } = await withVariant();
+      await service.adjustStock(actor, material.id, variant.id, {
+        delta: "2",
+        reason: "Compra",
+      });
+      const before = structuredClone([...stock.levels]);
+
+      expect(
+        await service.adjustStock(actor, material.id, variant.id, {
+          delta: "-3",
+          reason: "Rotura",
+        }),
+      ).toEqual({
+        ok: false,
+        error: { kind: "insufficient-stock", onHand: 2 },
+      });
+      expect([...stock.levels]).toEqual(before);
+      expect(stock.adjustments).toHaveLength(1);
+    });
+
+    it("validates the delta and the reason before touching the store", async () => {
+      const { service, stock, material, variant } = await withVariant();
+      const spy = vi.spyOn(stock, "adjust");
+      const adjust = (delta: string, reason: string) =>
+        service.adjustStock(actor, material.id, variant.id, { delta, reason });
+
+      expect(await adjust("", "")).toEqual({
+        ok: false,
+        error: {
+          kind: "invalid",
+          issues: [
+            { field: "delta", code: "required" },
+            { field: "reason", code: "required" },
+          ],
+        },
+      });
+      expect(await adjust("0", "x")).toMatchObject({
+        error: { issues: [{ field: "delta", code: "out-of-range" }] },
+      });
+      expect(await adjust("1,5", "x")).toMatchObject({
+        error: { issues: [{ field: "delta", code: "invalid-format" }] },
+      });
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("answers not-found for an unknown material or a variant of another material", async () => {
+      const { service, material, variant } = await withVariant();
+      const draftValue = { delta: "1", reason: "Compra" };
+      expect(
+        await service.adjustStock(actor, "nope", variant.id, draftValue),
+      ).toEqual({ ok: false, error: { kind: "not-found" } });
+      expect(
+        await service.adjustStock(actor, material.id, "nope", draftValue),
+      ).toEqual({ ok: false, error: { kind: "not-found" } });
+      expect(await service.stockOf(actor, "nope")).toEqual({
+        ok: false,
+        error: { kind: "not-found" },
+      });
+    });
+
+    it("keeps variant ids, so the count survives a material save", async () => {
+      const { service, stock, material, variant } = await withVariant();
+      await service.adjustStock(actor, material.id, variant.id, {
+        delta: "6",
+        reason: "Compra",
+      });
+
+      const saved = valueOf(
+        await service.update(
+          other,
+          material.id,
+          draft({
+            variants: [
+              {
+                id: variant.id,
+                label: "Única",
+                price: "99999",
+                available: true,
+                swatch: "",
+              },
+            ],
+          }),
+        ),
+      );
+
+      expect(saved.variants.map((value) => value.id)).toEqual([variant.id]);
+      expect(stock.levels.get(variant.id)).toBe(6);
+    });
   });
 
   it("aggregates pure validation before supplier or media lookups", async () => {

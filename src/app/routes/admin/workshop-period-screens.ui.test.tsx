@@ -148,31 +148,12 @@ function detailStub(
             status,
             values: {
               fee: "40000",
-              materialsRequired: true,
               projectTitle: "Tazas",
               projectDescription: "Esmaltes",
               capacities: [{ turnoId: "t1", label: "Mañana", capacity: "8" }],
               snapshotPercentage: "35",
-              materialIds: ["m1"],
             },
-            materialOptions: [
-              {
-                id: "m2",
-                name: "Esmalte",
-                active: true,
-                available: true,
-                historical: false,
-              },
-              {
-                id: "m1",
-                name: "Arcilla",
-                active: false,
-                available: false,
-                historical: true,
-              },
-            ],
             images: [{ alt: "Taza terminada" }],
-            materials: [{ name: "Arcilla", active: false, available: false }],
             snapshot: {
               teacherName: "Cami",
               modality: "third_party",
@@ -194,7 +175,7 @@ describe("workshop period detail admin screen", () => {
     const { container } = render(detailStub("draft", "opened"));
     expect((await screen.findAllByRole("status")).length).toBe(2);
     expect(
-      screen.getByText("Mes abierto. Ahora definí cupos y materiales."),
+      screen.getByText("Mes abierto. Ahora revisá los cupos."),
     ).toBeVisible();
     expect(screen.getByText("Todavía no acepta inscripciones")).toBeVisible();
     expect(
@@ -215,8 +196,10 @@ describe("workshop period detail admin screen", () => {
       screen.getByRole("textbox", { name: "Arancel mensual" }),
     ).toHaveValue("40000");
     expect(
-      screen.getByRole("checkbox", { name: "Requiere materiales" }),
-    ).toBeChecked();
+      screen.queryByRole("checkbox", { name: "Requiere materiales" }),
+    ).toBeNull();
+    expect(screen.queryByText("Requiere materiales")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Materiales" })).toBeNull();
     expect(screen.getByRole("textbox", { name: "Título" })).toHaveValue(
       "Tazas",
     );
@@ -227,15 +210,6 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("button", { name: "Guardar cambios" }),
     ).toBeVisible();
-    const materialChoices = screen.getByRole("group", { name: "Materiales" });
-    expect(
-      within(materialChoices).getByRole("checkbox", { name: "Esmalte" }),
-    ).not.toBeChecked();
-    expect(
-      within(materialChoices).getByRole("checkbox", {
-        name: /Arcilla.*histórico/,
-      }),
-    ).toBeChecked();
     expect(
       screen.getByRole("button", { name: "Publicar período" }),
     ).toBeVisible();
@@ -246,7 +220,6 @@ describe("workshop period detail admin screen", () => {
       screen.getByRole("heading", { name: "Acciones del período" })
         .nextElementSibling,
     ).toHaveClass("flex-wrap");
-    expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
     expect(screen.getByText("Taza terminada")).toBeVisible();
     expect(screen.getByText("Docente al abrir:")).toBeVisible();
     expect(screen.getByText("Cami")).toBeVisible();
@@ -263,7 +236,7 @@ describe("workshop period detail admin screen", () => {
     expect(
       screen.getByRole("textbox", { name: "Arancel mensual" }),
     ).toBeVisible();
-    expect(screen.getByRole("group", { name: "Materiales" })).toBeVisible();
+    expect(screen.queryByRole("group", { name: "Materiales" })).toBeNull();
     await expectNoAxeViolations(container);
   });
 
@@ -279,7 +252,6 @@ describe("workshop period detail admin screen", () => {
         name: /Guardar|Publicar|Cerrar|Eliminar/,
       }),
     ).toBeNull();
-    expect(screen.getByText("Arcilla (inactivo, no disponible)")).toBeVisible();
     expect(screen.getByText("Docente al abrir:")).toBeVisible();
     await expectNoAxeViolations(container);
   });

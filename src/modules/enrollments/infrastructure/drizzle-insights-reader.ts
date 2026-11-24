@@ -1,4 +1,16 @@
-import { and, count, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  sql,
+} from "drizzle-orm";
 import {
   enrollmentOrder as orders,
   orderLine,
@@ -6,9 +18,12 @@ import {
 } from "~/platform/db/schema/enrollments";
 import type { DbSessionFactory } from "~/platform/db/session";
 import type { EnrollmentInsightsReader } from "../application/insights-reader";
-import type { OrderStatus } from "../domain/order-core";
+import type { OrderKind, OrderStatus } from "../domain/order-core";
 
 const CONFIRMED = ["paid", "materials_requested", "materials_received"];
+
+/** Enrollments, registrations and students count monthly records only, never a material sale. */
+const ENROLLMENT = eq(orders.kind, "enrollment");
 
 const sumOf = (expression: ReturnType<typeof sql>) =>
   sql`coalesce(sum(${expression}), 0)`.mapWith(Number);
@@ -45,7 +60,7 @@ export function createDrizzleEnrollmentInsightsReader(
             orders: count(),
           })
           .from(orders)
-          .where(inPeriod(period))
+          .where(and(ENROLLMENT, inPeriod(period)))
           .groupBy(
             orders.workshopId,
             orders.turnoId,
@@ -80,9 +95,17 @@ export function createDrizzleEnrollmentInsightsReader(
             workshopId: orders.workshopId,
             workshopName: sql<string>`max(${orders.workshopName})`,
             period: orders.period,
-            orders: count(),
+            // A material sale adds its materials to the month, not a registration.
+            orders:
+              sql`count(*) filter (where ${orders.kind} = 'enrollment')`.mapWith(
+                Number,
+              ),
             feeCentavos: sumOf(sql`${orders.feeCentavos}`),
             materialsCentavos: sumOf(sql`${orders.materialsCentavos}`),
+            // Each order's lines at their own cost, or at their price where none was loaded.
+            materialsCostCentavos: sumOf(
+              sql`(select coalesce(sum(${orderLine.quantity} * coalesce(${orderLine.unitCostCentavos}, ${orderLine.unitPriceCentavos})), 0) from ${orderLine} where ${orderLine.orderId} = ${orders.id})`,
+            ),
           })
           .from(orders)
           .where(
@@ -109,7 +132,11 @@ export function createDrizzleEnrollmentInsightsReader(
           })
           .from(orders)
           .where(
-            and(inArray(orders.status, CONFIRMED), eq(orders.period, period)),
+            and(
+              ENROLLMENT,
+              inArray(orders.status, CONFIRMED),
+              eq(orders.period, period),
+            ),
           )
           .groupBy(orders.periodId);
         return rows;
@@ -146,6 +173,13 @@ export function createDrizzleEnrollmentInsightsReader(
             amountCentavos: sumOf(
               sql`${orderLine.quantity} * ${orderLine.unitPriceCentavos}`,
             ),
+            costCentavos: sumOf(
+              sql`${orderLine.quantity} * coalesce(${orderLine.unitCostCentavos}, ${orderLine.unitPriceCentavos})`,
+            ),
+            uncostedLines:
+              sql`count(*) filter (where ${orderLine.unitCostCentavos} is null)`.mapWith(
+                Number,
+              ),
           })
           .from(orderLine)
           .innerJoin(orders, eq(orderLine.orderId, orders.id))
@@ -163,6 +197,50 @@ export function createDrizzleEnrollmentInsightsReader(
         }));
       }),
 
+    unseenOrders: () =>
+      withDb((db) =>
+        db
+          .select({
+            id: orders.id,
+            studentName: orders.studentName,
+            workshopName: orders.workshopName,
+            period: orders.period,
+            requestedAt: orders.requestedAt,
+          })
+          .from(orders)
+          .where(
+            and(
+              ENROLLMENT,
+              ne(orders.status, "cancelled"),
+              isNull(orders.seenAt),
+            ),
+          )
+          .orderBy(desc(orders.requestedAt), asc(orders.id)),
+      ),
+
+    pendingPayments: () =>
+      withDb(async (db) => {
+        // Monthly fees and material sales alike; no due date, so a pending
+        // order stays listed until it is paid or cancelled.
+        const rows = await db
+          .select({
+            id: orders.id,
+            kind: orders.kind,
+            studentName: orders.studentName,
+            workshopName: orders.workshopName,
+            period: orders.period,
+            totalCentavos: orders.totalCentavos,
+            requestedAt: orders.requestedAt,
+          })
+          .from(orders)
+          .where(eq(orders.status, "pending_confirmation"))
+          .orderBy(asc(orders.requestedAt), asc(orders.id));
+        return rows.map((row) => ({
+          ...row,
+          kind: row.kind as OrderKind,
+        }));
+      }),
+
     participation: (period) =>
       withDb(async (db) => {
         const email = sql`lower(btrim(${orders.studentEmail}))`;
@@ -175,7 +253,7 @@ export function createDrizzleEnrollmentInsightsReader(
           from (
             select ${email} as email, count(distinct ${orders.period}) as periods
             from ${orders}
-            where ${inArray(orders.status, CONFIRMED)}
+            where ${ENROLLMENT} and ${inArray(orders.status, CONFIRMED)}
             group by ${email}
             having bool_or(${orders.period} = ${period})
           ) as confirmed

@@ -13,9 +13,13 @@ export type {
 } from "./application/attendance-ports";
 export type {
   AttendanceService,
+  MakeUpBooked,
+  MakeUpClosed,
   MakeUpEntry,
   MakeUpInput,
   MakeUpPlanField,
+  MakeUpUsed,
+  ScheduledMakeUp,
   SessionRow,
   SessionSheet,
   SessionSummary,

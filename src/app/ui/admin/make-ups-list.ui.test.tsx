@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { expectNoAxeViolations } from "~/testing/ui/axe";
 import { MakeUpsList, type MakeUpRow } from "./make-ups-list";
 
+const missedText = {
+  title: "No vinieron",
+  action: "No vino",
+  actionPrefix: "Marcar que no vino a la recuperación",
+  marked: "Recuperación marcada como no asistida.",
+  closed: "Esa recuperación ya estaba cerrada y no se puede cambiar.",
+};
+
 const row = (overrides: Partial<MakeUpRow> = {}): MakeUpRow => ({
   id: "m1",
   student: "Ana Pérez",
@@ -15,7 +23,9 @@ const row = (overrides: Partial<MakeUpRow> = {}): MakeUpRow => ({
 
 describe("MakeUpsList", () => {
   it("lists pending make-ups with a native post form to mark each done", async () => {
-    const { container } = render(<MakeUpsList pending={[row()]} done={[]} />);
+    const { container } = render(
+      <MakeUpsList missedText={missedText} pending={[row()]} done={[]} />,
+    );
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Recuperaciones" }),
@@ -37,7 +47,7 @@ describe("MakeUpsList", () => {
   });
 
   it("shows make-ups as cards with breadcrumbs and a full-width action", () => {
-    render(<MakeUpsList pending={[row()]} done={[]} />);
+    render(<MakeUpsList missedText={missedText} pending={[row()]} done={[]} />);
 
     expect(
       within(
@@ -55,7 +65,9 @@ describe("MakeUpsList", () => {
   });
 
   it("confirms a completed make-up", () => {
-    render(<MakeUpsList pending={[]} done={[]} completed />);
+    render(
+      <MakeUpsList missedText={missedText} pending={[]} done={[]} completed />,
+    );
     expect(screen.getByRole("status")).toHaveTextContent(
       "Recuperación marcada como realizada.",
     );
@@ -64,6 +76,7 @@ describe("MakeUpsList", () => {
   it("lists done make-ups with who completed them and no action", () => {
     render(
       <MakeUpsList
+        missedText={missedText}
         pending={[]}
         done={[row({ doneNote: "Realizada el 15/10/2026 12:00 (owner)" })]}
       />,
@@ -79,5 +92,69 @@ describe("MakeUpsList", () => {
         name: "No hay recuperaciones pendientes.",
       }),
     ).toBeVisible();
+  });
+
+  it("offers a native post form to mark a pending make-up as missed", () => {
+    render(<MakeUpsList missedText={missedText} pending={[row()]} done={[]} />);
+
+    const pending = screen.getByRole("list", { name: "Pendientes" });
+    const form = within(pending).getByRole("form", {
+      name: "Marcar que no vino a la recuperación: Ana Pérez",
+    });
+    expect(form).toHaveAttribute("method", "post");
+    expect(form.querySelector("input[name=intent]")).toHaveValue("missed");
+    expect(form.querySelector("input[name=id]")).toHaveValue("m1");
+    expect(within(form).getByRole("button", { name: "No vino" })).toBeVisible();
+    expect(
+      within(pending).getByRole("form", {
+        name: "Marcar como realizada la de Ana Pérez",
+      }),
+    ).toBeVisible();
+  });
+
+  it("lists missed make-ups with who marked them and no action", async () => {
+    const { container } = render(
+      <MakeUpsList
+        missedText={missedText}
+        pending={[]}
+        done={[]}
+        missed={[
+          row({ doneNote: "No vino. Lo marcó owner el 15/10/2026 12:00" }),
+        ]}
+      />,
+    );
+
+    const missed = screen.getByRole("list", { name: "No vinieron" });
+    expect(
+      within(missed).getByText("No vino. Lo marcó owner el 15/10/2026 12:00"),
+    ).toBeVisible();
+    expect(within(missed).queryByRole("button")).toBeNull();
+    await expectNoAxeViolations(container);
+  });
+
+  it("confirms a missed make-up and says when it was already closed", () => {
+    const { rerender } = render(
+      <MakeUpsList
+        missedText={missedText}
+        pending={[]}
+        done={[]}
+        notice="missed"
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Recuperación marcada como no asistida.",
+    );
+
+    rerender(
+      <MakeUpsList
+        missedText={missedText}
+        pending={[]}
+        done={[]}
+        notice="closed"
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Esa recuperación ya estaba cerrada y no se puede cambiar.",
+    );
   });
 });

@@ -9,17 +9,16 @@ const offer = {
   period: "2026-11",
   periodLabel: "noviembre 2026",
   fee: "$ 40.000",
-  materialsRequired: true,
   turnos: [{ id: "t1", label: "Lunes 18:00" }],
 };
 const values = { fullName: "", email: "", phone: "", turnoId: "" };
 
-function setup(errors: Record<string, string> = {}, materialsRequired = true) {
+function setup(errors: Record<string, string> = {}) {
   return render(
     <MemoryRouter>
       <EnrollmentPage
         state="open"
-        offer={{ ...offer, materialsRequired }}
+        offer={offer}
         values={values}
         errors={errors}
         backHref="/talleres/ceramica"
@@ -29,9 +28,32 @@ function setup(errors: Record<string, string> = {}, materialsRequired = true) {
 }
 
 describe("EnrollmentPage form (EN01-EN05)", () => {
+  it("shows the full workshop content before the registration fields", () => {
+    render(
+      <MemoryRouter>
+        <EnrollmentPage
+          state="open"
+          offer={{ ...offer, content: "Aprendés modelado. Todo incluido." }}
+          values={values}
+          errors={{}}
+        />
+      </MemoryRouter>,
+    );
+    const content = screen.getByText(/Aprendés modelado/);
+    const field = screen.getByLabelText("Nombre completo");
+    expect(
+      content.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("renders no content block when the workshop has none", () => {
+    setup();
+    expect(screen.queryByText("Sobre el taller")).toBeNull();
+  });
+
   it("orients the visitor with a step indicator and a back link", () => {
     setup();
-    expect(screen.getByText("Paso 1 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Paso 1 de 2")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Volver/ })).toHaveAttribute(
       "href",
       "/talleres/ceramica",
@@ -56,9 +78,23 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     expect(new Set(glyphs).size).toBe(4);
   });
 
-  it("counts two steps when materials are not required", () => {
-    setup({}, false);
+  it("always counts two steps and never mentions materials", () => {
+    render(
+      <MemoryRouter>
+        <EnrollmentPage
+          state="open"
+          offer={offer}
+          values={values}
+          errors={{}}
+        />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("Paso 1 de 2")).toBeInTheDocument();
+    expect(screen.queryByText("Materiales requeridos")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Elegir materiales" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeVisible();
   });
 
   it("adds autofill tokens, input modes and a phone hint", () => {
@@ -90,7 +126,7 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     const name = screen.getByLabelText("Nombre completo");
     expect(name).toHaveAttribute("aria-invalid", "true");
     expect(name).toHaveAccessibleDescription("Ingresá tu nombre.");
-    expect(screen.getByLabelText(/Acepto la política/u)).toHaveAttribute(
+    expect(screen.getByLabelText(/Leí y acepto/u)).toHaveAttribute(
       "aria-invalid",
       "true",
     );
@@ -100,10 +136,13 @@ describe("EnrollmentPage form (EN01-EN05)", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("keeps the privacy consent copy exactly as before (EN06 stays out)", () => {
+  it("asks for one acceptance of both documents instead of the privacy-only one (EN06 stays out)", () => {
     setup();
     expect(
-      screen.getByText("Acepto la política de privacidad."),
+      screen.getByRole("checkbox", {
+        name: "Leí y acepto las condiciones y la política de privacidad",
+      }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Acepto la política de privacidad.")).toBeNull();
   });
 });

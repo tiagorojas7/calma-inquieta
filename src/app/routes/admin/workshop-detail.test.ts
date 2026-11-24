@@ -29,7 +29,7 @@ import { action, loader } from "./workshop-detail";
 type Fixture = ReturnType<typeof workshopsFixture>;
 
 const TURNO = {
-  label: "Mañana",
+  label: "Martes 10:00 a 12:00",
   weekday: "2",
   startsAt: "10:00",
   endsAt: "12:00",
@@ -128,7 +128,7 @@ describe("admin workshop detail loader", () => {
       },
       turnos: [
         {
-          label: "Mañana",
+          label: "Martes 10:00 a 12:00",
           when: "Martes 10:00 a 12:00",
           capacity: 8,
         },
@@ -371,7 +371,13 @@ describe("admin workshop detail overview", () => {
       summary: `Publicado. Inscripciones abiertas en ${monthName(FLOW_MONTH)}.`,
       enrollmentOpen: true,
       next: null,
-      turnos: [{ label: "Mañana", when: "Martes 10:00 a 12:00", capacity: 8 }],
+      turnos: [
+        {
+          label: "Martes 10:00 a 12:00",
+          when: "Martes 10:00 a 12:00",
+          capacity: 8,
+        },
+      ],
       months: [
         {
           period: FLOW_MONTH,
@@ -388,12 +394,12 @@ describe("admin workshop detail overview", () => {
       const { flow, id } = await openWorkshop();
       const added = await flow.service.addTurno(testAdminActor(), id, {
         ...TURNO,
-        label: "Tarde",
+        label: "Martes 15:00 a 17:00",
         startsAt: "15:00",
         endsAt: "17:00",
       });
       if (!added.ok) throw new Error("add failed");
-      const morning = added.value.turnos.find((t) => t.label === "Mañana");
+      const morning = added.value.turnos.find((t) => t.startsAt === "10:00");
       if (!morning) throw new Error("missing turno");
       await flow.service.retireTurno(testAdminActor(), id, morning.id);
       // The database derives turnoActive from the turno row; the fake stores it.

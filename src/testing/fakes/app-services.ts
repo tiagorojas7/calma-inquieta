@@ -17,6 +17,7 @@ import {
 } from "~/modules/notifications";
 import { createUnavailableAttendanceService } from "~/modules/attendance";
 import { createUnavailableIntensiveRequestService } from "~/modules/intensive-requests";
+import { createUnavailablePoliciesService } from "~/modules/policies";
 import { createPrivateEventService } from "~/modules/private-events";
 import { createSiteContent } from "~/modules/site-content";
 import type { SystemStatusView } from "~/modules/system-status";
@@ -26,6 +27,7 @@ import {
 } from "./in-memory-site-content-source";
 import { fixedClock } from "./fixed-clock";
 import { InMemoryPrivateEventRepository } from "./in-memory-private-event-repository";
+import { InMemoryStockStore } from "./in-memory-stock-store";
 import { InMemorySupplierRepository } from "./in-memory-supplier-repository";
 
 const OK_VIEW: SystemStatusView = {
@@ -83,6 +85,7 @@ export function createTestServices(
       createUnavailableService<
         import("~/modules/materials").MaterialsService
       >(),
+    variantStock: new InMemoryStockStore(),
     enrollments: createUnavailableAdminEnrollmentService(),
     consolidation: createUnavailableSupplierConsolidationService(),
     students: createUnavailableStudentsService(),
@@ -97,6 +100,7 @@ export function createTestServices(
         Promise.resolve(err({ kind: "unavailable" as const })),
     },
     intensiveRequests: createUnavailableIntensiveRequestService(),
+    policies: createUnavailablePoliciesService(),
     publicCatalog: createFakePublicCatalog(),
     privateEvents: createPrivateEventService({
       repository: new InMemoryPrivateEventRepository(),

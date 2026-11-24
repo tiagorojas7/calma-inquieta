@@ -2,10 +2,11 @@ import {
   Money,
   parseWholePesos,
   type FieldIssue,
+  type IssueCode,
   type Result,
 } from "~/modules/_shared";
 
-export type MaterialVariantField = "label" | "price" | "swatch";
+export type MaterialVariantField = "label" | "price" | "cost" | "swatch";
 
 /** `variants` alone means the list itself; indexed fields point at one row. */
 export type MaterialField =
@@ -30,6 +31,8 @@ export interface MaterialDraft {
     readonly price: string;
     /** True when students must enquire; the typed price is then ignored. */
     readonly priceOnRequest?: boolean;
+    /** Current supplier cost in whole pesos; blank means not loaded. */
+    readonly cost?: string;
     readonly available: boolean;
     readonly swatch: string;
   }[];
@@ -40,6 +43,8 @@ export interface ValidMaterialVariantDraft {
   readonly label: string;
   /** Null means "consultar precio": shown to students, never orderable. */
   readonly price: Money | null;
+  /** Current supplier cost; null when the owner has not loaded it. */
+  readonly cost: Money | null;
   readonly available: boolean;
   readonly swatch: string | null;
   readonly position: number;
@@ -80,6 +85,19 @@ function normalizeSwatch(text: string): Swatch {
   return { ok: true, value: `#${expanded}` };
 }
 
+type OptionalCost =
+  | { readonly ok: true; readonly value: Money | null }
+  | { readonly ok: false; readonly error: IssueCode };
+
+/** Blank means "not loaded"; otherwise whole pesos greater than zero. */
+function parseOptionalCost(text: string): OptionalCost {
+  if (text.trim() === "") return { ok: true, value: null };
+  const parsed = parseWholePesos(text);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  if (parsed.value.isZero()) return { ok: false, error: "out-of-range" };
+  return { ok: true, value: parsed.value };
+}
+
 export function validateMaterialDraft(
   draft: MaterialDraft,
 ): Result<ValidMaterialDraft, readonly FieldIssue<MaterialField>[]> {
@@ -117,15 +135,25 @@ export function validateMaterialDraft(
     else if (parsedPrice.value?.isZero())
       issues.push({ field: row("price"), code: "out-of-range" });
 
+    const parsedCost = parseOptionalCost(variant.cost ?? "");
+    if (!parsedCost.ok)
+      issues.push({ field: row("cost"), code: parsedCost.error });
+
     const swatch = normalizeSwatch(variant.swatch);
     if (!swatch.ok)
       issues.push({ field: row("swatch"), code: "invalid-format" });
 
-    if (label && parsedPrice.ok && !parsedPrice.value?.isZero()) {
+    if (
+      label &&
+      parsedPrice.ok &&
+      !parsedPrice.value?.isZero() &&
+      parsedCost.ok
+    ) {
       variants.push({
         ...(variant.id ? { id: variant.id } : {}),
         label,
         price: parsedPrice.value,
+        cost: parsedCost.value,
         available: variant.available,
         swatch: swatch.ok ? swatch.value : null,
         position,

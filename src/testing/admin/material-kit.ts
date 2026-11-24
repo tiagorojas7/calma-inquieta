@@ -5,6 +5,7 @@ import {
 import type { MediaAsset, MediaLookup } from "~/modules/media";
 import { buildMediaAsset, buildSupplier } from "~/testing/fakes/admin-builders";
 import { advancingClock } from "~/testing/fakes/fixed-clock";
+import { InMemoryStockStore } from "~/testing/fakes/in-memory-stock-store";
 import { InMemoryMaterialRepository } from "~/testing/fakes/in-memory-material-repository";
 import { InMemorySupplierRepository } from "~/testing/fakes/in-memory-supplier-repository";
 
@@ -37,12 +38,14 @@ export async function materialsFixture() {
       return Promise.resolve(found);
     },
   };
+  const stock = new InMemoryStockStore();
   let materialId = 0;
   let variantId = 0;
   const service = createMaterialsService({
     repository,
     suppliers,
     media,
+    stock,
     clock: advancingClock(new Date("2026-10-20T12:00:00.000Z")),
     newId: () => `material-${String(++materialId)}`,
     newVariantId: () => `variant-${String(++variantId)}`,
@@ -51,5 +54,5 @@ export async function materialsFixture() {
     repository: suppliers,
     clock: advancingClock(new Date("2026-10-20T12:00:00.000Z")),
   });
-  return { repository, suppliers, suppliersService, service };
+  return { repository, suppliers, suppliersService, service, stock };
 }

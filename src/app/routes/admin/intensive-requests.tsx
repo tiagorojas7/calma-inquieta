@@ -1,7 +1,13 @@
 import { data, redirect, useActionData, useLoaderData } from "react-router";
+import {
+  cancelRefundValues,
+  parseCancelRefund,
+  refundFieldError,
+} from "~/app/admin/enrollment-cancel-form-data";
 import { feedbackCode, withFeedback } from "~/app/admin/feedback-code";
 import { isUuid } from "~/app/admin/enrollment-ids";
 import { failureResponse } from "~/app/admin/failure-response";
+import { markOpened } from "~/app/admin/notifications-view";
 import { servicesContext } from "~/app/context";
 import { intensiveRequestsView } from "~/app/intensive-requests/admin-view";
 import {
@@ -15,7 +21,7 @@ import type { Route } from "./+types/intensive-requests";
 
 const copy = adminMicrocopy.intensiveRequests;
 
-const DONE = ["confirmed", "cancelled"] as const;
+const DONE = ["confirmed", "balance", "cancelled"] as const;
 
 export function meta() {
   return [{ title: "Reservas | Panel | Calma Inquieta" }];
@@ -24,10 +30,11 @@ export function meta() {
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const actor = requireAdmin(request, context);
   if (!isUuid(params.id)) throw data(null, { status: 404 });
-  const found = await context
-    .get(servicesContext)
-    .intensiveRequests.overview(actor, params.id);
+  const { intensiveRequests } = context.get(servicesContext);
+  const found = await intensiveRequests.overview(actor, params.id);
   if (!found.ok) throw failureResponse(found.error);
+  // Opening the reservations reads every request of this workshop for both owners.
+  await markOpened(() => intensiveRequests.markSeen(actor, params.id));
   return {
     ...intensiveRequestsView(found.value, cordobaDateOf(new Date())),
     done: feedbackCode(request, DONE),
@@ -42,6 +49,8 @@ function text(form: FormData, name: string): string {
 type Failure =
   | { kind: "invalid"; issues: readonly { field: string }[] }
   | { kind: "intensive-full" }
+  | { kind: "balance-already-paid" }
+  | { kind: "no-balance-due" }
   | { kind: "illegal-transition"; from: string };
 
 /** The message and field errors a rejected form shows next to its request. */
@@ -52,15 +61,27 @@ function feedbackFor(
   const errors: Record<string, string> = {};
   let formError: string | undefined;
   if (failure.kind === "invalid") {
+    const balance = base.intent === "balance";
     for (const issue of failure.issues) {
-      const message = copy.errors[issue.field as keyof typeof copy.errors];
+      const message = balance
+        ? issue.field === "amount"
+          ? copy.errors.balanceAmount
+          : issue.field === "paidOn"
+            ? copy.errors.balancePaidOn
+            : copy.errors[issue.field as keyof typeof copy.errors]
+        : copy.errors[issue.field as keyof typeof copy.errors];
       errors[issue.field] ??= message;
     }
   } else if (failure.kind === "intensive-full") formError = copy.errors.full;
+  else if (failure.kind === "balance-already-paid")
+    formError = copy.errors.balanceAlreadyPaid;
+  else if (failure.kind === "no-balance-due") formError = copy.errors.noBalance;
+  else if (failure.from === "cancelled")
+    formError = copy.errors.alreadyCancelled;
   else
     formError =
-      failure.from === "cancelled"
-        ? copy.errors.alreadyCancelled
+      base.intent === "balance"
+        ? copy.errors.notConfirmed
         : copy.errors.notPending;
   return { ...base, formError, errors };
 }
@@ -71,7 +92,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const form = await request.formData().catch(() => null);
   if (form === null) throw data(null, { status: 400 });
   const intent = text(form, "intent");
-  if (intent !== "confirm" && intent !== "cancel")
+  if (intent !== "confirm" && intent !== "balance" && intent !== "cancel")
     throw data(null, { status: 400 });
   const requestId = text(form, "requestId");
   if (!isUuid(requestId)) throw data(null, { status: 404 });
@@ -81,33 +102,51 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const paidOn = text(form, "paidOn");
   const note = text(form, "note");
   const reason = text(form, "reason");
-  const values = intent === "confirm" ? { amount, paidOn, note } : { reason };
+  const refund = intent === "cancel" ? parseCancelRefund(form) : undefined;
+  const values =
+    intent === "cancel"
+      ? { reason, ...cancelRefundValues(form) }
+      : { amount, paidOn, note };
+  const payment = { intensiveId: params.id, requestId, amount, paidOn, note };
   const result =
     intent === "confirm"
-      ? await requests.confirm(actor, {
-          intensiveId: params.id,
-          requestId,
-          amount,
-          paidOn,
-          note,
-        })
-      : await requests.cancel(actor, {
-          intensiveId: params.id,
-          requestId,
-          reason,
-        });
+      ? await requests.confirm(actor, payment)
+      : intent === "balance"
+        ? await requests.recordBalance(actor, payment)
+        : await requests.cancel(actor, {
+            intensiveId: params.id,
+            requestId,
+            reason,
+            ...(refund === undefined ? {} : { refund }),
+          });
   if (result.ok)
     return redirect(
       withFeedback(
         `/admin/intensivos/${params.id}/reservas`,
-        intent === "confirm" ? "confirmed" : "cancelled",
+        intent === "confirm"
+          ? "confirmed"
+          : intent === "balance"
+            ? "balance"
+            : "cancelled",
       ),
     );
 
   const error = result.error;
+  if (error.kind === "invalid-refund") {
+    const feedback: IntensiveRequestFeedback = {
+      requestId,
+      intent,
+      values,
+      formError: undefined,
+      errors: refundFieldError(error),
+    };
+    return data({ feedback }, { status: 422 });
+  }
   if (
     error.kind === "invalid" ||
     error.kind === "intensive-full" ||
+    error.kind === "balance-already-paid" ||
+    error.kind === "no-balance-due" ||
     error.kind === "illegal-transition"
   )
     return data(

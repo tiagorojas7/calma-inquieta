@@ -42,7 +42,6 @@ function period(
     workshopId: IDS.workshop,
     period: "2026-10",
     fee,
-    materialsRequired: false,
     status: "draft",
     project: { title: "Project", description: "Description", images: [] },
     turnos: [
@@ -56,7 +55,6 @@ function period(
         capacity: 8,
       },
     ],
-    materials: [],
     snapshot: {
       teacher: { id: IDS.teacher, name: "Teacher", active: true },
       modality: "own",
@@ -306,54 +304,7 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
     ).rejects.toThrow(/image/i);
   });
 
-  it("rolls root and offer inserts back when a material reference is refused", async () => {
-    const { repo } = await freshRepository();
-    const value = period({
-      materials: [
-        {
-          id: "00000000-0000-4000-8000-000000000599",
-          name: "Missing",
-          active: true,
-          available: true,
-        },
-      ],
-    });
-    await expect(repo.insert(value)).rejects.toThrow();
-    expect(await repo.findById(value.id)).toBeNull();
-  });
-
-  it("rolls root and offer replacement back together", async () => {
-    const { repo } = await freshRepository();
-    const original = period({
-      materials: [
-        {
-          id: IDS.material1,
-          name: "Material 1",
-          active: true,
-          available: true,
-        },
-      ],
-    });
-    await repo.insert(original);
-
-    await expect(
-      repo.update({
-        ...original,
-        materialsRequired: true,
-        materials: [
-          {
-            id: "00000000-0000-4000-8000-000000000599",
-            name: "Missing",
-            active: true,
-            available: true,
-          },
-        ],
-      }),
-    ).rejects.toThrow();
-    expect(await repo.findById(original.id)).toEqual(original);
-  });
-
-  it("enforces offer material, position, and per-period uniqueness constraints", async () => {
+  it("ignores the dormant flag and offer rows when loading and saving", async () => {
     const { repo, openSession } = await freshRepository();
     const value = period();
     await repo.insert(value);
@@ -362,75 +313,32 @@ describe("createDrizzleWorkshopPeriodRepository", () => {
       await session.db.execute(sql`
         INSERT INTO period_material_offer (period_id, material_id, position)
         VALUES (${value.id}, ${IDS.material1}, 0)`);
-      await expect(
-        rejection(
-          session.db.execute(sql`
-            INSERT INTO period_material_offer (period_id, material_id, position)
-            VALUES (${value.id}, ${IDS.material1}, 1)`),
-        ),
-      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23505");
-      await expect(
-        rejection(
-          session.db.execute(sql`
-            INSERT INTO period_material_offer (period_id, material_id, position)
-            VALUES (${value.id}, ${IDS.material2}, 0)`),
-        ),
-      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23505");
-      await expect(
-        rejection(
-          session.db.execute(sql`
-            INSERT INTO period_material_offer (period_id, material_id, position)
-            VALUES (${value.id}, ${IDS.material2}, -1)`),
-        ),
-      ).resolves.toSatisfy((error: unknown) => sqlState(error) === "23514");
-    } finally {
-      await session.close();
-    }
-  });
+      await session.db.execute(
+        sql`UPDATE workshop_period SET materials_required = true WHERE id = ${value.id}`,
+      );
 
-  it("keeps historical offers visible with current material state", async () => {
-    const { repo, openSession } = await freshRepository();
-    const value = period({
-      materials: [
-        {
-          id: IDS.material2,
-          name: "Material 2",
-          active: true,
-          available: true,
-        },
-        {
-          id: IDS.material1,
-          name: "Material 1",
-          active: true,
-          available: true,
-        },
-      ],
-    });
-    await repo.insert(value);
-    const session = await openSession();
-    try {
-      await session.db.execute(
-        sql`UPDATE material SET active = false WHERE id = ${IDS.material2}`,
+      const read = await repo.findById(value.id);
+      expect(read).toEqual(value);
+      expect(Object.keys(read ?? {})).not.toContain("materials");
+      expect(Object.keys(read ?? {})).not.toContain("materialsRequired");
+
+      const changedFee = Money.fromCentavos(250);
+      if (!changedFee.ok) throw new Error("fixture money");
+      await expect(
+        repo.update({ ...value, fee: changedFee.value }),
+      ).resolves.toEqual({ ok: true, value: undefined });
+      expect((await repo.findById(value.id))?.fee).toEqual(changedFee.value);
+
+      const flag = await session.db.execute<{ materials_required: boolean }>(
+        sql`SELECT materials_required FROM workshop_period WHERE id = ${value.id}`,
       );
-      await session.db.execute(
-        sql`UPDATE material SET available = false WHERE id = ${IDS.material1}`,
+      expect(flag.rows[0]?.materials_required).toBe(false);
+      const offers = await session.db.execute<{ total: string }>(
+        sql`SELECT count(*)::text AS total FROM period_material_offer WHERE period_id = ${value.id}`,
       );
+      expect(offers.rows[0]?.total).toBe("1");
     } finally {
       await session.close();
     }
-    expect((await repo.findById(value.id))?.materials).toEqual([
-      {
-        id: IDS.material2,
-        name: "Material 2",
-        active: false,
-        available: true,
-      },
-      {
-        id: IDS.material1,
-        name: "Material 1",
-        active: true,
-        available: false,
-      },
-    ]);
   });
 });

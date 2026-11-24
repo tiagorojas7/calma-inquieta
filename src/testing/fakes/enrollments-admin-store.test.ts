@@ -1,4 +1,5 @@
 import type { OrderRepository } from "~/modules/enrollments/application/enrollment-repository";
+import { runAdminEnrollmentCorrectionContract } from "~/testing/contracts/admin-enrollment-correction.contract";
 import { runAdminEnrollmentStoreContract } from "~/testing/contracts/admin-enrollment-store.contract";
 import { orderDraft } from "./enrollments-builders";
 import {
@@ -6,6 +7,7 @@ import {
   InMemoryOrderRepository,
 } from "./enrollments-order-repository";
 import { InMemorySeatLedger } from "./enrollments-seat-ledger";
+import { InMemoryStockStore } from "./in-memory-stock-store";
 
 const capacity = 2;
 
@@ -13,8 +15,9 @@ const periods = {
   find: () => Promise.resolve({ status: "open" as const, capacity }),
 };
 
-runAdminEnrollmentStoreContract(() => {
-  const orders = new InMemoryOrderRepository();
+const setup = () => {
+  const stock = new InMemoryStockStore();
+  const orders = new InMemoryOrderRepository(undefined, undefined, stock);
   const seats = new InMemorySeatLedger();
   let nextOrder = 0;
 
@@ -25,7 +28,7 @@ runAdminEnrollmentStoreContract(() => {
         student: {
           fullName: `Student ${String(nextOrder)}`,
           email: `student-${String(nextOrder)}@example.com`,
-          phoneDigits: `549351555${String(nextOrder).padStart(4, "0")}`,
+          phoneDigits: `549351444${String(nextOrder).padStart(4, "0")}`,
         },
         ...args[0],
       }),
@@ -43,6 +46,18 @@ runAdminEnrollmentStoreContract(() => {
       seats.confirmedSeats(order.periodId, order.turnoId),
     audit: (order: Awaited<ReturnType<typeof createOrder>>) =>
       orders.auditTrail(order.id),
+    fixtureStock: {
+      seed: async (units: number) => {
+        await stock.adjust({
+          variantId: "v-1",
+          delta: units,
+          reason: "test seed",
+          by: "test",
+          at: new Date("2026-10-01T12:00:00Z"),
+        });
+      },
+      onHand: () => Promise.resolve(stock.levels.get("v-1") ?? 0),
+    },
     failingAfterSeatMutation: () =>
       Promise.resolve(
         harness({
@@ -60,4 +75,7 @@ runAdminEnrollmentStoreContract(() => {
   });
 
   return harness();
-});
+};
+
+runAdminEnrollmentStoreContract(setup);
+runAdminEnrollmentCorrectionContract(setup);

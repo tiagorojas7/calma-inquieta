@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classTomorrowEmail,
+  enrollmentConfirmedEmail,
   enrollmentReceivedEmail,
   eventInquiryEmail,
   feePendingEmail,
@@ -37,6 +38,22 @@ describe("email templates", () => {
     expect(email.subject).toBe("Confirmamos tu pago");
     expect(email.text).toContain("Bordado");
     expect(email.text).toContain("Martes a la tarde");
+  });
+
+  it("confirms the place of a free enrollment without any word about payment or amounts", () => {
+    const email = enrollmentConfirmedEmail(order);
+    expect(email.subject).toBe("Confirmamos tu lugar");
+    expect(email.text).toContain("Hola, Ana.");
+    expect(email.text).toContain("Bordado");
+    expect(email.text).toContain("noviembre 2026");
+    expect(email.text).toContain("Martes a la tarde");
+    expect(email.text).toContain("CI-2026-0007");
+    expect(email.text).toContain("https://calma.example.test/pedido/abc123");
+    expect(email.html).toContain(
+      'href="https://calma.example.test/pedido/abc123"',
+    );
+    for (const text of [email.subject, email.text, email.html])
+      expect(text).not.toMatch(/pag|cuota|total|\$|monto|abon|comprobante/i);
   });
 
   it("reminds tomorrow's class", () => {
@@ -99,6 +116,8 @@ describe("email templates", () => {
       studentName: "Ana Pérez",
       intensivoName: "Bordado libre",
       dateLabel: "sábado 5 de diciembre",
+      projectName: "Bordado de aro" as string | null,
+      price: "$ 60.000",
       deposit: "$ 20.000",
       reservationUrl: "https://calma.example.test/reserva/abc123",
     };
@@ -112,6 +131,31 @@ describe("email templates", () => {
       expect(email.text).toContain("$ 20.000");
       expect(email.text).toContain(reservation.reservationUrl);
       expect(email.html).toContain(`href="${reservation.reservationUrl}"`);
+    });
+
+    it("names the chosen project and states the total next to the deposit", () => {
+      const received = intensiveReservationReceivedEmail(reservation);
+      expect(received.text).toContain("con el proyecto Bordado de aro");
+      expect(received.text).toContain(
+        "la seña es de $ 20.000 sobre un total de $ 60.000",
+      );
+      const confirmed = intensiveReservationConfirmedEmail(reservation);
+      expect(confirmed.text).toContain("con el proyecto Bordado de aro");
+      expect(confirmed.text).toContain("$ 20.000");
+    });
+
+    it("leaves the project out for a request made before projects", () => {
+      for (const email of [
+        intensiveReservationReceivedEmail({
+          ...reservation,
+          projectName: null,
+        }),
+        intensiveReservationConfirmedEmail({
+          ...reservation,
+          projectName: null,
+        }),
+      ])
+        expect(email.text).not.toContain("proyecto");
     });
 
     it("confirms the reservation", () => {

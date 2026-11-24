@@ -7,12 +7,16 @@ import type {
   MaterialRow,
   OrderCountRow,
   ParticipationRow,
+  PendingOrderPaymentRow,
   PendingSummary,
   PeriodRegistrationRow,
+  UnseenOrderRow,
 } from "~/modules/enrollments";
 import type {
   IntensiveRegistrationRow,
   IntensiveRequestInsightsReader,
+  PendingSeatPaymentRow,
+  UnseenSeatRequestRow,
 } from "~/modules/intensive-requests";
 import type { Teacher, TeacherLookup } from "~/modules/teachers";
 import type {
@@ -36,6 +40,8 @@ export class InMemoryEnrollmentInsightsReader implements EnrollmentInsightsReade
   materialRows: MaterialRow[] = [];
   participationRow: ParticipationRow = { students: 0, recurring: 0 };
   registrationRows: (PeriodRegistrationRow & { period: string })[] = [];
+  unseenRows: UnseenOrderRow[] = [];
+  pendingPaymentRows: PendingOrderPaymentRow[] = [];
   readonly incomeCalls: IncomeFilter[] = [];
   readonly pendingCalls: Date[] = [];
   readonly participationCalls: string[] = [];
@@ -82,6 +88,14 @@ export class InMemoryEnrollmentInsightsReader implements EnrollmentInsightsReade
     this.participationCalls.push(period);
     return Promise.resolve(this.participationRow);
   }
+
+  unseenOrders() {
+    return Promise.resolve(this.unseenRows);
+  }
+
+  pendingPayments() {
+    return Promise.resolve(this.pendingPaymentRows);
+  }
 }
 
 export class InMemoryWorkshopInsightsReader implements WorkshopInsightsReader {
@@ -121,6 +135,8 @@ export class InMemoryIntensiveInsightsReader implements IntensiveInsightsReader 
 export class InMemoryIntensiveRequestInsightsReader implements IntensiveRequestInsightsReader {
   registrationRows: IntensiveRegistrationRow[] = [];
   pending = 0;
+  unseenRows: UnseenSeatRequestRow[] = [];
+  pendingPaymentRows: PendingSeatPaymentRow[] = [];
 
   registrations(intensiveIds: readonly string[]) {
     return Promise.resolve(
@@ -132,6 +148,14 @@ export class InMemoryIntensiveRequestInsightsReader implements IntensiveRequestI
 
   pendingRequests() {
     return Promise.resolve(this.pending);
+  }
+
+  unseenRequests() {
+    return Promise.resolve(this.unseenRows);
+  }
+
+  pendingPayments() {
+    return Promise.resolve(this.pendingPaymentRows);
   }
 }
 

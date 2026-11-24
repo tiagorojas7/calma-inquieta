@@ -42,12 +42,13 @@ describe("deriveSummary", () => {
 });
 
 describe("parseQuickWorkshop", () => {
-  it("builds a draft with a derived summary, a default technique and no slug", () => {
+  it("builds a draft with a default technique and no slug, leaving a blank Descripción for the service to ask", () => {
     const parsed = parseQuickWorkshop(form({ ...BASE, ...EMPTY_ROWS }));
+    expect(parsed.values.summary).toBe("");
     expect(parsed.draft).toMatchObject({
       name: "Cerámica Creativa",
       slug: "",
-      summary: "Un taller para empezar de cero.",
+      summary: "",
       technique: "Taller",
       defaultFee: "12000",
       teacherId: "t1",
@@ -76,6 +77,7 @@ describe("parseQuickWorkshop", () => {
       summary: "Mi frase",
       technique: "Torno",
     });
+    expect(parsed.values.summary).toBe("Mi frase");
   });
 
   it("counts only the filled turno rows and labels them from day and start", () => {
@@ -144,13 +146,13 @@ describe("parseQuickWorkshop", () => {
     expect(parsed.turnoErrors[0]).toBeUndefined();
   });
 
-  it("collects the chosen materials and echoes every row for re-rendering", () => {
+  it("ignores posted materials and echoes every row for re-rendering", () => {
     const parsed = parseQuickWorkshop(
       form({ ...BASE, ...EMPTY_ROWS, materialIds: ["m1", "m2"] }),
     );
-    expect(parsed.materialIds).toEqual(["m1", "m2"]);
     expect(parsed.values.rows).toHaveLength(QUICK_TURNO_ROWS);
-    expect(parsed.values.materialIds).toEqual(["m1", "m2"]);
+    expect(Object.keys(parsed)).not.toContain("materialIds");
+    expect(Object.keys(parsed.values)).not.toContain("materialIds");
   });
 
   it("reads the submit intent, defaulting to a draft", () => {
